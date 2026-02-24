@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Field Production – Norwegian Continental Shelf</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9; color: #1a2332; padding: 24px 16px;
+    }
+    .widget {
+      max-width: 1100px; margin: 0 auto; background: #fff;
+      border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 32px;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+    .widget-header h2 { font-size: 1.4rem; font-weight: 700; color: #003057; margin-bottom: 4px; }
+    .widget-header p  { font-size: 0.85rem; color: #6b7a90; }
+    .main-layout { display: flex; gap: 24px; align-items: flex-start; }
+
+    /* SIDEBAR */
+    .sidebar { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+    .sidebar label.section-label {
+      font-size: 0.75rem; font-weight: 700; color: #4a5568;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .field-search {
+      width: 100%; padding: 8px 10px; border: 1.5px solid #d1d9e6; border-radius: 7px;
+      font-size: 0.88rem; color: #1a2332; outline: none; transition: border-color 0.2s;
+    }
+    .field-search:focus { border-color: #0071b8; box-shadow: 0 0 0 3px rgba(0,113,184,0.1); }
+    .field-list {
+      border: 1.5px solid #d1d9e6; border-radius: 8px; overflow-y: auto;
+      max-height: 420px; background: #fff;
+    }
+    .field-list-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 12px; cursor: pointer; transition: background 0.1s;
+      border-bottom: 1px solid #f0f3f7; font-size: 0.88rem; user-select: none;
+    }
+    .field-list-item:last-child { border-bottom: none; }
+    .field-list-item:hover { background: #f0f5fb; }
+    .field-list-item input[type=checkbox] {
+      accent-color: #003057; width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;
+    }
+    .field-list-item.checked { background: #eef4fb; font-weight: 500; color: #003057; }
+    .field-list-empty { padding: 12px; color: #a0aab8; font-size: 0.85rem; text-align: center; }
+    .select-actions { display: flex; gap: 8px; }
+    .action-btn {
+      flex: 1; padding: 6px 0; border: 1.5px solid #d1d9e6; border-radius: 6px;
+      background: #fff; font-size: 0.78rem; color: #4a5568; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .action-btn:hover { background: #f0f4f8; color: #1a2332; }
+
+    /* CONTROLS */
+    .main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    label {
+      font-size: 0.75rem; font-weight: 600; color: #4a5568;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    select {
+      padding: 9px 34px 9px 12px; border: 1.5px solid #d1d9e6; border-radius: 8px;
+      font-size: 0.92rem; color: #1a2332;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 10px center;
+      appearance: none; cursor: pointer; min-width: 110px; transition: border-color 0.2s;
+    }
+    select:focus { outline: none; border-color: #0071b8; box-shadow: 0 0 0 3px rgba(0,113,184,0.12); }
+    .toggle-group { display: flex; border: 1.5px solid #d1d9e6; border-radius: 8px; overflow: hidden; }
+    .toggle-btn {
+      padding: 9px 16px; border: none; background: #fff;
+      font-size: 0.88rem; font-weight: 500; color: #4a5568;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .toggle-btn:not(:last-child) { border-right: 1.5px solid #d1d9e6; }
+    .toggle-btn.active { background: #003057; color: #fff; }
+    .toggle-btn:hover:not(.active) { background: #f0f4f8; }
+
+    /* Download button */
+    .download-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 16px; border: 1.5px solid #1a7a40; border-radius: 8px;
+      background: #fff; font-size: 0.88rem; font-weight: 500; color: #1a7a40;
+      cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap;
+    }
+    .download-btn:hover { background: #1a7a40; color: #fff; }
+    .download-btn:disabled { opacity: 0.4; cursor: default; }
+    .download-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    /* CHART */
+    .chart-container { position: relative; height: 440px; }
+    .status { text-align: center; padding: 80px 20px; color: #6b7a90; font-size: 0.95rem; }
+    .status .spinner {
+      display: inline-block; width: 36px; height: 36px;
+      border: 3px solid #e2e8f0; border-top-color: #0071b8;
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg {
+      background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px;
+      padding: 14px; color: #c53030; font-size: 0.9rem; text-align: center;
+    }
+    .legend-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; color: #4a5568; }
+    .legend-dot  { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+    .source-note { font-size: 0.75rem; color: #a0aab8; text-align: right; }
+    .source-note a { color: #0071b8; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="widget">
+  <div class="widget-header">
+    <h2>Field Production – Norwegian Continental Shelf</h2>
+    <p>Oil and gas production by field, stacked. Data from the Norwegian Offshore Directorate.</p>
+  </div>
+
+  <div class="main-layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <label class="section-label">Select fields</label>
+      <input class="field-search" id="fieldSearch" type="text" placeholder="Search…"
+             oninput="filterFieldList()" disabled/>
+      <div class="field-list" id="fieldList">
+        <div class="field-list-empty">Loading fields…</div>
+      </div>
+      <div class="select-actions">
+        <button class="action-btn" onclick="selectAll()">Select all</button>
+        <button class="action-btn" onclick="clearAll()">Clear all</button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+      <div class="controls">
+        <div class="control-group">
+          <label for="yearFrom">From year</label>
+          <select id="yearFrom"></select>
+        </div>
+        <div class="control-group">
+          <label for="yearTo">To year</label>
+          <select id="yearTo"></select>
+        </div>
+        <div class="control-group">
+          <label>Period</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="btnMonthly" onclick="setMode('monthly')">Monthly</button>
+            <button class="toggle-btn"        id="btnAnnual"  onclick="setMode('annual')">Annual</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Unit</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="btnSm3"  onclick="setUnit('sm3')">Sm³</button>
+            <button class="toggle-btn"        id="btnBoed" onclick="setUnit('boed')">1000 bbl/day</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>&nbsp;</label>
+          <button class="download-btn" id="downloadBtn" onclick="downloadExcel()" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download Excel
+          </button>
+        </div>
+      </div>
+
+      <div id="chartArea">
+        <div class="status">Select one or more fields from the list on the left.</div>
+      </div>
+
+      <div class="source-note">
+        Source: <a href="https://factpages.sodir.no" target="_blank">Norwegian Offshore Directorate FactPages</a> – NLOD 2.0
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE        = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
+const FIELD_LAYER = 7100;
+const PROD_LAYER  = 7300;
+const BBL_PER_SM3 = 6.29;
+
+const FIELD_COLORS = [
+  ['rgba(26,111,175,0.85)',  'rgba(26,111,175,0.40)'],
+  ['rgba(220,80,50,0.85)',   'rgba(220,80,50,0.40)'],
+  ['rgba(40,160,100,0.85)',  'rgba(40,160,100,0.40)'],
+  ['rgba(160,90,200,0.85)',  'rgba(160,90,200,0.40)'],
+  ['rgba(230,150,20,0.85)',  'rgba(230,150,20,0.40)'],
+  ['rgba(0,180,200,0.85)',   'rgba(0,180,200,0.40)'],
+  ['rgba(180,50,120,0.85)',  'rgba(180,50,120,0.40)'],
+  ['rgba(100,140,50,0.85)',  'rgba(100,140,50,0.40)'],
+];
+
+let mode           = 'monthly';
+let unit           = 'sm3';
+let allFields      = [];
+let selectedIds    = new Set();
+let fieldDataCache = {};
+let chartInstance  = null;
+let filteredFields = [];
+let lastLabels     = [];
+let lastLookups    = {};   // id → { label → {oil, gas} }
+
+// Year selectors
+const currentYear = new Date().getFullYear();
+['yearFrom', 'yearTo'].forEach(id => {
+  const sel = document.getElementById(id);
+  for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
+});
+document.getElementById('yearFrom').value = 2000;
+document.getElementById('yearTo').value   = currentYear;
+
+// -----------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------
+function daysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+function daysInYear(year) { return (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365; }
+
+function toBoed(oeMillSm3, gasBillSm3, days) {
+  const gasBoe   = (gasBillSm3 * 1e6 * BBL_PER_SM3) / days / 1000;
+  const totalBoe = (oeMillSm3  * 1e6 * BBL_PER_SM3) / days / 1000;
+  return { oilBoe: Math.max(0, totalBoe - gasBoe), gasBoe };
+}
+
+async function queryLayer(layerId, params) {
+  const url = new URL(`${BASE}/${layerId}/query`);
+  const p = { f: 'json', outFields: '*', where: '1=1', resultRecordCount: 32000, ...params };
+  Object.entries(p).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.features || [];
+}
+
+// -----------------------------------------------------------------------
+// Load field list
+// -----------------------------------------------------------------------
+async function loadFields() {
+  try {
+    const features = await queryLayer(FIELD_LAYER, {
+      outFields: 'fldNpdidField,fldName',
+      orderByFields: 'fldName ASC',
+      resultRecordCount: 500
+    });
+    allFields = features
+      .map(f => ({ id: f.attributes.fldNpdidField, name: f.attributes.fldName }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+    filteredFields = allFields;
+    document.getElementById('fieldSearch').disabled = false;
+    renderFieldList();
+  } catch (err) {
+    document.getElementById('fieldList').innerHTML =
+      `<div class="field-list-empty">Error: ${err.message}</div>`;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Field list UI
+// -----------------------------------------------------------------------
+function renderFieldList() {
+  const list = document.getElementById('fieldList');
+  if (!filteredFields.length) {
+    list.innerHTML = '<div class="field-list-empty">No results</div>';
+    return;
+  }
+  list.innerHTML = filteredFields.map(f => `
+    <div class="field-list-item ${selectedIds.has(f.id) ? 'checked' : ''}" onclick="toggleField(${f.id})">
+      <input type="checkbox" ${selectedIds.has(f.id) ? 'checked' : ''}
+             onchange="toggleField(${f.id})" onclick="event.stopPropagation()"/>
+      ${f.name}
+    </div>
+  `).join('');
+}
+
+function filterFieldList() {
+  const q = document.getElementById('fieldSearch').value.toLowerCase();
+  filteredFields = allFields.filter(f => f.name.toLowerCase().includes(q));
+  renderFieldList();
+}
+
+function toggleField(id) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+    delete fieldDataCache[id];
+  } else {
+    selectedIds.add(id);
+  }
+  renderFieldList();
+  refreshChart();
+}
+
+function selectAll() {
+  filteredFields.forEach(f => selectedIds.add(f.id));
+  renderFieldList();
+  refreshChart();
+}
+
+function clearAll() {
+  selectedIds.clear();
+  fieldDataCache = {};
+  renderFieldList();
+  refreshChart();
+}
+
+// -----------------------------------------------------------------------
+// Fetch data and draw
+// -----------------------------------------------------------------------
+async function refreshChart() {
+  if (!selectedIds.size) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.getElementById('chartArea').innerHTML =
+      '<div class="status">Select one or more fields from the list on the left.</div>';
+    document.getElementById('downloadBtn').disabled = true;
+    return;
+  }
+
+  const toFetch = [...selectedIds].filter(id => !fieldDataCache[id]);
+  if (toFetch.length) {
+    document.getElementById('chartArea').innerHTML =
+      `<div class="status"><div class="spinner"></div><div>Loading data…</div></div>`;
+    const fromYear = parseInt(document.getElementById('yearFrom').value);
+    const toYear   = parseInt(document.getElementById('yearTo').value);
+    await Promise.all(toFetch.map(async id => {
+      try {
+        fieldDataCache[id] = await queryLayer(PROD_LAYER, {
+          where: `prfNpdidInformationCarrier=${id} AND prfInformationCarrierKind='FIELD' AND prfYear>=${fromYear} AND prfYear<=${toYear}`,
+          outFields: 'prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3',
+          orderByFields: 'prfYear ASC, prfMonth ASC'
+        });
+      } catch (err) {
+        fieldDataCache[id] = { error: err.message };
+      }
+    }));
+  }
+  drawChart();
+}
+
+// -----------------------------------------------------------------------
+// Build union of labels
+// -----------------------------------------------------------------------
+function buildLabels() {
+  const labelSet = new Set();
+  selectedIds.forEach(id => {
+    const data = fieldDataCache[id];
+    if (!data || data.error) return;
+    data.forEach(f => {
+      const a = f.attributes;
+      if (mode === 'monthly' ? a.prfMonth <= 0 : a.prfMonth !== 0) return;
+      labelSet.add(mode === 'monthly'
+        ? `${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`
+        : `${a.prfYear}`);
+    });
+  });
+  return [...labelSet].sort();
+}
+
+// -----------------------------------------------------------------------
+// Draw chart
+// -----------------------------------------------------------------------
+function drawChart() {
+  const isBoed = unit === 'boed';
+  const labels = buildLabels();
+  lastLabels = labels;
+  lastLookups = {};
+
+  if (!labels.length) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.getElementById('chartArea').innerHTML =
+      '<div class="status">No data found for the selected fields and period.</div>';
+    document.getElementById('downloadBtn').disabled = true;
+    return;
+  }
+
+  const orderedFields = allFields.filter(f => selectedIds.has(f.id));
+  const datasets = [];
+  const legendItems = [];
+
+  orderedFields.forEach((f, i) => {
+    const colors = FIELD_COLORS[i % FIELD_COLORS.length];
+    const data = fieldDataCache[f.id];
+    const lookup = {};
+
+    if (data && !data.error) {
+      data.forEach(row => {
+        const a = row.attributes;
+        if (mode === 'monthly' ? a.prfMonth <= 0 : a.prfMonth !== 0) return;
+        const lbl = mode === 'monthly'
+          ? `${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`
+          : `${a.prfYear}`;
+        const oil = a.prfPrdOilNetMillSm3 || 0;
+        const gas = a.prfPrdGasNetBillSm3 || 0;
+        const oe  = a.prfPrdOeNetMillSm3  || 0;
+        if (isBoed) {
+          const days = mode === 'monthly' ? daysInMonth(a.prfYear, a.prfMonth) : daysInYear(a.prfYear);
+          const { oilBoe, gasBoe } = toBoed(oe, gas, days);
+          lookup[lbl] = { oil: oilBoe, gas: gasBoe };
+        } else {
+          lookup[lbl] = { oil, gas };
+        }
+      });
+    }
+    lastLookups[f.id] = { lookup, name: f.name };
+
+    const dp = isBoed ? 1 : 4;
+    datasets.push({ label: `${f.name} – oil`,  data: labels.map(l => +(lookup[l]?.oil || 0).toFixed(dp)), backgroundColor: colors[0], borderWidth: 0, stack: 'prod' });
+    datasets.push({ label: `${f.name} – gas`,  data: labels.map(l => +(lookup[l]?.gas || 0).toFixed(dp)), backgroundColor: colors[1], borderWidth: 0, stack: 'prod' });
+    legendItems.push({ name: f.name, oilColor: colors[0], gasColor: colors[1] });
+  });
+
+  const yTitle = isBoed ? 'kboe/day' : 'mill. Sm³ (oil) / bill. Sm³ (gas)';
+  const periodLabel = mode === 'monthly' ? 'monthly' : 'annual';
+
+  document.getElementById('chartArea').innerHTML = `
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">
+      ${legendItems.map(l => `
+        <div class="legend-item"><div class="legend-dot" style="background:${l.oilColor}"></div>${l.name} oil</div>
+        <div class="legend-item"><div class="legend-dot" style="background:${l.gasColor}"></div>${l.name} gas</div>
+      `).join('')}
+    </div>
+  `;
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: `Field Production – ${periodLabel}`,
+          font: { size: 14, weight: '600' }, color: '#003057', padding: { bottom: 12 }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const name = ctx.dataset.label;
+              if (!isBoed) {
+                const u = name.endsWith('– gas') ? 'bill. Sm³' : 'mill. Sm³';
+                return ` ${ctx.parsed.y.toFixed(3)} ${u}  (${name})`;
+              }
+              return ` ${Math.round(ctx.parsed.y).toLocaleString('en')} kboe/day  (${name})`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { maxTicksLimit: mode === 'annual' ? 30 : 20, maxRotation: 45, font: { size: 10 } },
+          grid: { color: 'rgba(0,0,0,0.04)' }
+        },
+        y: {
+          stacked: true, beginAtZero: true,
+          title: { display: true, text: yTitle, color: '#4a5568', font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 10 } }
+        }
+      }
+    }
+  });
+
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+// -----------------------------------------------------------------------
+// Excel export
+// -----------------------------------------------------------------------
+function downloadExcel() {
+  if (!lastLabels.length || !Object.keys(lastLookups).length) return;
+
+  const isBoed = unit === 'boed';
+  const oilUnit = isBoed ? 'Oil (kboe/day)' : 'Oil (mill. Sm³)';
+  const gasUnit = isBoed ? 'Gas (kboe/day)' : 'Gas (bill. Sm³)';
+  const periodLabel = mode === 'monthly' ? 'Monthly' : 'Annual';
+
+  const wb = XLSX.utils.book_new();
+
+  // One sheet per field
+  const orderedFields = allFields.filter(f => selectedIds.has(f.id));
+  orderedFields.forEach(f => {
+    const { lookup } = lastLookups[f.id] || {};
+    if (!lookup) return;
+
+    const rows = [
+      [mode === 'monthly' ? 'Period' : 'Year', oilUnit, gasUnit, isBoed ? 'Total (kboe/day)' : 'Total OE (mill. Sm³)']
+    ];
+    lastLabels.forEach(lbl => {
+      const oil = lookup[lbl]?.oil || 0;
+      const gas = lookup[lbl]?.gas || 0;
+      rows.push([lbl, +oil.toFixed(isBoed ? 1 : 4), +gas.toFixed(isBoed ? 1 : 4), +(oil + gas).toFixed(isBoed ? 1 : 4)]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Column widths
+    ws['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 20 }];
+
+    // Bold header row
+    ['A1','B1','C1','D1'].forEach(cell => {
+      if (ws[cell]) ws[cell].s = { font: { bold: true } };
+    });
+
+    // Truncate sheet name to 31 chars (Excel limit)
+    const sheetName = f.name.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  // Summary sheet: all fields side by side
+  const summaryHeader = [mode === 'monthly' ? 'Period' : 'Year'];
+  orderedFields.forEach(f => {
+    summaryHeader.push(`${f.name} – ${oilUnit}`, `${f.name} – ${gasUnit}`);
+  });
+  const summaryRows = [summaryHeader];
+  lastLabels.forEach(lbl => {
+    const row = [lbl];
+    orderedFields.forEach(f => {
+      const lookup = lastLookups[f.id]?.lookup || {};
+      const oil = lookup[lbl]?.oil || 0;
+      const gas = lookup[lbl]?.gas || 0;
+      row.push(+oil.toFixed(isBoed ? 1 : 4), +gas.toFixed(isBoed ? 1 : 4));
+    });
+    summaryRows.push(row);
+  });
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary['!cols'] = summaryHeader.map((_, i) => ({ wch: i === 0 ? 12 : 22 }));
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  // Filename
+  const fromYear = document.getElementById('yearFrom').value;
+  const toYear   = document.getElementById('yearTo').value;
+  const filename = `NCS_Production_${periodLabel}_${fromYear}-${toYear}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+// -----------------------------------------------------------------------
+// Toggles
+// -----------------------------------------------------------------------
+function setMode(newMode) {
+  if (mode === newMode) return;
+  mode = newMode;
+  document.getElementById('btnMonthly').classList.toggle('active', mode === 'monthly');
+  document.getElementById('btnAnnual').classList.toggle('active',  mode === 'annual');
+  fieldDataCache = {};
+  refreshChart();
+}
+
+function setUnit(newUnit) {
+  if (unit === newUnit) return;
+  unit = newUnit;
+  document.getElementById('btnSm3').classList.toggle('active',  unit === 'sm3');
+  document.getElementById('btnBoed').classList.toggle('active', unit === 'boed');
+  drawChart();
+}
+
+['yearFrom', 'yearTo'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    fieldDataCache = {};
+    refreshChart();
+  });
+});
+
+loadFields();
+</script>
+</body>
+</html>
