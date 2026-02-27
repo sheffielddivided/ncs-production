@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Field Production – Norwegian Continental Shelf</title>
+  <title>NCS Production – Norwegian Continental Shelf</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
@@ -17,8 +17,21 @@
       border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 32px;
       display: flex; flex-direction: column; gap: 24px;
     }
+    .widget-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
     .widget-header h2 { font-size: 1.4rem; font-weight: 700; color: #003057; margin-bottom: 4px; }
     .widget-header p  { font-size: 0.85rem; color: #6b7a90; }
+
+    /* MODE SWITCHER (Fields / Companies) */
+    .mode-switcher {
+      display: flex; background: #f0f4f8; border-radius: 10px; padding: 4px; gap: 2px;
+    }
+    .mode-btn {
+      padding: 8px 20px; border: none; border-radius: 7px; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; transition: all 0.18s; background: none; color: #6b7a90;
+    }
+    .mode-btn.active { background: #fff; color: #003057; box-shadow: 0 1px 6px rgba(0,0,0,0.1); }
+    .mode-btn:hover:not(.active) { color: #003057; }
+
     .main-layout { display: flex; gap: 24px; align-items: flex-start; }
 
     /* SIDEBAR */
@@ -27,27 +40,29 @@
       font-size: 0.75rem; font-weight: 700; color: #4a5568;
       text-transform: uppercase; letter-spacing: 0.05em;
     }
-    .field-search {
+    .list-search {
       width: 100%; padding: 8px 10px; border: 1.5px solid #d1d9e6; border-radius: 7px;
       font-size: 0.88rem; color: #1a2332; outline: none; transition: border-color 0.2s;
     }
-    .field-search:focus { border-color: #0071b8; box-shadow: 0 0 0 3px rgba(0,113,184,0.1); }
-    .field-list {
+    .list-search:focus { border-color: #0071b8; box-shadow: 0 0 0 3px rgba(0,113,184,0.1); }
+    .list-search:disabled { background: #f7f9fc; color: #a0aab8; }
+    .check-list {
       border: 1.5px solid #d1d9e6; border-radius: 8px; overflow-y: auto;
       max-height: 380px; background: #fff;
     }
-    .field-list-item {
+    .check-item {
       display: flex; align-items: center; gap: 9px;
       padding: 7px 12px; cursor: pointer; transition: background 0.1s;
       border-bottom: 1px solid #f0f3f7; font-size: 0.88rem; user-select: none;
     }
-    .field-list-item:last-child { border-bottom: none; }
-    .field-list-item:hover { background: #f0f5fb; }
-    .field-list-item input[type=checkbox] {
+    .check-item:last-child { border-bottom: none; }
+    .check-item:hover { background: #f0f5fb; }
+    .check-item input[type=checkbox] {
       accent-color: #003057; width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;
     }
-    .field-list-item.checked { background: #eef4fb; font-weight: 500; color: #003057; }
-    .field-list-empty { padding: 12px; color: #a0aab8; font-size: 0.85rem; text-align: center; }
+    .check-item.checked { background: #eef4fb; font-weight: 500; color: #003057; }
+    .list-empty { padding: 12px; color: #a0aab8; font-size: 0.85rem; text-align: center; }
+    .list-loading { padding: 14px; color: #a0aab8; font-size: 0.85rem; text-align: center; }
     .select-actions { display: flex; gap: 8px; }
     .action-btn {
       flex: 1; padding: 6px 0; border: 1.5px solid #d1d9e6; border-radius: 6px;
@@ -60,10 +75,7 @@
     .main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
     .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
     .control-group { display: flex; flex-direction: column; gap: 6px; }
-    label {
-      font-size: 0.75rem; font-weight: 600; color: #4a5568;
-      text-transform: uppercase; letter-spacing: 0.04em;
-    }
+    label { font-size: 0.75rem; font-weight: 600; color: #4a5568; text-transform: uppercase; letter-spacing: 0.04em; }
     select {
       padding: 9px 34px 9px 12px; border: 1.5px solid #d1d9e6; border-radius: 8px;
       font-size: 0.92rem; color: #1a2332;
@@ -71,7 +83,6 @@
       appearance: none; cursor: pointer; min-width: 110px; transition: border-color 0.2s;
     }
     select:focus { outline: none; border-color: #0071b8; box-shadow: 0 0 0 3px rgba(0,113,184,0.12); }
-    .company-select { min-width: 220px; }
     .toggle-group { display: flex; border: 1.5px solid #d1d9e6; border-radius: 8px; overflow: hidden; }
     .toggle-btn {
       padding: 9px 16px; border: none; background: #fff;
@@ -91,11 +102,13 @@
     .download-btn:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
     .download-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
 
-    /* ownership badge shown in chart title area */
-    .ownership-note {
-      font-size: 0.8rem; color: #6b7a90; background: #f0f4f8;
-      border-radius: 6px; padding: 6px 12px; display: inline-block;
+    /* Companies-mode loading notice */
+    .cmp-loading-notice {
+      font-size: 0.8rem; color: #6b7a90; background: #f7f9fc;
+      border: 1px solid #d1d9e6; border-radius: 6px; padding: 8px 12px;
+      display: none;
     }
+    .cmp-loading-notice.visible { display: block; }
 
     /* CHART */
     .chart-container { position: relative; height: 440px; }
@@ -120,22 +133,31 @@
 <body>
 <div class="widget">
   <div class="widget-header">
-    <h2>Field Production – Norwegian Continental Shelf</h2>
-    <p>Oil and gas production by field, stacked. Data from the Norwegian Offshore Directorate.</p>
+    <div>
+      <h2>NCS Production – Norwegian Continental Shelf</h2>
+      <p>Oil and gas production. Data from the Norwegian Offshore Directorate.</p>
+    </div>
+    <div class="mode-switcher">
+      <button class="mode-btn active" id="modeBtnFields"    onclick="switchSidebarMode('fields')">Fields</button>
+      <button class="mode-btn"        id="modeBtnCompanies" onclick="switchSidebarMode('companies')">Companies</button>
+    </div>
   </div>
 
   <div class="main-layout">
     <!-- SIDEBAR -->
     <div class="sidebar">
-      <label class="section-label">Select fields</label>
-      <input class="field-search" id="fieldSearch" type="text" placeholder="Search…"
-             oninput="filterFieldList()" disabled/>
-      <div class="field-list" id="fieldList">
-        <div class="field-list-empty">Loading fields…</div>
+      <label class="section-label" id="sidebarLabel">Select fields</label>
+      <input class="list-search" id="listSearch" type="text" placeholder="Search…"
+             oninput="filterList()" disabled/>
+      <div class="check-list" id="checkList">
+        <div class="list-loading">Loading…</div>
       </div>
       <div class="select-actions">
         <button class="action-btn" onclick="selectAll()">Select all</button>
         <button class="action-btn" onclick="clearAll()">Clear all</button>
+      </div>
+      <div class="cmp-loading-notice" id="cmpLoadingNotice">
+        Loading ownership data for all fields. This may take a moment…
       </div>
     </div>
 
@@ -150,9 +172,9 @@
           <label for="yearTo">To year</label>
           <select id="yearTo"></select>
         </div>
-        <div class="control-group">
+        <div class="control-group" id="companyFilterGroup">
           <label for="companySelect">Company (ownership filter)</label>
-          <select id="companySelect" class="company-select" onchange="onCompanyChange()">
+          <select id="companySelect" style="min-width:220px" onchange="onCompanyFilterChange()">
             <option value="">— All companies (gross) —</option>
           </select>
         </div>
@@ -163,7 +185,7 @@
             <button class="toggle-btn"        id="btnAnnual"  onclick="setMode('annual')">Annual</button>
           </div>
         </div>
-        <div class="control-group">
+        <div class="control-group" id="unitGroup">
           <label>Unit</label>
           <div class="toggle-group">
             <button class="toggle-btn active" id="btnSm3"  onclick="setUnit('sm3')">Sm³</button>
@@ -184,7 +206,10 @@
       </div>
 
       <div id="chartArea">
-        <div class="status">Select one or more fields from the list on the left.</div>
+        <div class="status">
+          <div class="spinner"></div>
+          <div>Loading…</div>
+        </div>
       </div>
 
       <div class="source-note">
@@ -195,310 +220,409 @@
 </div>
 
 <script>
-const BASE          = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
-const FIELD_LAYER   = 7100;
-const PROD_LAYER    = 7300;
-const LICENSEE_LAYER = 7108;
-const BBL_PER_SM3   = 6.29;
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const BASE           = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
+const FIELD_LAYER    = 7100;
+const PROD_LAYER     = 7300;
+const LIC_LAYER      = 7108;
+const BBL_PER_SM3    = 6.29;
 
 const FIELD_COLORS = [
-  ['rgba(26,111,175,0.85)',  'rgba(26,111,175,0.40)'],
-  ['rgba(220,80,50,0.85)',   'rgba(220,80,50,0.40)'],
-  ['rgba(40,160,100,0.85)',  'rgba(40,160,100,0.40)'],
-  ['rgba(160,90,200,0.85)',  'rgba(160,90,200,0.40)'],
-  ['rgba(230,150,20,0.85)',  'rgba(230,150,20,0.40)'],
-  ['rgba(0,180,200,0.85)',   'rgba(0,180,200,0.40)'],
-  ['rgba(180,50,120,0.85)',  'rgba(180,50,120,0.40)'],
-  ['rgba(100,140,50,0.85)',  'rgba(100,140,50,0.40)'],
+  ['rgba(26,111,175,0.85)',  'rgba(26,111,175,0.45)'],
+  ['rgba(220,80,50,0.85)',   'rgba(220,80,50,0.45)'],
+  ['rgba(40,160,100,0.85)',  'rgba(40,160,100,0.45)'],
+  ['rgba(160,90,200,0.85)',  'rgba(160,90,200,0.45)'],
+  ['rgba(230,150,20,0.85)',  'rgba(230,150,20,0.45)'],
+  ['rgba(0,180,200,0.85)',   'rgba(0,180,200,0.45)'],
+  ['rgba(180,50,120,0.85)',  'rgba(180,50,120,0.45)'],
+  ['rgba(100,140,50,0.85)',  'rgba(100,140,50,0.45)'],
+  ['rgba(80,120,200,0.85)',  'rgba(80,120,200,0.45)'],
+  ['rgba(200,100,30,0.85)',  'rgba(200,100,30,0.45)'],
 ];
 
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let sidebarMode       = 'fields';    // 'fields' | 'companies'
 let mode              = 'monthly';
 let unit              = 'sm3';
-let allFields         = [];
-let selectedIds       = new Set();
-let fieldDataCache    = {};          // fieldId → production features[]
-let licenseeCache     = {};          // fieldId → licensee records[]
-let allLicensees      = [];          // all loaded licensee records (for company dropdown)
-let selectedCompany   = '';          // cmpLongName or '' for all
-let chartInstance     = null;
-let filteredFields    = [];
-let lastLabels        = [];
-let lastLookups       = {};          // fieldId → { label → {oil, gas, share} }
-let licenseeLoadedFor = new Set();   // which fieldIds have licensee data loaded
+let selectedCompany   = '';          // used in fields-mode
 
-// Year selectors
+// Fields mode
+let allFields         = [];          // [{id, name}]
+let filteredFields    = [];
+let selectedFieldIds  = new Set();
+let fieldProdCache    = {};          // fieldId → features[]
+let fieldLicCache     = {};          // fieldId → licensee records[]
+let licLoadedFor      = new Set();
+
+// Companies mode
+let allCompanies      = [];          // sorted list of company names
+let filteredCompanies = [];
+let selectedCompanyNames = new Set();
+let allLicRecords     = [];          // ALL licensee records across all fields
+let allLicLoaded      = false;
+let allLicLoading     = false;
+// For companies mode we also need production for all fields that any selected company has a stake in
+// fieldProdCache is shared between both modes
+
+let chartInstance     = null;
+let lastLabels        = [];
+let lastLookups       = {};          // For Excel export
+
+// ─── YEAR SELECTORS ──────────────────────────────────────────────────────────
 const currentYear = new Date().getFullYear();
-['yearFrom', 'yearTo'].forEach(id => {
+['yearFrom','yearTo'].forEach(id => {
   const sel = document.getElementById(id);
-  for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
+  for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y,y));
 });
 document.getElementById('yearFrom').value = 2000;
 document.getElementById('yearTo').value   = currentYear;
 
-// -----------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------
-function daysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
-function daysInYear(year) { return (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365; }
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function daysInMonth(y,m) { return new Date(y,m,0).getDate(); }
+function daysInYear(y) { return (y%4===0&&(y%100!==0||y%400===0))?366:365; }
 
 function toBoed(oeMillSm3, gasBillSm3, days) {
   const gasBoe   = (gasBillSm3 * 1e6 * BBL_PER_SM3) / days / 1000;
   const totalBoe = (oeMillSm3  * 1e6 * BBL_PER_SM3) / days / 1000;
-  return { oilBoe: Math.max(0, totalBoe - gasBoe), gasBoe };
+  return { oilBoe: Math.max(0, totalBoe - gasBoe), gasBoe, totalBoe };
 }
 
 async function queryLayer(layerId, params) {
   const url = new URL(`${BASE}/${layerId}/query`);
-  const p = { f: 'json', outFields: '*', where: '1=1', resultRecordCount: 32000, ...params };
-  Object.entries(p).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url.toString());
+  const p = { f:'json', outFields:'*', where:'1=1', resultRecordCount:32000, ...params };
+  Object.entries(p).forEach(([k,v]) => url.searchParams.set(k,v));
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
   return data.features || [];
 }
 
-// -----------------------------------------------------------------------
-// Given a field's licensee records and a JS Date, return share% for a
-// given company name (or 100 if no company filter).
-// fldLicenseeFrom / fldLicenseeTo are Unix ms timestamps (or null = open end).
-// -----------------------------------------------------------------------
+// Get company share for a field at a given date from fieldLicCache
 function getShareAtDate(fieldId, date, companyName) {
-  if (!companyName) return 100; // no filter → gross production
-  const records = licenseeCache[fieldId] || [];
+  if (!companyName) return 100;
+  const records = fieldLicCache[fieldId] || [];
   const ts = date.getTime();
-  // Find records for this company valid at this date
   const match = records.find(r => {
     if (r.cmpLongName !== companyName) return false;
-    const from = r.fldLicenseeFrom;
-    const to   = r.fldLicenseeTo;
-    if (from !== null && ts < from) return false;
-    if (to   !== null && ts > to)   return false;
+    if (r.fldLicenseeFrom !== null && ts < r.fldLicenseeFrom) return false;
+    if (r.fldLicenseeTo   !== null && ts > r.fldLicenseeTo)   return false;
     return true;
   });
-  return match ? match.fldCompanyShare : 0;
+  return match ? (match.fldCompanyShare || 0) : 0;
 }
 
-// -----------------------------------------------------------------------
-// Load field list
-// -----------------------------------------------------------------------
+// ─── STARTUP ─────────────────────────────────────────────────────────────────
 async function loadFields() {
   try {
     const features = await queryLayer(FIELD_LAYER, {
-      outFields: 'fldNpdidField,fldName',
-      orderByFields: 'fldName ASC',
-      resultRecordCount: 500
+      outFields: 'fldNpdidField,fldName', orderByFields: 'fldName ASC', resultRecordCount: 500
     });
     allFields = features
       .map(f => ({ id: f.attributes.fldNpdidField, name: f.attributes.fldName }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+      .sort((a,b) => a.name.localeCompare(b.name,'en'));
     filteredFields = allFields;
-    document.getElementById('fieldSearch').disabled = false;
-    renderFieldList();
-  } catch (err) {
-    document.getElementById('fieldList').innerHTML =
-      `<div class="field-list-empty">Error: ${err.message}</div>`;
+    document.getElementById('listSearch').disabled = false;
+    renderList();
+    document.getElementById('chartArea').innerHTML =
+      '<div class="status">Select one or more fields from the list on the left.</div>';
+  } catch(err) {
+    document.getElementById('checkList').innerHTML =
+      `<div class="list-empty">Error: ${err.message}</div>`;
   }
 }
 
-// -----------------------------------------------------------------------
-// Load licensee data for a set of field IDs
-// Fetched one field at a time to stay within the API's 2000-record page limit.
-// Each field typically has <100 licensee records so this is safe.
-// -----------------------------------------------------------------------
-async function loadLicensees(fieldIds) {
-  const toLoad = fieldIds.filter(id => !licenseeLoadedFor.has(id));
+// Load licensee data for specific field IDs (used in fields-mode)
+async function loadLicenseesForFields(fieldIds) {
+  const toLoad = fieldIds.filter(id => !licLoadedFor.has(id));
   if (!toLoad.length) return;
-
   await Promise.all(toLoad.map(async id => {
     try {
-      // Paginate: keep fetching until we have all records for this field
-      let allFeatures = [];
+      fieldLicCache[id] = [];
       let offset = 0;
-      const pageSize = 2000;
       while (true) {
-        const features = await queryLayer(LICENSEE_LAYER, {
+        const rows = await queryLayer(LIC_LAYER, {
           where: `fldNpdidField=${id}`,
           outFields: 'fldNpdidField,cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',
-          resultRecordCount: pageSize,
-          resultOffset: offset
+          resultRecordCount: 2000, resultOffset: offset
         });
-        allFeatures = allFeatures.concat(features);
-        if (features.length < pageSize) break;
-        offset += pageSize;
+        fieldLicCache[id] = fieldLicCache[id].concat(rows.map(r => r.attributes));
+        if (rows.length < 2000) break;
+        offset += 2000;
       }
-
-      licenseeCache[id] = [];
-      allFeatures.forEach(f => {
-        const a = f.attributes;
-        licenseeCache[id].push(a);
-        if (a.cmpLongName && !allLicensees.includes(a.cmpLongName)) {
-          allLicensees.push(a.cmpLongName);
-        }
-      });
-      licenseeLoadedFor.add(id);
-    } catch (err) {
-      console.warn(`Licensee load error for field ${id}:`, err.message);
-      licenseeCache[id] = [];
-      licenseeLoadedFor.add(id);
+      licLoadedFor.add(id);
+    } catch(err) {
+      fieldLicCache[id] = [];
+      licLoadedFor.add(id);
     }
   }));
-
-  rebuildCompanyDropdown();
 }
 
-// -----------------------------------------------------------------------
-// Company dropdown
-// -----------------------------------------------------------------------
-function rebuildCompanyDropdown() {
-  const sel = document.getElementById('companySelect');
-  const current = sel.value;
-  // Only show companies that appear in at least one selected field
-  const relevantCompanies = new Set();
-  selectedIds.forEach(id => {
-    (licenseeCache[id] || []).forEach(r => {
-      if (r.cmpLongName) relevantCompanies.add(r.cmpLongName);
-    });
-  });
-  const sorted = [...relevantCompanies].sort();
-  sel.innerHTML = '<option value="">— All companies (gross) —</option>';
-  sorted.forEach(name => {
-    const opt = new Option(name, name);
-    if (name === current) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  // If previously selected company no longer in list, reset
-  if (current && !relevantCompanies.has(current)) {
-    selectedCompany = '';
-    sel.value = '';
+// Load ALL licensee records across all fields (for companies-mode)
+// Paginate the entire table using resultOffset
+async function loadAllLicensees() {
+  if (allLicLoaded || allLicLoading) return;
+  allLicLoading = true;
+  document.getElementById('cmpLoadingNotice').classList.add('visible');
+  try {
+    allLicRecords = [];
+    let offset = 0;
+    while (true) {
+      const rows = await queryLayer(LIC_LAYER, {
+        where: '1=1',
+        outFields: 'fldNpdidField,cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',
+        resultRecordCount: 2000,
+        resultOffset: offset
+      });
+      rows.forEach(r => {
+        const a = r.attributes;
+        allLicRecords.push(a);
+        // also populate fieldLicCache while we're at it
+        if (!fieldLicCache[a.fldNpdidField]) fieldLicCache[a.fldNpdidField] = [];
+        if (!licLoadedFor.has(a.fldNpdidField)) fieldLicCache[a.fldNpdidField].push(a);
+      });
+      if (rows.length < 2000) break;
+      offset += 2000;
+    }
+    // Mark all fields as loaded
+    allLicRecords.forEach(r => licLoadedFor.add(r.fldNpdidField));
+
+    // Build company list from all records
+    const cmpSet = new Set();
+    allLicRecords.forEach(r => { if (r.cmpLongName) cmpSet.add(r.cmpLongName); });
+    allCompanies = [...cmpSet].sort((a,b) => a.localeCompare(b,'en'));
+    filteredCompanies = allCompanies;
+
+    allLicLoaded = true;
+    allLicLoading = false;
+    document.getElementById('cmpLoadingNotice').classList.remove('visible');
+
+    // Also update the company filter dropdown (for fields mode)
+    rebuildCompanyFilterDropdown();
+
+    // If we're already in companies mode, render the list
+    if (sidebarMode === 'companies') {
+      document.getElementById('listSearch').disabled = false;
+      renderList();
+    }
+  } catch(err) {
+    allLicLoading = false;
+    document.getElementById('cmpLoadingNotice').classList.remove('visible');
+    console.warn('Error loading all licensees:', err.message);
   }
 }
 
-function onCompanyChange() {
-  selectedCompany = document.getElementById('companySelect').value;
-  drawChart();
+// ─── SIDEBAR MODE SWITCH ──────────────────────────────────────────────────────
+function switchSidebarMode(newMode) {
+  if (sidebarMode === newMode) return;
+  sidebarMode = newMode;
+
+  document.getElementById('modeBtnFields').classList.toggle('active', newMode === 'fields');
+  document.getElementById('modeBtnCompanies').classList.toggle('active', newMode === 'companies');
+
+  // Companies mode: always kboe/day (OE), hide unit toggle and company filter
+  if (newMode === 'companies') {
+    document.getElementById('unitGroup').style.display = 'none';
+    document.getElementById('companyFilterGroup').style.display = 'none';
+    unit = 'boed';
+    document.getElementById('sidebarLabel').textContent = 'Select companies';
+    document.getElementById('listSearch').value = '';
+    document.getElementById('listSearch').placeholder = 'Search companies…';
+    if (!allLicLoaded && !allLicLoading) {
+      document.getElementById('checkList').innerHTML = '<div class="list-loading">Loading ownership data…</div>';
+      document.getElementById('listSearch').disabled = true;
+      loadAllLicensees().then(() => {
+        filteredCompanies = allCompanies;
+        renderList();
+      });
+    } else if (allLicLoaded) {
+      filteredCompanies = allCompanies;
+      renderList();
+    }
+    // Show empty state if nothing selected
+    if (!selectedCompanyNames.size) {
+      document.getElementById('chartArea').innerHTML =
+        '<div class="status">Select one or more companies from the list on the left.</div>';
+      document.getElementById('downloadBtn').disabled = true;
+    } else {
+      refreshCompaniesChart();
+    }
+  } else {
+    // Back to fields mode
+    document.getElementById('unitGroup').style.display = '';
+    document.getElementById('companyFilterGroup').style.display = '';
+    document.getElementById('sidebarLabel').textContent = 'Select fields';
+    document.getElementById('listSearch').value = '';
+    document.getElementById('listSearch').placeholder = 'Search…';
+    filteredFields = allFields;
+    renderList();
+    if (!selectedFieldIds.size) {
+      document.getElementById('chartArea').innerHTML =
+        '<div class="status">Select one or more fields from the list on the left.</div>';
+      document.getElementById('downloadBtn').disabled = true;
+    } else {
+      refreshFieldsChart();
+    }
+  }
 }
 
-// -----------------------------------------------------------------------
-// Field list UI
-// -----------------------------------------------------------------------
+// ─── SIDEBAR LIST RENDERING ───────────────────────────────────────────────────
+function renderList() {
+  if (sidebarMode === 'fields') renderFieldList();
+  else renderCompanyList();
+}
+
 function renderFieldList() {
-  const list = document.getElementById('fieldList');
-  if (!filteredFields.length) {
-    list.innerHTML = '<div class="field-list-empty">No results</div>';
-    return;
-  }
+  const list = document.getElementById('checkList');
+  if (!filteredFields.length) { list.innerHTML = '<div class="list-empty">No results</div>'; return; }
   list.innerHTML = filteredFields.map(f => `
-    <div class="field-list-item ${selectedIds.has(f.id) ? 'checked' : ''}" onclick="toggleField(${f.id})">
-      <input type="checkbox" ${selectedIds.has(f.id) ? 'checked' : ''}
+    <div class="check-item ${selectedFieldIds.has(f.id)?'checked':''}" onclick="toggleField(${f.id})">
+      <input type="checkbox" ${selectedFieldIds.has(f.id)?'checked':''}
              onchange="toggleField(${f.id})" onclick="event.stopPropagation()"/>
       ${f.name}
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-function filterFieldList() {
-  const q = document.getElementById('fieldSearch').value.toLowerCase();
-  filteredFields = allFields.filter(f => f.name.toLowerCase().includes(q));
-  renderFieldList();
+function renderCompanyList() {
+  const list = document.getElementById('checkList');
+  if (!filteredCompanies.length) { list.innerHTML = '<div class="list-empty">No results</div>'; return; }
+  list.innerHTML = filteredCompanies.map(name => `
+    <div class="check-item ${selectedCompanyNames.has(name)?'checked':''}" onclick="toggleCompany('${name.replace(/'/g,"\\'")}')">
+      <input type="checkbox" ${selectedCompanyNames.has(name)?'checked':''}
+             onchange="toggleCompany('${name.replace(/'/g,"\\'")}' )" onclick="event.stopPropagation()"/>
+      ${name}
+    </div>`).join('');
 }
 
-function toggleField(id) {
-  if (selectedIds.has(id)) {
-    selectedIds.delete(id);
-    delete fieldDataCache[id];
+function filterList() {
+  const q = document.getElementById('listSearch').value.toLowerCase();
+  if (sidebarMode === 'fields') {
+    filteredFields = allFields.filter(f => f.name.toLowerCase().includes(q));
+    renderFieldList();
   } else {
-    selectedIds.add(id);
+    filteredCompanies = allCompanies.filter(n => n.toLowerCase().includes(q));
+    renderCompanyList();
   }
-  renderFieldList();
-  refreshChart();
 }
 
 function selectAll() {
-  filteredFields.forEach(f => selectedIds.add(f.id));
-  renderFieldList();
-  refreshChart();
+  if (sidebarMode === 'fields') {
+    filteredFields.forEach(f => selectedFieldIds.add(f.id));
+    renderFieldList();
+    refreshFieldsChart();
+  } else {
+    filteredCompanies.forEach(n => selectedCompanyNames.add(n));
+    renderCompanyList();
+    refreshCompaniesChart();
+  }
 }
 
 function clearAll() {
-  selectedIds.clear();
-  fieldDataCache = {};
-  renderFieldList();
-  refreshChart();
+  if (sidebarMode === 'fields') {
+    selectedFieldIds.clear();
+    fieldProdCache = {};
+    renderFieldList();
+    refreshFieldsChart();
+  } else {
+    selectedCompanyNames.clear();
+    renderCompanyList();
+    refreshCompaniesChart();
+  }
 }
 
-// -----------------------------------------------------------------------
-// Fetch production data + licensee data, then draw
-// -----------------------------------------------------------------------
-async function refreshChart() {
-  if (!selectedIds.size) {
+// ─── FIELD TOGGLE ─────────────────────────────────────────────────────────────
+function toggleField(id) {
+  if (selectedFieldIds.has(id)) { selectedFieldIds.delete(id); delete fieldProdCache[id]; }
+  else selectedFieldIds.add(id);
+  renderFieldList();
+  refreshFieldsChart();
+}
+
+function toggleCompany(name) {
+  if (selectedCompanyNames.has(name)) selectedCompanyNames.delete(name);
+  else selectedCompanyNames.add(name);
+  renderCompanyList();
+  refreshCompaniesChart();
+}
+
+// ─── COMPANY FILTER DROPDOWN (fields mode) ────────────────────────────────────
+function rebuildCompanyFilterDropdown() {
+  const sel = document.getElementById('companySelect');
+  const cur = sel.value;
+  const relevant = new Set();
+  selectedFieldIds.forEach(id => {
+    (fieldLicCache[id]||[]).forEach(r => { if (r.cmpLongName) relevant.add(r.cmpLongName); });
+  });
+  // Also include all if allLicLoaded
+  if (allLicLoaded) allCompanies.forEach(n => relevant.add(n));
+  const sorted = [...relevant].sort();
+  sel.innerHTML = '<option value="">— All companies (gross) —</option>';
+  sorted.forEach(name => {
+    const opt = new Option(name, name);
+    if (name === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (cur && !relevant.has(cur)) { selectedCompany = ''; sel.value = ''; }
+}
+
+function onCompanyFilterChange() {
+  selectedCompany = document.getElementById('companySelect').value;
+  drawFieldsChart();
+}
+
+// ─── FIELDS MODE: FETCH + DRAW ────────────────────────────────────────────────
+async function refreshFieldsChart() {
+  if (!selectedFieldIds.size) {
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     document.getElementById('chartArea').innerHTML =
       '<div class="status">Select one or more fields from the list on the left.</div>';
     document.getElementById('downloadBtn').disabled = true;
-    rebuildCompanyDropdown();
+    rebuildCompanyFilterDropdown();
     return;
   }
-
-  const toFetch = [...selectedIds].filter(id => !fieldDataCache[id]);
+  const toFetch = [...selectedFieldIds].filter(id => !fieldProdCache[id]);
   if (toFetch.length) {
     document.getElementById('chartArea').innerHTML =
       `<div class="status"><div class="spinner"></div><div>Loading data…</div></div>`;
-    const fromYear = parseInt(document.getElementById('yearFrom').value);
-    const toYear   = parseInt(document.getElementById('yearTo').value);
-
+    const fromYear = +document.getElementById('yearFrom').value;
+    const toYear   = +document.getElementById('yearTo').value;
     await Promise.all([
-      // Production data
       ...toFetch.map(async id => {
         try {
-          fieldDataCache[id] = await queryLayer(PROD_LAYER, {
+          fieldProdCache[id] = await queryLayer(PROD_LAYER, {
             where: `prfNpdidInformationCarrier=${id} AND prfInformationCarrierKind='FIELD' AND prfYear>=${fromYear} AND prfYear<=${toYear}`,
             outFields: 'prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3',
             orderByFields: 'prfYear ASC, prfMonth ASC'
           });
-        } catch (err) {
-          fieldDataCache[id] = { error: err.message };
-        }
+        } catch(err) { fieldProdCache[id] = {error: err.message}; }
       }),
-      // Licensee data (all selected fields at once)
-      loadLicensees([...selectedIds])
+      loadLicenseesForFields([...selectedFieldIds])
     ]);
   } else {
-    // Already have production data but may need licensees for newly selected fields
-    await loadLicensees([...selectedIds]);
+    await loadLicenseesForFields([...selectedFieldIds]);
   }
-
-  rebuildCompanyDropdown();
-  drawChart();
+  rebuildCompanyFilterDropdown();
+  drawFieldsChart();
 }
 
-// -----------------------------------------------------------------------
-// Build union of time labels
-// -----------------------------------------------------------------------
-function buildLabels() {
-  const labelSet = new Set();
-  selectedIds.forEach(id => {
-    const data = fieldDataCache[id];
+function buildLabelsFromFields(fieldIds) {
+  const s = new Set();
+  fieldIds.forEach(id => {
+    const data = fieldProdCache[id];
     if (!data || data.error) return;
     data.forEach(f => {
       const a = f.attributes;
-      if (mode === 'monthly' ? a.prfMonth <= 0 : a.prfMonth !== 0) return;
-      labelSet.add(mode === 'monthly'
-        ? `${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`
-        : `${a.prfYear}`);
+      if (mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0) return;
+      s.add(mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`);
     });
   });
-  return [...labelSet].sort();
+  return [...s].sort();
 }
 
-// -----------------------------------------------------------------------
-// Draw chart
-// -----------------------------------------------------------------------
-function drawChart() {
+function drawFieldsChart() {
   const isBoed = unit === 'boed';
-  const labels = buildLabels();
-  lastLabels = labels;
-  lastLookups = {};
+  const labels = buildLabelsFromFields([...selectedFieldIds]);
+  lastLabels = labels; lastLookups = {};
 
   if (!labels.length) {
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -508,214 +632,341 @@ function drawChart() {
     return;
   }
 
-  const orderedFields = allFields.filter(f => selectedIds.has(f.id));
-  const datasets = [];
-  const legendItems = [];
+  const orderedFields = allFields.filter(f => selectedFieldIds.has(f.id));
+  const datasets = [], legendItems = [];
 
   orderedFields.forEach((f, i) => {
     const colors = FIELD_COLORS[i % FIELD_COLORS.length];
-    const data = fieldDataCache[f.id];
+    const data = fieldProdCache[f.id];
     const lookup = {};
-
     if (data && !data.error) {
       data.forEach(row => {
         const a = row.attributes;
-        if (mode === 'monthly' ? a.prfMonth <= 0 : a.prfMonth !== 0) return;
-
-        const lbl = mode === 'monthly'
-          ? `${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`
-          : `${a.prfYear}`;
-
-        // Date for ownership lookup: use middle of period
-        const midDate = mode === 'monthly'
-          ? new Date(a.prfYear, a.prfMonth - 1, 15)   // 15th of month
-          : new Date(a.prfYear, 6, 1);                 // July 1st of year
-
+        if (mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0) return;
+        const lbl = mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`;
+        const oil = a.prfPrdOilNetMillSm3||0, gas = a.prfPrdGasNetBillSm3||0, oe = a.prfPrdOeNetMillSm3||0;
+        const midDate = mode==='monthly'?new Date(a.prfYear,a.prfMonth-1,15):new Date(a.prfYear,6,1);
         const share = getShareAtDate(f.id, midDate, selectedCompany) / 100;
-
-        const oil = a.prfPrdOilNetMillSm3 || 0;
-        const gas = a.prfPrdGasNetBillSm3 || 0;
-        const oe  = a.prfPrdOeNetMillSm3  || 0;
-
         if (isBoed) {
-          const days = mode === 'monthly' ? daysInMonth(a.prfYear, a.prfMonth) : daysInYear(a.prfYear);
-          const { oilBoe, gasBoe } = toBoed(oe * share, gas * share, days);
-          lookup[lbl] = { oil: oilBoe, gas: gasBoe, share: share * 100 };
+          const days = mode==='monthly'?daysInMonth(a.prfYear,a.prfMonth):daysInYear(a.prfYear);
+          const {oilBoe,gasBoe} = toBoed(oe*share, gas*share, days);
+          lookup[lbl] = {oil:oilBoe, gas:gasBoe, share:share*100};
         } else {
-          lookup[lbl] = { oil: oil * share, gas: gas * share, share: share * 100 };
+          lookup[lbl] = {oil:oil*share, gas:gas*share, share:share*100};
         }
       });
     }
-    lastLookups[f.id] = { lookup, name: f.name };
-
-    const dp = isBoed ? 1 : 4;
-    datasets.push({
-      label: `${f.name} – oil`,
-      data: labels.map(l => +(lookup[l]?.oil || 0).toFixed(dp)),
-      backgroundColor: colors[0], borderWidth: 0, stack: 'prod'
-    });
-    datasets.push({
-      label: `${f.name} – gas`,
-      data: labels.map(l => +(lookup[l]?.gas || 0).toFixed(dp)),
-      backgroundColor: colors[1], borderWidth: 0, stack: 'prod'
-    });
-    legendItems.push({ name: f.name, oilColor: colors[0], gasColor: colors[1] });
+    lastLookups[f.id] = {lookup, name:f.name};
+    const dp = isBoed?1:4;
+    datasets.push({label:`${f.name} – oil`, data:labels.map(l=>+(lookup[l]?.oil||0).toFixed(dp)), backgroundColor:colors[0], borderWidth:0, stack:'prod'});
+    datasets.push({label:`${f.name} – gas`, data:labels.map(l=>+(lookup[l]?.gas||0).toFixed(dp)), backgroundColor:colors[1], borderWidth:0, stack:'prod'});
+    legendItems.push({name:f.name, oilColor:colors[0], gasColor:colors[1]});
   });
 
-  const yTitle = isBoed ? 'kboe/day' : 'mill. Sm³ (oil) / bill. Sm³ (gas)';
-  const periodLabel = mode === 'monthly' ? 'monthly' : 'annual';
+  const yTitle = isBoed?'kboe/day':'mill. Sm³ (oil) / bill. Sm³ (gas)';
+  const periodLabel = mode==='monthly'?'monthly':'annual';
   const companyLabel = selectedCompany
-    ? `<span class="ownership-note">Showing <strong>${selectedCompany}</strong>'s equity share only</span>`
+    ? `<div style="margin-bottom:10px"><span style="font-size:0.8rem;color:#6b7a90;background:#f0f4f8;border-radius:6px;padding:6px 12px;display:inline-block">Showing <strong>${selectedCompany}</strong>'s equity share only</span></div>`
     : '';
 
   document.getElementById('chartArea').innerHTML = `
-    ${companyLabel ? `<div style="margin-bottom:10px">${companyLabel}</div>` : ''}
+    ${companyLabel}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">
-      ${legendItems.map(l => `
+      ${legendItems.map(l=>`
         <div class="legend-item"><div class="legend-dot" style="background:${l.oilColor}"></div>${l.name} oil</div>
         <div class="legend-item"><div class="legend-dot" style="background:${l.gasColor}"></div>${l.name} gas</div>
       `).join('')}
-    </div>
-  `;
+    </div>`;
 
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
-    type: 'bar',
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        title: {
-          display: true,
-          text: selectedCompany
-            ? `Field Production (${selectedCompany}) – ${periodLabel}`
-            : `Field Production – ${periodLabel}`,
-          font: { size: 14, weight: '600' }, color: '#003057', padding: { bottom: 12 }
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const name = ctx.dataset.label;
-              // Find share for this label
-              const fieldEntry = orderedFields.find(f =>
-                name.startsWith(f.name + ' –'));
-              const shareInfo = fieldEntry
-                ? (lastLookups[fieldEntry.id]?.lookup[ctx.label]?.share ?? 100).toFixed(1)
-                : null;
-              const shareStr = selectedCompany && shareInfo !== null ? ` (${shareInfo}%)` : '';
-              if (!isBoed) {
-                const u = name.endsWith('– gas') ? 'bill. Sm³' : 'mill. Sm³';
-                return ` ${ctx.parsed.y.toFixed(3)} ${u}${shareStr}  (${name})`;
-              }
-              return ` ${Math.round(ctx.parsed.y).toLocaleString('en')} kboe/day${shareStr}  (${name})`;
-            }
+    type:'bar', data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        title:{display:true,text:selectedCompany?`Field Production (${selectedCompany}) – ${periodLabel}`:`Field Production – ${periodLabel}`,font:{size:14,weight:'600'},color:'#003057',padding:{bottom:12}},
+        tooltip:{callbacks:{
+          label:ctx=>{
+            const nm=ctx.dataset.label;
+            const fe=orderedFields.find(f=>nm.startsWith(f.name+' –'));
+            const sh=fe?(lastLookups[fe.id]?.lookup[ctx.label]?.share??100).toFixed(1):null;
+            const ss=selectedCompany&&sh!==null?` (${sh}%)`:'';
+            if(!isBoed){const u=nm.endsWith('– gas')?'bill. Sm³':'mill. Sm³';return ` ${ctx.parsed.y.toFixed(3)} ${u}${ss}  (${nm})`;}
+            return ` ${Math.round(ctx.parsed.y).toLocaleString('en')} kboe/day${ss}  (${nm})`;
           }
-        }
+        }}
       },
-      scales: {
-        x: {
-          stacked: true,
-          ticks: { maxTicksLimit: mode === 'annual' ? 30 : 20, maxRotation: 45, font: { size: 10 } },
-          grid: { color: 'rgba(0,0,0,0.04)' }
-        },
-        y: {
-          stacked: true, beginAtZero: true,
-          title: { display: true, text: yTitle, color: '#4a5568', font: { size: 11 } },
-          grid: { color: 'rgba(0,0,0,0.05)' },
-          ticks: { font: { size: 10 } }
-        }
+      scales:{
+        x:{stacked:true,ticks:{maxTicksLimit:mode==='annual'?30:20,maxRotation:45,font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{stacked:true,beginAtZero:true,title:{display:true,text:yTitle,color:'#4a5568',font:{size:11}},grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10}}}
       }
     }
   });
-
   document.getElementById('downloadBtn').disabled = false;
 }
 
-// -----------------------------------------------------------------------
-// Excel export
-// -----------------------------------------------------------------------
-function downloadExcel() {
-  if (!lastLabels.length || !Object.keys(lastLookups).length) return;
-  const isBoed = unit === 'boed';
-  const oilUnit = isBoed ? 'Oil (kboe/day)' : 'Oil (mill. Sm³)';
-  const gasUnit = isBoed ? 'Gas (kboe/day)' : 'Gas (bill. Sm³)';
-  const periodLabel = mode === 'monthly' ? 'Monthly' : 'Annual';
-  const wb = XLSX.utils.book_new();
-  const orderedFields = allFields.filter(f => selectedIds.has(f.id));
+// ─── COMPANIES MODE: FETCH + DRAW ─────────────────────────────────────────────
+async function refreshCompaniesChart() {
+  if (!selectedCompanyNames.size) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.getElementById('chartArea').innerHTML =
+      '<div class="status">Select one or more companies from the list on the left.</div>';
+    document.getElementById('downloadBtn').disabled = true;
+    return;
+  }
 
-  orderedFields.forEach(f => {
-    const { lookup } = lastLookups[f.id] || {};
-    if (!lookup) return;
-    const shareCol = selectedCompany ? ['Share (%)'] : [];
-    const rows = [[mode === 'monthly' ? 'Period' : 'Year', oilUnit, gasUnit,
-      isBoed ? 'Total (kboe/day)' : 'Total OE (mill. Sm³)', ...shareCol]];
-    lastLabels.forEach(lbl => {
-      const oil   = lookup[lbl]?.oil   || 0;
-      const gas   = lookup[lbl]?.gas   || 0;
-      const share = lookup[lbl]?.share ?? 100;
-      const shareData = selectedCompany ? [+share.toFixed(1)] : [];
-      rows.push([lbl, +oil.toFixed(isBoed?1:4), +gas.toFixed(isBoed?1:4),
-        +(oil+gas).toFixed(isBoed?1:4), ...shareData]);
-    });
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = rows[0].map((_, i) => ({ wch: i === 0 ? 12 : 20 }));
-    XLSX.utils.book_append_sheet(wb, ws, f.name.substring(0, 31));
+  // Find all field IDs where any selected company has ever had a stake
+  const relevantFieldIds = new Set();
+  allLicRecords.forEach(r => {
+    if (selectedCompanyNames.has(r.cmpLongName)) relevantFieldIds.add(r.fldNpdidField);
   });
 
-  // Summary sheet
-  const summaryHeader = [mode === 'monthly' ? 'Period' : 'Year'];
-  orderedFields.forEach(f => summaryHeader.push(`${f.name} – ${oilUnit}`, `${f.name} – ${gasUnit}`));
-  const summaryRows = [summaryHeader];
-  lastLabels.forEach(lbl => {
-    const row = [lbl];
-    orderedFields.forEach(f => {
-      const lookup = lastLookups[f.id]?.lookup || {};
-      row.push(+(lookup[lbl]?.oil||0).toFixed(isBoed?1:4), +(lookup[lbl]?.gas||0).toFixed(isBoed?1:4));
-    });
-    summaryRows.push(row);
-  });
-  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-  wsSummary['!cols'] = summaryHeader.map((_, i) => ({ wch: i === 0 ? 12 : 22 }));
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+  // Fetch production for any fields we don't have yet
+  const toFetch = [...relevantFieldIds].filter(id => !fieldProdCache[id] || fieldProdCache[id].error);
+  if (toFetch.length) {
+    document.getElementById('chartArea').innerHTML =
+      `<div class="status"><div class="spinner"></div><div>Loading production data for ${toFetch.length} fields…</div></div>`;
+    const fromYear = +document.getElementById('yearFrom').value;
+    const toYear   = +document.getElementById('yearTo').value;
+    await Promise.all(toFetch.map(async id => {
+      try {
+        fieldProdCache[id] = await queryLayer(PROD_LAYER, {
+          where: `prfNpdidInformationCarrier=${id} AND prfInformationCarrierKind='FIELD' AND prfYear>=${fromYear} AND prfYear<=${toYear}`,
+          outFields: 'prfYear,prfMonth,prfPrdOeNetMillSm3',
+          orderByFields: 'prfYear ASC, prfMonth ASC'
+        });
+      } catch(err) { fieldProdCache[id] = {error:err.message}; }
+    }));
+  }
 
-  const fromYear = document.getElementById('yearFrom').value;
-  const toYear   = document.getElementById('yearTo').value;
-  const cmpSuffix = selectedCompany ? `_${selectedCompany.replace(/[^a-z0-9]/gi,'_').substring(0,20)}` : '';
-  XLSX.writeFile(wb, `NCS_Production_${periodLabel}_${fromYear}-${toYear}${cmpSuffix}.xlsx`);
+  drawCompaniesChart(relevantFieldIds);
 }
 
-// -----------------------------------------------------------------------
-// Toggles
-// -----------------------------------------------------------------------
+function drawCompaniesChart(relevantFieldIds) {
+  const companies = [...selectedCompanyNames].sort();
+  const isSingle  = companies.length === 1;
+
+  // Build union of labels across all relevant fields
+  const labelSet = new Set();
+  relevantFieldIds.forEach(id => {
+    const data = fieldProdCache[id];
+    if (!data||data.error) return;
+    data.forEach(f => {
+      const a = f.attributes;
+      if (mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0) return;
+      labelSet.add(mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`);
+    });
+  });
+  const labels = [...labelSet].sort();
+  lastLabels = labels; lastLookups = {};
+
+  if (!labels.length) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.getElementById('chartArea').innerHTML =
+      '<div class="status">No production data found for the selected companies and period.</div>';
+    document.getElementById('downloadBtn').disabled = true;
+    return;
+  }
+
+  const datasets = [], legendItems = [];
+
+  if (isSingle) {
+    // Single company → one dataset per field it has a stake in, coloured by field
+    const companyName = companies[0];
+    const companyFieldIds = new Set(
+      allLicRecords.filter(r => r.cmpLongName === companyName).map(r => r.fldNpdidField)
+    );
+    // Find field names
+    const fieldIdToName = {};
+    allFields.forEach(f => { fieldIdToName[f.id] = f.name; });
+
+    let colorIdx = 0;
+    companyFieldIds.forEach(fieldId => {
+      const fieldName = fieldIdToName[fieldId] || `Field ${fieldId}`;
+      const data = fieldProdCache[fieldId];
+      if (!data || data.error) return;
+      const color = FIELD_COLORS[colorIdx++ % FIELD_COLORS.length][0];
+      const lookup = {};
+
+      data.forEach(row => {
+        const a = row.attributes;
+        if (mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0) return;
+        const lbl = mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`;
+        const oe = a.prfPrdOeNetMillSm3||0;
+        const days = mode==='monthly'?daysInMonth(a.prfYear,a.prfMonth):daysInYear(a.prfYear);
+        const midDate = mode==='monthly'?new Date(a.prfYear,a.prfMonth-1,15):new Date(a.prfYear,6,1);
+        const share = getShareAtDate(fieldId, midDate, companyName) / 100;
+        const {totalBoe} = toBoed(oe*share, 0, days);
+        // We only have OE here, compute directly
+        const boed = (oe * share * 1e6 * BBL_PER_SM3) / days / 1000;
+        lookup[lbl] = {oe: boed, share: share*100};
+      });
+      lastLookups[fieldId] = {lookup, name:fieldName};
+
+      datasets.push({
+        label: fieldName,
+        data: labels.map(l=>+(lookup[l]?.oe||0).toFixed(1)),
+        backgroundColor: color, borderWidth:0, stack:'prod'
+      });
+      legendItems.push({name:fieldName, color});
+    });
+
+  } else {
+    // Multiple companies → one dataset per company, total net OE across all their fields
+    companies.forEach((companyName, i) => {
+      const color = FIELD_COLORS[i % FIELD_COLORS.length][0];
+      const companyFieldIds = new Set(
+        allLicRecords.filter(r => r.cmpLongName === companyName).map(r => r.fldNpdidField)
+      );
+      // Aggregate across all fields per label
+      const agg = {}; // label → total kboe/day
+      companyFieldIds.forEach(fieldId => {
+        const data = fieldProdCache[fieldId];
+        if (!data||data.error) return;
+        data.forEach(row => {
+          const a = row.attributes;
+          if (mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0) return;
+          const lbl = mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`;
+          const oe = a.prfPrdOeNetMillSm3||0;
+          const days = mode==='monthly'?daysInMonth(a.prfYear,a.prfMonth):daysInYear(a.prfYear);
+          const midDate = mode==='monthly'?new Date(a.prfYear,a.prfMonth-1,15):new Date(a.prfYear,6,1);
+          const share = getShareAtDate(fieldId, midDate, companyName) / 100;
+          const boed = (oe * share * 1e6 * BBL_PER_SM3) / days / 1000;
+          agg[lbl] = (agg[lbl]||0) + boed;
+        });
+      });
+      lastLookups[companyName] = {lookup: Object.fromEntries(Object.entries(agg).map(([k,v])=>([k,{oe:v}]))), name:companyName};
+      datasets.push({
+        label: companyName,
+        data: labels.map(l=>+(agg[l]||0).toFixed(1)),
+        backgroundColor: color, borderWidth:0, stack:'prod'
+      });
+      legendItems.push({name:companyName, color});
+    });
+  }
+
+  const periodLabel = mode==='monthly'?'monthly':'annual';
+  const chartTitle  = isSingle
+    ? `${companies[0]} – net OE by field – ${periodLabel}`
+    : `Net OE by company – ${periodLabel}`;
+
+  document.getElementById('chartArea').innerHTML = `
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">
+      ${legendItems.map(l=>`<div class="legend-item"><div class="legend-dot" style="background:${l.color}"></div>${l.name}</div>`).join('')}
+    </div>`;
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type:'bar', data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        title:{display:true,text:chartTitle,font:{size:14,weight:'600'},color:'#003057',padding:{bottom:12}},
+        tooltip:{callbacks:{
+          label:ctx=>` ${Math.round(ctx.parsed.y).toLocaleString('en')} kboe/day  (${ctx.dataset.label})`,
+          footer:items=>{
+            const total=items.reduce((s,i)=>s+i.parsed.y,0);
+            return `Total: ${Math.round(total).toLocaleString('en')} kboe/day`;
+          }
+        }}
+      },
+      scales:{
+        x:{stacked:true,ticks:{maxTicksLimit:mode==='annual'?30:20,maxRotation:45,font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{stacked:true,beginAtZero:true,title:{display:true,text:'kboe/day',color:'#4a5568',font:{size:11}},grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10}}}
+      }
+    }
+  });
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function downloadExcel() {
+  if (!lastLabels.length) return;
+  const wb = XLSX.utils.book_new();
+  const periodLabel = mode==='monthly'?'Monthly':'Annual';
+
+  if (sidebarMode === 'fields') {
+    const isBoed = unit==='boed';
+    const oilUnit = isBoed?'Oil (kboe/day)':'Oil (mill. Sm³)';
+    const gasUnit = isBoed?'Gas (kboe/day)':'Gas (bill. Sm³)';
+    const orderedFields = allFields.filter(f=>selectedFieldIds.has(f.id));
+    orderedFields.forEach(f => {
+      const {lookup}=lastLookups[f.id]||{};
+      if (!lookup) return;
+      const shareCol=selectedCompany?['Share (%)']:[];
+      const rows=[[mode==='monthly'?'Period':'Year',oilUnit,gasUnit,isBoed?'Total (kboe/day)':'Total OE (mill. Sm³)',...shareCol]];
+      lastLabels.forEach(lbl=>{
+        const oil=lookup[lbl]?.oil||0,gas=lookup[lbl]?.gas||0,share=lookup[lbl]?.share??100;
+        rows.push([lbl,+oil.toFixed(isBoed?1:4),+gas.toFixed(isBoed?1:4),+(oil+gas).toFixed(isBoed?1:4),...(selectedCompany?[+share.toFixed(1)]:[])]);
+      });
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=rows[0].map((_,i)=>({wch:i===0?12:20}));
+      XLSX.utils.book_append_sheet(wb,ws,f.name.substring(0,31));
+    });
+    // Summary
+    const sh=[mode==='monthly'?'Period':'Year'];
+    orderedFields.forEach(f=>sh.push(`${f.name} – ${oilUnit}`,`${f.name} – ${gasUnit}`));
+    const sr=[sh];
+    lastLabels.forEach(lbl=>{
+      const row=[lbl];
+      orderedFields.forEach(f=>{const lk=lastLookups[f.id]?.lookup||{};row.push(+(lk[lbl]?.oil||0).toFixed(isBoed?1:4),+(lk[lbl]?.gas||0).toFixed(isBoed?1:4));});
+      sr.push(row);
+    });
+    const ws2=XLSX.utils.aoa_to_sheet(sr);
+    ws2['!cols']=sh.map((_,i)=>({wch:i===0?12:22}));
+    XLSX.utils.book_append_sheet(wb,ws2,'Summary');
+  } else {
+    // Companies mode: one sheet per company/field entry in lastLookups
+    Object.entries(lastLookups).forEach(([key,{lookup,name}])=>{
+      const rows=[[mode==='monthly'?'Period':'Year','Net OE (kboe/day)']];
+      lastLabels.forEach(lbl=>{rows.push([lbl,+(lookup[lbl]?.oe||0).toFixed(1)]);});
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=[{wch:12},{wch:20}];
+      XLSX.utils.book_append_sheet(wb,ws,name.substring(0,31));
+    });
+  }
+
+  const fy=document.getElementById('yearFrom').value, ty=document.getElementById('yearTo').value;
+  XLSX.writeFile(wb,`NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`);
+}
+
+// ─── TOGGLES ──────────────────────────────────────────────────────────────────
 function setMode(newMode) {
-  if (mode === newMode) return;
-  mode = newMode;
-  document.getElementById('btnMonthly').classList.toggle('active', mode === 'monthly');
-  document.getElementById('btnAnnual').classList.toggle('active',  mode === 'annual');
-  fieldDataCache = {};
-  refreshChart();
+  if (mode===newMode) return;
+  mode=newMode;
+  document.getElementById('btnMonthly').classList.toggle('active',mode==='monthly');
+  document.getElementById('btnAnnual').classList.toggle('active', mode==='annual');
+  fieldProdCache={};
+  if (sidebarMode==='fields') refreshFieldsChart();
+  else refreshCompaniesChart();
 }
 
 function setUnit(newUnit) {
-  if (unit === newUnit) return;
-  unit = newUnit;
-  document.getElementById('btnSm3').classList.toggle('active',  unit === 'sm3');
-  document.getElementById('btnBoed').classList.toggle('active', unit === 'boed');
-  drawChart();
+  if (unit===newUnit) return;
+  unit=newUnit;
+  document.getElementById('btnSm3').classList.toggle('active', unit==='sm3');
+  document.getElementById('btnBoed').classList.toggle('active',unit==='boed');
+  drawFieldsChart();
 }
 
-['yearFrom', 'yearTo'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    fieldDataCache = {};
-    refreshChart();
+['yearFrom','yearTo'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{
+    fieldProdCache={};
+    if (sidebarMode==='fields') refreshFieldsChart();
+    else refreshCompaniesChart();
   });
 });
 
+// ─── START ────────────────────────────────────────────────────────────────────
 loadFields();
+// Start loading all licensees in the background immediately so companies mode is ready faster
+loadAllLicensees();
 </script>
 </body>
 </html>
