@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>NCS Production</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #fff;
+      --navy: #003057;
+      --blue: #0071b8;
+      --border: #d1d9e6;
+      --muted: #6b7a90;
+      --light: #f0f4f8;
+      --green: #1a7a40;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: #1a2332;
+      /* prevent bounce scroll behind sheet */
+      overscroll-behavior: none;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      background: var(--navy);
+      color: #fff;
+      padding: 14px 16px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-title { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+    .topbar-sub   { font-size: 0.7rem; opacity: 0.65; margin-top: 1px; }
+
+    /* Fields/Companies pill */
+    .mode-switcher {
+      display: flex; background: rgba(255,255,255,0.15);
+      border-radius: 8px; padding: 3px; gap: 2px; flex-shrink: 0;
+    }
+    .mode-btn {
+      padding: 6px 12px; border: none; border-radius: 6px;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      background: none; color: rgba(255,255,255,0.7); transition: all 0.15s;
+    }
+    .mode-btn.active { background: #fff; color: var(--navy); }
+
+    /* ── CONTROLS BAR ── */
+    .controls-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Year row */
+    .year-row { display: flex; gap: 6px; align-items: center; }
+    .year-row label { font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+    .year-select {
+      padding: 6px 24px 6px 8px; border: 1.5px solid var(--border); border-radius: 7px;
+      font-size: 0.82rem; color: #1a2332;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 6px center;
+      appearance: none; -webkit-appearance: none; cursor: pointer;
+    }
+
+    /* Pill toggles */
+    .pill-group { display: flex; border: 1.5px solid var(--border); border-radius: 7px; overflow: hidden; }
+    .pill-btn {
+      padding: 6px 12px; border: none; background: #fff;
+      font-size: 0.78rem; font-weight: 500; color: var(--muted); cursor: pointer;
+    }
+    .pill-btn:not(:last-child) { border-right: 1.5px solid var(--border); }
+    .pill-btn.active { background: var(--navy); color: #fff; }
+
+    /* Company filter select */
+    .cmp-filter-wrap { display: flex; gap: 6px; align-items: center; width: 100%; }
+    .cmp-filter-wrap label { font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+    .cmp-filter-select {
+      flex: 1; padding: 6px 24px 6px 8px; border: 1.5px solid var(--border); border-radius: 7px;
+      font-size: 0.82rem; color: #1a2332;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 6px center;
+      appearance: none; -webkit-appearance: none;
+    }
+
+    /* ── SELECTION BUTTON (floating) ── */
+    .select-fab {
+      position: fixed; bottom: 24px; right: 16px; z-index: 40;
+      background: var(--navy); color: #fff;
+      border: none; border-radius: 28px;
+      padding: 13px 20px;
+      font-size: 0.88rem; font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,48,87,0.35);
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: transform 0.15s;
+    }
+    .select-fab:active { transform: scale(0.96); }
+    .select-fab .badge {
+      background: #e36b2f; color: #fff;
+      border-radius: 10px; font-size: 0.72rem; font-weight: 700;
+      padding: 1px 7px; min-width: 20px; text-align: center;
+    }
+    .select-fab.sheet-open { background: #e05; }
+
+    /* ── CHART AREA ── */
+    .chart-wrap {
+      padding: 12px 12px 4px;
+    }
+    .chart-card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+      padding: 12px 10px 10px;
+    }
+    .chart-container { position: relative; height: 300px; }
+    .status {
+      text-align: center; padding: 60px 20px; color: var(--muted); font-size: 0.9rem;
+    }
+    .status .spinner {
+      display: inline-block; width: 30px; height: 30px;
+      border: 3px solid #e2e8f0; border-top-color: var(--blue);
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .legend-row {
+      display: flex; gap: 8px 14px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--muted); }
+    .legend-dot  { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+    .ownership-badge {
+      font-size: 0.72rem; color: var(--muted); background: var(--light);
+      border-radius: 6px; padding: 5px 10px; margin-top: 8px; display: none;
+    }
+    .ownership-badge.visible { display: block; }
+    .ownership-badge strong { color: var(--navy); }
+
+    /* Download row */
+    .dl-row {
+      padding: 8px 12px 0;
+      display: flex; justify-content: flex-end;
+    }
+    .dl-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: 1.5px solid var(--green); border-radius: 8px;
+      background: #fff; font-size: 0.8rem; font-weight: 500; color: var(--green);
+      cursor: pointer;
+    }
+    .dl-btn:disabled { opacity: 0.4; pointer-events: none; }
+    .dl-btn svg { width: 13px; height: 13px; }
+
+    /* Source note */
+    .source-note {
+      padding: 10px 12px 80px;
+      font-size: 0.68rem; color: #a0aab8; text-align: right;
+    }
+    .source-note a { color: var(--blue); text-decoration: none; }
+
+    /* ── BOTTOM SHEET ── */
+    .sheet-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      z-index: 60; opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .sheet-overlay.open { opacity: 1; pointer-events: all; }
+
+    .bottom-sheet {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      background: var(--card);
+      border-radius: 18px 18px 0 0;
+      z-index: 70;
+      display: flex; flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+      max-height: 82vh;
+    }
+    .bottom-sheet.open { transform: translateY(0); }
+
+    .sheet-handle {
+      width: 36px; height: 4px; background: var(--border);
+      border-radius: 2px; margin: 12px auto 0;
+      flex-shrink: 0;
+    }
+    .sheet-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px 8px; flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .sheet-header h3 { font-size: 1rem; font-weight: 700; color: var(--navy); }
+    .sheet-close {
+      width: 30px; height: 30px; border-radius: 50%; border: none;
+      background: var(--light); color: var(--muted);
+      font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .sheet-search {
+      margin: 10px 16px 0; padding: 9px 12px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.9rem; color: #1a2332; outline: none;
+      flex-shrink: 0;
+    }
+    .sheet-search:focus { border-color: var(--blue); }
+    .sheet-search:disabled { background: var(--light); color: #a0aab8; }
+    .sheet-actions {
+      display: flex; gap: 8px; padding: 8px 16px; flex-shrink: 0;
+    }
+    .sheet-action-btn {
+      flex: 1; padding: 7px 0; border: 1.5px solid var(--border); border-radius: 6px;
+      background: #fff; font-size: 0.78rem; color: var(--muted); cursor: pointer;
+    }
+    .sheet-action-btn:active { background: var(--light); }
+    .sheet-list {
+      overflow-y: auto; flex: 1;
+      -webkit-overflow-scrolling: touch;
+    }
+    .check-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; cursor: pointer;
+      border-bottom: 1px solid #f0f3f7; font-size: 0.9rem; user-select: none;
+    }
+    .check-item:last-child { border-bottom: none; }
+    .check-item:active { background: var(--light); }
+    .check-item input[type=checkbox] {
+      accent-color: var(--navy); width: 17px; height: 17px; cursor: pointer; flex-shrink: 0;
+    }
+    .check-item.checked { background: #eef4fb; font-weight: 500; color: var(--navy); }
+    .list-empty  { padding: 20px; color: #a0aab8; font-size: 0.85rem; text-align: center; }
+    .list-loading{ padding: 20px; color: #a0aab8; font-size: 0.85rem; text-align: center; }
+    .cmp-loading-notice {
+      padding: 0 16px 8px; font-size: 0.75rem; color: var(--muted);
+      display: none; flex-shrink: 0;
+    }
+    .cmp-loading-notice.visible { display: block; }
+    .sheet-bottom-pad { height: env(safe-area-inset-bottom, 12px); flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">NCS Production</div>
+    <div class="topbar-sub">Norwegian Continental Shelf</div>
+  </div>
+  <div class="mode-switcher">
+    <button class="mode-btn active" id="modeBtnFields"    onclick="switchSidebarMode('fields')">Fields</button>
+    <button class="mode-btn"        id="modeBtnCompanies" onclick="switchSidebarMode('companies')">Companies</button>
+  </div>
+</div>
+
+<!-- CONTROLS BAR -->
+<div class="controls-bar">
+  <div class="year-row">
+    <label>From</label>
+    <select class="year-select" id="yearFrom"></select>
+    <label>To</label>
+    <select class="year-select" id="yearTo"></select>
+  </div>
+  <div class="pill-group">
+    <button class="pill-btn active" id="btnMonthly" onclick="setMode('monthly')">Monthly</button>
+    <button class="pill-btn"        id="btnAnnual"  onclick="setMode('annual')">Annual</button>
+  </div>
+  <div class="pill-group" id="unitGroup">
+    <button class="pill-btn active" id="btnSm3"  onclick="setUnit('sm3')">Sm³</button>
+    <button class="pill-btn"        id="btnBoed" onclick="setUnit('boed')">kboe/d</button>
+  </div>
+  <div class="cmp-filter-wrap" id="companyFilterGroup">
+    <label>Owner</label>
+    <select class="cmp-filter-select" id="companySelect" onchange="onCompanyFilterChange()">
+      <option value="">All (gross)</option>
+    </select>
+  </div>
+</div>
+
+<!-- CHART -->
+<div class="chart-wrap">
+  <div class="chart-card">
+    <div id="chartArea">
+      <div class="status"><div class="spinner"></div><div>Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DOWNLOAD -->
+<div class="dl-row">
+  <button class="dl-btn" id="downloadBtn" onclick="downloadExcel()" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Download Excel
+  </button>
+</div>
+
+<!-- SOURCE -->
+<div class="source-note">
+  <a href="https://factpages.sodir.no" target="_blank">Norwegian Offshore Directorate</a> – NLOD 2.0
+</div>
+
+<!-- FAB -->
+<button class="select-fab" id="selectFab" onclick="toggleSheet()">
+  <span id="fabLabel">Select fields</span>
+  <span class="badge" id="fabBadge">0</span>
+</button>
+
+<!-- OVERLAY -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+
+<!-- BOTTOM SHEET -->
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <h3 id="sheetTitle">Select fields</h3>
+    <button class="sheet-close" onclick="closeSheet()">✕</button>
+  </div>
+  <input class="sheet-search" id="listSearch" type="text" placeholder="Search…"
+         oninput="filterList()" disabled/>
+  <div class="sheet-actions">
+    <button class="sheet-action-btn" onclick="selectAll()">Select all</button>
+    <button class="sheet-action-btn" onclick="clearAll()">Clear all</button>
+  </div>
+  <div class="cmp-loading-notice" id="cmpLoadingNotice">Loading ownership data…</div>
+  <div class="sheet-list" id="checkList">
+    <div class="list-loading">Loading…</div>
+  </div>
+  <div class="sheet-bottom-pad"></div>
+</div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const BASE        = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
+const FIELD_LAYER = 7100;
+const PROD_LAYER  = 7300;
+const LIC_LAYER   = 7108;
+const BBL_PER_SM3 = 6.29;
+
+const FIELD_COLORS = [
+  ['rgba(26,111,175,0.85)',  'rgba(26,111,175,0.45)'],
+  ['rgba(220,80,50,0.85)',   'rgba(220,80,50,0.45)'],
+  ['rgba(40,160,100,0.85)',  'rgba(40,160,100,0.45)'],
+  ['rgba(160,90,200,0.85)',  'rgba(160,90,200,0.45)'],
+  ['rgba(230,150,20,0.85)',  'rgba(230,150,20,0.45)'],
+  ['rgba(0,180,200,0.85)',   'rgba(0,180,200,0.45)'],
+  ['rgba(180,50,120,0.85)',  'rgba(180,50,120,0.45)'],
+  ['rgba(100,140,50,0.85)',  'rgba(100,140,50,0.45)'],
+  ['rgba(80,120,200,0.85)',  'rgba(80,120,200,0.45)'],
+  ['rgba(200,100,30,0.85)',  'rgba(200,100,30,0.45)'],
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let sidebarMode          = 'fields';
+let mode                 = 'monthly';
+let unit                 = 'sm3';
+let selectedCompany      = '';
+let allFields            = [];
+let filteredFields       = [];
+let selectedFieldIds     = new Set();
+let fieldProdCache       = {};
+let fieldLicCache        = {};
+let licLoadedFor         = new Set();
+let allCompanies         = [];
+let filteredCompanies    = [];
+let selectedCompanyNames = new Set();
+let allLicRecords        = [];
+let allLicLoaded         = false;
+let allLicLoading        = false;
+let chartInstance        = null;
+let lastLabels           = [];
+let lastLookups          = {};
+let sheetOpen            = false;
+
+// ─── YEAR SELECTORS ──────────────────────────────────────────────────────────
+const currentYear = new Date().getFullYear();
+['yearFrom','yearTo'].forEach(id => {
+  const sel = document.getElementById(id);
+  for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y,y));
+});
+document.getElementById('yearFrom').value = 2000;
+document.getElementById('yearTo').value   = currentYear;
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function daysInMonth(y,m) { return new Date(y,m,0).getDate(); }
+function daysInYear(y) { return (y%4===0&&(y%100!==0||y%400===0))?366:365; }
+function toBoed(oeMillSm3, gasBillSm3, days) {
+  const gasBoe   = (gasBillSm3*1e6*BBL_PER_SM3)/days/1000;
+  const totalBoe = (oeMillSm3 *1e6*BBL_PER_SM3)/days/1000;
+  return { oilBoe:Math.max(0,totalBoe-gasBoe), gasBoe };
+}
+
+async function queryLayer(layerId, params) {
+  const url = new URL(`${BASE}/${layerId}/query`);
+  const p = { f:'json', outFields:'*', where:'1=1', resultRecordCount:32000, ...params };
+  Object.entries(p).forEach(([k,v]) => url.searchParams.set(k,v));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.features||[];
+}
+
+function getShareAtDate(fieldId, date, companyName) {
+  if (!companyName) return 100;
+  const records = fieldLicCache[fieldId]||[];
+  const ts = date.getTime();
+  const match = records.find(r => {
+    if (r.cmpLongName!==companyName) return false;
+    if (r.fldLicenseeFrom!==null&&ts<r.fldLicenseeFrom) return false;
+    if (r.fldLicenseeTo  !==null&&ts>r.fldLicenseeTo)   return false;
+    return true;
+  });
+  return match?(match.fldCompanyShare||0):0;
+}
+
+function updateFab() {
+  const count = sidebarMode==='fields' ? selectedFieldIds.size : selectedCompanyNames.size;
+  document.getElementById('fabBadge').textContent = count;
+  document.getElementById('fabLabel').textContent =
+    sidebarMode==='fields' ? (count?`${count} field${count>1?'s':''} selected`:'Select fields')
+                           : (count?`${count} compan${count>1?'ies':'y'} selected`:'Select companies');
+}
+
+// ─── BOTTOM SHEET ─────────────────────────────────────────────────────────────
+function toggleSheet() {
+  sheetOpen ? closeSheet() : openSheet();
+}
+function openSheet() {
+  sheetOpen = true;
+  document.getElementById('bottomSheet').classList.add('open');
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.getElementById('selectFab').classList.add('sheet-open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet() {
+  sheetOpen = false;
+  document.getElementById('bottomSheet').classList.remove('open');
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.getElementById('selectFab').classList.remove('sheet-open');
+  document.body.style.overflow = '';
+}
+
+// ─── STARTUP ─────────────────────────────────────────────────────────────────
+async function loadFields() {
+  try {
+    const features = await queryLayer(FIELD_LAYER, {
+      outFields:'fldNpdidField,fldName', orderByFields:'fldName ASC', resultRecordCount:500
+    });
+    allFields = features
+      .map(f=>({id:f.attributes.fldNpdidField,name:f.attributes.fldName}))
+      .sort((a,b)=>a.name.localeCompare(b.name,'en'));
+    filteredFields = allFields;
+    document.getElementById('listSearch').disabled = false;
+    renderList();
+    document.getElementById('chartArea').innerHTML =
+      '<div class="status">Tap the button below to select fields.</div>';
+  } catch(err) {
+    document.getElementById('checkList').innerHTML =
+      `<div class="list-empty">Error: ${err.message}</div>`;
+  }
+}
+
+async function loadLicenseesForFields(fieldIds) {
+  const toLoad = fieldIds.filter(id=>!licLoadedFor.has(id));
+  if (!toLoad.length) return;
+  await Promise.all(toLoad.map(async id => {
+    try {
+      fieldLicCache[id]=[];
+      let offset=0;
+      while(true){
+        const rows=await queryLayer(LIC_LAYER,{
+          where:`fldNpdidField=${id}`,
+          outFields:'fldNpdidField,cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',
+          resultRecordCount:2000,resultOffset:offset
+        });
+        fieldLicCache[id]=fieldLicCache[id].concat(rows.map(r=>r.attributes));
+        if(rows.length<2000)break;
+        offset+=2000;
+      }
+      licLoadedFor.add(id);
+    } catch(err){ fieldLicCache[id]=[]; licLoadedFor.add(id); }
+  }));
+}
+
+async function loadAllLicensees() {
+  if(allLicLoaded||allLicLoading)return;
+  allLicLoading=true;
+  document.getElementById('cmpLoadingNotice').classList.add('visible');
+  try {
+    allLicRecords=[];
+    let offset=0;
+    while(true){
+      const rows=await queryLayer(LIC_LAYER,{
+        where:'1=1',
+        outFields:'fldNpdidField,cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',
+        resultRecordCount:2000,resultOffset:offset
+      });
+      rows.forEach(r=>{
+        const a=r.attributes;
+        allLicRecords.push(a);
+        if(!fieldLicCache[a.fldNpdidField])fieldLicCache[a.fldNpdidField]=[];
+        if(!licLoadedFor.has(a.fldNpdidField))fieldLicCache[a.fldNpdidField].push(a);
+      });
+      if(rows.length<2000)break;
+      offset+=2000;
+    }
+    allLicRecords.forEach(r=>licLoadedFor.add(r.fldNpdidField));
+    const cmpSet=new Set();
+    allLicRecords.forEach(r=>{if(r.cmpLongName)cmpSet.add(r.cmpLongName);});
+    allCompanies=[...cmpSet].sort((a,b)=>a.localeCompare(b,'en'));
+    filteredCompanies=allCompanies;
+    allLicLoaded=true; allLicLoading=false;
+    document.getElementById('cmpLoadingNotice').classList.remove('visible');
+    rebuildCompanyFilterDropdown();
+    if(sidebarMode==='companies'){
+      document.getElementById('listSearch').disabled=false;
+      renderList();
+    }
+  } catch(err){
+    allLicLoading=false;
+    document.getElementById('cmpLoadingNotice').classList.remove('visible');
+  }
+}
+
+// ─── MODE SWITCH ──────────────────────────────────────────────────────────────
+function switchSidebarMode(newMode) {
+  if(sidebarMode===newMode)return;
+  sidebarMode=newMode;
+  document.getElementById('modeBtnFields').classList.toggle('active',newMode==='fields');
+  document.getElementById('modeBtnCompanies').classList.toggle('active',newMode==='companies');
+  if(newMode==='companies'){
+    document.getElementById('unitGroup').style.display='none';
+    document.getElementById('companyFilterGroup').style.display='none';
+    unit='boed';
+    document.getElementById('sheetTitle').textContent='Select companies';
+    document.getElementById('listSearch').value='';
+    document.getElementById('listSearch').placeholder='Search companies…';
+    if(!allLicLoaded&&!allLicLoading){
+      document.getElementById('checkList').innerHTML='<div class="list-loading">Loading ownership data…</div>';
+      document.getElementById('listSearch').disabled=true;
+      loadAllLicensees().then(()=>{filteredCompanies=allCompanies;renderList();});
+    } else if(allLicLoaded){filteredCompanies=allCompanies;renderList();}
+    if(!selectedCompanyNames.size){
+      document.getElementById('chartArea').innerHTML='<div class="status">Select one or more companies.</div>';
+      document.getElementById('downloadBtn').disabled=true;
+    } else refreshCompaniesChart();
+  } else {
+    document.getElementById('unitGroup').style.display='';
+    document.getElementById('companyFilterGroup').style.display='';
+    document.getElementById('sheetTitle').textContent='Select fields';
+    document.getElementById('listSearch').value='';
+    document.getElementById('listSearch').placeholder='Search…';
+    filteredFields=allFields; renderList();
+    if(!selectedFieldIds.size){
+      document.getElementById('chartArea').innerHTML='<div class="status">Tap the button below to select fields.</div>';
+      document.getElementById('downloadBtn').disabled=true;
+    } else refreshFieldsChart();
+  }
+  updateFab();
+}
+
+// ─── LIST RENDERING ───────────────────────────────────────────────────────────
+function renderList() {
+  if(sidebarMode==='fields') renderFieldList();
+  else renderCompanyList();
+}
+function renderFieldList() {
+  const list=document.getElementById('checkList');
+  if(!filteredFields.length){list.innerHTML='<div class="list-empty">No results</div>';return;}
+  list.innerHTML=filteredFields.map(f=>`
+    <div class="check-item ${selectedFieldIds.has(f.id)?'checked':''}" onclick="toggleField(${f.id})">
+      <input type="checkbox" ${selectedFieldIds.has(f.id)?'checked':''}
+             onchange="toggleField(${f.id})" onclick="event.stopPropagation()"/>
+      ${f.name}
+    </div>`).join('');
+}
+function renderCompanyList() {
+  const list=document.getElementById('checkList');
+  if(!filteredCompanies.length){list.innerHTML='<div class="list-empty">No results</div>';return;}
+  list.innerHTML=filteredCompanies.map(name=>`
+    <div class="check-item ${selectedCompanyNames.has(name)?'checked':''}"
+         onclick="toggleCompany(${JSON.stringify(name)})">
+      <input type="checkbox" ${selectedCompanyNames.has(name)?'checked':''}
+             onchange="toggleCompany(${JSON.stringify(name)})" onclick="event.stopPropagation()"/>
+      ${name}
+    </div>`).join('');
+}
+function filterList() {
+  const q=document.getElementById('listSearch').value.toLowerCase();
+  if(sidebarMode==='fields'){filteredFields=allFields.filter(f=>f.name.toLowerCase().includes(q));renderFieldList();}
+  else{filteredCompanies=allCompanies.filter(n=>n.toLowerCase().includes(q));renderCompanyList();}
+}
+function selectAll() {
+  if(sidebarMode==='fields'){filteredFields.forEach(f=>selectedFieldIds.add(f.id));renderFieldList();refreshFieldsChart();}
+  else{filteredCompanies.forEach(n=>selectedCompanyNames.add(n));renderCompanyList();refreshCompaniesChart();}
+  updateFab();
+}
+function clearAll() {
+  if(sidebarMode==='fields'){selectedFieldIds.clear();fieldProdCache={};renderFieldList();refreshFieldsChart();}
+  else{selectedCompanyNames.clear();renderCompanyList();refreshCompaniesChart();}
+  updateFab();
+}
+
+function toggleField(id) {
+  if(selectedFieldIds.has(id)){selectedFieldIds.delete(id);delete fieldProdCache[id];}
+  else selectedFieldIds.add(id);
+  renderFieldList(); updateFab(); refreshFieldsChart();
+}
+function toggleCompany(name) {
+  if(selectedCompanyNames.has(name))selectedCompanyNames.delete(name);
+  else selectedCompanyNames.add(name);
+  renderCompanyList(); updateFab(); refreshCompaniesChart();
+}
+
+// ─── COMPANY FILTER DROPDOWN ──────────────────────────────────────────────────
+function rebuildCompanyFilterDropdown() {
+  const sel=document.getElementById('companySelect');
+  const cur=sel.value;
+  const relevant=new Set();
+  if(allLicLoaded)allCompanies.forEach(n=>relevant.add(n));
+  else selectedFieldIds.forEach(id=>{(fieldLicCache[id]||[]).forEach(r=>{if(r.cmpLongName)relevant.add(r.cmpLongName);});});
+  const sorted=[...relevant].sort();
+  sel.innerHTML='<option value="">All (gross)</option>';
+  sorted.forEach(name=>{const opt=new Option(name,name);if(name===cur)opt.selected=true;sel.appendChild(opt);});
+  if(cur&&!relevant.has(cur)){selectedCompany='';sel.value='';}
+}
+function onCompanyFilterChange() {
+  selectedCompany=document.getElementById('companySelect').value;
+  drawFieldsChart();
+}
+
+// ─── FIELDS MODE ──────────────────────────────────────────────────────────────
+async function refreshFieldsChart() {
+  if(!selectedFieldIds.size){
+    if(chartInstance){chartInstance.destroy();chartInstance=null;}
+    document.getElementById('chartArea').innerHTML='<div class="status">Tap the button below to select fields.</div>';
+    document.getElementById('downloadBtn').disabled=true;
+    rebuildCompanyFilterDropdown(); return;
+  }
+  const toFetch=[...selectedFieldIds].filter(id=>!fieldProdCache[id]);
+  if(toFetch.length){
+    document.getElementById('chartArea').innerHTML=`<div class="status"><div class="spinner"></div><div>Loading…</div></div>`;
+    const fy=+document.getElementById('yearFrom').value, ty=+document.getElementById('yearTo').value;
+    await Promise.all([
+      ...toFetch.map(async id=>{
+        try{fieldProdCache[id]=await queryLayer(PROD_LAYER,{
+          where:`prfNpdidInformationCarrier=${id} AND prfInformationCarrierKind='FIELD' AND prfYear>=${fy} AND prfYear<=${ty}`,
+          outFields:'prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3',
+          orderByFields:'prfYear ASC, prfMonth ASC'
+        });}catch(err){fieldProdCache[id]={error:err.message};}
+      }),
+      loadLicenseesForFields([...selectedFieldIds])
+    ]);
+  } else await loadLicenseesForFields([...selectedFieldIds]);
+  rebuildCompanyFilterDropdown();
+  drawFieldsChart();
+}
+
+function buildLabelsFromFields(fieldIds) {
+  const s=new Set();
+  fieldIds.forEach(id=>{
+    const data=fieldProdCache[id];
+    if(!data||data.error)return;
+    data.forEach(f=>{
+      const a=f.attributes;
+      if(mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0)return;
+      s.add(mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`);
+    });
+  });
+  return [...s].sort();
+}
+
+function drawFieldsChart() {
+  const isBoed=unit==='boed';
+  const labels=buildLabelsFromFields([...selectedFieldIds]);
+  lastLabels=labels; lastLookups={};
+  if(!labels.length){
+    if(chartInstance){chartInstance.destroy();chartInstance=null;}
+    document.getElementById('chartArea').innerHTML='<div class="status">No data found.</div>';
+    document.getElementById('downloadBtn').disabled=true; return;
+  }
+  const orderedFields=allFields.filter(f=>selectedFieldIds.has(f.id));
+  const datasets=[],legendItems=[];
+  orderedFields.forEach((f,i)=>{
+    const colors=FIELD_COLORS[i%FIELD_COLORS.length];
+    const data=fieldProdCache[f.id]; const lookup={};
+    if(data&&!data.error){
+      data.forEach(row=>{
+        const a=row.attributes;
+        if(mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0)return;
+        const lbl=mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`;
+        const oil=a.prfPrdOilNetMillSm3||0,gas=a.prfPrdGasNetBillSm3||0,oe=a.prfPrdOeNetMillSm3||0;
+        const midDate=mode==='monthly'?new Date(a.prfYear,a.prfMonth-1,15):new Date(a.prfYear,6,1);
+        const share=getShareAtDate(f.id,midDate,selectedCompany)/100;
+        if(isBoed){
+          const days=mode==='monthly'?daysInMonth(a.prfYear,a.prfMonth):daysInYear(a.prfYear);
+          const{oilBoe,gasBoe}=toBoed(oe*share,gas*share,days);
+          lookup[lbl]={oil:oilBoe,gas:gasBoe,share:share*100};
+        } else lookup[lbl]={oil:oil*share,gas:gas*share,share:share*100};
+      });
+    }
+    lastLookups[f.id]={lookup,name:f.name};
+    const dp=isBoed?1:4;
+    datasets.push({label:`${f.name} – oil`,data:labels.map(l=>+(lookup[l]?.oil||0).toFixed(dp)),backgroundColor:colors[0],borderWidth:0,stack:'prod'});
+    datasets.push({label:`${f.name} – gas`,data:labels.map(l=>+(lookup[l]?.gas||0).toFixed(dp)),backgroundColor:colors[1],borderWidth:0,stack:'prod'});
+    legendItems.push({name:f.name,oilColor:colors[0],gasColor:colors[1]});
+  });
+  const yTitle=isBoed?'kboe/day':'mill./bill. Sm³';
+  const ownerBadge=selectedCompany
+    ?`<div class="ownership-badge visible">Owner filter: <strong>${selectedCompany}</strong></div>`:'';
+  document.getElementById('chartArea').innerHTML=`
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">
+      ${legendItems.map(l=>`
+        <div class="legend-item"><div class="legend-dot" style="background:${l.oilColor}"></div>${l.name} oil</div>
+        <div class="legend-item"><div class="legend-dot" style="background:${l.gasColor}"></div>${l.name} gas</div>
+      `).join('')}
+    </div>${ownerBadge}`;
+  if(chartInstance)chartInstance.destroy();
+  chartInstance=new Chart(document.getElementById('prodChart').getContext('2d'),{
+    type:'bar',data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        title:{display:false},
+        tooltip:{callbacks:{
+          label:ctx=>{
+            const nm=ctx.dataset.label;
+            const fe=orderedFields.find(f=>nm.startsWith(f.name+' –'));
+            const sh=fe?(lastLookups[fe.id]?.lookup[ctx.label]?.share??100).toFixed(1):null;
+            const ss=selectedCompany&&sh!==null?` (${sh}%)`:'';
+            if(!isBoed){const u=nm.endsWith('– gas')?'bill. Sm³':'mill. Sm³';return ` ${ctx.parsed.y.toFixed(3)} ${u}${ss}`;}
+            return ` ${Math.round(ctx.parsed.y).toLocaleString('en')} kboe/d${ss}  (${nm})`;
+          }
+        }}
+      },
+      scales:{
+        x:{stacked:true,ticks:{maxTicksLimit:mode==='annual'?15:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{stacked:true,beginAtZero:true,title:{display:true,text:yTitle,color:'#4a5568',font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:9}}}
+      }
+    }
+  });
+  document.getElementById('downloadBtn').disabled=false;
+}
+
+// ─── COMPANIES MODE ───────────────────────────────────────────────────────────
+async function refreshCompaniesChart() {
+  if(!selectedCompanyNames.size){
+    if(chartInstance){chartInstance.destroy();chartInstance=null;}
+    document.getElementById('chartArea').innerHTML='<div class="status">Select one or more companies.</div>';
+    document.getElementById('downloadBtn').disabled=true; return;
+  }
+  const relevantFieldIds=new Set();
+  allLicRecords.forEach(r=>{if(selectedCompanyNames.has(r.cmpLongName))relevantFieldIds.add(r.fldNpdidField);});
+  const toFetch=[...relevantFieldIds].filter(id=>!fieldProdCache[id]||fieldProdCache[id].error);
+  if(toFetch.length){
+    document.getElementById('chartArea').innerHTML=`<div class="status"><div class="spinner"></div><div>Loading ${toFetch.length} fields…</div></div>`;
+    const fy=+document.getElementById('yearFrom').value,ty=+document.getElementById('yearTo').value;
+    await Promise.all(toFetch.map(async id=>{
+      try{fieldProdCache[id]=await queryLayer(PROD_LAYER,{
+        where:`prfNpdidInformationCarrier=${id} AND prfInformationCarrierKind='FIELD' AND prfYear>=${fy} AND prfYear<=${ty}`,
+        outFields:'prfYear,prfMonth,prfPrdOeNetMillSm3',orderByFields:'prfYear ASC, prfMonth ASC'
+      });}catch(err){fieldProdCache[id]={error:err.message};}
+    }));
+  }
+  drawCompaniesChart(relevantFieldIds);
+}
+
+function drawCompaniesChart(relevantFieldIds) {
+  const companies=[...selectedCompanyNames].sort();
+  const isSingle=companies.length===1;
+  const labelSet=new Set();
+  relevantFieldIds.forEach(id=>{
+    const data=fieldProdCache[id];
+    if(!data||data.error)return;
+    data.forEach(f=>{
+      const a=f.attributes;
+      if(mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0)return;
+      labelSet.add(mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`);
+    });
+  });
+  const labels=[...labelSet].sort();
+  lastLabels=labels; lastLookups={};
+  if(!labels.length){
+    if(chartInstance){chartInstance.destroy();chartInstance=null;}
+    document.getElementById('chartArea').innerHTML='<div class="status">No data found.</div>';
+    document.getElementById('downloadBtn').disabled=true; return;
+  }
+  const datasets=[],legendItems=[];
+  const fieldIdToName={};
+  allFields.forEach(f=>{fieldIdToName[f.id]=f.name;});
+
+  if(isSingle){
+    const companyName=companies[0];
+    const companyFieldIds=new Set(allLicRecords.filter(r=>r.cmpLongName===companyName).map(r=>r.fldNpdidField));
+    let colorIdx=0;
+    companyFieldIds.forEach(fieldId=>{
+      const fieldName=fieldIdToName[fieldId]||`Field ${fieldId}`;
+      const data=fieldProdCache[fieldId];
+      if(!data||data.error)return;
+      const color=FIELD_COLORS[colorIdx++%FIELD_COLORS.length][0];
+      const lookup={};
+      data.forEach(row=>{
+        const a=row.attributes;
+        if(mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0)return;
+        const lbl=mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`;
+        const oe=a.prfPrdOeNetMillSm3||0;
+        const days=mode==='monthly'?daysInMonth(a.prfYear,a.prfMonth):daysInYear(a.prfYear);
+        const midDate=mode==='monthly'?new Date(a.prfYear,a.prfMonth-1,15):new Date(a.prfYear,6,1);
+        const share=getShareAtDate(fieldId,midDate,companyName)/100;
+        lookup[lbl]={oe:(oe*share*1e6*BBL_PER_SM3)/days/1000,share:share*100};
+      });
+      lastLookups[fieldId]={lookup,name:fieldName};
+      datasets.push({label:fieldName,data:labels.map(l=>+(lookup[l]?.oe||0).toFixed(1)),backgroundColor:color,borderWidth:0,stack:'prod'});
+      legendItems.push({name:fieldName,color});
+    });
+  } else {
+    companies.forEach((companyName,i)=>{
+      const color=FIELD_COLORS[i%FIELD_COLORS.length][0];
+      const companyFieldIds=new Set(allLicRecords.filter(r=>r.cmpLongName===companyName).map(r=>r.fldNpdidField));
+      const agg={};
+      companyFieldIds.forEach(fieldId=>{
+        const data=fieldProdCache[fieldId];
+        if(!data||data.error)return;
+        data.forEach(row=>{
+          const a=row.attributes;
+          if(mode==='monthly'?a.prfMonth<=0:a.prfMonth!==0)return;
+          const lbl=mode==='monthly'?`${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`:`${a.prfYear}`;
+          const oe=a.prfPrdOeNetMillSm3||0;
+          const days=mode==='monthly'?daysInMonth(a.prfYear,a.prfMonth):daysInYear(a.prfYear);
+          const midDate=mode==='monthly'?new Date(a.prfYear,a.prfMonth-1,15):new Date(a.prfYear,6,1);
+          const share=getShareAtDate(fieldId,midDate,companyName)/100;
+          agg[lbl]=(agg[lbl]||0)+(oe*share*1e6*BBL_PER_SM3)/days/1000;
+        });
+      });
+      lastLookups[companyName]={lookup:Object.fromEntries(Object.entries(agg).map(([k,v])=>([k,{oe:v}]))),name:companyName};
+      datasets.push({label:companyName,data:labels.map(l=>+(agg[l]||0).toFixed(1)),backgroundColor:color,borderWidth:0,stack:'prod'});
+      legendItems.push({name:companyName,color});
+    });
+  }
+
+  document.getElementById('chartArea').innerHTML=`
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">
+      ${legendItems.map(l=>`<div class="legend-item"><div class="legend-dot" style="background:${l.color}"></div>${l.name}</div>`).join('')}
+    </div>`;
+  if(chartInstance)chartInstance.destroy();
+  chartInstance=new Chart(document.getElementById('prodChart').getContext('2d'),{
+    type:'bar',data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},title:{display:false},
+        tooltip:{callbacks:{
+          label:ctx=>` ${Math.round(ctx.parsed.y).toLocaleString('en')} kboe/d  (${ctx.dataset.label})`,
+          footer:items=>`Total: ${Math.round(items.reduce((s,i)=>s+i.parsed.y,0)).toLocaleString('en')} kboe/d`
+        }}
+      },
+      scales:{
+        x:{stacked:true,ticks:{maxTicksLimit:mode==='annual'?15:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{stacked:true,beginAtZero:true,title:{display:true,text:'kboe/day',color:'#4a5568',font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:9}}}
+      }
+    }
+  });
+  document.getElementById('downloadBtn').disabled=false;
+}
+
+// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function downloadExcel() {
+  if(!lastLabels.length)return;
+  const wb=XLSX.utils.book_new();
+  const periodLabel=mode==='monthly'?'Monthly':'Annual';
+  if(sidebarMode==='fields'){
+    const isBoed=unit==='boed';
+    const oilUnit=isBoed?'Oil (kboe/day)':'Oil (mill. Sm³)';
+    const gasUnit=isBoed?'Gas (kboe/day)':'Gas (bill. Sm³)';
+    const orderedFields=allFields.filter(f=>selectedFieldIds.has(f.id));
+    orderedFields.forEach(f=>{
+      const{lookup}=lastLookups[f.id]||{};if(!lookup)return;
+      const rows=[[mode==='monthly'?'Period':'Year',oilUnit,gasUnit,isBoed?'Total (kboe/d)':'Total OE']];
+      lastLabels.forEach(lbl=>{
+        const oil=lookup[lbl]?.oil||0,gas=lookup[lbl]?.gas||0;
+        rows.push([lbl,+oil.toFixed(isBoed?1:4),+gas.toFixed(isBoed?1:4),+(oil+gas).toFixed(isBoed?1:4)]);
+      });
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=rows[0].map((_,i)=>({wch:i===0?12:18}));
+      XLSX.utils.book_append_sheet(wb,ws,f.name.substring(0,31));
+    });
+  } else {
+    Object.entries(lastLookups).forEach(([key,{lookup,name}])=>{
+      const rows=[[mode==='monthly'?'Period':'Year','Net OE (kboe/day)']];
+      lastLabels.forEach(lbl=>{rows.push([lbl,+(lookup[lbl]?.oe||0).toFixed(1)]);});
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=[{wch:12},{wch:20}];
+      XLSX.utils.book_append_sheet(wb,ws,name.substring(0,31));
+    });
+  }
+  const fy=document.getElementById('yearFrom').value,ty=document.getElementById('yearTo').value;
+  XLSX.writeFile(wb,`NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`);
+}
+
+// ─── TOGGLES ──────────────────────────────────────────────────────────────────
+function setMode(newMode) {
+  if(mode===newMode)return;
+  mode=newMode;
+  document.getElementById('btnMonthly').classList.toggle('active',mode==='monthly');
+  document.getElementById('btnAnnual').classList.toggle('active', mode==='annual');
+  fieldProdCache={};
+  if(sidebarMode==='fields')refreshFieldsChart(); else refreshCompaniesChart();
+}
+function setUnit(newUnit) {
+  if(unit===newUnit)return; unit=newUnit;
+  document.getElementById('btnSm3').classList.toggle('active', unit==='sm3');
+  document.getElementById('btnBoed').classList.toggle('active',unit==='boed');
+  drawFieldsChart();
+}
+['yearFrom','yearTo'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{
+    fieldProdCache={};
+    if(sidebarMode==='fields')refreshFieldsChart(); else refreshCompaniesChart();
+  });
+});
+
+// ─── START ────────────────────────────────────────────────────────────────────
+loadFields();
+loadAllLicensees();
+</script>
+</body>
+</html>
