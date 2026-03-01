@@ -280,7 +280,8 @@ const currentYear = new Date().getFullYear();
   const sel = document.getElementById(id);
   for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
   sel.addEventListener('change', () => {
-    fieldProdCache = {};  // reset so all ids become undefined
+    sessionClearProd();   // clear session storage for prod data
+    fieldProdCache = {};  // reset in-memory cache
     refresh();
   });
 });
@@ -290,6 +291,23 @@ document.getElementById('yearTo').value   = currentYear;
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 const daysInMonth = (y,m) => new Date(y,m,0).getDate();
 const daysInYear  = y => (y%4===0&&(y%100!==0||y%400===0))?366:365;
+
+// ── SESSION STORAGE CACHE ────────────────────────────────────────────────────
+const SESSION_PREFIX = 'ncs_prod_v1_';
+function sessionGet(key) {
+  try { const v = sessionStorage.getItem(SESSION_PREFIX+key); return v ? JSON.parse(v) : null; }
+  catch(e) { return null; }
+}
+function sessionSet(key, val) {
+  try { sessionStorage.setItem(SESSION_PREFIX+key, JSON.stringify(val)); } catch(e) {}
+}
+function sessionClearProd() {
+  try {
+    Object.keys(sessionStorage)
+      .filter(k => k.startsWith(SESSION_PREFIX+'prod_'))
+      .forEach(k => sessionStorage.removeItem(k));
+  } catch(e) {}
+}
 
 async function queryLayer(layerId, params) {
   const url = new URL(`${BASE}/${layerId}/query`);
@@ -397,23 +415,32 @@ async function loadFields() {
 async function loadProdForFields(ids) {
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
+  // Check session cache first
+  ids.forEach(id => {
+    if (fieldProdCache[id] === undefined) {
+      const cached = sessionGet(`prod_${id}_${fy}_${ty}`);
+      if (cached) fieldProdCache[id] = cached;
+    }
+  });
   const toFetch = ids.filter(id => fieldProdCache[id] === undefined || fieldProdCache[id] === null);
   if (!toFetch.length) return;
-  const BATCH = 5;
+  const BATCH = 10;
   for (let i = 0; i < toFetch.length; i += BATCH) {
     const batch = toFetch.slice(i, i + BATCH);
     await Promise.all(batch.map(async id => {
       try {
-        fieldProdCache[id] = await queryLayer(PROD_LAYER, {
+        const rows = await queryLayer(PROD_LAYER, {
           where: `prfNpdidInformationCarrier=${id} AND prfYear>=${fy} AND prfYear<=${ty}`,
           outFields: 'prfNpdidInformationCarrier,prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdProducedWaterInFieldMillS',
           resultRecordCount: 32000
         });
+        fieldProdCache[id] = rows;
+        sessionSet(`prod_${id}_${fy}_${ty}`, rows);
       } catch(e) {
         fieldProdCache[id] = null;
       }
     }));
-    if (i + BATCH < toFetch.length) await new Promise(r => setTimeout(r, 150));
+    if (i + BATCH < toFetch.length) await new Promise(r => setTimeout(r, 50));
   }
 }
 
@@ -1138,6 +1165,37 @@ async function init() {
   selectedCompanyNames.add('Aker BP ASA');
   updateFab();
   refresh();
+
+  // Background prefetch: load all fields in background after initial render
+  // so subsequent field selections are instant
+  setTimeout(() => prefetchAllFields(), 2000);
+}
+
+async function prefetchAllFields() {
+  const fy = +document.getElementById('yearFrom').value;
+  const ty = +document.getElementById('yearTo').value;
+  const unfetched = allFields
+    .map(f => f.id)
+    .filter(id => fieldProdCache[id] === undefined && !sessionGet(`prod_${id}_${fy}_${ty}`));
+  if (!unfetched.length) return;
+  // Fetch quietly in background, 3 at a time, no spinner
+  const BATCH = 3;
+  for (let i = 0; i < unfetched.length; i += BATCH) {
+    const batch = unfetched.slice(i, i + BATCH);
+    await Promise.all(batch.map(async id => {
+      if (fieldProdCache[id] !== undefined) return; // already loaded by user interaction
+      try {
+        const rows = await queryLayer(PROD_LAYER, {
+          where: `prfNpdidInformationCarrier=${id} AND prfYear>=${fy} AND prfYear<=${ty}`,
+          outFields: 'prfNpdidInformationCarrier,prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdProducedWaterInFieldMillS',
+          resultRecordCount: 32000
+        });
+        fieldProdCache[id] = rows;
+        sessionSet(`prod_${id}_${fy}_${ty}`, rows);
+      } catch(e) { /* silent fail */ }
+    }));
+    await new Promise(r => setTimeout(r, 100));
+  }
 }
 
 init();
