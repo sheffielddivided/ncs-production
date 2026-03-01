@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>NCS Production</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <style>
+    :root {
+      --bg:#f4f6f9; --card:#fff; --navy:#003057; --blue:#0071b8;
+      --border:#d1d9e6; --muted:#6b7a90; --light:#f0f4f8; --green:#1a7a40;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1a2332;overscroll-behavior:none;}
+
+    /* TOP BAR */
+    .topbar{background:var(--navy);color:#fff;padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;}
+    .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;}
+    .topbar-sub{font-size:0.7rem;opacity:0.65;margin-top:1px;}
+    .mode-switcher{display:flex;background:rgba(255,255,255,0.15);border-radius:8px;padding:3px;gap:2px;flex-shrink:0;}
+    .mode-btn{padding:6px 12px;border:none;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer;background:none;color:rgba(255,255,255,0.7);transition:all 0.15s;}
+    .mode-btn.active{background:#fff;color:var(--navy);}
+
+    /* CONTROLS BAR */
+    .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+    .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .year-row{display:flex;gap:6px;align-items:center;}
+    .year-row label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;}
+    .year-select{padding:6px 24px 6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;color:#1a2332;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 6px center;appearance:none;-webkit-appearance:none;cursor:pointer;}
+    .pill-group{display:flex;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;}
+    .pill-btn{padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;}
+    .pill-btn:not(:last-child){border-right:1.5px solid var(--border);}
+    .pill-btn.active{background:var(--navy);color:#fff;}
+    .ctrl-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+
+    /* VIEW SUB-TABS */
+    .view-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+    .view-tab{padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:0.72rem;font-weight:600;color:var(--muted);background:#fff;cursor:pointer;white-space:nowrap;}
+    .view-tab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+    /* WATER TOGGLE */
+    .water-row{display:flex;align-items:center;gap:8px;}
+    .toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0;}
+    .toggle-switch input{opacity:0;width:0;height:0;}
+    .toggle-slider{position:absolute;inset:0;background:#ccc;border-radius:20px;cursor:pointer;transition:0.2s;}
+    .toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:0.2s;}
+    input:checked+.toggle-slider{background:var(--blue);}
+    input:checked+.toggle-slider:before{transform:translateX(16px);}
+    .water-label{font-size:0.72rem;color:var(--muted);}
+
+    /* SELECT FAB */
+    .select-fab{position:fixed;bottom:24px;right:16px;z-index:40;background:var(--navy);color:#fff;border:none;border-radius:28px;padding:13px 20px;font-size:0.88rem;font-weight:600;box-shadow:0 4px 16px rgba(0,48,87,0.35);cursor:pointer;display:flex;align-items:center;gap:8px;transition:transform 0.15s;}
+    .select-fab:active{transform:scale(0.96);}
+    .fab-badge{background:#e36b2f;color:#fff;border-radius:10px;font-size:0.72rem;font-weight:700;padding:1px 7px;min-width:20px;text-align:center;}
+
+    /* CHART */
+    .chart-wrap{padding:12px 12px 4px;}
+    .chart-card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 10px 10px;}
+    .chart-container{position:relative;height:300px;}
+    .status{text-align:center;padding:60px 20px;color:var(--muted);font-size:0.9rem;}
+    .status .spinner{display:inline-block;width:30px;height:30px;border:3px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .legend-row{display:flex;gap:8px 14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--muted);}
+    .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+
+    /* INFO BOX */
+    .info-box{margin:0 12px 8px;background:#f7f9fc;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:0.72rem;color:var(--muted);line-height:1.5;}
+    .info-box strong{color:#1a2332;}
+
+    /* DOWNLOAD */
+    .dl-row{padding:0 12px 8px;display:flex;justify-content:flex-end;}
+    .dl-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--green);border-radius:8px;background:#fff;font-size:0.8rem;font-weight:500;color:var(--green);cursor:pointer;}
+    .dl-btn:disabled{opacity:0.4;pointer-events:none;}
+    .dl-btn svg{width:13px;height:13px;}
+    .source-note{padding:6px 12px 80px;font-size:0.68rem;color:#a0aab8;text-align:right;}
+    .source-note a{color:var(--blue);text-decoration:none;}
+
+    /* BOTTOM SHEET */
+    .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+    .sheet-overlay.open{opacity:1;pointer-events:all;}
+    .bottom-sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;z-index:70;display:flex;flex-direction:column;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);max-height:82vh;}
+    .bottom-sheet.open{transform:translateY(0);}
+    .sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;flex-shrink:0;}
+    .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;flex-shrink:0;border-bottom:1px solid var(--border);}
+    .sheet-header h3{font-size:1rem;font-weight:700;color:var(--navy);}
+    .sheet-close{width:30px;height:30px;border-radius:50%;border:none;background:var(--light);color:var(--muted);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .sheet-search{margin:10px 16px 0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;color:#1a2332;outline:none;flex-shrink:0;}
+    .sheet-search:focus{border-color:var(--blue);}
+    .sheet-search:disabled{background:var(--light);color:#a0aab8;}
+    .sheet-actions{display:flex;gap:8px;padding:8px 16px;flex-shrink:0;}
+    .sheet-action-btn{flex:1;padding:7px 0;border:1.5px solid var(--border);border-radius:6px;background:#fff;font-size:0.78rem;color:var(--muted);cursor:pointer;}
+    .sheet-list{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;}
+    .check-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f3f7;font-size:0.9rem;cursor:pointer;user-select:none;}
+    .check-item:last-child{border-bottom:none;}
+    .check-item.checked{background:#eef4fb;font-weight:500;color:var(--navy);}
+    .check-item input[type=checkbox]{accent-color:var(--navy);width:17px;height:17px;flex-shrink:0;}
+    .list-empty{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
+    .list-loading{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
+    .cmp-loading-notice{padding:0 16px 8px;font-size:0.75rem;color:var(--muted);display:none;flex-shrink:0;}
+    .cmp-loading-notice.visible{display:block;}
+    .sheet-bottom-pad{height:env(safe-area-inset-bottom,12px);flex-shrink:0;}
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">NCS Production</div>
+    <div class="topbar-sub">Norwegian Continental Shelf</div>
+  </div>
+  <div class="mode-switcher">
+    <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
+    <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
+  </div>
+</div>
+
+<!-- CONTROLS BAR -->
+<div class="controls-bar">
+  <!-- Row 1: Years + Period -->
+  <div class="ctrl-row">
+    <div class="year-row">
+      <label>From</label>
+      <select class="year-select" id="yearFrom"></select>
+      <label>To</label>
+      <select class="year-select" id="yearTo"></select>
+    </div>
+    <div class="pill-group">
+      <button class="pill-btn active" id="btnMonthly" onclick="setPeriod('monthly')">Monthly</button>
+      <button class="pill-btn" id="btnAnnual" onclick="setPeriod('annual')">Annual</button>
+    </div>
+  </div>
+
+  <!-- Row 2: View sub-tabs (dynamic) -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">Show</span>
+    <div class="view-tabs" id="viewTabs"></div>
+  </div>
+
+  <!-- Row 3: Water toggle (fields oil/gas only) -->
+  <div class="ctrl-row" id="waterRow" style="display:none">
+    <div class="water-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="waterToggle" onchange="setWater(this.checked)"/>
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="water-label">Show produced water</span>
+    </div>
+  </div>
+</div>
+
+<!-- CHART -->
+<div class="chart-wrap">
+  <div class="chart-card">
+    <div id="chartArea">
+      <div class="status"><div class="spinner"></div><div>Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- INFO BOX -->
+<div class="info-box" id="infoBox"></div>
+
+<!-- DOWNLOAD -->
+<div class="dl-row">
+  <button class="dl-btn" id="downloadBtn" onclick="downloadExcel()" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Download Excel
+  </button>
+</div>
+
+<div class="source-note"><a href="https://factpages.sodir.no" target="_blank">Norwegian Offshore Directorate</a> – NLOD 2.0</div>
+
+<!-- FAB -->
+<button class="select-fab" id="selectFab" onclick="toggleSheet()">
+  <span id="fabLabel">Select</span>
+  <span class="fab-badge" id="fabBadge">0</span>
+</button>
+
+<!-- OVERLAY + SHEET -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <h3 id="sheetTitle">Select</h3>
+    <button class="sheet-close" onclick="closeSheet()">&#10005;</button>
+  </div>
+  <input class="sheet-search" id="listSearch" type="text" placeholder="Search…" oninput="filterList()" disabled/>
+  <div class="sheet-actions">
+    <button class="sheet-action-btn" onclick="selectAll()">Select all</button>
+    <button class="sheet-action-btn" onclick="clearAll()">Clear all</button>
+  </div>
+  <div class="cmp-loading-notice" id="cmpLoadingNotice">Loading ownership data…</div>
+  <div class="sheet-list" id="checkList"><div class="list-loading">Loading…</div></div>
+  <div class="sheet-bottom-pad"></div>
+</div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const BASE        = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
+const FIELD_LAYER = 7100;
+const PROD_LAYER  = 7300;
+const LIC_LAYER   = 7108;
+const BBL_PER_SM3 = 6.29;
+
+const PALETTE = [
+  ['rgba(26,111,175,0.85)','rgba(26,111,175,0.45)'],
+  ['rgba(220,80,50,0.85)', 'rgba(220,80,50,0.45)'],
+  ['rgba(40,160,100,0.85)','rgba(40,160,100,0.45)'],
+  ['rgba(160,90,200,0.85)','rgba(160,90,200,0.45)'],
+  ['rgba(230,150,20,0.85)','rgba(230,150,20,0.45)'],
+  ['rgba(0,180,200,0.85)', 'rgba(0,180,200,0.45)'],
+  ['rgba(180,50,120,0.85)','rgba(180,50,120,0.45)'],
+  ['rgba(100,140,50,0.85)','rgba(100,140,50,0.45)'],
+  ['rgba(80,120,200,0.85)','rgba(80,120,200,0.45)'],
+  ['rgba(200,100,30,0.85)','rgba(200,100,30,0.45)'],
+];
+const OIL_COLOR   = 'rgba(26,111,175,0.85)';
+const GAS_COLOR   = 'rgba(220,80,50,0.55)';
+const WATER_COLOR = 'rgba(100,180,220,0.7)';
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let topMode    = 'companies'; // 'fields' | 'companies'
+let period     = 'monthly';
+let showWater  = false;
+
+// subView per topMode:
+//   fields:    'oilgas' | 'oe_per_field' | 'oe_per_company'
+//   companies: 'oilgas' | 'oe_per_field'
+let fieldSubView   = 'oilgas';
+let companySubView = 'oilgas';
+
+// Selection
+let allFields            = [];
+let filteredFields       = [];
+let selectedFieldIds     = new Set();
+
+let allCompanies         = [];
+let filteredCompanies    = [];
+let selectedCompanyNames = new Set();
+
+// Caches
+let fieldProdCache  = {}; // id → features[]
+let fieldLicCache   = {}; // id → licensee records[]
+let licLoadedFor    = new Set();
+let allLicRecords   = [];
+let allLicLoaded    = false;
+let allLicLoading   = false;
+
+let chartInstance   = null;
+let lastLabels      = [];
+let lastDatasets    = []; // [{label, data}] for Excel
+let sheetOpen       = false;
+
+// ── YEAR SELECTORS ───────────────────────────────────────────────────────────
+const currentYear = new Date().getFullYear();
+['yearFrom','yearTo'].forEach(id => {
+  const sel = document.getElementById(id);
+  for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
+  sel.addEventListener('change', () => {
+    fieldProdCache = {};  // reset so all ids become undefined
+    refresh();
+  });
+});
+document.getElementById('yearFrom').value = 2024;
+document.getElementById('yearTo').value   = currentYear;
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const daysInMonth = (y,m) => new Date(y,m,0).getDate();
+const daysInYear  = y => (y%4===0&&(y%100!==0||y%400===0))?366:365;
+
+async function queryLayer(layerId, params) {
+  const url = new URL(`${BASE}/${layerId}/query`);
+  const p = {f:'json',outFields:'*',where:'1=1',resultRecordCount:2000,...params};
+  Object.entries(p).forEach(([k,v]) => url.searchParams.set(k,v));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.features || [];
+}
+
+function midDate(year, month) {
+  return period === 'monthly' ? new Date(year, month-1, 15) : new Date(year, 6, 1);
+}
+function periodKey(a) {
+  return period === 'monthly'
+    ? `${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}`
+    : `${a.prfYear}`;
+}
+function isValidRow(a) {
+  return period === 'monthly' ? a.prfMonth > 0 : a.prfMonth === 0;
+}
+function days(a) {
+  return period === 'monthly' ? daysInMonth(a.prfYear, a.prfMonth) : daysInYear(a.prfYear);
+}
+function oeBoed(oeMillSm3, d) { return (oeMillSm3 * 1e6 * BBL_PER_SM3) / d / 1000; }
+function oilBoed(oilMillSm3, gasBillSm3, oeMillSm3, d) {
+  const gasBoe  = (gasBillSm3 * 1e6 * BBL_PER_SM3) / d / 1000;
+  const totBoe  = oeBoed(oeMillSm3, d);
+  return Math.max(0, totBoe - gasBoe);
+}
+function gasBoed(gasBillSm3, d) { return (gasBillSm3 * 1e6 * BBL_PER_SM3) / d / 1000; }
+function waterBoed(watMillSm3, d) { return (watMillSm3 * 1e6 * BBL_PER_SM3) / d / 1000; }
+
+function getShare(fieldId, date, companyName) {
+  if (!companyName) return 100;
+  const records = fieldLicCache[fieldId] || [];
+  const ts = date.getTime();
+  const match = records.find(r => {
+    if (r.cmpLongName !== companyName) return false;
+    if (r.fldLicenseeFrom !== null && ts < r.fldLicenseeFrom) return false;
+    if (r.fldLicenseeTo   !== null && ts > r.fldLicenseeTo)   return false;
+    return true;
+  });
+  return match ? (match.fldCompanyShare || 0) : 0;
+}
+
+function hasAnyValue(arr) { return arr.some(v => v > 0); }
+
+function unionLabels(fieldIds) {
+  const s = new Set();
+  fieldIds.forEach(id => {
+    (fieldProdCache[id] || []).forEach((f) => {
+      if (isValidRow(f.attributes)) s.add(periodKey(f.attributes));
+    });
+  });
+  return [...s].sort();
+}
+
+// ── DATA LOADING ─────────────────────────────────────────────────────────────
+async function loadFields() {
+  const features = await queryLayer(FIELD_LAYER, {
+    outFields:'fldNpdidField,fldName', orderByFields:'fldName ASC', resultRecordCount:500
+  });
+  allFields = features
+    .map(f => ({id:f.attributes.fldNpdidField, name:f.attributes.fldName}))
+    .sort((a,b) => a.name.localeCompare(b.name,'en'));
+  filteredFields = allFields;
+  // Default: JOHAN SVERDRUP
+  const js = allFields.find(f => f.name === 'JOHAN SVERDRUP');
+  if (js) selectedFieldIds.add(js.id);
+  document.getElementById('listSearch').disabled = false;
+}
+
+async function loadProdForFields(ids) {
+  const fy = +document.getElementById('yearFrom').value;
+  const ty = +document.getElementById('yearTo').value;
+  const toFetch = ids.filter(id => fieldProdCache[id] === undefined || fieldProdCache[id] === null);
+  if (!toFetch.length) return;
+  const BATCH = 5;
+  for (let i = 0; i < toFetch.length; i += BATCH) {
+    const batch = toFetch.slice(i, i + BATCH);
+    await Promise.all(batch.map(async id => {
+      try {
+        fieldProdCache[id] = await queryLayer(PROD_LAYER, {
+          where: `prfNpdidInformationCarrier=${id} AND prfYear>=${fy} AND prfYear<=${ty}`,
+          outFields: 'prfNpdidInformationCarrier,prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdProducedWaterInFieldMillS',
+          resultRecordCount: 32000
+        });
+      } catch(e) {
+        fieldProdCache[id] = null;
+      }
+    }));
+    if (i + BATCH < toFetch.length) await new Promise(r => setTimeout(r, 150));
+  }
+}
+
+async function loadLicForFields(ids) {
+  const toLoad = ids.filter(id => !licLoadedFor.has(id));
+  await Promise.all(toLoad.map(async id => {
+    try {
+      fieldLicCache[id] = [];
+      let offset = 0;
+      while (true) {
+        const rows = await queryLayer(LIC_LAYER, {
+          where:`fldNpdidField=${id}`,
+          outFields:'cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',
+          resultRecordCount:2000, resultOffset:offset
+        });
+        fieldLicCache[id] = fieldLicCache[id].concat(rows.map(r=>r.attributes));
+        if (rows.length < 2000) break;
+        offset += 2000;
+      }
+    } catch(e) { fieldLicCache[id] = []; }
+    licLoadedFor.add(id);
+  }));
+}
+
+let allLicPromise = null;
+async function loadAllLicensees() {
+  if (allLicLoaded) return;
+  if (allLicPromise) return allLicPromise;
+  allLicLoading = true;
+  allLicPromise = (async () => {
+  document.getElementById('cmpLoadingNotice').classList.add('visible');
+  try {
+    allLicRecords = [];
+    let offset = 0;
+    while (true) {
+      const rows = await queryLayer(LIC_LAYER, {
+        where:'1=1',
+        outFields:'fldNpdidField,cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',
+        resultRecordCount:2000, resultOffset:offset
+      });
+      rows.forEach(r => {
+        const a = r.attributes;
+        allLicRecords.push(a);
+        if (!fieldLicCache[a.fldNpdidField]) fieldLicCache[a.fldNpdidField] = [];
+        if (!licLoadedFor.has(a.fldNpdidField)) fieldLicCache[a.fldNpdidField].push(a);
+      });
+      if (rows.length < 2000) break;
+      offset += 2000;
+    }
+    allLicRecords.forEach(r => licLoadedFor.add(r.fldNpdidField));
+    const s = new Set(allLicRecords.map(r=>r.cmpLongName).filter(Boolean));
+    allCompanies = [...s].sort((a,b) => a.localeCompare(b,'en'));
+    filteredCompanies = allCompanies;
+    allLicLoaded = true;
+  } finally {
+    allLicLoading = false;
+    document.getElementById('cmpLoadingNotice').classList.remove('visible');
+  }
+  })();
+  return allLicPromise;
+}
+
+// ── VIEW TABS ────────────────────────────────────────────────────────────────
+const FIELD_TABS   = [
+  {id:'oilgas',        label:'Oil & Gas'},
+  {id:'oe_per_field',  label:'OE per field'},
+  {id:'oe_per_company',label:'OE per company'},
+];
+const COMPANY_TABS = [
+  {id:'oilgas',       label:'Oil & Gas'},
+  {id:'oe_per_field', label:'OE per field'},
+];
+
+function renderViewTabs() {
+  const tabs = topMode === 'fields' ? FIELD_TABS : COMPANY_TABS;
+  const cur  = topMode === 'fields' ? fieldSubView : companySubView;
+  document.getElementById('viewTabs').innerHTML = tabs.map(t =>
+    `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
+  ).join('');
+  // Water toggle: only in fields mode + oilgas view
+  const showWaterRow = topMode === 'fields' && cur === 'oilgas';
+  document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
+}
+
+function setSubView(v) {
+  if (topMode === 'fields') fieldSubView = v;
+  else companySubView = v;
+  renderViewTabs();
+  refresh();
+}
+
+function setWater(val) { showWater = val; drawChart(); }
+function setPeriod(p) {
+  if (period === p) return;
+  period = p;
+  document.getElementById('btnMonthly').classList.toggle('active', p === 'monthly');
+  document.getElementById('btnAnnual').classList.toggle('active',  p === 'annual');
+  refresh();
+}
+
+// ── MODE SWITCH ───────────────────────────────────────────────────────────────
+function switchMode(m) {
+  if (topMode === m) return;
+  topMode = m;
+  document.getElementById('modeBtnFields').classList.toggle('active', m === 'fields');
+  document.getElementById('modeBtnCompanies').classList.toggle('active', m === 'companies');
+  renderViewTabs();
+  updateFab();
+  refresh();
+}
+
+// ── FAB + SHEET ───────────────────────────────────────────────────────────────
+function updateFab() {
+  const count = topMode === 'fields' ? selectedFieldIds.size : selectedCompanyNames.size;
+  document.getElementById('fabBadge').textContent = count;
+  const noun = topMode === 'fields' ? 'field' : 'company';
+  const nounP = topMode === 'fields' ? 'fields' : 'companies';
+  document.getElementById('fabLabel').textContent =
+    count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
+  document.getElementById('sheetTitle').textContent =
+    `Select ${topMode === 'fields' ? 'fields' : 'companies'}`;
+}
+
+function toggleSheet() { sheetOpen ? closeSheet() : openSheet(); }
+function openSheet() {
+  sheetOpen = true;
+  document.getElementById('bottomSheet').classList.add('open');
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderList();
+}
+function closeSheet() {
+  sheetOpen = false;
+  document.getElementById('bottomSheet').classList.remove('open');
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── LIST ─────────────────────────────────────────────────────────────────────
+function renderList() {
+  if (topMode === 'fields') renderFieldList();
+  else renderCompanyList();
+}
+
+function renderFieldList() {
+  const el = document.getElementById('checkList');
+  if (!filteredFields.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
+  el.innerHTML = '';
+  filteredFields.forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'check-item' + (selectedFieldIds.has(f.id) ? ' checked' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selectedFieldIds.has(f.id);
+    cb.addEventListener('change', () => toggleField(f.id, item, cb));
+    item.appendChild(cb);
+    item.appendChild(document.createTextNode(f.name));
+    item.addEventListener('click', e => { if (e.target !== cb) cb.click(); });
+    el.appendChild(item);
+  });
+}
+
+function renderCompanyList() {
+  const el = document.getElementById('checkList');
+  if (!filteredCompanies.length) {
+    el.innerHTML = allLicLoading
+      ? '<div class="list-loading">Loading…</div>'
+      : '<div class="list-empty">No results</div>';
+    return;
+  }
+  el.innerHTML = '';
+  filteredCompanies.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'check-item' + (selectedCompanyNames.has(name) ? ' checked' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selectedCompanyNames.has(name);
+    cb.addEventListener('change', () => toggleCompany(name, item, cb));
+    item.appendChild(cb);
+    item.appendChild(document.createTextNode(name));
+    item.addEventListener('click', e => { if (e.target !== cb) cb.click(); });
+    el.appendChild(item);
+  });
+}
+
+function toggleField(id, item, cb) {
+  if (selectedFieldIds.has(id)) { selectedFieldIds.delete(id); delete fieldProdCache[id]; }
+  else selectedFieldIds.add(id);
+  cb.checked = selectedFieldIds.has(id);
+  item.classList.toggle('checked', selectedFieldIds.has(id));
+  updateFab();
+  refresh();
+}
+
+function toggleCompany(name, item, cb) {
+  if (selectedCompanyNames.has(name)) selectedCompanyNames.delete(name);
+  else selectedCompanyNames.add(name);
+  cb.checked = selectedCompanyNames.has(name);
+  item.classList.toggle('checked', selectedCompanyNames.has(name));
+  updateFab();
+  refresh();
+}
+
+function filterList() {
+  const q = document.getElementById('listSearch').value.toLowerCase();
+  if (topMode === 'fields') { filteredFields = allFields.filter(f=>f.name.toLowerCase().includes(q)); renderFieldList(); }
+  else { filteredCompanies = allCompanies.filter(n=>n.toLowerCase().includes(q)); renderCompanyList(); }
+}
+
+function selectAll() {
+  if (topMode === 'fields') { filteredFields.forEach(f=>selectedFieldIds.add(f.id)); renderFieldList(); }
+  else { filteredCompanies.forEach(n=>selectedCompanyNames.add(n)); renderCompanyList(); }
+  updateFab(); refresh();
+}
+function clearAll() {
+  if (topMode === 'fields') { selectedFieldIds.clear(); fieldProdCache = {}; renderFieldList(); }
+  else { selectedCompanyNames.clear(); renderCompanyList(); }
+  updateFab(); refresh();
+}
+
+// ── MAIN REFRESH ─────────────────────────────────────────────────────────────
+async function refresh() {
+  if (topMode === 'fields') await refreshFields();
+  else await refreshCompanies();
+}
+
+async function refreshFields() {
+  const ids = [...selectedFieldIds];
+  if (!ids.length) {
+    setChartEmpty('Tap the button below to select one or more fields.');
+    setInfo(''); return;
+  }
+  showSpinner();
+  await loadProdForFields(ids);
+  if (fieldSubView === 'oe_per_company') await loadLicForFields(ids);
+  drawChart();
+}
+
+async function refreshCompanies() {
+  const companies = [...selectedCompanyNames];
+  if (!companies.length) {
+    setChartEmpty('Tap the button below to select one or more companies.');
+    setInfo(''); return;
+  }
+  if (!allLicLoaded) {
+    showSpinner();
+    await loadAllLicensees();
+    filteredCompanies = allCompanies;
+    if (sheetOpen) renderCompanyList();
+  }
+  // Find all fields for selected companies
+  const relevantIds = [...new Set(
+    allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField)
+  )];
+  // Clear failed/null cache entries so they get retried
+  relevantIds.forEach(id => { if (fieldProdCache[id] === null) delete fieldProdCache[id]; });
+  showSpinner();
+  await loadProdForFields(relevantIds);
+  drawChart();
+}
+
+// ── CHART DRAWING ─────────────────────────────────────────────────────────────
+function showSpinner() {
+  document.getElementById('chartArea').innerHTML =
+    '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+  document.getElementById('downloadBtn').disabled = true;
+}
+function setChartEmpty(msg) {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  document.getElementById('chartArea').innerHTML = `<div class="status">${msg}</div>`;
+  document.getElementById('downloadBtn').disabled = true;
+}
+
+function drawChart() {
+  if (topMode === 'fields') {
+    const sv = fieldSubView;
+    if (sv === 'oilgas')         drawFieldsOilGas();
+    else if (sv === 'oe_per_field')   drawFieldsOePerField();
+    else if (sv === 'oe_per_company') drawFieldsOePerCompany();
+  } else {
+    const sv = companySubView;
+    if (sv === 'oilgas')        drawCompaniesOilGas();
+    else if (sv === 'oe_per_field') drawCompaniesOePerField();
+  }
+}
+
+// ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
+function drawFieldsOilGas() {
+  const ids = [...selectedFieldIds];
+  const labels = unionLabels(ids);
+  if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
+
+  // If single field: oil, gas, (water) as separate series
+  // If multiple fields: oil and gas stacked per field
+  const datasets = [], legend = [];
+  lastDatasets = [];
+
+  if (ids.length === 1) {
+    const id = ids[0];
+    const fname = allFields.find(f=>f.id===id)?.name || '';
+    const oilD = [], gasD = [], watD = [];
+    labels.forEach(lbl => {
+      const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+      const a = row?.attributes || {};
+      const d = a.prfYear ? days(a) : 30;
+      oilD.push(+oilBoed(a.prfPrdOilNetMillSm3||0, a.prfPrdGasNetBillSm3||0, a.prfPrdOeNetMillSm3||0, d).toFixed(1));
+      gasD.push(+gasBoed(a.prfPrdGasNetBillSm3||0, d).toFixed(1));
+      watD.push(+waterBoed(a.prfPrdProducedWaterInFieldMillS||0, d).toFixed(1));
+    });
+    datasets.push({label:'Oil',   data:oilD, backgroundColor:OIL_COLOR,   borderWidth:0, stack:'s'});
+    datasets.push({label:'Gas',   data:gasD, backgroundColor:GAS_COLOR,   borderWidth:0, stack:'s'});
+    if (showWater) datasets.push({label:'Water', data:watD, backgroundColor:WATER_COLOR, borderWidth:0, stack:'s'});
+    legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
+    if (showWater) legend.push({label:'Water',color:WATER_COLOR});
+    lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
+    if (showWater) lastDatasets.push({label:'Water',data:watD});
+    setInfo(`<strong>Field:</strong> ${fname} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas${showWater?', Water':''} &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+  } else {
+    // Multiple fields: sum oil and gas across all fields per period
+    const oilD = labels.map(lbl => {
+      let tot = 0;
+      ids.forEach(id => {
+        const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a = row?.attributes||{}; const d = a.prfYear?days(a):30;
+        tot += oilBoed(a.prfPrdOilNetMillSm3||0,a.prfPrdGasNetBillSm3||0,a.prfPrdOeNetMillSm3||0,d);
+      });
+      return +tot.toFixed(1);
+    });
+    const gasD = labels.map(lbl => {
+      let tot = 0;
+      ids.forEach(id => {
+        const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a = row?.attributes||{}; const d = a.prfYear?days(a):30;
+        tot += gasBoed(a.prfPrdGasNetBillSm3||0,d);
+      });
+      return +tot.toFixed(1);
+    });
+    const watD = showWater ? labels.map(lbl => {
+      let tot = 0;
+      ids.forEach(id => {
+        const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a = row?.attributes||{}; const d = a.prfYear?days(a):30;
+        tot += waterBoed(a.prfPrdProducedWaterInFieldMillS||0,d);
+      });
+      return +tot.toFixed(1);
+    }) : [];
+    datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
+    datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
+    if (showWater) datasets.push({label:'Water',data:watD,backgroundColor:WATER_COLOR,borderWidth:0,stack:'s'});
+    legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
+    if (showWater) legend.push({label:'Water',color:WATER_COLOR});
+    lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
+    if (showWater) lastDatasets.push({label:'Water',data:watD});
+    const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
+    setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+  }
+
+  renderChart(labels, datasets, legend, 'kboe/day');
+}
+
+// ── FIELDS: OE PER FIELD ─────────────────────────────────────────────────────
+function drawFieldsOePerField() {
+  const ids = [...selectedFieldIds];
+  const labels = unionLabels(ids);
+  if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
+  const datasets = [], legend = [];
+  lastDatasets = [];
+  ids.forEach((id, i) => {
+    const fname = allFields.find(f=>f.id===id)?.name || id;
+    const color = PALETTE[i % PALETTE.length][0];
+    const d = labels.map(lbl => {
+      const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+      const a = row?.attributes||{}; const dy = a.prfYear?days(a):30;
+      return +oeBoed(a.prfPrdOeNetMillSm3||0, dy).toFixed(1);
+    });
+    if (!hasAnyValue(d)) return;
+    datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:fname,color});
+    lastDatasets.push({label:fname,data:d});
+  });
+  const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
+  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+  renderChart(labels, datasets, legend, 'kboe/day');
+}
+
+// ── FIELDS: OE PER COMPANY ────────────────────────────────────────────────────
+function drawFieldsOePerCompany() {
+  const ids = [...selectedFieldIds];
+  const labels = unionLabels(ids);
+  if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
+
+  // Collect all companies with share in any selected field
+  const cmpSet = new Set();
+  ids.forEach(id => (fieldLicCache[id]||[]).forEach(r => { if(r.cmpLongName) cmpSet.add(r.cmpLongName); }));
+  const companies = [...cmpSet].sort();
+
+  const datasets = [], legend = [];
+  lastDatasets = [];
+
+  companies.forEach((cmp, i) => {
+    const color = PALETTE[i % PALETTE.length][0];
+    const d = labels.map(lbl => {
+      let total = 0;
+      ids.forEach(id => {
+        const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a = row?.attributes||{}; if (!a.prfYear) return;
+        const dy = days(a);
+        const share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp) / 100;
+        total += oeBoed(a.prfPrdOeNetMillSm3||0, dy) * share;
+      });
+      return +total.toFixed(1);
+    });
+    if (!hasAnyValue(d)) return;
+    datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:cmp,color});
+    lastDatasets.push({label:cmp,data:d});
+  });
+
+  const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
+  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
+  renderChart(labels, datasets, legend, 'kboe/day');
+}
+
+// ── COMPANIES: OIL & GAS ──────────────────────────────────────────────────────
+function drawCompaniesOilGas() {
+  const companies = [...selectedCompanyNames];
+  const relevantIds = [...new Set(allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField))];
+  const labels = unionLabels(relevantIds);
+  if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
+
+  const datasets = [], legend = [];
+  lastDatasets = [];
+
+  if (companies.length === 1) {
+    const cmp = companies[0];
+    const cmpFields = [...new Set(allLicRecords.filter(r=>r.cmpLongName===cmp).map(r=>r.fldNpdidField))];
+    const oilD = labels.map(lbl => {
+      let tot = 0;
+      cmpFields.forEach(id => {
+        const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a = row?.attributes||{}; if (!a.prfYear) return;
+        const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
+        tot += oilBoed(a.prfPrdOilNetMillSm3||0,a.prfPrdGasNetBillSm3||0,a.prfPrdOeNetMillSm3||0,dy)*share;
+      });
+      return +tot.toFixed(1);
+    });
+    const gasD = labels.map(lbl => {
+      let tot = 0;
+      cmpFields.forEach(id => {
+        const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a = row?.attributes||{}; if (!a.prfYear) return;
+        const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
+        tot += gasBoed(a.prfPrdGasNetBillSm3||0,dy)*share;
+      });
+      return +tot.toFixed(1);
+    });
+    datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
+    datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
+    legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
+    lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
+    setInfo(`<strong>Company:</strong> ${cmp} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
+  } else {
+    // Multiple companies: one OE series per company
+    companies.forEach((cmp, i) => {
+      const cmpFields = [...new Set(allLicRecords.filter(r=>r.cmpLongName===cmp).map(r=>r.fldNpdidField))];
+      const color = PALETTE[i%PALETTE.length][0];
+      const d = labels.map(lbl => {
+        let tot = 0;
+        cmpFields.forEach(id => {
+          const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+          const a = row?.attributes||{}; if (!a.prfYear) return;
+          const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
+          tot += oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;
+        });
+        return +tot.toFixed(1);
+      });
+      if (!hasAnyValue(d)) return;
+      datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+      legend.push({label:cmp,color});
+      lastDatasets.push({label:cmp,data:d});
+    });
+    setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
+  }
+  renderChart(labels, datasets, legend, 'kboe/day');
+}
+
+// ── COMPANIES: OE PER FIELD ───────────────────────────────────────────────────
+function drawCompaniesOePerField() {
+  const companies = [...selectedCompanyNames];
+  const relevantIds = [...new Set(allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField))];
+  const labels = unionLabels(relevantIds);
+  if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
+
+  const datasets = [], legend = [];
+  lastDatasets = [];
+
+  relevantIds.forEach((id, i) => {
+    const fname = allFields.find(f=>f.id===id)?.name || `Field ${id}`;
+    const color = PALETTE[i%PALETTE.length][0];
+    const d = labels.map(lbl => {
+      let tot = 0;
+      companies.forEach(cmp => {
+        const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a = row?.attributes||{}; if (!a.prfYear) return;
+        const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
+        tot += oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;
+      });
+      return +tot.toFixed(1);
+    });
+    if (!hasAnyValue(d)) return;
+    datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:fname,color});
+    lastDatasets.push({label:fname,data:d});
+  });
+
+  const cmpStr = companies.join(', ');
+  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
+  renderChart(labels, datasets, legend, 'kboe/day');
+}
+
+// ── RENDER CHART ─────────────────────────────────────────────────────────────
+function renderChart(labels, datasets, legend, yTitle) {
+  lastLabels = labels;
+  document.getElementById('chartArea').innerHTML = `
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${legend.map(l=>`
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${l.color}"></div>${l.label}
+      </div>`).join('')}
+    </div>`;
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type:'bar', data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label: ctx => ` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('en')} ${yTitle}`,
+          footer: items => {
+            const tot = items.reduce((s,i)=>s+i.parsed.y,0);
+            return `Total: ${Math.round(tot).toLocaleString('en')} ${yTitle}`;
+          }
+        }}
+      },
+      scales:{
+        x:{stacked:true,ticks:{maxTicksLimit:period==='annual'?15:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{stacked:true,beginAtZero:true,title:{display:true,text:yTitle,color:'#4a5568',font:{size:10}},ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
+      }
+    }
+  });
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+// ── INFO BOX ─────────────────────────────────────────────────────────────────
+function setInfo(html) {
+  const box = document.getElementById('infoBox');
+  box.style.display = html ? '' : 'none';
+  box.innerHTML = html;
+}
+
+// ── EXCEL ─────────────────────────────────────────────────────────────────────
+async function downloadExcel() {
+  if (!lastLabels.length || !lastDatasets.length) return;
+
+  const fy = document.getElementById('yearFrom').value;
+  const ty = document.getElementById('yearTo').value;
+  const periodLabel = period==='monthly'?'Monthly':'Annual';
+  const infoText = document.getElementById('infoBox').innerText || '';
+  const filename = `NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`;
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'NCS Production Tool';
+  wb.created = new Date();
+
+  // ── Sheet 1: Info ──
+  const wsInfo = wb.addWorksheet('Info');
+  wsInfo.columns = [{width:24},{width:80}];
+  const titleRow = wsInfo.addRow(['NCS Production Export']);
+  titleRow.getCell(1).font = {bold:true, size:14};
+  wsInfo.addRow([]);
+  wsInfo.addRow(['Generated', new Date().toLocaleString()]);
+  wsInfo.addRow(['Period type', periodLabel]);
+  wsInfo.addRow(['Year range', `${fy} – ${ty}`]);
+  wsInfo.addRow([]);
+  wsInfo.addRow(['Data description']).getCell(1).font = {bold:true};
+  wsInfo.addRow([infoText]);
+  wsInfo.addRow([]);
+  wsInfo.addRow(['Source']).getCell(1).font = {bold:true};
+  const srcRow = wsInfo.addRow(['Norwegian Offshore Directorate (Sodir) FactPages – https://factpages.sodir.no – License: NLOD 2.0']);
+  srcRow.getCell(1).font = {color:{argb:'FF0071B8'}};
+
+  // ── Sheet 2: Data ──
+  const wsData = wb.addWorksheet('Data');
+  const header = [period==='monthly'?'Period':'Year', ...lastDatasets.map(d=>d.label)];
+  wsData.columns = header.map((h,i) => ({header:h, width:i===0?12:20}));
+  wsData.getRow(1).font = {bold:true};
+  wsData.getRow(1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}};
+  lastLabels.forEach((lbl,i) => {
+    const row = wsData.addRow([lbl, ...lastDatasets.map(d => d.data[i] ?? 0)]);
+    if (i % 2 === 1) row.eachCell(cell => {
+      cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF7F9FC'}};
+    });
+  });
+
+  // ── Download ──
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── STARTUP ───────────────────────────────────────────────────────────────────
+async function init() {
+  renderViewTabs();
+  updateFab();
+  setInfo('');
+
+  await loadFields();
+  updateFab();
+  await loadAllLicensees();
+  filteredCompanies = allCompanies;
+  selectedCompanyNames.add('Aker BP ASA');
+  updateFab();
+  refresh();
+}
+
+init();
+</script>
+</body>
+</html>
