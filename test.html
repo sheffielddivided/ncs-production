@@ -265,7 +265,7 @@ const currentYear = new Date().getFullYear();
   const sel = document.getElementById(id);
   for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
   sel.addEventListener('change', () => {
-    fieldProdCache = {};
+    fieldProdCache = {};  // reset so all ids become undefined
     refresh();
   });
 });
@@ -328,7 +328,7 @@ function hasAnyValue(arr) { return arr.some(v => v > 0); }
 function unionLabels(fieldIds) {
   const s = new Set();
   fieldIds.forEach(id => {
-    (fieldProdCache[id] || []).forEach(f => {
+    (fieldProdCache[id] || []).forEach((f) => {
       if (isValidRow(f.attributes)) s.add(periodKey(f.attributes));
     });
   });
@@ -353,7 +353,7 @@ async function loadFields() {
 async function loadProdForFields(ids) {
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
-  const toFetch = ids.filter(id => !fieldProdCache[id]);
+  const toFetch = ids.filter(id => fieldProdCache[id] === undefined || fieldProdCache[id] === null);
   if (!toFetch.length) return;
   // Sequential fetching with small delay to avoid rate limiting
   for (const id of toFetch) {
@@ -365,7 +365,7 @@ async function loadProdForFields(ids) {
         resultRecordCount: 2000
       });
     } catch(e) {
-      fieldProdCache[id] = [];
+      fieldProdCache[id] = null;
     }
     await new Promise(r => setTimeout(r, 100));
   }
@@ -622,6 +622,8 @@ async function refreshCompanies() {
   const relevantIds = [...new Set(
     allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField)
   )];
+  // Clear failed/null cache entries so they get retried
+  relevantIds.forEach(id => { if (fieldProdCache[id] === null) delete fieldProdCache[id]; });
   showSpinner();
   await loadProdForFields(relevantIds);
   drawChart();
@@ -777,7 +779,14 @@ function drawFieldsOePerCompany() {
 function drawCompaniesOilGas() {
   const companies = [...selectedCompanyNames];
   const relevantIds = [...new Set(allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField))];
+  const cachedIds = relevantIds.filter(id => fieldProdCache[id] && fieldProdCache[id].length > 0);
+  console.log('[draw] relevantIds:', relevantIds.length, 'with data:', cachedIds.length);
+  if (cachedIds.length > 0) {
+    const s = fieldProdCache[cachedIds[0]][0]?.attributes;
+    console.log('[draw] sample row:', JSON.stringify(s));
+  }
   const labels = unionLabels(relevantIds);
+  console.log('[draw] labels:', labels.length, labels.slice(0,3));
   if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
 
   const datasets = [], legend = [];
