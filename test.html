@@ -264,7 +264,10 @@ const currentYear = new Date().getFullYear();
 ['yearFrom','yearTo'].forEach(id => {
   const sel = document.getElementById(id);
   for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
-  sel.addEventListener('change', () => { fieldProdCache = {}; refresh(); });
+  sel.addEventListener('change', () => {
+    // ensureAllProd will detect year change and invalidate cache automatically
+    refresh();
+  });
 });
 document.getElementById('yearFrom').value = 2024;
 document.getElementById('yearTo').value   = currentYear;
@@ -275,7 +278,7 @@ const daysInYear  = y => (y%4===0&&(y%100!==0||y%400===0))?366:365;
 
 async function queryLayer(layerId, params) {
   const url = new URL(`${BASE}/${layerId}/query`);
-  const p = {f:'json',outFields:'*',where:'1=1',resultRecordCount:32000,...params};
+  const p = {f:'json',outFields:'*',where:'1=1',resultRecordCount:2000,...params};
   Object.entries(p).forEach(([k,v]) => url.searchParams.set(k,v));
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -347,21 +350,60 @@ async function loadFields() {
   document.getElementById('listSearch').disabled = false;
 }
 
-async function loadProdForFields(ids) {
+// Global production cache: all rows keyed by year range "fy-ty"
+let allProdRows   = [];   // all fetched rows
+let allProdLoaded = false;
+let allProdLoading = false;
+let allProdPromise = null;
+let loadedFy = null, loadedTy = null;
+
+async function ensureAllProd() {
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
-  const toFetch = ids.filter(id => !fieldProdCache[id]);
-  console.log('[loadProd] need to fetch', toFetch.length, 'of', ids.length, 'fields');
-  if (!toFetch.length) return;
-  await Promise.all(toFetch.map(async id => {
-    try {
-      fieldProdCache[id] = await queryLayer(PROD_LAYER, {
-        where: `prfNpdidInformationCarrier=${id} AND prfInformationCarrierKind='FIELD' AND prfYear>=${fy} AND prfYear<=${ty}`,
-        outFields: 'prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdWatNetMillSm3',
-        orderByFields: 'prfYear ASC, prfMonth ASC'
+  // If year range changed, invalidate cache
+  if (allProdLoaded && (fy !== loadedFy || ty !== loadedTy)) {
+    allProdLoaded = false;
+    allProdPromise = null;
+    allProdRows = [];
+    fieldProdCache = {};
+  }
+  if (allProdLoaded) return;
+  if (allProdPromise) return allProdPromise;
+
+  allProdPromise = (async () => {
+    allProdLoading = true;
+    allProdRows = [];
+    let offset = 0;
+    while (true) {
+      const rows = await queryLayer(PROD_LAYER, {
+        where: `prfYear>=${fy} AND prfYear<=${ty} AND prfInformationCarrierKind='FIELD'`,
+        outFields: 'prfNpdidInformationCarrier,prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdWatNetMillSm3',
+        resultRecordCount: 2000,
+        resultOffset: offset
       });
-    } catch(e) { fieldProdCache[id] = []; }
-  }));
+      allProdRows = allProdRows.concat(rows);
+      if (rows.length < 2000) break;
+      offset += 2000;
+    }
+    // Distribute into fieldProdCache
+    fieldProdCache = {};
+    allProdRows.forEach(r => {
+      const id = r.attributes.prfNpdidInformationCarrier;
+      if (!fieldProdCache[id]) fieldProdCache[id] = [];
+      fieldProdCache[id].push(r);
+    });
+    loadedFy = fy; loadedTy = ty;
+    allProdLoaded = true;
+    allProdLoading = false;
+  })();
+  return allProdPromise;
+}
+
+async function loadProdForFields(ids) {
+  await ensureAllProd();
+  // fieldProdCache is already populated for all fields
+  // ensure requested ids have at least an empty array
+  ids.forEach(id => { if (!fieldProdCache[id]) fieldProdCache[id] = []; });
 }
 
 async function loadLicForFields(ids) {
@@ -458,7 +500,6 @@ function setPeriod(p) {
   period = p;
   document.getElementById('btnMonthly').classList.toggle('active', p === 'monthly');
   document.getElementById('btnAnnual').classList.toggle('active',  p === 'annual');
-  fieldProdCache = {};
   refresh();
 }
 
@@ -602,7 +643,6 @@ async function refreshFields() {
 
 async function refreshCompanies() {
   const companies = [...selectedCompanyNames];
-  console.log('[refreshCompanies] companies:', companies, 'allLicLoaded:', allLicLoaded, 'records:', allLicRecords.length);
   if (!companies.length) {
     setChartEmpty('Tap the button below to select one or more companies.');
     setInfo(''); return;
@@ -926,22 +966,16 @@ function downloadExcel() {
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
 async function init() {
-  console.log('[init] start');
   renderViewTabs();
   updateFab();
   setInfo('');
 
   await loadFields();
-  console.log('[init] fields loaded:', allFields.length);
   updateFab();
-
-  console.log('[init] loading all licensees...');
   await loadAllLicensees();
-  console.log('[init] licensees loaded:', allLicRecords.length, 'companies:', allCompanies.length);
   filteredCompanies = allCompanies;
   selectedCompanyNames.add('Aker BP ASA');
   updateFab();
-  console.log('[init] calling refresh, topMode=', topMode, 'selected companies:', [...selectedCompanyNames]);
   refresh();
 }
 
