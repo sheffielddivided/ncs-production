@@ -351,6 +351,7 @@ async function loadProdForFields(ids) {
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
   const toFetch = ids.filter(id => !fieldProdCache[id]);
+  console.log('[loadProd] need to fetch', toFetch.length, 'of', ids.length, 'fields');
   if (!toFetch.length) return;
   await Promise.all(toFetch.map(async id => {
     try {
@@ -384,9 +385,12 @@ async function loadLicForFields(ids) {
   }));
 }
 
+let allLicPromise = null;
 async function loadAllLicensees() {
-  if (allLicLoaded || allLicLoading) return;
+  if (allLicLoaded) return;
+  if (allLicPromise) return allLicPromise;
   allLicLoading = true;
+  allLicPromise = (async () => {
   document.getElementById('cmpLoadingNotice').classList.add('visible');
   try {
     allLicRecords = [];
@@ -415,6 +419,8 @@ async function loadAllLicensees() {
     allLicLoading = false;
     document.getElementById('cmpLoadingNotice').classList.remove('visible');
   }
+  })();
+  return allLicPromise;
 }
 
 // ── VIEW TABS ────────────────────────────────────────────────────────────────
@@ -596,6 +602,7 @@ async function refreshFields() {
 
 async function refreshCompanies() {
   const companies = [...selectedCompanyNames];
+  console.log('[refreshCompanies] companies:', companies, 'allLicLoaded:', allLicLoaded, 'records:', allLicRecords.length);
   if (!companies.length) {
     setChartEmpty('Tap the button below to select one or more companies.');
     setInfo(''); return;
@@ -919,24 +926,22 @@ function downloadExcel() {
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
 async function init() {
+  console.log('[init] start');
   renderViewTabs();
   updateFab();
   setInfo('');
 
   await loadFields();
+  console.log('[init] fields loaded:', allFields.length);
   updateFab();
 
-  // Load companies in background
-  loadAllLicensees().then(() => {
-    filteredCompanies = allCompanies;
-    if (sheetOpen && topMode === 'companies') renderCompanyList();
-    // Default company selection: Aker BP ASA
-    selectedCompanyNames.add('Aker BP ASA');
-    updateFab();
-    if (topMode === 'companies') refresh();
-  });
-
-  // Initial chart: companies mode (default)
+  console.log('[init] loading all licensees...');
+  await loadAllLicensees();
+  console.log('[init] licensees loaded:', allLicRecords.length, 'companies:', allCompanies.length);
+  filteredCompanies = allCompanies;
+  selectedCompanyNames.add('Aker BP ASA');
+  updateFab();
+  console.log('[init] calling refresh, topMode=', topMode, 'selected companies:', [...selectedCompanyNames]);
   refresh();
 }
 
