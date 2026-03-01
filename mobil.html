@@ -8,8 +8,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
   <style>
     :root {
-      --bg:#f4f6f9; --card:#fff; --navy:#003057; --blue:#0071b8;
-      --border:#d1d9e6; --muted:#6b7a90; --light:#f0f4f8; --green:#1a7a40;
+      --bg:#f1f1f1; --card:#fff;
+      --navy:#7d2248;        /* mørk magenta - topbar, primær UI */
+      --blue:#ce0f69;        /* magenta - aktive elementer */
+      --border:#d5d5d5;      /* grå 20% */
+      --muted:#828282;       /* grå 60% */
+      --light:#f5cfe1;       /* magenta 20% - bakgrunnsflater */
+      --green:#00b373;       /* sekundær grønn - download */
     }
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     html,body{height:100%;}
@@ -19,9 +24,9 @@
     .topbar{background:var(--navy);color:#fff;padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;}
     .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;}
     .topbar-sub{font-size:0.7rem;opacity:0.65;margin-top:1px;}
-    .mode-switcher{display:flex;background:rgba(255,255,255,0.15);border-radius:8px;padding:3px;gap:2px;flex-shrink:0;}
-    .mode-btn{padding:6px 12px;border:none;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer;background:none;color:rgba(255,255,255,0.7);transition:all 0.15s;}
-    .mode-btn.active{background:#fff;color:var(--navy);}
+    .mode-switcher{display:flex;background:var(--light);border-radius:8px;padding:3px;gap:2px;}
+    .mode-btn{padding:6px 14px;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;background:none;color:var(--muted);transition:all 0.15s;letter-spacing:0.01em;}
+    .mode-btn.active{background:var(--blue);color:#fff;}
 
     /* CONTROLS BAR */
     .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
@@ -32,13 +37,13 @@
     .pill-group{display:flex;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;}
     .pill-btn{padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;}
     .pill-btn:not(:last-child){border-right:1.5px solid var(--border);}
-    .pill-btn.active{background:var(--navy);color:#fff;}
+    .pill-btn.active{background:var(--blue);color:#fff;}
     .ctrl-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
 
     /* VIEW SUB-TABS */
     .view-tabs{display:flex;gap:6px;flex-wrap:wrap;}
     .view-tab{padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:0.72rem;font-weight:600;color:var(--muted);background:#fff;cursor:pointer;white-space:nowrap;}
-    .view-tab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+    .view-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
 
     /* WATER TOGGLE */
     .water-row{display:flex;align-items:center;gap:8px;}
@@ -51,13 +56,15 @@
     .water-label{font-size:0.72rem;color:var(--muted);}
 
     /* SELECT FAB */
-    .select-fab{position:fixed;bottom:24px;right:16px;z-index:40;background:var(--navy);color:#fff;border:none;border-radius:28px;padding:13px 20px;font-size:0.88rem;font-weight:600;box-shadow:0 4px 16px rgba(0,48,87,0.35);cursor:pointer;display:flex;align-items:center;gap:8px;transition:transform 0.15s;}
+    .select-fab{position:fixed;bottom:24px;right:16px;z-index:40;background:var(--blue);color:#fff;border:none;border-radius:28px;padding:13px 20px;font-size:0.88rem;font-weight:600;box-shadow:0 4px 16px rgba(0,48,87,0.35);cursor:pointer;display:flex;align-items:center;gap:8px;transition:transform 0.15s;}
     .select-fab:active{transform:scale(0.96);}
     .fab-badge{background:#e36b2f;color:#fff;border-radius:10px;font-size:0.72rem;font-weight:700;padding:1px 7px;min-width:20px;text-align:center;}
 
     /* CHART */
     .chart-wrap{padding:12px 12px 4px;}
     .chart-card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 10px 10px;}
+    .chart-title{font-size:0.85rem;font-weight:700;color:var(--navy);padding:2px 2px 8px;line-height:1.3;min-height:1.2em;}
+    .chart-title .ct-sub{font-weight:400;color:var(--muted);font-size:0.78rem;display:block;margin-top:2px;}
     .chart-container{position:relative;height:300px;}
     .status{text-align:center;padding:60px 20px;color:var(--muted);font-size:0.9rem;}
     .status .spinner{display:inline-block;width:30px;height:30px;border:3px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;}
@@ -67,7 +74,7 @@
     .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 
     /* INFO BOX */
-    .info-box{margin:0 12px 8px;background:#f7f9fc;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:0.72rem;color:var(--muted);line-height:1.5;}
+    .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
     .info-box strong{color:#1a2332;}
 
     /* DOWNLOAD */
@@ -85,7 +92,7 @@
     .bottom-sheet.open{transform:translateY(0);}
     .sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;flex-shrink:0;}
     .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;flex-shrink:0;border-bottom:1px solid var(--border);}
-    .sheet-header h3{font-size:1rem;font-weight:700;color:var(--navy);}
+    .sheet-header h3{font-size:1rem;font-weight:700;color:var(--blue);}
     .sheet-close{width:30px;height:30px;border-radius:50%;border:none;background:var(--light);color:var(--muted);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
     .sheet-search{margin:10px 16px 0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;color:#1a2332;outline:none;flex-shrink:0;}
     .sheet-search:focus{border-color:var(--blue);}
@@ -95,8 +102,8 @@
     .sheet-list{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;}
     .check-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f3f7;font-size:0.9rem;cursor:pointer;user-select:none;}
     .check-item:last-child{border-bottom:none;}
-    .check-item.checked{background:#eef4fb;font-weight:500;color:var(--navy);}
-    .check-item input[type=checkbox]{accent-color:var(--navy);width:17px;height:17px;flex-shrink:0;}
+    .check-item.checked{background:var(--light);font-weight:500;color:var(--navy);}
+    .check-item input[type=checkbox]{accent-color:var(--blue);width:17px;height:17px;flex-shrink:0;}
     .list-empty{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
     .list-loading{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
     .cmp-loading-notice{padding:0 16px 8px;font-size:0.75rem;color:var(--muted);display:none;flex-shrink:0;}
@@ -110,16 +117,19 @@
 <div class="topbar">
   <div>
     <div class="topbar-title">NCS Production</div>
-    <div class="topbar-sub">Norwegian Continental Shelf</div>
-  </div>
-  <div class="mode-switcher">
-    <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
-    <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
+    <div class="topbar-sub">Norwegian Continental Shelf · Sodir FactPages</div>
   </div>
 </div>
 
 <!-- CONTROLS BAR -->
 <div class="controls-bar">
+  <!-- Row 0: Mode -->
+  <div class="ctrl-row">
+    <div class="mode-switcher">
+      <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
+      <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
+    </div>
+  </div>
   <!-- Row 1: Years + Period -->
   <div class="ctrl-row">
     <div class="year-row">
@@ -155,6 +165,7 @@
 <!-- CHART -->
 <div class="chart-wrap">
   <div class="chart-card">
+    <div id="chartTitle" class="chart-title"></div>
     <div id="chartArea">
       <div class="status"><div class="spinner"></div><div>Loading…</div></div>
     </div>
@@ -208,23 +219,25 @@ const BASE        = 'https://factmaps.sodir.no/api/rest/services/DataService/Dat
 const FIELD_LAYER = 7100;
 const PROD_LAYER  = 7300;
 const LIC_LAYER   = 7108;
+const RES_LAYER   = 7114; // Field - Reserves - company
 const BBL_PER_SM3 = 6.29;
 
+// Aker BP brand palette: magenta primary, orange+green secondary, support colors
 const PALETTE = [
-  ['rgba(26,111,175,0.85)','rgba(26,111,175,0.45)'],
-  ['rgba(220,80,50,0.85)', 'rgba(220,80,50,0.45)'],
-  ['rgba(40,160,100,0.85)','rgba(40,160,100,0.45)'],
-  ['rgba(160,90,200,0.85)','rgba(160,90,200,0.45)'],
-  ['rgba(230,150,20,0.85)','rgba(230,150,20,0.45)'],
-  ['rgba(0,180,200,0.85)', 'rgba(0,180,200,0.45)'],
-  ['rgba(180,50,120,0.85)','rgba(180,50,120,0.45)'],
-  ['rgba(100,140,50,0.85)','rgba(100,140,50,0.45)'],
-  ['rgba(80,120,200,0.85)','rgba(80,120,200,0.45)'],
-  ['rgba(200,100,30,0.85)','rgba(200,100,30,0.45)'],
+  ['rgba(206,15,105,0.85)', 'rgba(206,15,105,0.45)'],  // magenta
+  ['rgba(246,141,46,0.85)', 'rgba(246,141,46,0.45)'],  // oransje
+  ['rgba(0,179,115,0.85)',  'rgba(0,179,115,0.45)'],   // grønn
+  ['rgba(73,147,180,0.85)', 'rgba(73,147,180,0.45)'],  // blå støtte
+  ['rgba(209,79,78,0.85)',  'rgba(209,79,78,0.45)'],   // rød støtte
+  ['rgba(232,201,66,0.85)', 'rgba(232,201,66,0.45)'],  // gul støtte
+  ['rgba(125,34,72,0.85)',  'rgba(125,34,72,0.45)'],   // mørk magenta
+  ['rgba(213,51,128,0.85)', 'rgba(213,51,128,0.45)'],  // magenta 85%
+  ['rgba(221,87,150,0.85)', 'rgba(221,87,150,0.45)'],  // magenta 70%
+  ['rgba(231,135,180,0.85)','rgba(231,135,180,0.45)'], // magenta 50%
 ];
-const OIL_COLOR   = 'rgba(26,111,175,0.85)';
-const GAS_COLOR   = 'rgba(220,80,50,0.55)';
-const WATER_COLOR = 'rgba(100,180,220,0.7)';
+const OIL_COLOR   = 'rgba(206,15,105,0.85)';   // magenta
+const GAS_COLOR   = 'rgba(246,141,46,0.75)';   // oransje
+const WATER_COLOR = 'rgba(73,147,180,0.75)';   // blå støtte
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let topMode    = 'companies'; // 'fields' | 'companies'
@@ -248,6 +261,8 @@ let selectedCompanyNames = new Set();
 
 // Caches
 let fieldProdCache  = {}; // id → features[]
+let companyReserves = {}; // cmpLongName → total OE reserves (mill Sm3)
+let reservesLoaded  = false;
 let fieldLicCache   = {}; // id → licensee records[]
 let licLoadedFor    = new Set();
 let allLicRecords   = [];
@@ -301,17 +316,37 @@ function isValidRow(a) {
 function days(a) {
   return period === 'monthly' ? daysInMonth(a.prfYear, a.prfMonth) : daysInYear(a.prfYear);
 }
-function oeBoed(oeMillSm3, d) { return (oeMillSm3 * 1e6 * BBL_PER_SM3) / d / 1000; }
+function oeBoed(oeMillSm3, d) { return (oeMillSm3 * 1e6 * BBL_PER_SM3) / d; }
 function oilBoed(oilMillSm3, gasBillSm3, oeMillSm3, d) {
-  const gasBoe  = (gasBillSm3 * 1e6 * BBL_PER_SM3) / d / 1000;
+  const gasBoe  = (gasBillSm3 * 1e6 * BBL_PER_SM3) / d;
   const totBoe  = oeBoed(oeMillSm3, d);
   return Math.max(0, totBoe - gasBoe);
 }
-function gasBoed(gasBillSm3, d) { return (gasBillSm3 * 1e6 * BBL_PER_SM3) / d / 1000; }
-function waterBoed(watMillSm3, d) { return (watMillSm3 * 1e6 * BBL_PER_SM3) / d / 1000; }
+function gasBoed(gasBillSm3, d) { return (gasBillSm3 * 1e6 * BBL_PER_SM3) / d; }
+function waterBoed(watMillSm3, d) { return (watMillSm3 * 1e6 * BBL_PER_SM3) / d; }
+
+// Hardcoded ownership for trial production fields not in licensee registry
+const TRIAL_PROD_OWNERSHIP = {
+  17196400: { // 16/1-12 TROLDHAUGEN - PL338C
+    'Aker BP ASA':    80.0,
+    'OMV (Norge) AS': 20.0,
+  },
+};
+
+function getFieldsForCompany(cmpName) {
+  const fromLic = [...new Set(allLicRecords.filter(r=>r.cmpLongName===cmpName).map(r=>r.fldNpdidField))];
+  const fromTrial = Object.entries(TRIAL_PROD_OWNERSHIP)
+    .filter(([,owners]) => (owners[cmpName]||0) > 0)
+    .map(([id]) => +id);
+  return [...new Set([...fromLic, ...fromTrial])];
+}
 
 function getShare(fieldId, date, companyName) {
   if (!companyName) return 100;
+  // Check hardcoded trial production ownership first
+  if (TRIAL_PROD_OWNERSHIP[fieldId]) {
+    return TRIAL_PROD_OWNERSHIP[fieldId][companyName] ?? 0;
+  }
   const records = fieldLicCache[fieldId] || [];
   const ts = date.getTime();
   const match = records.find(r => {
@@ -343,6 +378,15 @@ async function loadFields() {
   allFields = features
     .map(f => ({id:f.attributes.fldNpdidField, name:f.attributes.fldName}))
     .sort((a,b) => a.name.localeCompare(b.name,'en'));
+
+  // Hardcoded exceptions: fields in trial production not yet in the field registry
+  const TRIAL_PROD_FIELDS = [
+    { id: 17196400, name: '16/1-12 TROLDHAUGEN', trialProd: true },
+  ];
+  TRIAL_PROD_FIELDS.forEach(tp => {
+    if (!allFields.find(f => f.id === tp.id)) allFields.push(tp);
+  });
+
   filteredFields = allFields;
   // Default: JOHAN SVERDRUP
   const js = allFields.find(f => f.name === 'JOHAN SVERDRUP');
@@ -374,7 +418,13 @@ async function loadProdForFields(ids) {
 }
 
 async function loadLicForFields(ids) {
-  const toLoad = ids.filter(id => !licLoadedFor.has(id));
+  // Skip trial production fields — ownership handled by TRIAL_PROD_OWNERSHIP
+  const toLoad = ids.filter(id => !licLoadedFor.has(id) && !TRIAL_PROD_OWNERSHIP[id]);
+  // Mark trial prod fields as "loaded" so getShare uses the override
+  ids.filter(id => TRIAL_PROD_OWNERSHIP[id]).forEach(id => {
+    if (!fieldLicCache[id]) fieldLicCache[id] = [];
+    licLoadedFor.add(id);
+  });
   await Promise.all(toLoad.map(async id => {
     try {
       fieldLicCache[id] = [];
@@ -421,7 +471,7 @@ async function loadAllLicensees() {
     }
     allLicRecords.forEach(r => licLoadedFor.add(r.fldNpdidField));
     const s = new Set(allLicRecords.map(r=>r.cmpLongName).filter(Boolean));
-    allCompanies = [...s].sort((a,b) => a.localeCompare(b,'en'));
+    allCompanies = sortCompanies([...s]);
     filteredCompanies = allCompanies;
     allLicLoaded = true;
   } finally {
@@ -430,6 +480,45 @@ async function loadAllLicensees() {
   }
   })();
   return allLicPromise;
+}
+
+// ── RESERVES (for company sorting) ───────────────────────────────────────────
+async function loadReserves() {
+  if (reservesLoaded) return;
+  try {
+    let offset = 0;
+    const totals = {};
+    while (true) {
+      const rows = await queryLayer(RES_LAYER, {
+        where: '1=1',
+        outFields: 'cmpLongName,cmpRecoverableOE',
+        resultRecordCount: 2000,
+        resultOffset: offset
+      });
+      rows.forEach(r => {
+        const a = r.attributes;
+        if (!a.cmpLongName) return;
+        totals[a.cmpLongName] = (totals[a.cmpLongName] || 0) + (a.cmpRecoverableOE || 0);
+      });
+      if (rows.length < 2000) break;
+      offset += 2000;
+    }
+    companyReserves = totals;
+    reservesLoaded = true;
+  } catch(e) {
+    reservesLoaded = true;
+  }
+}
+
+function sortCompanies(names) {
+  return [...names].sort((a, b) => {
+    if (a === 'Aker BP ASA') return -1;
+    if (b === 'Aker BP ASA') return  1;
+    const ra = companyReserves[a] || 0;
+    const rb = companyReserves[b] || 0;
+    if (ra !== rb) return rb - ra; // descending reserves
+    return a.localeCompare(b, 'en');
+  });
 }
 
 // ── VIEW TABS ────────────────────────────────────────────────────────────────
@@ -575,8 +664,14 @@ function toggleCompany(name, item, cb) {
 
 function filterList() {
   const q = document.getElementById('listSearch').value.toLowerCase();
-  if (topMode === 'fields') { filteredFields = allFields.filter(f=>f.name.toLowerCase().includes(q)); renderFieldList(); }
-  else { filteredCompanies = allCompanies.filter(n=>n.toLowerCase().includes(q)); renderCompanyList(); }
+  if (topMode === 'fields') {
+    filteredFields = allFields.filter(f=>f.name.toLowerCase().includes(q));
+    renderFieldList();
+  } else {
+    // Filter but preserve sorted order
+    filteredCompanies = allCompanies.filter(n=>n.toLowerCase().includes(q));
+    renderCompanyList();
+  }
 }
 
 function selectAll() {
@@ -599,7 +694,7 @@ async function refresh() {
 async function refreshFields() {
   const ids = [...selectedFieldIds];
   if (!ids.length) {
-    setChartEmpty('Tap the button below to select one or more fields.');
+    setChartTitle('',''); setChartEmpty('Tap the button below to select one or more fields.');
     setInfo(''); return;
   }
   showSpinner();
@@ -611,7 +706,7 @@ async function refreshFields() {
 async function refreshCompanies() {
   const companies = [...selectedCompanyNames];
   if (!companies.length) {
-    setChartEmpty('Tap the button below to select one or more companies.');
+    setChartTitle('',''); setChartEmpty('Tap the button below to select one or more companies.');
     setInfo(''); return;
   }
   if (!allLicLoaded) {
@@ -620,10 +715,18 @@ async function refreshCompanies() {
     filteredCompanies = allCompanies;
     if (sheetOpen) renderCompanyList();
   }
-  // Find all fields for selected companies
+  // Find all fields for selected companies (from licensee records)
   const relevantIds = [...new Set(
     allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField)
   )];
+  // Also include hardcoded trial production fields for selected companies
+  Object.entries(TRIAL_PROD_OWNERSHIP).forEach(([id, owners]) => {
+    Object.keys(owners).forEach(cmp => {
+      if (selectedCompanyNames.has(cmp) && owners[cmp] > 0 && !relevantIds.includes(+id)) {
+        relevantIds.push(+id);
+      }
+    });
+  });
   // Clear failed/null cache entries so they get retried
   relevantIds.forEach(id => { if (fieldProdCache[id] === null) delete fieldProdCache[id]; });
   showSpinner();
@@ -686,7 +789,8 @@ function drawFieldsOilGas() {
     if (showWater) legend.push({label:'Water',color:WATER_COLOR});
     lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
     if (showWater) lastDatasets.push({label:'Water',data:watD});
-    setInfo(`<strong>Field:</strong> ${fname} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas${showWater?', Water':''} &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+    setChartTitle(fname, `Oil${showWater?', Gas & Water production':' & Gas production'} · boe/day`);
+    setInfo(`<strong>Field:</strong> ${fname} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas${showWater?', Water':''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   } else {
     // Multiple fields: sum oil and gas across all fields per period
     const oilD = labels.map(lbl => {
@@ -696,7 +800,7 @@ function drawFieldsOilGas() {
         const a = row?.attributes||{}; const d = a.prfYear?days(a):30;
         tot += oilBoed(a.prfPrdOilNetMillSm3||0,a.prfPrdGasNetBillSm3||0,a.prfPrdOeNetMillSm3||0,d);
       });
-      return +tot.toFixed(1);
+      return +tot.toFixed(0);
     });
     const gasD = labels.map(lbl => {
       let tot = 0;
@@ -705,7 +809,7 @@ function drawFieldsOilGas() {
         const a = row?.attributes||{}; const d = a.prfYear?days(a):30;
         tot += gasBoed(a.prfPrdGasNetBillSm3||0,d);
       });
-      return +tot.toFixed(1);
+      return +tot.toFixed(0);
     });
     const watD = showWater ? labels.map(lbl => {
       let tot = 0;
@@ -714,7 +818,7 @@ function drawFieldsOilGas() {
         const a = row?.attributes||{}; const d = a.prfYear?days(a):30;
         tot += waterBoed(a.prfPrdProducedWaterInFieldMillS||0,d);
       });
-      return +tot.toFixed(1);
+      return +tot.toFixed(0);
     }) : [];
     datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
     datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
@@ -724,10 +828,11 @@ function drawFieldsOilGas() {
     lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
     if (showWater) lastDatasets.push({label:'Water',data:watD});
     const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-    setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+    setChartTitle(`${ids.length} fields · Oil & Gas production`, `${fnames} · boe/day`);
+    setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   }
 
-  renderChart(labels, datasets, legend, 'kboe/day');
+  renderChart(labels, datasets, legend, 'boe/day');
 }
 
 // ── FIELDS: OE PER FIELD ─────────────────────────────────────────────────────
@@ -743,7 +848,7 @@ function drawFieldsOePerField() {
     const d = labels.map(lbl => {
       const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
       const a = row?.attributes||{}; const dy = a.prfYear?days(a):30;
-      return +oeBoed(a.prfPrdOeNetMillSm3||0, dy).toFixed(1);
+      return +oeBoed(a.prfPrdOeNetMillSm3||0, dy).toFixed(0);
     });
     if (!hasAnyValue(d)) return;
     datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
@@ -751,8 +856,9 @@ function drawFieldsOePerField() {
     lastDatasets.push({label:fname,data:d});
   });
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
-  renderChart(labels, datasets, legend, 'kboe/day');
+  setChartTitle(`Net production · OE per field`, `${fnames} · boe/day`);
+  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+  renderChart(labels, datasets, legend, 'boe/day');
 }
 
 // ── FIELDS: OE PER COMPANY ────────────────────────────────────────────────────
@@ -780,7 +886,7 @@ function drawFieldsOePerCompany() {
         const share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp) / 100;
         total += oeBoed(a.prfPrdOeNetMillSm3||0, dy) * share;
       });
-      return +total.toFixed(1);
+      return +total.toFixed(0);
     });
     if (!hasAnyValue(d)) return;
     datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
@@ -789,14 +895,20 @@ function drawFieldsOePerCompany() {
   });
 
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
-  renderChart(labels, datasets, legend, 'kboe/day');
+  setChartTitle(`${fnames} · OE per company`, `Equity-adjusted · boe/day`);
+  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
+  renderChart(labels, datasets, legend, 'boe/day');
 }
 
 // ── COMPANIES: OIL & GAS ──────────────────────────────────────────────────────
 function drawCompaniesOilGas() {
   const companies = [...selectedCompanyNames];
-  const relevantIds = [...new Set(allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField))];
+  const relevantIds = [...new Set([
+    ...allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField),
+    ...Object.entries(TRIAL_PROD_OWNERSHIP)
+      .filter(([,owners]) => [...selectedCompanyNames].some(c=>(owners[c]||0)>0))
+      .map(([id])=>+id)
+  ])];
   const labels = unionLabels(relevantIds);
   if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
 
@@ -805,7 +917,7 @@ function drawCompaniesOilGas() {
 
   if (companies.length === 1) {
     const cmp = companies[0];
-    const cmpFields = [...new Set(allLicRecords.filter(r=>r.cmpLongName===cmp).map(r=>r.fldNpdidField))];
+    const cmpFields = getFieldsForCompany(cmp);
     const oilD = labels.map(lbl => {
       let tot = 0;
       cmpFields.forEach(id => {
@@ -814,7 +926,7 @@ function drawCompaniesOilGas() {
         const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
         tot += oilBoed(a.prfPrdOilNetMillSm3||0,a.prfPrdGasNetBillSm3||0,a.prfPrdOeNetMillSm3||0,dy)*share;
       });
-      return +tot.toFixed(1);
+      return +tot.toFixed(0);
     });
     const gasD = labels.map(lbl => {
       let tot = 0;
@@ -824,17 +936,18 @@ function drawCompaniesOilGas() {
         const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
         tot += gasBoed(a.prfPrdGasNetBillSm3||0,dy)*share;
       });
-      return +tot.toFixed(1);
+      return +tot.toFixed(0);
     });
     datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
     datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
     lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
-    setInfo(`<strong>Company:</strong> ${cmp} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
+    setChartTitle(`${cmp}`, `Oil & Gas production · equity-adjusted · boe/day`);
+    setInfo(`<strong>Company:</strong> ${cmp} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   } else {
     // Multiple companies: one OE series per company
     companies.forEach((cmp, i) => {
-      const cmpFields = [...new Set(allLicRecords.filter(r=>r.cmpLongName===cmp).map(r=>r.fldNpdidField))];
+      const cmpFields = getFieldsForCompany(cmp);
       const color = PALETTE[i%PALETTE.length][0];
       const d = labels.map(lbl => {
         let tot = 0;
@@ -844,22 +957,28 @@ function drawCompaniesOilGas() {
           const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
           tot += oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;
         });
-        return +tot.toFixed(1);
+        return +tot.toFixed(0);
       });
       if (!hasAnyValue(d)) return;
       datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
       legend.push({label:cmp,color});
       lastDatasets.push({label:cmp,data:d});
     });
-    setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
+    setChartTitle(`${companies.length} companies · Net OE production`, `Equity-adjusted · boe/day`);
+    setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   }
-  renderChart(labels, datasets, legend, 'kboe/day');
+  renderChart(labels, datasets, legend, 'boe/day');
 }
 
 // ── COMPANIES: OE PER FIELD ───────────────────────────────────────────────────
 function drawCompaniesOePerField() {
   const companies = [...selectedCompanyNames];
-  const relevantIds = [...new Set(allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField))];
+  const relevantIds = [...new Set([
+    ...allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField),
+    ...Object.entries(TRIAL_PROD_OWNERSHIP)
+      .filter(([,owners]) => companies.some(c=>(owners[c]||0)>0))
+      .map(([id])=>+id)
+  ])];
   const labels = unionLabels(relevantIds);
   if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
 
@@ -877,7 +996,7 @@ function drawCompaniesOePerField() {
         const dy = days(a), share = getShare(id, midDate(a.prfYear,a.prfMonth||7), cmp)/100;
         tot += oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;
       });
-      return +tot.toFixed(1);
+      return +tot.toFixed(0);
     });
     if (!hasAnyValue(d)) return;
     datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
@@ -886,8 +1005,9 @@ function drawCompaniesOePerField() {
   });
 
   const cmpStr = companies.join(', ');
-  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> kboe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
-  renderChart(labels, datasets, legend, 'kboe/day');
+  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · OE per field`, `Equity-adjusted · boe/day`);
+  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
+  renderChart(labels, datasets, legend, 'boe/day');
 }
 
 // ── RENDER CHART ─────────────────────────────────────────────────────────────
@@ -923,6 +1043,12 @@ function renderChart(labels, datasets, legend, yTitle) {
     }
   });
   document.getElementById('downloadBtn').disabled = false;
+}
+
+// ── CHART TITLE ──────────────────────────────────────────────────────────────
+function setChartTitle(main, sub) {
+  const el = document.getElementById('chartTitle');
+  el.innerHTML = main ? `${main}${sub ? `<span class="ct-sub">${sub}</span>` : ''}` : '';
 }
 
 // ── INFO BOX ─────────────────────────────────────────────────────────────────
@@ -992,10 +1118,23 @@ async function init() {
   updateFab();
   setInfo('');
 
-  await loadFields();
-  updateFab();
-  await loadAllLicensees();
+  await Promise.all([loadFields(), loadAllLicensees(), loadReserves()]);
+  allCompanies = sortCompanies(allCompanies);
   filteredCompanies = allCompanies;
+  // Re-sort fields now that Aker BP licensee data is available
+  const akerBpFieldIds = new Set(
+    allLicRecords.filter(r=>r.cmpLongName==='Aker BP ASA').map(r=>r.fldNpdidField)
+  );
+  // Also include trial production fields owned by Aker BP
+  Object.entries(TRIAL_PROD_OWNERSHIP).forEach(([id, owners]) => {
+    if (owners['Aker BP ASA'] > 0) akerBpFieldIds.add(+id);
+  });
+  allFields.sort((a,b) => {
+    const aA = akerBpFieldIds.has(a.id), aB = akerBpFieldIds.has(b.id);
+    if (aA !== aB) return aA ? -1 : 1;
+    return a.name.localeCompare(b.name,'en');
+  });
+  filteredFields = allFields;
   selectedCompanyNames.add('Aker BP ASA');
   updateFab();
   refresh();
