@@ -265,7 +265,7 @@ const currentYear = new Date().getFullYear();
   const sel = document.getElementById(id);
   for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
   sel.addEventListener('change', () => {
-    // ensureAllProd will detect year change and invalidate cache automatically
+    fieldProdCache = {};
     refresh();
   });
 });
@@ -350,60 +350,25 @@ async function loadFields() {
   document.getElementById('listSearch').disabled = false;
 }
 
-// Global production cache: all rows keyed by year range "fy-ty"
-let allProdRows   = [];   // all fetched rows
-let allProdLoaded = false;
-let allProdLoading = false;
-let allProdPromise = null;
-let loadedFy = null, loadedTy = null;
-
-async function ensureAllProd() {
+async function loadProdForFields(ids) {
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
-  // If year range changed, invalidate cache
-  if (allProdLoaded && (fy !== loadedFy || ty !== loadedTy)) {
-    allProdLoaded = false;
-    allProdPromise = null;
-    allProdRows = [];
-    fieldProdCache = {};
-  }
-  if (allProdLoaded) return;
-  if (allProdPromise) return allProdPromise;
-
-  allProdPromise = (async () => {
-    allProdLoading = true;
-    allProdRows = [];
-    let offset = 0;
-    while (true) {
-      const rows = await queryLayer(PROD_LAYER, {
-        where: `prfYear>=${fy} AND prfYear<=${ty} AND prfInformationCarrierKind='FIELD'`,
+  const toFetch = ids.filter(id => !fieldProdCache[id]);
+  if (!toFetch.length) return;
+  // Sequential fetching with small delay to avoid rate limiting
+  for (const id of toFetch) {
+    try {
+      fieldProdCache[id] = await queryLayer(PROD_LAYER, {
+        where: `prfNpdidInformationCarrier=${id} AND prfInformationCarrierKind='FIELD' AND prfYear>=${fy} AND prfYear<=${ty}`,
         outFields: 'prfNpdidInformationCarrier,prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdWatNetMillSm3',
-        resultRecordCount: 2000,
-        resultOffset: offset
+        orderByFields: 'prfYear ASC, prfMonth ASC',
+        resultRecordCount: 2000
       });
-      allProdRows = allProdRows.concat(rows);
-      if (rows.length < 2000) break;
-      offset += 2000;
+    } catch(e) {
+      fieldProdCache[id] = [];
     }
-    // Distribute into fieldProdCache
-    fieldProdCache = {};
-    allProdRows.forEach(r => {
-      const id = r.attributes.prfNpdidInformationCarrier;
-      if (!fieldProdCache[id]) fieldProdCache[id] = [];
-      fieldProdCache[id].push(r);
-    });
-    loadedFy = fy; loadedTy = ty;
-    allProdLoaded = true;
-    allProdLoading = false;
-  })();
-  return allProdPromise;
-}
-
-async function loadProdForFields(ids) {
-  await ensureAllProd();
-  // fieldProdCache is already populated for all fields
-  // ensure requested ids have at least an empty array
-  ids.forEach(id => { if (!fieldProdCache[id]) fieldProdCache[id] = []; });
+    await new Promise(r => setTimeout(r, 100));
+  }
 }
 
 async function loadLicForFields(ids) {
