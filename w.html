@@ -226,9 +226,8 @@ const RES_LAYER   = 7114;
 const BBL_PER_SM3 = 6.29;
 
 // Woodmac proxy
-const WM_BASE     = '';  // samme origin – Vercel proxy
-const WM_ODATA    = '/api/woodmac';
-const WM_API_KEY  = '';  // håndteres serverside via env-variabel
+// Woodmac forecast – leses fra statisk JSON-fil på GitHub
+const WM_FORECAST_URL = 'woodmac_forecast.json';
 const CURRENT_YEAR = new Date().getFullYear();
 
 const PALETTE = [
@@ -278,8 +277,10 @@ let allLicRecords   = [];
 let allLicLoaded    = false;
 let allLicLoading   = false;
 
-// Woodmac forecast cache: fieldName → { liquid: {year→kbd}, gas: {year→kbd} }
-let wmForecastCache = {};
+// Woodmac forecast – lastes én gang fra JSON-fil
+let wmForecastCache = {};   // { fieldName → { liquid: {year→kbd}, gas: {year→kbd} } }
+let wmForecastData  = null; // rå JSON fra filen
+let wmForecastLoading = null; // Promise – unngår dobbel-lasting
 
 let chartInstance   = null;
 let lastLabels      = [];
@@ -352,52 +353,41 @@ async function queryAllParallel(layerId, params={}, PAGE_SIZE=2000) {
 
 // ── WOODMAC FORECAST ─────────────────────────────────────────────────────────
 // fieldName is the Sodir name – we try to match it to Woodmac field_name.
-// Woodmac uses different capitalisation/spelling, so we do a case-insensitive match.
+// Last hele JSON-filen én gang, slå opp felt lokalt (case-insensitive)
+async function loadWmForecastJson() {
+  if (wmForecastData) return wmForecastData;
+  if (wmForecastLoading) return wmForecastLoading;
+  wmForecastLoading = fetch(WM_FORECAST_URL)
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then(json => { wmForecastData = json; return json; })
+    .catch(e => { console.warn('Woodmac JSON ikke funnet:', e.message); wmForecastData = null; return null; });
+  return wmForecastLoading;
+}
 
 async function fetchWmForecast(fieldName) {
-  if (wmForecastCache[fieldName]) return wmForecastCache[fieldName];
+  if (wmForecastCache[fieldName] !== undefined) return wmForecastCache[fieldName];
 
-  const filter = `field_name eq '${fieldName.replace(/'/g,"''")}'`;
-  const qs = new URLSearchParams({
-    path: '/query/upstream_weekly/imp-met/odata/field_annual_production_kbd',
-    '$select': 'field_name,year,liquid_gas,metric_value',
-    '$filter': filter
-  }).toString();
-  try {
-    const res = await fetch(`/api/woodmac?${qs}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const rows = data.value || [];
+  const json = await loadWmForecastJson();
+  if (!json || !json.fields) { wmForecastCache[fieldName] = null; return null; }
 
-    // Handle pagination
-    let next = data['@odata.nextLink'];
-    while (next) {
-      // Extract query string from nextLink and re-route through proxy
-      const nextUrl = new URL(next);
-      const nextQs = new URLSearchParams({ path: nextUrl.pathname });
-      nextUrl.searchParams.forEach((v, k) => nextQs.set(k, v));
-      const r2 = await fetch(`/api/woodmac?${nextQs}`);
-      if (!r2.ok) break;
-      const d2 = await r2.json(); rows.push(...(d2.value||[])); next = d2['@odata.nextLink'];
-    }
+  // Case-insensitive oppslag – Sodir bruker store bokstaver, Woodmac kan variere
+  const nameUpper = fieldName.toUpperCase();
+  const match = Object.keys(json.fields).find(k => k.toUpperCase() === nameUpper);
 
-    // Only keep forecast years (current year onwards)
-    const result = { liquid: {}, gas: {} };
-    rows.forEach(r => {
-      if (r.year < CURRENT_YEAR) return;
-      const lg = (r.liquid_gas||'').toLowerCase();
-      const val = parseFloat(r.metric_value) || 0;
-      if (lg.includes('liquid')) result.liquid[r.year] = (result.liquid[r.year]||0) + val;
-      else if (lg.includes('gas')) result.gas[r.year] = (result.gas[r.year]||0) + val;
-    });
+  if (!match) { wmForecastCache[fieldName] = null; return null; }
 
-    wmForecastCache[fieldName] = result;
-    return result;
-  } catch(e) {
-    console.warn('Woodmac forecast fetch failed:', e.message);
-    wmForecastCache[fieldName] = null;
-    return null;
+  // Konverter { year: { liquid, gas } } → { liquid: {year→val}, gas: {year→val} }
+  const raw = json.fields[match];
+  const result = { liquid: {}, gas: {} };
+  for (const [yr, vals] of Object.entries(raw)) {
+    const y = parseInt(yr);
+    if (y < CURRENT_YEAR) continue;
+    result.liquid[y] = vals.liquid || 0;
+    result.gas[y]    = vals.gas    || 0;
   }
+
+  wmForecastCache[fieldName] = result;
+  return result;
 }
 
 // Convert kbd to boe/day for annual data (kbd = kbbl/day already for liquids)
