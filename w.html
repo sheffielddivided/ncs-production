@@ -226,7 +226,7 @@ const RES_LAYER   = 7114;
 const BBL_PER_SM3 = 6.29;
 
 // Woodmac proxy
-const WM_PROXY    = 'http://localhost:8787';
+const WM_BASE     = 'https://data.woodmac.com';
 const WM_ODATA    = '/query/upstream_weekly/imp-met/odata/field_annual_production_kbd';
 const WM_API_KEY  = '96a71880-1bc0-11f1-aa18-c3ae722064ac';
 const CURRENT_YEAR = new Date().getFullYear();
@@ -358,9 +358,11 @@ async function fetchWmForecast(fieldName) {
   if (wmForecastCache[fieldName]) return wmForecastCache[fieldName];
 
   const filter = `field_name eq '${fieldName.replace(/'/g,"''")}'`;
-  const qs = `$select=field_name,year,liquid_gas,metric_value&$filter=${encodeURIComponent(filter)}&_apikey=${WM_API_KEY}`;
+  const qs = `$select=field_name,year,liquid_gas,metric_value&$filter=${encodeURIComponent(filter)}`;
   try {
-    const res = await fetch(`${WM_PROXY}${WM_ODATA}?${qs}`);
+    const res = await fetch(`${WM_BASE}${WM_ODATA}?${qs}`, {
+      headers: { 'apikey': WM_API_KEY }
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const rows = data.value || [];
@@ -368,8 +370,8 @@ async function fetchWmForecast(fieldName) {
     // Handle pagination
     let next = data['@odata.nextLink'];
     while (next) {
-      const url = next.replace('https://data.woodmac.com', WM_PROXY) + `&_apikey=${WM_API_KEY}`;
-      const r2 = await fetch(url); if (!r2.ok) break;
+      const r2 = await fetch(next, { headers: { 'apikey': WM_API_KEY } });
+      if (!r2.ok) break;
       const d2 = await r2.json(); rows.push(...(d2.value||[])); next = d2['@odata.nextLink'];
     }
 
