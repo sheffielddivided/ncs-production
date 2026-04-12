@@ -821,12 +821,12 @@ function buildForecastDatasets(fieldName, labels, lastCompleteYear) {
   if (hasAnyValue(liquidD)) datasets.push({
     label:'WM Forecast (liquid)', data:liquidD,
     backgroundColor:FC_LIQUID_COLOR, borderColor:FC_BORDER_COLOR,
-    borderWidth:1.5, borderDash:[4,3], stack:'fc'
+    borderWidth:1.5, borderDash:[4,3], stack:'s'
   });
   if (hasAnyValue(gasD)) datasets.push({
     label:'WM Forecast (gas)', data:gasD,
     backgroundColor:FC_GAS_COLOR, borderColor:FC_BORDER_COLOR,
-    borderWidth:1.5, borderDash:[4,3], stack:'fc'
+    borderWidth:1.5, borderDash:[4,3], stack:'s'
   });
   return datasets;
 }
