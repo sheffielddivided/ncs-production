@@ -301,6 +301,32 @@ const currentYear = new Date().getFullYear();
 document.getElementById('yearFrom').value = 2024;
 document.getElementById('yearTo').value   = currentYear;
 
+// Utvid år-velgeren til maks år i Woodmac-dataene
+function extendYearSelectorToWm(json) {
+  if (!json || !json.fields) return;
+  let maxWmYear = currentYear;
+  for (const fieldYears of Object.values(json.fields)) {
+    for (const yr of Object.keys(fieldYears)) {
+      const y = parseInt(yr);
+      if (y > maxWmYear) maxWmYear = y;
+    }
+  }
+  const sel = document.getElementById('yearTo');
+  const current = parseInt(sel.value);
+  for (let y = currentYear + 1; y <= maxWmYear; y++) {
+    if (!sel.querySelector(`option[value="${y}"]`)) {
+      sel.appendChild(new Option(y, y));
+    }
+  }
+  // Oppdater 'yearFrom' også
+  const selFrom = document.getElementById('yearFrom');
+  for (let y = currentYear + 1; y <= maxWmYear; y++) {
+    if (!selFrom.querySelector(`option[value="${y}"]`)) {
+      selFrom.appendChild(new Option(y, y));
+    }
+  }
+}
+
 // ── SESSION STORAGE ──────────────────────────────────────────────────────────
 const SESSION_PROD_PREFIX = 'ncs_prod_v1_';
 const SESSION_LIC_KEY     = 'ncs_lic_v1';
@@ -359,7 +385,11 @@ async function loadWmForecastJson() {
   if (wmForecastLoading) return wmForecastLoading;
   wmForecastLoading = fetch(WM_FORECAST_URL)
     .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-    .then(json => { wmForecastData = json; return json; })
+    .then(json => {
+      wmForecastData = json;
+      extendYearSelectorToWm(json); // ← utvid år-velger til WM maks
+      return json;
+    })
     .catch(e => { console.warn('Woodmac JSON ikke funnet:', e.message); wmForecastData = null; return null; });
   return wmForecastLoading;
 }
@@ -449,6 +479,19 @@ function unionLabels(fieldIds) {
   if (period==='quarterly') { return Object.keys(buildQuarterMap(fieldIds)).sort(); }
   const s=new Set();
   fieldIds.forEach(id=>(fieldProdCache[id]||[]).forEach(f=>{if(isValidRow(f.attributes)) s.add(periodKey(f.attributes));}));
+
+  // Legg til forecast-år fra Woodmac-data hvis forecast er aktivt (annual, enkelt felt)
+  if (showForecast && period==='annual' && fieldIds.length===1) {
+    const fname = allFields.find(f=>f.id===fieldIds[0])?.name||'';
+    const fc = wmForecastCache[fname];
+    if (fc) {
+      const tyMax = +document.getElementById('yearTo').value;
+      Object.keys(fc.liquid).concat(Object.keys(fc.gas)).forEach(yr => {
+        const y = parseInt(yr);
+        if (y <= tyMax) s.add(String(y));
+      });
+    }
+  }
   return [...s].sort();
 }
 
@@ -741,18 +784,37 @@ function drawChart() {
   }
 }
 
+// Finn siste år der NCS har komplette data (12 måneder rapportert)
+function lastCompleteNcsYear(id) {
+  const rows = fieldProdCache[id] || [];
+  const monthsByYear = {};
+  rows.forEach(r => {
+    const a = r.attributes;
+    if (a.prfMonth > 0) {
+      if (!monthsByYear[a.prfYear]) monthsByYear[a.prfYear] = new Set();
+      monthsByYear[a.prfYear].add(a.prfMonth);
+    }
+  });
+  const complete = Object.entries(monthsByYear)
+    .filter(([, months]) => months.size >= 12)
+    .map(([y]) => parseInt(y));
+  return complete.length ? Math.max(...complete) : currentYear - 1;
+}
+
 // ── Build forecast datasets for annual single-field view ─────────────────────
-function buildForecastDatasets(fieldName, labels) {
+// lastCompleteYear: siste år med fullstendige NCS-data.
+// For år etter lastCompleteYear vises kun WM-forecast (NCS-data nulles ut i kaller).
+function buildForecastDatasets(fieldName, labels, lastCompleteYear) {
   const fc = wmForecastCache[fieldName];
   if (!fc) return [];
   const liquidD = labels.map(lbl => {
     const yr = parseInt(lbl);
-    if (yr < CURRENT_YEAR) return 0;
+    if (yr <= lastCompleteYear) return 0;   // NCS har dette – ikke overskriv
     return +(kbdToBoed(fc.liquid[yr]||0)).toFixed(0);
   });
   const gasD = labels.map(lbl => {
     const yr = parseInt(lbl);
-    if (yr < CURRENT_YEAR) return 0;
+    if (yr <= lastCompleteYear) return 0;
     return +(kbdToBoed(fc.gas[yr]||0)).toFixed(0);
   });
   const datasets = [];
@@ -780,8 +842,14 @@ function drawFieldsOilGas() {
 
   if (ids.length===1) {
     const id=ids[0], fname=allFields.find(f=>f.id===id)?.name||'';
+    const lastCompleteYr = showForecast ? lastCompleteNcsYear(id) : currentYear + 999;
     const oilD=[],gasD=[],watD=[];
     labels.forEach(lbl=>{
+      const yr = parseInt(lbl);
+      // Hvis forecast er på og dette er et ufullstendig år: vis 0 (WM tar over)
+      if (showForecast && period==='annual' && yr > lastCompleteYr) {
+        oilD.push(0); gasD.push(0); watD.push(0); return;
+      }
       if (period==='quarterly') {
         oilD.push(+quarterBoed([id],lbl,qMap,(v,d)=>Math.max(0,oeBoed(v.oe,d)-gasBoed(v.gas,d)),a=>({oe:a.prfPrdOeNetMillSm3||0,gas:a.prfPrdGasNetBillSm3||0})).toFixed(1));
         gasD.push(+quarterBoed([id],lbl,qMap,(v,d)=>gasBoed(v,d),a=>a.prfPrdGasNetBillSm3||0).toFixed(1));
@@ -804,7 +872,7 @@ function drawFieldsOilGas() {
 
     // ── Woodmac forecast overlay (annual only) ────────────────────────────
     if (showForecast && period==='annual') {
-      const fcDs=buildForecastDatasets(fname, labels);
+      const fcDs=buildForecastDatasets(fname, labels, lastCompleteYr);
       datasets.push(...fcDs);
       if (fcDs.length>0) {
         legend.push({label:'WM Forecast (liquid)',color:FC_LIQUID_COLOR,forecast:true});
