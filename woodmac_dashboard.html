@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woodmac — Field Production Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:      #0d0f10;
+    --surface: #141618;
+    --border:  #222426;
+    --border2: #2e3032;
+    --text:    #e8e6e0;
+    --muted:   #6b6966;
+    --accent:  #c8f04a;
+    --danger:  #f04a4a;
+  }
+  body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; display:grid; grid-template-rows:auto 1fr; }
+
+  header { border-bottom:1px solid var(--border); padding:16px 36px; display:flex; align-items:center; gap:14px; }
+  header h1 { font-family:'Inter',sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block; margin-right:8px; box-shadow:0 0 8px var(--accent); }
+  .sub { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+
+  .app { display:grid; grid-template-columns:300px 1fr; height:calc(100vh - 57px); }
+
+  /* ── Sidebar ── */
+  aside { border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+
+  .sidebar-top { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:10px; flex-shrink:0; }
+
+  .search-input-wrap { position:relative; }
+  .search-input-wrap input {
+    width:100%; background:var(--surface); border:1px solid var(--border2); color:var(--text);
+    font-family:'DM Mono',monospace; font-size:12px; padding:8px 30px 8px 10px;
+    border-radius:4px; outline:none; transition:border-color .15s;
+  }
+  .search-input-wrap input:focus { border-color:var(--accent); }
+  .search-input-wrap input::placeholder { color:var(--muted); }
+  .search-clear { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0; line-height:1; display:none; }
+  .search-clear:hover { color:var(--text); }
+
+  .sidebar-meta { font-size:11px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
+  .sidebar-actions { display:flex; gap:6px; }
+  .btn-xs { background:transparent; color:var(--muted); font-family:'DM Mono',monospace; font-size:10px; padding:3px 8px; border:1px solid var(--border2); border-radius:3px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .btn-xs:hover { color:var(--text); border-color:var(--border2); }
+
+  /* ── Feltliste ── */
+  .field-list { flex:1; overflow-y:auto; padding:4px 0; }
+  .field-list::-webkit-scrollbar { width:3px; }
+  .field-list::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+  .field-item {
+    display:flex; align-items:center; gap:9px;
+    padding:6px 16px; cursor:pointer; transition:background .08s;
+    border-left:2px solid transparent; user-select:none;
+  }
+  .field-item:hover { background:rgba(255,255,255,.03); }
+  .field-item.checked { border-left-color:var(--field-color, var(--accent)); background:rgba(200,240,74,.03); }
+
+  .field-cb { position:relative; width:14px; height:14px; flex-shrink:0; cursor:pointer; }
+  .field-cb input { opacity:0; position:absolute; inset:0; cursor:pointer; margin:0; }
+  .field-cb-box {
+    width:14px; height:14px; border-radius:3px; border:1px solid var(--border2);
+    background:var(--surface); display:flex; align-items:center; justify-content:center;
+    pointer-events:none; transition:all .12s;
+  }
+  .field-cb input:checked ~ .field-cb-box { border-color:var(--field-color, var(--accent)); background:var(--field-color, var(--accent)); }
+  .cb-check { display:none; }
+  .field-cb input:checked ~ .field-cb-box .cb-check { display:block; }
+
+  .field-name { font-size:12px; color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:color .1s; }
+  .field-item:hover .field-name,
+  .field-item.checked .field-name { color:var(--text); }
+
+  .field-loading { width:10px; height:10px; border:1.5px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; display:none; }
+  .field-item.loading .field-loading { display:block; }
+
+  .list-status { padding:20px 16px; font-size:11px; color:var(--muted); line-height:1.7; text-align:center; }
+
+  /* ── Main ── */
+  main { display:flex; flex-direction:column; overflow:hidden; }
+  .main-header { padding:20px 32px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .chart-title { font-family:'Inter',sans-serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+  .chart-meta { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:2px; }
+  .chart-area { flex:1; padding:24px 32px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; }
+
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px 16px; }
+  .stat-label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:4px; }
+  .stat-value { font-family:'Inter',sans-serif; font-size:22px; font-weight:600; color:var(--accent); letter-spacing:-.01em; }
+  .stat-unit { font-size:10px; color:var(--muted); margin-top:2px; }
+
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:20px 16px 14px; flex:1; min-height:280px; }
+  .legend { display:flex; gap:14px; padding:10px 0 0; flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; transition:opacity .15s; }
+  .legend-item.dim { opacity:.28; }
+  .legend-item:hover { color:var(--text); }
+  .legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+  .btn { background:var(--accent); color:#0d0f10; font-family:'DM Mono',monospace; font-size:11px; font-weight:500; padding:6px 14px; border:none; border-radius:4px; cursor:pointer; transition:opacity .15s; }
+  .btn:hover { opacity:.85; }
+
+  .empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); gap:10px; }
+  .empty-state .big { font-size:32px; opacity:.15; }
+  .empty-state p { font-size:12px; text-align:center; max-width:240px; line-height:1.7; }
+
+  .error-msg { background:rgba(240,74,74,.08); border:1px solid rgba(240,74,74,.3); color:var(--danger); font-size:12px; padding:10px 12px; border-radius:4px; margin:12px 16px; }
+
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .spinner { display:inline-block; width:12px; height:12px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:5px; }
+  .tag { font-size:10px; padding:3px 8px; border-radius:3px; background:rgba(200,240,74,.1); color:var(--accent); }
+
+  .bar-chart-svg { width:100%; display:block; }
+  .chart-tooltip { position:fixed; background:#1a1c1e; border:1px solid var(--border2); padding:9px 13px; border-radius:4px; font-family:'DM Mono',monospace; font-size:11px; color:var(--text); pointer-events:none; opacity:0; transition:opacity .1s; z-index:100; min-width:150px; }
+  .chart-tooltip strong { color:var(--accent); font-family:'Inter',sans-serif; font-size:13px; font-weight:600; display:block; margin-bottom:5px; }
+  .tt-row { display:flex; justify-content:space-between; gap:16px; line-height:1.8; }
+  .tt-label { color:var(--muted); }
+  .tt-total { border-top:1px solid var(--border2); margin-top:4px; padding-top:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot"></span>Woodmac</h1>
+  <span class="sub">Field Annual Production Explorer · Norway</span>
+  <span style="margin-left:auto;font-size:11px;color:var(--muted)">kbd</span>
+</header>
+
+<div class="app">
+  <aside>
+    <div class="sidebar-top">
+      <div class="search-input-wrap">
+        <input type="text" id="field-search" placeholder="Filtrer felt..." oninput="filterList()" autocomplete="off" spellcheck="false">
+        <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+      </div>
+      <div class="sidebar-meta">
+        <span id="list-count" style="color:var(--muted);font-size:11px"></span>
+        <div class="sidebar-actions">
+          <button class="btn-xs" onclick="checkVisible()">Velg synlige</button>
+          <button class="btn-xs" onclick="uncheckAll()">Fjern alle</button>
+        </div>
+      </div>
+    </div>
+    <div class="field-list" id="field-list">
+      <div class="list-status"><span class="spinner"></span>Laster feltliste...</div>
+    </div>
+    <div id="list-error"></div>
+  </aside>
+
+  <main id="main">
+    <div class="empty-state">
+      <div class="big">◈</div>
+      <p>Velg ett eller flere felt fra listen for å se produksjonshistorikk.</p>
+    </div>
+  </main>
+</div>
+
+<div class="chart-tooltip" id="tooltip"></div>
+
+<script>
+const PROXY     = 'http://localhost:8787';
+const FIELD_RES = '/query/upstream_weekly/imp-met/odata/field';
+const PROD_RES  = '/query/upstream_weekly/imp-met/odata/field_annual_production_kbd';
+const API_KEY   = '96a71880-1bc0-11f1-aa18-c3ae722064ac';
+
+const LG_COLORS = { liquid:'#c8f04a', gas:'#4ac8f0', other:'#f0a84a' };
+const FIELD_PALETTE = [
+  '#c8f04a','#4ac8f0','#f0a84a','#a84af0','#f04a8a',
+  '#4af0a8','#f04a4a','#4a8af0','#f0c84a','#8af04a',
+  '#c84af0','#f08a4a','#4af0f0','#f04af0','#a8f04a',
+];
+
+// State
+let allFields    = [];   // alle feltnavn fra API
+let visibleFields = [];  // etter filtrering
+let checkedFields = [];  // [{ name, color, idx }]  – i rekkefølge de ble valgt
+let fieldCache   = {};   // feltnavn → rows[]
+let loadingFields = new Set();
+let hiddenLG     = new Set();
+
+// ── Last inn feltliste ved oppstart ──
+async function init() {
+  try {
+    const rows = await fetchAll(FIELD_RES,
+      `$select=field_group&$filter=country_name eq 'Norway' and field_is_top_level eq 'Y' and field_maturity ne 'Undeveloped' and field_maturity ne 'Ceased'`);
+    allFields = [...new Set(rows.map(r=>r.field_group).filter(Boolean))].sort();
+    visibleFields = allFields;
+    renderList();
+  } catch(e) {
+    document.getElementById('field-list').innerHTML =
+      `<div class="list-status">Feil ved lasting av feltliste:<br>${e.message}</div>`;
+  }
+}
+
+async function fetchAll(resource, params) {
+  const qs  = `${params}&_apikey=${API_KEY}`;
+  const res = await fetch(`${PROXY}${resource}?${qs}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  let rows   = data.value || [];
+  let next   = data['@odata.nextLink'];
+  while (next) {
+    const url = next.replace('https://data.woodmac.com', PROXY) + `&_apikey=${API_KEY}`;
+    const r2  = await fetch(url); if (!r2.ok) break;
+    const d2  = await r2.json(); rows = rows.concat(d2.value||[]); next = d2['@odata.nextLink'];
+  }
+  return rows;
+}
+
+// ── Render feltliste ──
+function renderList() {
+  const list = document.getElementById('field-list');
+  document.getElementById('list-count').textContent =
+    visibleFields.length === allFields.length
+      ? `${allFields.length} felt`
+      : `${visibleFields.length} av ${allFields.length} felt`;
+
+  if (!visibleFields.length) {
+    list.innerHTML = '<div class="list-status">Ingen felt matcher søket.</div>';
+    return;
+  }
+
+  list.innerHTML = visibleFields.map(name => {
+    const entry   = checkedFields.find(c=>c.name===name);
+    const checked = !!entry;
+    const color   = entry?.color || 'var(--accent)';
+    const isLoading = loadingFields.has(name);
+    return `<div class="field-item${checked?' checked':''}${isLoading?' loading':''}"
+              id="fi-${cssId(name)}"
+              style="--field-color:${color}"
+              onclick="toggleField('${esc(name)}')">
+      <label class="field-cb" onclick="event.stopPropagation();toggleField('${esc(name)}')">
+        <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation()">
+        <div class="field-cb-box">
+          <svg class="cb-check" width="9" height="7" viewBox="0 0 9 7" fill="none">
+            <path d="M1 3.5L3.5 6L8 1" stroke="#0d0f10" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </label>
+      <span class="field-name">${name}</span>
+      <div class="field-loading"></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Søk/filter ──
+function filterList() {
+  const q = document.getElementById('field-search').value.toLowerCase();
+  document.getElementById('search-clear').style.display = q ? 'block' : 'none';
+  visibleFields = q ? allFields.filter(n=>n.toLowerCase().includes(q)) : allFields;
+  renderList();
+}
+function clearSearch() {
+  document.getElementById('field-search').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  visibleFields = allFields;
+  renderList();
+}
+function checkVisible() {
+  visibleFields.forEach(name => { if (!checkedFields.find(c=>c.name===name)) addChecked(name); });
+  renderList(); renderChart();
+}
+function uncheckAll() {
+  checkedFields = []; hiddenLG.clear(); renderList(); renderChart();
+}
+
+function addChecked(name) {
+  const color = FIELD_PALETTE[checkedFields.length % FIELD_PALETTE.length];
+  checkedFields.push({ name, color });
+}
+
+// ── Toggle felt ──
+async function toggleField(name) {
+  const idx = checkedFields.findIndex(c=>c.name===name);
+  if (idx !== -1) {
+    checkedFields.splice(idx, 1);
+    renderList(); renderChart();
+    return;
+  }
+  // Legg til – last produksjonsdata hvis ikke cachet
+  addChecked(name);
+  renderList();
+  if (!fieldCache[name]) {
+    loadingFields.add(name);
+    updateItemState(name);
+    try {
+      const rows = await fetchAll(PROD_RES,
+        `$select=unit,year,liquid_gas,metric_value&$filter=${encodeURIComponent(`field_name eq '${name.replace(/'/g,"''")}'`)}`);
+      fieldCache[name] = rows;
+    } catch(e) {
+      checkedFields = checkedFields.filter(c=>c.name!==name);
+      showListError(`Feil ved lasting av ${name}: ${e.message}`);
+    } finally {
+      loadingFields.delete(name);
+      updateItemState(name);
+    }
+  }
+  renderChart();
+}
+
+function updateItemState(name) {
+  const el = document.getElementById(`fi-${cssId(name)}`);
+  if (!el) return;
+  el.classList.toggle('loading', loadingFields.has(name));
+}
+
+// ── Render chart ──
+function renderChart() {
+  const active = checkedFields.filter(c => fieldCache[c.name]);
+  if (!active.length) {
+    document.getElementById('main').innerHTML = `
+      <div class="empty-state"><div class="big">◈</div>
+      <p>Velg ett eller flere felt fra listen for å se produksjonshistorikk.</p></div>`;
+    return;
+  }
+  active.length === 1 ? renderSingle(active[0]) : renderMulti(active);
+}
+
+// ── Enkelt felt: liquid/gas split ──
+function renderSingle({name, color}) {
+  const rows  = fieldCache[name];
+  const unit  = rows[0]?.unit || 'kbd';
+  const years = [...new Set(rows.map(r=>r.year))].sort((a,b)=>a-b);
+  const lgRaw = [...new Set(rows.map(r=>r.liquid_gas).filter(Boolean))];
+  const lgTypes = sortLG(lgRaw);
+
+  const typeData = {};
+  lgTypes.forEach(t=>{typeData[t]={}; years.forEach(y=>{typeData[t][y]=0;});});
+  rows.forEach(r=>{if(typeData[r.liquid_gas]!==undefined)
+    typeData[r.liquid_gas][r.year]=(typeData[r.liquid_gas][r.year]||0)+(parseFloat(r.metric_value)||0);});
+
+  const typeColor = Object.fromEntries(lgTypes.map(t=>{
+    const k=t.toLowerCase().includes('liquid')?'liquid':t.toLowerCase().includes('gas')?'gas':'other';
+    return [t, LG_COLORS[k]];
+  }));
+
+  const visLG   = lgTypes.filter(t=>!hiddenLG.has(t));
+  const totals  = {}; years.forEach(y=>{totals[y]=visLG.reduce((s,t)=>s+(typeData[t][y]||0),0);});
+  const tVals   = Object.values(totals);
+  const peak    = Math.max(...tVals), peakYr=years[tVals.indexOf(Math.max(...tVals))];
+  const latest  = totals[years[years.length-1]]||0;
+  const total   = tVals.reduce((a,b)=>a+b,0);
+
+  document.getElementById('main').innerHTML = `
+    <div class="main-header">
+      <div style="flex:1">
+        <div class="chart-title">${name}</div>
+        <div class="chart-meta">${years[0]}–${years[years.length-1]} · ${unit}</div>
+      </div>
+      <span class="tag">OData live</span>
+      <button class="btn" onclick="downloadSingleCSV('${esc(name)}')">↓ CSV</button>
+    </div>
+    <div class="chart-area">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Siste år (${years[years.length-1]})</div><div class="stat-value">${latest.toFixed(1)}</div><div class="stat-unit">${unit}</div></div>
+        <div class="stat-card"><div class="stat-label">Toppår (${peakYr})</div><div class="stat-value">${peak.toFixed(1)}</div><div class="stat-unit">${unit}</div></div>
+        <div class="stat-card"><div class="stat-label">Akkumulert</div><div class="stat-value">${fmtK(total)}</div><div class="stat-unit">${unit}·år</div></div>
+        <div class="stat-card"><div class="stat-label">Antall år</div><div class="stat-value">${years.length}</div><div class="stat-unit">${years[0]}–${years[years.length-1]}</div></div>
+      </div>
+      <div class="chart-card">
+        ${buildChart(years, lgTypes, typeData, typeColor, unit, true)}
+        <div class="legend">
+          ${lgTypes.map(t=>`<div class="legend-item${hiddenLG.has(t)?' dim':''}" onclick="toggleLG('${esc(t)}')">
+            <div class="legend-dot" style="background:${typeColor[t]}"></div><span>${t}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleLG(t){ hiddenLG.has(t)?hiddenLG.delete(t):hiddenLG.add(t); renderChart(); }
+
+// ── Flere felt: totalproduksjon stablet ──
+function renderMulti(active) {
+  const allRows  = active.flatMap(({name})=>fieldCache[name]||[]);
+  const allYears = [...new Set(allRows.map(r=>r.year))].sort((a,b)=>a-b);
+  const unit     = allRows[0]?.unit||'kbd';
+
+  const fieldTotals = {};
+  active.forEach(({name})=>{
+    fieldTotals[name]={};
+    allYears.forEach(y=>{fieldTotals[name][y]=0;});
+    (fieldCache[name]||[]).forEach(r=>{fieldTotals[name][r.year]=(fieldTotals[name][r.year]||0)+(parseFloat(r.metric_value)||0);});
+  });
+
+  const fieldColor = Object.fromEntries(active.map(({name,color})=>[name,color]));
+  const grandTotals={}; allYears.forEach(y=>{grandTotals[y]=active.reduce((s,{name})=>s+(fieldTotals[name][y]||0),0);});
+  const gVals=Object.values(grandTotals);
+  const peak=Math.max(...gVals), peakYr=allYears[gVals.indexOf(Math.max(...gVals))];
+  const latest=grandTotals[allYears[allYears.length-1]]||0;
+  const total=gVals.reduce((a,b)=>a+b,0);
+
+  document.getElementById('main').innerHTML = `
+    <div class="main-header">
+      <div style="flex:1">
+        <div class="chart-title">${active.length} felt sammenlignet</div>
+        <div class="chart-meta">${allYears[0]}–${allYears[allYears.length-1]} · ${unit} · totalproduksjon</div>
+      </div>
+      <span class="tag">OData live</span>
+      <button class="btn" onclick="downloadMultiCSV()">↓ CSV</button>
+    </div>
+    <div class="chart-area">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Samlet siste år (${allYears[allYears.length-1]})</div><div class="stat-value">${latest.toFixed(1)}</div><div class="stat-unit">${unit}</div></div>
+        <div class="stat-card"><div class="stat-label">Toppår (${peakYr})</div><div class="stat-value">${peak.toFixed(1)}</div><div class="stat-unit">${unit}</div></div>
+        <div class="stat-card"><div class="stat-label">Akkumulert totalt</div><div class="stat-value">${fmtK(total)}</div><div class="stat-unit">${unit}·år</div></div>
+        <div class="stat-card"><div class="stat-label">Antall felt</div><div class="stat-value">${active.length}</div><div class="stat-unit">&nbsp;</div></div>
+      </div>
+      <div class="chart-card">
+        ${buildChart(allYears, active.map(c=>c.name), fieldTotals, fieldColor, unit, false)}
+        <div class="legend">
+          ${active.map(({name,color})=>`<div class="legend-item">
+            <div class="legend-dot" style="background:${color}"></div><span>${name}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── SVG stablet stolpediagram ──
+function sortLG(types){
+  return [...types].sort((a,b)=>{
+    const aL=a.toLowerCase().includes('liquid'), bL=b.toLowerCase().includes('liquid');
+    return aL&&!bL?-1:!aL&&bL?1:a.localeCompare(b);
+  });
+}
+function niceMax(v){
+  if(v<=0)return 1;
+  const e=Math.pow(10,Math.floor(Math.log10(v))),f=v/e;
+  return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*e;
+}
+function niceTicks(maxV,count=5){
+  const step=maxV/count,e=Math.pow(10,Math.floor(Math.log10(step)));
+  const c=[1,2,2.5,5,10].map(f=>f*e);
+  const ns=c.find(x=>x>=step)||c[c.length-1];
+  const t=[];
+  for(let v=0;v<=maxV+ns*0.01;v+=ns)t.push(parseFloat(v.toPrecision(10)));
+  return t;
+}
+
+function buildChart(years, keys, data, colors, unit, isLG){
+  const visKeys=isLG?keys.filter(k=>!hiddenLG.has(k)):keys;
+  const W=900,PAD={top:16,right:16,bottom:34,left:62};
+  const cH=280,H=cH+PAD.top+PAD.bottom,cW=W-PAD.left-PAD.right,n=years.length;
+
+  let rawMax=0;
+  years.forEach(y=>{const s=visKeys.reduce((sum,k)=>sum+(data[k]?.[y]||0),0);if(s>rawMax)rawMax=s;});
+  const ticks=niceTicks(niceMax(rawMax)), maxV=ticks[ticks.length-1];
+  const barW=Math.max(4,Math.min(60,cW/n-3)), gap=n>1?(cW-barW*n)/(n-1):0;
+
+  let bars='',xLabels='',yLines='',yLabels='';
+  const step=Math.ceil(n/25);
+
+  ticks.forEach(v=>{
+    const y=PAD.top+cH-(v/maxV)*cH;
+    yLines+=`<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${PAD.left+cW}" y2="${y.toFixed(1)}" stroke="#1e2022" stroke-width="1"/>`;
+    const lbl=v>=1000?(v/1000)+'k':v.toString();
+    yLabels+=`<text x="${PAD.left-7}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b6966">${lbl}</text>`;
+  });
+
+  years.forEach((yr,i)=>{
+    const x=PAD.left+i*(barW+gap); let stackY=PAD.top+cH;
+    const ttParts=keys.map(k=>{const v=data[k]?.[yr]||0;return v>0.001?`${k}|||${v.toFixed(2)}`:null;}).filter(Boolean);
+    const total=visKeys.reduce((s,k)=>s+(data[k]?.[yr]||0),0);
+
+    visKeys.forEach(k=>{
+      const v=data[k]?.[yr]||0; if(v<0.001)return;
+      const bH=Math.max(1,(v/maxV)*cH); stackY-=bH;
+      bars+=`<rect x="${x.toFixed(1)}" y="${stackY.toFixed(1)}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}"
+        fill="${colors[k]}" fill-opacity="0.82"
+        data-tt="${ttParts.join('~~~').replace(/"/g,'&quot;')}" data-year="${yr}" data-total="${total.toFixed(2)}"
+        onmouseenter="showTip(event,this)" onmouseleave="hideTip()"
+        onmouseover="this.setAttribute('fill-opacity','1')" onmouseout="this.setAttribute('fill-opacity','0.82')"
+        style="cursor:default;transition:fill-opacity .1s"/>`;
+    });
+    if(i%step===0||i===n-1)
+      xLabels+=`<text x="${(x+barW/2).toFixed(1)}" y="${PAD.top+cH+18}" text-anchor="middle" font-size="10" fill="#6b6966">${yr}</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="bar-chart-svg">
+    <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top+cH}" stroke="#2e3032" stroke-width="1"/>
+    <line x1="${PAD.left}" y1="${PAD.top+cH}" x2="${PAD.left+cW}" y2="${PAD.top+cH}" stroke="#2e3032" stroke-width="1"/>
+    ${yLines}${yLabels}
+    <text x="${PAD.left-44}" y="${PAD.top+cH/2}" text-anchor="middle" font-size="10" fill="#6b6966"
+      transform="rotate(-90,${PAD.left-44},${PAD.top+cH/2})">${unit}</text>
+    ${bars}${xLabels}
+  </svg>`;
+}
+
+// ── CSV-eksport ──
+function downloadSingleCSV(name) {
+  const rows    = fieldCache[name]||[];
+  const lgTypes = sortLG([...new Set(rows.map(r=>r.liquid_gas).filter(Boolean))]);
+  const years   = [...new Set(rows.map(r=>r.year))].sort((a,b)=>a-b);
+  const unit    = rows[0]?.unit||'kbd';
+  const pivot   = {};
+  rows.forEach(r=>{if(!pivot[r.year])pivot[r.year]={};pivot[r.year][r.liquid_gas]=(pivot[r.year][r.liquid_gas]||0)+(parseFloat(r.metric_value)||0);});
+  const header  = ['field_name','year',...lgTypes,'total','unit'].join(',');
+  const lines   = years.map(y=>{
+    const vals  = lgTypes.map(t=>(pivot[y]?.[t]||0).toFixed(2));
+    const total = lgTypes.reduce((s,t)=>s+(pivot[y]?.[t]||0),0);
+    return [`"${name}"`,y,...vals,total.toFixed(2),`"${unit}"`].join(',');
+  });
+  triggerDownload([header,...lines].join('\n'), `${name.replace(/\s+/g,'_')}_production.csv`);
+}
+
+function downloadMultiCSV() {
+  const active   = checkedFields.filter(c=>fieldCache[c.name]);
+  const allYears = [...new Set(active.flatMap(({name})=>(fieldCache[name]||[]).map(r=>r.year)))].sort((a,b)=>a-b);
+  const unit     = (fieldCache[active[0]?.name]||[])[0]?.unit||'kbd';
+  const header   = ['year',...active.map(({name})=>`"${name}"`),'total','unit'].join(',');
+  const lines    = allYears.map(y=>{
+    const vals  = active.map(({name})=>(fieldCache[name]||[]).filter(r=>r.year===y).reduce((s,r)=>s+(parseFloat(r.metric_value)||0),0).toFixed(2));
+    const total = vals.reduce((s,v)=>s+parseFloat(v),0).toFixed(2);
+    return [y,...vals,total,`"${unit}"`].join(',');
+  });
+  triggerDownload([header,...lines].join('\n'), `sammenligning_${active.map(h=>h.name.replace(/\s+/g,'_')).join('_vs_')}.csv`);
+}
+
+function triggerDownload(csv,filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=filename; a.click();
+}
+
+// ── Tooltip ──
+const tooltip=document.getElementById('tooltip');
+function showTip(e,el){
+  const parts=(el.getAttribute('data-tt')||'').split('~~~').filter(Boolean);
+  const total=el.getAttribute('data-total'),year=el.getAttribute('data-year');
+  const rows=parts.map(p=>{const[l,v]=p.split('|||');return `<div class="tt-row"><span class="tt-label">${l}</span><span>${parseFloat(v).toFixed(2)}</span></div>`;}).join('');
+  const tot=parts.length>1?`<div class="tt-row tt-total"><span>Total</span><span>${parseFloat(total).toFixed(2)}</span></div>`:'';
+  tooltip.innerHTML=`<strong>${year}</strong>${rows}${tot}`;
+  tooltip.style.opacity='1'; moveTip(e);
+}
+function moveTip(e){tooltip.style.left=(e.clientX+16)+'px';tooltip.style.top=(e.clientY-20)+'px';}
+function hideTip(){tooltip.style.opacity='0';}
+document.addEventListener('mousemove',e=>{if(tooltip.style.opacity==='1')moveTip(e);});
+
+function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function cssId(s){return s.replace(/[^a-zA-Z0-9]/g,'_');}
+function fmtK(v){return v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0);}
+function showListError(msg){const el=document.getElementById('list-error');el.innerHTML=`<div class="error-msg">${msg}</div>`;}
+
+init();
+</script>
+</body>
+</html>

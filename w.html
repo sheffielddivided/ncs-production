@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>NCS Production</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NCS Prod">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <style>
+    :root {
+      --bg:#f1f1f1; --card:#fff;
+      --navy:#7d2248; --blue:#ce0f69;
+      --border:#d5d5d5; --muted:#828282;
+      --light:#f5cfe1; --green:#00b373;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1a2332;overscroll-behavior:none;}
+
+    .topbar{background:var(--navy);color:#fff;padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;}
+    .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;}
+    .topbar-sub{font-size:0.7rem;opacity:0.65;margin-top:1px;}
+    .mode-switcher{display:flex;background:var(--light);border-radius:8px;padding:3px;gap:2px;}
+    .mode-btn{padding:6px 14px;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;background:none;color:var(--muted);transition:all 0.15s;letter-spacing:0.01em;}
+    .mode-btn.active{background:var(--blue);color:#fff;}
+
+    .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+    .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .year-row{display:flex;gap:6px;align-items:center;}
+    .year-row label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;}
+    .year-select{padding:6px 24px 6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;color:#1a2332;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-6z'/%3E%3C/svg%3E") no-repeat right 6px center;appearance:none;-webkit-appearance:none;cursor:pointer;}
+    .pill-group{display:flex;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;}
+    .pill-btn{padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;}
+    .pill-btn:not(:last-child){border-right:1.5px solid var(--border);}
+    .pill-btn.active{background:var(--blue);color:#fff;}
+    .ctrl-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+
+    .view-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+    .view-tab{padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:0.72rem;font-weight:600;color:var(--muted);background:#fff;cursor:pointer;white-space:nowrap;}
+    .view-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+    .toggle-row{display:flex;align-items:center;gap:8px;}
+    .toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0;}
+    .toggle-switch input{opacity:0;width:0;height:0;}
+    .toggle-slider{position:absolute;inset:0;background:#ccc;border-radius:20px;cursor:pointer;transition:0.2s;}
+    .toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:0.2s;}
+    input:checked+.toggle-slider{background:var(--blue);}
+    input:checked+.toggle-slider:before{transform:translateX(16px);}
+    .toggle-label{font-size:0.72rem;color:var(--muted);}
+    /* Forecast toggle gets a distinct color when active */
+    .forecast-toggle-row input:checked+.toggle-slider{background:#888;}
+
+    .select-fab{position:fixed;bottom:24px;right:16px;z-index:40;background:var(--blue);color:#fff;border:none;border-radius:28px;padding:13px 20px;font-size:0.88rem;font-weight:600;box-shadow:0 4px 16px rgba(0,48,87,0.35);cursor:pointer;display:flex;align-items:center;gap:8px;transition:transform 0.15s;}
+    .select-fab:active{transform:scale(0.96);}
+    .fab-badge{background:#e36b2f;color:#fff;border-radius:10px;font-size:0.72rem;font-weight:700;padding:1px 7px;min-width:20px;text-align:center;}
+
+    .chart-wrap{padding:12px 12px 4px;}
+    .chart-card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 10px 10px;}
+    .chart-title{font-size:0.85rem;font-weight:700;color:var(--navy);padding:2px 2px 8px;line-height:1.3;min-height:1.2em;}
+    .chart-title .ct-sub{font-weight:400;color:var(--muted);font-size:0.78rem;display:block;margin-top:2px;}
+    .chart-container{position:relative;height:300px;}
+    .status{text-align:center;padding:60px 20px;color:var(--muted);font-size:0.9rem;}
+    .status .spinner{display:inline-block;width:30px;height:30px;border:3px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;}
+    .status .progress-text{font-size:0.75rem;margin-top:6px;color:#a0aab8;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .legend-row{display:flex;gap:8px 14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--muted);}
+    .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+    /* Forecast legend: dashed border */
+    .legend-dot.forecast{background:#ccc!important;border:1.5px dashed #888;box-sizing:border-box;}
+
+    .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
+    .info-box strong{color:#1a2332;}
+
+    .dl-row{padding:0 12px 8px;display:flex;justify-content:flex-end;}
+    .dl-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--green);border-radius:8px;background:#fff;font-size:0.8rem;font-weight:500;color:var(--green);cursor:pointer;}
+    .dl-btn:disabled{opacity:0.4;pointer-events:none;}
+    .dl-btn svg{width:13px;height:13px;}
+    .source-note{padding:6px 12px 80px;font-size:0.68rem;color:#a0aab8;text-align:right;}
+    .source-note a{color:var(--blue);text-decoration:none;}
+
+    .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+    .sheet-overlay.open{opacity:1;pointer-events:all;}
+    .bottom-sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;z-index:70;display:flex;flex-direction:column;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);max-height:82vh;}
+    .bottom-sheet.open{transform:translateY(0);}
+    .sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;flex-shrink:0;}
+    .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;flex-shrink:0;border-bottom:1px solid var(--border);}
+    .sheet-header h3{font-size:1rem;font-weight:700;color:var(--blue);}
+    .sheet-close{width:30px;height:30px;border-radius:50%;border:none;background:var(--light);color:var(--muted);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .sheet-search{margin:10px 16px 0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;color:#1a2332;outline:none;flex-shrink:0;}
+    .sheet-search:focus{border-color:var(--blue);}
+    .sheet-search:disabled{background:var(--light);color:#a0aab8;}
+    .sheet-actions{display:flex;gap:8px;padding:8px 16px;flex-shrink:0;}
+    .sheet-action-btn{flex:1;padding:7px 0;border:1.5px solid var(--border);border-radius:6px;background:#fff;font-size:0.78rem;color:var(--muted);cursor:pointer;}
+    .sheet-list{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;}
+    .check-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f3f7;font-size:0.9rem;cursor:pointer;user-select:none;}
+    .check-item:last-child{border-bottom:none;}
+    .check-item.checked{background:var(--light);font-weight:500;color:var(--navy);}
+    .check-item input[type=checkbox]{accent-color:var(--blue);width:17px;height:17px;flex-shrink:0;}
+    .list-empty{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
+    .list-loading{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
+    .cmp-loading-notice{padding:0 16px 8px;font-size:0.75rem;color:var(--muted);display:none;flex-shrink:0;}
+    .cmp-loading-notice.visible{display:block;}
+    .sheet-bottom-pad{height:env(safe-area-inset-bottom,12px);flex-shrink:0;}
+
+    /* Forecast notice banner */
+    .forecast-notice{margin:0 12px 8px;background:#f5f5f5;border:1px dashed #aaa;border-radius:8px;padding:8px 12px;font-size:0.72rem;color:#555;line-height:1.5;display:none;}
+    .forecast-notice.visible{display:block;}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">NCS Production</div>
+    <div class="topbar-sub">Norwegian Continental Shelf · Sodir FactPages</div>
+  </div>
+</div>
+
+<div class="controls-bar">
+  <div class="ctrl-row">
+    <div class="mode-switcher">
+      <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
+      <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <div class="year-row">
+      <label>From</label>
+      <select class="year-select" id="yearFrom"></select>
+      <label>To</label>
+      <select class="year-select" id="yearTo"></select>
+    </div>
+    <div class="pill-group">
+      <button class="pill-btn active" id="btnMonthly" onclick="setPeriod('monthly')">Monthly</button>
+      <button class="pill-btn" id="btnQuarterly" onclick="setPeriod('quarterly')">Quarterly</button>
+      <button class="pill-btn" id="btnAnnual" onclick="setPeriod('annual')">Annual</button>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <span class="ctrl-label">Show</span>
+    <div class="view-tabs" id="viewTabs"></div>
+  </div>
+  <div class="ctrl-row" id="waterRow" style="display:none">
+    <div class="toggle-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="waterToggle" onchange="setWater(this.checked)"/>
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="toggle-label">Show produced water</span>
+    </div>
+  </div>
+  <div class="ctrl-row" id="forecastRow" style="display:none">
+    <div class="toggle-row forecast-toggle-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="forecastToggle" onchange="setForecast(this.checked)"/>
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="toggle-label">Woodmac production forecast</span>
+      <span id="forecastSpinner" style="display:none;margin-left:6px;width:12px;height:12px;border:2px solid #ddd;border-top-color:#888;border-radius:50%;animation:spin 0.7s linear infinite;display:none;"></span>
+    </div>
+  </div>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-card">
+    <div id="chartTitle" class="chart-title"></div>
+    <div id="chartArea">
+      <div class="status"><div class="spinner"></div><div>Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="forecast-notice" id="forecastNotice">
+  <strong>Woodmac forecast</strong> – Grey bars show Woodmac annual production forecast from <span id="forecastFromYear"></span>. Proxy must be running on localhost:8787.
+</div>
+
+<div class="info-box" id="infoBox"></div>
+
+<div class="dl-row">
+  <button class="dl-btn" id="downloadBtn" onclick="downloadExcel()" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Download Excel
+  </button>
+</div>
+
+<div class="source-note"><a href="https://factpages.sodir.no" target="_blank">Norwegian Offshore Directorate</a> – NLOD 2.0</div>
+
+<button class="select-fab" id="selectFab" onclick="toggleSheet()">
+  <span id="fabLabel">Select</span>
+  <span class="fab-badge" id="fabBadge">0</span>
+</button>
+
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <h3 id="sheetTitle">Select</h3>
+    <button class="sheet-close" onclick="closeSheet()">&#10005;</button>
+  </div>
+  <input class="sheet-search" id="listSearch" type="text" placeholder="Search…" oninput="filterList()" disabled/>
+  <div class="sheet-actions">
+    <button class="sheet-action-btn" onclick="selectAll()">Select all</button>
+    <button class="sheet-action-btn" onclick="clearAll()">Clear all</button>
+  </div>
+  <div class="cmp-loading-notice" id="cmpLoadingNotice">Loading ownership data…</div>
+  <div class="sheet-list" id="checkList"><div class="list-loading">Loading…</div></div>
+  <div class="sheet-bottom-pad"></div>
+</div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const BASE        = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
+const FIELD_LAYER = 7100;
+const PROD_LAYER  = 7300;
+const LIC_LAYER   = 7108;
+const RES_LAYER   = 7114;
+const BBL_PER_SM3 = 6.29;
+
+// Woodmac proxy
+const WM_PROXY    = 'http://localhost:8787';
+const WM_ODATA    = '/query/upstream_weekly/imp-met/odata/field_annual_production_kbd';
+const WM_API_KEY  = '96a71880-1bc0-11f1-aa18-c3ae722064ac';
+const CURRENT_YEAR = new Date().getFullYear();
+
+const PALETTE = [
+  ['rgba(206,15,105,0.85)',  'rgba(206,15,105,0.45)'],
+  ['rgba(246,141,46,0.85)',  'rgba(246,141,46,0.45)'],
+  ['rgba(0,179,115,0.85)',   'rgba(0,179,115,0.45)'],
+  ['rgba(73,147,180,0.85)',  'rgba(73,147,180,0.45)'],
+  ['rgba(209,79,78,0.85)',   'rgba(209,79,78,0.45)'],
+  ['rgba(232,201,66,0.85)',  'rgba(232,201,66,0.45)'],
+  ['rgba(125,34,72,0.85)',   'rgba(125,34,72,0.45)'],
+  ['rgba(213,51,128,0.85)',  'rgba(213,51,128,0.45)'],
+  ['rgba(221,87,150,0.85)',  'rgba(221,87,150,0.45)'],
+  ['rgba(231,135,180,0.85)', 'rgba(231,135,180,0.45)'],
+];
+const OIL_COLOR   = 'rgba(206,15,105,0.85)';
+const GAS_COLOR   = 'rgba(246,141,46,0.75)';
+const WATER_COLOR = 'rgba(73,147,180,0.75)';
+
+// Forecast colours
+const FC_LIQUID_COLOR = 'rgba(160,160,160,0.70)';
+const FC_GAS_COLOR    = 'rgba(200,200,200,0.70)';
+const FC_BORDER_COLOR = 'rgba(120,120,120,0.9)';
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let topMode    = 'companies';
+let period     = 'monthly';
+let showWater  = false;
+let showForecast = false;
+
+let fieldSubView   = 'oilgas';
+let companySubView = 'oilgas';
+
+let allFields            = [];
+let filteredFields       = [];
+let selectedFieldIds     = new Set();
+
+let allCompanies         = [];
+let filteredCompanies    = [];
+let selectedCompanyNames = new Set();
+
+let fieldProdCache  = {};
+let companyReserves = {};
+let reservesLoaded  = false;
+let fieldLicCache   = {};
+let licLoadedFor    = new Set();
+let allLicRecords   = [];
+let allLicLoaded    = false;
+let allLicLoading   = false;
+
+// Woodmac forecast cache: fieldName → { liquid: {year→kbd}, gas: {year→kbd} }
+let wmForecastCache = {};
+
+let chartInstance   = null;
+let lastLabels      = [];
+let lastDatasets    = [];
+let sheetOpen       = false;
+
+// ── YEAR SELECTORS ───────────────────────────────────────────────────────────
+const currentYear = new Date().getFullYear();
+['yearFrom','yearTo'].forEach(id => {
+  const sel = document.getElementById(id);
+  for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
+  sel.addEventListener('change', () => {
+    sessionClearProd();
+    fieldProdCache = {};
+    refresh();
+  });
+});
+document.getElementById('yearFrom').value = 2024;
+document.getElementById('yearTo').value   = currentYear;
+
+// ── SESSION STORAGE ──────────────────────────────────────────────────────────
+const SESSION_PROD_PREFIX = 'ncs_prod_v1_';
+const SESSION_LIC_KEY     = 'ncs_lic_v1';
+const _memStore = new Map();
+let _storageAvailable = false;
+try { sessionStorage.setItem('_test','1'); sessionStorage.removeItem('_test'); _storageAvailable = true; } catch(e) {}
+function sessionGet(key) {
+  if (_storageAvailable) { try { const v=sessionStorage.getItem(key); return v?JSON.parse(v):null; } catch(e){} }
+  const v=_memStore.get(key); return v!==undefined?v:null;
+}
+function sessionSet(key,val) {
+  if (_storageAvailable) { try { sessionStorage.setItem(key,JSON.stringify(val)); return; } catch(e){} }
+  _memStore.set(key,val);
+}
+function sessionClearProd() {
+  if (_storageAvailable) { try { Object.keys(sessionStorage).filter(k=>k.startsWith(SESSION_PROD_PREFIX)).forEach(k=>sessionStorage.removeItem(k)); } catch(e){} }
+  for (const k of _memStore.keys()) { if (k.startsWith(SESSION_PROD_PREFIX)) _memStore.delete(k); }
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const daysInMonth = (y,m) => new Date(y,m,0).getDate();
+const daysInYear  = y => (y%4===0&&(y%100!==0||y%400===0))?366:365;
+
+// ── QUERY HELPERS ────────────────────────────────────────────────────────────
+async function queryLayer(layerId, params) {
+  const url = new URL(`${BASE}/${layerId}/query`);
+  const p = {f:'json',outFields:'*',where:'1=1',resultRecordCount:2000,...params};
+  Object.entries(p).forEach(([k,v]) => url.searchParams.set(k,v));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.features || [];
+}
+async function queryCount(layerId, where='1=1') {
+  const url = new URL(`${BASE}/${layerId}/query`);
+  url.searchParams.set('f','json'); url.searchParams.set('where',where); url.searchParams.set('returnCountOnly','true');
+  const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json(); return data.count || 0;
+}
+async function queryAllParallel(layerId, params={}, PAGE_SIZE=2000) {
+  const where = params.where||'1=1';
+  const count = await queryCount(layerId,where);
+  if (!count) return [];
+  const offsets=[];
+  for (let o=0;o<count;o+=PAGE_SIZE) offsets.push(o);
+  const pages = await Promise.all(offsets.map(offset=>queryLayer(layerId,{...params,resultRecordCount:PAGE_SIZE,resultOffset:offset})));
+  return pages.flat();
+}
+
+// ── WOODMAC FORECAST ─────────────────────────────────────────────────────────
+// fieldName is the Sodir name – we try to match it to Woodmac field_name.
+// Woodmac uses different capitalisation/spelling, so we do a case-insensitive match.
+
+async function fetchWmForecast(fieldName) {
+  if (wmForecastCache[fieldName]) return wmForecastCache[fieldName];
+
+  const filter = `field_name eq '${fieldName.replace(/'/g,"''")}'`;
+  const qs = `$select=field_name,year,liquid_gas,metric_value&$filter=${encodeURIComponent(filter)}&_apikey=${WM_API_KEY}`;
+  try {
+    const res = await fetch(`${WM_PROXY}${WM_ODATA}?${qs}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const rows = data.value || [];
+
+    // Handle pagination
+    let next = data['@odata.nextLink'];
+    while (next) {
+      const url = next.replace('https://data.woodmac.com', WM_PROXY) + `&_apikey=${WM_API_KEY}`;
+      const r2 = await fetch(url); if (!r2.ok) break;
+      const d2 = await r2.json(); rows.push(...(d2.value||[])); next = d2['@odata.nextLink'];
+    }
+
+    // Only keep forecast years (current year onwards)
+    const result = { liquid: {}, gas: {} };
+    rows.forEach(r => {
+      if (r.year < CURRENT_YEAR) return;
+      const lg = (r.liquid_gas||'').toLowerCase();
+      const val = parseFloat(r.metric_value) || 0;
+      if (lg.includes('liquid')) result.liquid[r.year] = (result.liquid[r.year]||0) + val;
+      else if (lg.includes('gas')) result.gas[r.year] = (result.gas[r.year]||0) + val;
+    });
+
+    wmForecastCache[fieldName] = result;
+    return result;
+  } catch(e) {
+    console.warn('Woodmac forecast fetch failed:', e.message);
+    wmForecastCache[fieldName] = null;
+    return null;
+  }
+}
+
+// Convert kbd to boe/day for annual data (kbd = kbbl/day already for liquids)
+// For gas from Woodmac: metric_value is in kbd (kboe/day equivalent)
+// 1 kbd = 1000 bbl/day = 1000 boe/day
+function kbdToBoed(kbd) { return kbd * 1000; }
+
+// ── PERIOD UTILS ─────────────────────────────────────────────────────────────
+function periodKey(a) {
+  return (period==='monthly'||period==='quarterly') ? `${a.prfYear}-${String(a.prfMonth).padStart(2,'0')}` : `${a.prfYear}`;
+}
+function isValidRow(a) { return (period==='monthly'||period==='quarterly') ? a.prfMonth>0 : a.prfMonth===0; }
+function days(a) { return (period==='monthly'||period==='quarterly') ? daysInMonth(a.prfYear,a.prfMonth) : daysInYear(a.prfYear); }
+function midDate(year,month) { return (period==='monthly'||period==='quarterly') ? new Date(year,month-1,15) : new Date(year,6,1); }
+function oeBoed(oeMillSm3,d)  { return (oeMillSm3*1e6*BBL_PER_SM3)/d; }
+function oilBoed(oilMillSm3,gasBillSm3,oeMillSm3,d) { return Math.max(0,oeBoed(oeMillSm3,d)-(gasBillSm3*1e6*BBL_PER_SM3)/d); }
+function gasBoed(gasBillSm3,d) { return (gasBillSm3*1e6*BBL_PER_SM3)/d; }
+function waterBoed(watMillSm3,d) { return (watMillSm3*1e6*BBL_PER_SM3)/d; }
+
+function getQuarterKey(year,month)  { return `${year}-Q${Math.ceil(month/3)}`; }
+function getQuarterMonth0(q)        { return (q-1)*3+1; }
+function daysInQuarter(year,q)      { const m0=getQuarterMonth0(q); return [m0,m0+1,m0+2].reduce((s,m)=>s+daysInMonth(year,m),0); }
+
+function buildQuarterMap(fieldIds) {
+  const map={};
+  fieldIds.forEach(id=>(fieldProdCache[id]||[]).forEach(f=>{
+    const a=f.attributes; if (!a.prfMonth||a.prfMonth===0) return;
+    const q=Math.ceil(a.prfMonth/3), qk=getQuarterKey(a.prfYear,a.prfMonth);
+    if (!map[qk]) map[qk]={year:a.prfYear,q,totalDays:daysInQuarter(a.prfYear,q),presentMonths:new Set()};
+    map[qk].presentMonths.add(a.prfMonth);
+  }));
+  return Object.fromEntries(Object.entries(map).filter(([,v])=>v.presentMonths.size>=3));
+}
+
+function quarterBoed(fieldIds,qk,qMap,toBoedFn,valueFn) {
+  const qi=qMap[qk]; if (!qi) return 0;
+  const m0=getQuarterMonth0(qi.q); let totalBbl=0;
+  fieldIds.forEach(id=>[m0,m0+1,m0+2].forEach(m=>{
+    const row=(fieldProdCache[id]||[]).find(r=>r.attributes.prfYear===qi.year&&r.attributes.prfMonth===m);
+    if (!row) return; const a=row.attributes,d=daysInMonth(qi.year,m);
+    totalBbl+=toBoedFn(valueFn(a),d)*d;
+  }));
+  return totalBbl/qi.totalDays;
+}
+
+function quarterBoedEquity(fieldIds,qk,qMap,toBoedFn,valueFn,companyName) {
+  const qi=qMap[qk]; if (!qi) return 0;
+  const m0=getQuarterMonth0(qi.q); let totalBbl=0;
+  fieldIds.forEach(id=>[m0,m0+1,m0+2].forEach(m=>{
+    const row=(fieldProdCache[id]||[]).find(r=>r.attributes.prfYear===qi.year&&r.attributes.prfMonth===m);
+    if (!row) return; const a=row.attributes,d=daysInMonth(qi.year,m);
+    const share=getShare(id,midDate(qi.year,m),companyName)/100;
+    totalBbl+=toBoedFn(valueFn(a),d)*d*share;
+  }));
+  return totalBbl/qi.totalDays;
+}
+
+function unionLabels(fieldIds) {
+  if (period==='quarterly') { return Object.keys(buildQuarterMap(fieldIds)).sort(); }
+  const s=new Set();
+  fieldIds.forEach(id=>(fieldProdCache[id]||[]).forEach(f=>{if(isValidRow(f.attributes)) s.add(periodKey(f.attributes));}));
+  return [...s].sort();
+}
+
+const TRIAL_PROD_OWNERSHIP = { 17196400: {'Aker BP ASA':80.0,'OMV (Norge) AS':20.0} };
+
+function getFieldsForCompany(cmpName) {
+  const fromLic=[...new Set(allLicRecords.filter(r=>r.cmpLongName===cmpName).map(r=>r.fldNpdidField))];
+  const fromTrial=Object.entries(TRIAL_PROD_OWNERSHIP).filter(([,o])=>(o[cmpName]||0)>0).map(([id])=>+id);
+  return [...new Set([...fromLic,...fromTrial])];
+}
+function getShare(fieldId,date,companyName) {
+  if (!companyName) return 100;
+  if (TRIAL_PROD_OWNERSHIP[fieldId]) return TRIAL_PROD_OWNERSHIP[fieldId][companyName]??0;
+  const records=fieldLicCache[fieldId]||[];
+  const ts=date.getTime();
+  const match=records.find(r=>{
+    if (r.cmpLongName!==companyName) return false;
+    if (r.fldLicenseeFrom!==null&&ts<r.fldLicenseeFrom) return false;
+    if (r.fldLicenseeTo!==null&&ts>r.fldLicenseeTo) return false;
+    return true;
+  });
+  return match?(match.fldCompanyShare||0):0;
+}
+function hasAnyValue(arr) { return arr.some(v=>v>0); }
+
+// ── DATA LOADING ─────────────────────────────────────────────────────────────
+async function loadFields() {
+  const features=await queryLayer(FIELD_LAYER,{outFields:'fldNpdidField,fldName',orderByFields:'fldName ASC',resultRecordCount:500});
+  allFields=features.map(f=>({id:f.attributes.fldNpdidField,name:f.attributes.fldName})).sort((a,b)=>a.name.localeCompare(b.name,'en'));
+  const TRIAL_PROD_FIELDS=[{id:17196400,name:'16/1-12 TROLDHAUGEN',trialProd:true}];
+  TRIAL_PROD_FIELDS.forEach(tp=>{if (!allFields.find(f=>f.id===tp.id)) allFields.push(tp);});
+  filteredFields=allFields;
+  const js=allFields.find(f=>f.name==='JOHAN SVERDRUP');
+  if (js) selectedFieldIds.add(js.id);
+  document.getElementById('listSearch').disabled=false;
+}
+
+async function loadProdForFields(ids) {
+  const fy=+document.getElementById('yearFrom').value, ty=+document.getElementById('yearTo').value;
+  ids.forEach(id=>{ if (fieldProdCache[id]===undefined) { const c=sessionGet(`${SESSION_PROD_PREFIX}prod_${id}_${fy}_${ty}`); if (c) fieldProdCache[id]=c; }});
+  const toFetch=ids.filter(id=>fieldProdCache[id]===undefined||fieldProdCache[id]===null);
+  if (!toFetch.length) return;
+  toFetch.forEach(id=>{fieldProdCache[id]=null;});
+  const IN_BATCH=50;
+  const PROD_FIELDS='prfNpdidInformationCarrier,prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdProducedWaterInFieldMillS';
+  for (let i=0;i<toFetch.length;i+=IN_BATCH) {
+    const batch=toFetch.slice(i,i+IN_BATCH), inClause=batch.join(',');
+    try {
+      let offset=0; const allRows=[];
+      while (true) {
+        const rows=await queryLayer(PROD_LAYER,{where:`prfNpdidInformationCarrier IN (${inClause}) AND prfYear>=${fy} AND prfYear<=${ty}`,outFields:PROD_FIELDS,resultRecordCount:2000,resultOffset:offset});
+        allRows.push(...rows); if (rows.length<2000) break; offset+=2000;
+      }
+      const byField={};
+      allRows.forEach(r=>{const fid=r.attributes.prfNpdidInformationCarrier;if (!byField[fid]) byField[fid]=[];byField[fid].push(r);});
+      batch.forEach(id=>{const rows=byField[id]||[];fieldProdCache[id]=rows;sessionSet(`${SESSION_PROD_PREFIX}prod_${id}_${fy}_${ty}`,rows);});
+    } catch(e) { batch.forEach(id=>{fieldProdCache[id]=null;}); }
+  }
+}
+
+async function loadLicForFields(ids) {
+  const toLoad=ids.filter(id=>!licLoadedFor.has(id)&&!TRIAL_PROD_OWNERSHIP[id]);
+  ids.filter(id=>TRIAL_PROD_OWNERSHIP[id]).forEach(id=>{if (!fieldLicCache[id]) fieldLicCache[id]=[];licLoadedFor.add(id);});
+  await Promise.all(toLoad.map(async id=>{
+    try {
+      fieldLicCache[id]=[]; let offset=0;
+      while (true) {
+        const rows=await queryLayer(LIC_LAYER,{where:`fldNpdidField=${id}`,outFields:'cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',resultRecordCount:2000,resultOffset:offset});
+        fieldLicCache[id]=fieldLicCache[id].concat(rows.map(r=>r.attributes)); if (rows.length<2000) break; offset+=2000;
+      }
+    } catch(e) { fieldLicCache[id]=[]; }
+    licLoadedFor.add(id);
+  }));
+}
+
+let allLicPromise=null;
+async function loadAllLicensees() {
+  if (allLicLoaded) return;
+  if (allLicPromise) return allLicPromise;
+  allLicLoading=true; allLicPromise=_doLoadAllLicensees(); return allLicPromise;
+}
+async function _doLoadAllLicensees() {
+  document.getElementById('cmpLoadingNotice').classList.add('visible');
+  try {
+    const cached=sessionGet(SESSION_LIC_KEY);
+    if (cached&&Array.isArray(cached)&&cached.length>0) { _ingestLicRecords(cached); allLicLoaded=true; return; }
+    const total=await queryCount(LIC_LAYER);
+    const PAGE_SIZE=2000, offsets=[];
+    for (let o=0;o<total;o+=PAGE_SIZE) offsets.push(o);
+    const pages=await Promise.all(offsets.map(offset=>queryLayer(LIC_LAYER,{where:'1=1',outFields:'fldNpdidField,cmpLongName,fldCompanyShare,fldLicenseeFrom,fldLicenseeTo',resultRecordCount:PAGE_SIZE,resultOffset:offset})));
+    const rawRecords=pages.flat().map(r=>r.attributes);
+    sessionSet(SESSION_LIC_KEY,rawRecords); _ingestLicRecords(rawRecords); allLicLoaded=true;
+  } catch(e) { console.error('loadAllLicensees failed:',e); }
+  finally { allLicLoading=false; document.getElementById('cmpLoadingNotice').classList.remove('visible'); }
+}
+function _ingestLicRecords(records) {
+  allLicRecords=records;
+  records.forEach(a=>{if (!fieldLicCache[a.fldNpdidField]) fieldLicCache[a.fldNpdidField]=[];fieldLicCache[a.fldNpdidField].push(a);licLoadedFor.add(a.fldNpdidField);});
+  const s=new Set(records.map(r=>r.cmpLongName).filter(Boolean));
+  allCompanies=sortCompanies([...s]); filteredCompanies=allCompanies;
+}
+
+async function loadReserves() {
+  if (reservesLoaded) return;
+  try {
+    const rows=await queryAllParallel(RES_LAYER,{where:'1=1',outFields:'cmpLongName,cmpRecoverableOE'});
+    const totals={};
+    rows.forEach(r=>{const rec=r.attributes?r.attributes:r;if (!rec.cmpLongName) return;totals[rec.cmpLongName]=(totals[rec.cmpLongName]||0)+(rec.cmpRecoverableOE||0);});
+    companyReserves=totals; reservesLoaded=true;
+  } catch(e) { reservesLoaded=true; }
+}
+function sortCompanies(names) {
+  return [...names].sort((a,b)=>{
+    if (a==='Aker BP ASA') return -1; if (b==='Aker BP ASA') return 1;
+    const ra=companyReserves[a]||0,rb=companyReserves[b]||0;
+    if (ra!==rb) return rb-ra; return a.localeCompare(b,'en');
+  });
+}
+
+// ── VIEW TABS ────────────────────────────────────────────────────────────────
+const FIELD_TABS   = [{id:'oilgas',label:'Oil & Gas'},{id:'oe_per_field',label:'OE per field'},{id:'oe_per_company',label:'OE per company'}];
+const COMPANY_TABS = [{id:'oilgas',label:'Oil & Gas'},{id:'oe_per_field',label:'OE per field'}];
+
+function renderViewTabs() {
+  const tabs=topMode==='fields'?FIELD_TABS:COMPANY_TABS;
+  const cur=topMode==='fields'?fieldSubView:companySubView;
+  document.getElementById('viewTabs').innerHTML=tabs.map(t=>`<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`).join('');
+  const singleField = topMode==='fields' && selectedFieldIds.size===1;
+  const isOilGas    = (topMode==='fields'?fieldSubView:companySubView)==='oilgas';
+  const isAnnual    = period==='annual';
+  document.getElementById('waterRow').style.display    = (topMode==='fields'&&isOilGas)?'':'none';
+  document.getElementById('forecastRow').style.display = (singleField&&isOilGas&&isAnnual)?'':'none';
+  if (!(singleField&&isOilGas&&isAnnual) && showForecast) {
+    showForecast=false; document.getElementById('forecastToggle').checked=false;
+  }
+  updateForecastNotice();
+}
+
+function setSubView(v) {
+  if (topMode==='fields') fieldSubView=v; else companySubView=v;
+  renderViewTabs(); refresh();
+}
+function setWater(val) { showWater=val; drawChart(); }
+
+async function setForecast(val) {
+  showForecast=val;
+  updateForecastNotice();
+  if (val) {
+    // Pre-fetch forecast for selected field
+    const ids=[...selectedFieldIds];
+    if (ids.length===1) {
+      const fname=allFields.find(f=>f.id===ids[0])?.name||'';
+      const spinner=document.getElementById('forecastSpinner');
+      spinner.style.display='inline-block';
+      await fetchWmForecast(fname);
+      spinner.style.display='none';
+    }
+  }
+  drawChart();
+}
+
+function updateForecastNotice() {
+  const notice=document.getElementById('forecastNotice');
+  if (showForecast && period==='annual' && topMode==='fields' && selectedFieldIds.size===1) {
+    notice.classList.add('visible');
+    document.getElementById('forecastFromYear').textContent=CURRENT_YEAR;
+  } else {
+    notice.classList.remove('visible');
+  }
+}
+
+function setPeriod(p) {
+  if (period===p) return; period=p;
+  ['Monthly','Quarterly','Annual'].forEach(n=>{
+    document.getElementById(`btn${n}`).classList.toggle('active',p===n.toLowerCase());
+  });
+  renderViewTabs(); refresh();
+}
+function switchMode(m) {
+  if (topMode===m) return; topMode=m;
+  document.getElementById('modeBtnFields').classList.toggle('active',m==='fields');
+  document.getElementById('modeBtnCompanies').classList.toggle('active',m==='companies');
+  renderViewTabs(); updateFab(); refresh();
+}
+
+// ── FAB + SHEET ───────────────────────────────────────────────────────────────
+function updateFab() {
+  const count=topMode==='fields'?selectedFieldIds.size:selectedCompanyNames.size;
+  document.getElementById('fabBadge').textContent=count;
+  const noun=topMode==='fields'?'field':'company', nounP=topMode==='fields'?'fields':'companies';
+  document.getElementById('fabLabel').textContent=count?`${count} ${count>1?nounP:noun} selected`:`Select ${nounP}`;
+  document.getElementById('sheetTitle').textContent=`Select ${topMode==='fields'?'fields':'companies'}`;
+}
+function toggleSheet(){sheetOpen?closeSheet():openSheet();}
+function openSheet(){sheetOpen=true;document.getElementById('bottomSheet').classList.add('open');document.getElementById('sheetOverlay').classList.add('open');document.body.style.overflow='hidden';renderList();}
+function closeSheet(){sheetOpen=false;document.getElementById('bottomSheet').classList.remove('open');document.getElementById('sheetOverlay').classList.remove('open');document.body.style.overflow='';}
+
+function renderList(){topMode==='fields'?renderFieldList():renderCompanyList();}
+function renderFieldList() {
+  const el=document.getElementById('checkList');
+  if (!filteredFields.length){el.innerHTML='<div class="list-empty">No results</div>';return;}
+  el.innerHTML='';
+  filteredFields.forEach(f=>{
+    const item=document.createElement('div'); item.className='check-item'+(selectedFieldIds.has(f.id)?' checked':'');
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=selectedFieldIds.has(f.id);
+    cb.addEventListener('change',()=>toggleField(f.id,item,cb));
+    item.appendChild(cb); item.appendChild(document.createTextNode(f.name));
+    item.addEventListener('click',e=>{if(e.target!==cb)cb.click();}); el.appendChild(item);
+  });
+}
+function renderCompanyList() {
+  const el=document.getElementById('checkList');
+  if (!filteredCompanies.length){el.innerHTML=allLicLoading?'<div class="list-loading">Loading…</div>':'<div class="list-empty">No results</div>';return;}
+  el.innerHTML='';
+  filteredCompanies.forEach(name=>{
+    const item=document.createElement('div'); item.className='check-item'+(selectedCompanyNames.has(name)?' checked':'');
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=selectedCompanyNames.has(name);
+    cb.addEventListener('change',()=>toggleCompany(name,item,cb));
+    item.appendChild(cb); item.appendChild(document.createTextNode(name));
+    item.addEventListener('click',e=>{if(e.target!==cb)cb.click();}); el.appendChild(item);
+  });
+}
+function toggleField(id,item,cb) {
+  if (selectedFieldIds.has(id)){selectedFieldIds.delete(id);delete fieldProdCache[id];}
+  else selectedFieldIds.add(id);
+  cb.checked=selectedFieldIds.has(id); item.classList.toggle('checked',selectedFieldIds.has(id));
+  updateFab(); renderViewTabs(); refresh();
+}
+function toggleCompany(name,item,cb) {
+  if (selectedCompanyNames.has(name)) selectedCompanyNames.delete(name); else selectedCompanyNames.add(name);
+  cb.checked=selectedCompanyNames.has(name); item.classList.toggle('checked',selectedCompanyNames.has(name));
+  updateFab(); refresh();
+}
+function filterList() {
+  const q=document.getElementById('listSearch').value.toLowerCase();
+  if (topMode==='fields'){filteredFields=allFields.filter(f=>f.name.toLowerCase().includes(q));renderFieldList();}
+  else{filteredCompanies=allCompanies.filter(n=>n.toLowerCase().includes(q));renderCompanyList();}
+}
+function selectAll() {
+  if (topMode==='fields'){filteredFields.forEach(f=>selectedFieldIds.add(f.id));renderFieldList();}
+  else{filteredCompanies.forEach(n=>selectedCompanyNames.add(n));renderCompanyList();}
+  updateFab(); renderViewTabs(); refresh();
+}
+function clearAll() {
+  if (topMode==='fields'){selectedFieldIds.clear();fieldProdCache={};renderFieldList();}
+  else{selectedCompanyNames.clear();renderCompanyList();}
+  updateFab(); renderViewTabs(); refresh();
+}
+
+// ── MAIN REFRESH ─────────────────────────────────────────────────────────────
+async function refresh() {
+  if (topMode==='fields') await refreshFields(); else await refreshCompanies();
+}
+async function refreshFields() {
+  const ids=[...selectedFieldIds];
+  if (!ids.length){setChartTitle('','');setChartEmpty('Tap the button below to select one or more fields.');setInfo('');return;}
+  showSpinner();
+  await loadProdForFields(ids);
+  if (fieldSubView==='oe_per_company') await loadLicForFields(ids);
+  drawChart();
+}
+async function refreshCompanies() {
+  const companies=[...selectedCompanyNames];
+  if (!companies.length){setChartTitle('','');setChartEmpty('Tap the button below to select one or more companies.');setInfo('');return;}
+  if (!allLicLoaded){showSpinner();await loadAllLicensees();filteredCompanies=allCompanies;if(sheetOpen)renderCompanyList();}
+  const relevantIds=[...new Set(allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField))];
+  Object.entries(TRIAL_PROD_OWNERSHIP).forEach(([id,owners])=>{Object.keys(owners).forEach(cmp=>{if(selectedCompanyNames.has(cmp)&&owners[cmp]>0&&!relevantIds.includes(+id))relevantIds.push(+id);});});
+  relevantIds.forEach(id=>{if(fieldProdCache[id]===null)delete fieldProdCache[id];});
+  showSpinner(); await loadProdForFields(relevantIds); drawChart();
+}
+
+// ── CHART DRAWING ────────────────────────────────────────────────────────────
+function showSpinner(msg) {
+  document.getElementById('chartArea').innerHTML=`<div class="status"><div class="spinner"></div><div>Loading…</div>${msg?`<div class="progress-text">${msg}</div>`:''}</div>`;
+  document.getElementById('downloadBtn').disabled=true;
+}
+function setChartEmpty(msg) {
+  if (chartInstance){chartInstance.destroy();chartInstance=null;}
+  document.getElementById('chartArea').innerHTML=`<div class="status">${msg}</div>`;
+  document.getElementById('downloadBtn').disabled=true;
+}
+function drawChart() {
+  if (topMode==='fields') {
+    if (fieldSubView==='oilgas')          drawFieldsOilGas();
+    else if (fieldSubView==='oe_per_field')    drawFieldsOePerField();
+    else if (fieldSubView==='oe_per_company')  drawFieldsOePerCompany();
+  } else {
+    if (companySubView==='oilgas')       drawCompaniesOilGas();
+    else if (companySubView==='oe_per_field')  drawCompaniesOePerField();
+  }
+}
+
+// ── Build forecast datasets for annual single-field view ─────────────────────
+function buildForecastDatasets(fieldName, labels) {
+  const fc = wmForecastCache[fieldName];
+  if (!fc) return [];
+  const liquidD = labels.map(lbl => {
+    const yr = parseInt(lbl);
+    if (yr < CURRENT_YEAR) return 0;
+    return +(kbdToBoed(fc.liquid[yr]||0)).toFixed(0);
+  });
+  const gasD = labels.map(lbl => {
+    const yr = parseInt(lbl);
+    if (yr < CURRENT_YEAR) return 0;
+    return +(kbdToBoed(fc.gas[yr]||0)).toFixed(0);
+  });
+  const datasets = [];
+  if (hasAnyValue(liquidD)) datasets.push({
+    label:'WM Forecast (liquid)', data:liquidD,
+    backgroundColor:FC_LIQUID_COLOR, borderColor:FC_BORDER_COLOR,
+    borderWidth:1.5, borderDash:[4,3], stack:'fc'
+  });
+  if (hasAnyValue(gasD)) datasets.push({
+    label:'WM Forecast (gas)', data:gasD,
+    backgroundColor:FC_GAS_COLOR, borderColor:FC_BORDER_COLOR,
+    borderWidth:1.5, borderDash:[4,3], stack:'fc'
+  });
+  return datasets;
+}
+
+// ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
+function drawFieldsOilGas() {
+  const ids=[...selectedFieldIds];
+  const labels=unionLabels(ids);
+  if (!labels.length){setChartEmpty('No data for selected period.');return;}
+  const qMap=period==='quarterly'?buildQuarterMap(ids):null;
+  const datasets=[], legend=[];
+  lastDatasets=[];
+
+  if (ids.length===1) {
+    const id=ids[0], fname=allFields.find(f=>f.id===id)?.name||'';
+    const oilD=[],gasD=[],watD=[];
+    labels.forEach(lbl=>{
+      if (period==='quarterly') {
+        oilD.push(+quarterBoed([id],lbl,qMap,(v,d)=>Math.max(0,oeBoed(v.oe,d)-gasBoed(v.gas,d)),a=>({oe:a.prfPrdOeNetMillSm3||0,gas:a.prfPrdGasNetBillSm3||0})).toFixed(1));
+        gasD.push(+quarterBoed([id],lbl,qMap,(v,d)=>gasBoed(v,d),a=>a.prfPrdGasNetBillSm3||0).toFixed(1));
+        watD.push(+quarterBoed([id],lbl,qMap,(v,d)=>waterBoed(v,d),a=>a.prfPrdProducedWaterInFieldMillS||0).toFixed(1));
+      } else {
+        const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
+        const a=row?.attributes||{},d=a.prfYear?days(a):30;
+        oilD.push(+oilBoed(a.prfPrdOilNetMillSm3||0,a.prfPrdGasNetBillSm3||0,a.prfPrdOeNetMillSm3||0,d).toFixed(1));
+        gasD.push(+gasBoed(a.prfPrdGasNetBillSm3||0,d).toFixed(1));
+        watD.push(+waterBoed(a.prfPrdProducedWaterInFieldMillS||0,d).toFixed(1));
+      }
+    });
+    datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
+    datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
+    if (showWater) datasets.push({label:'Water',data:watD,backgroundColor:WATER_COLOR,borderWidth:0,stack:'s'});
+    legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
+    if (showWater) legend.push({label:'Water',color:WATER_COLOR});
+    lastDatasets=[{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
+    if (showWater) lastDatasets.push({label:'Water',data:watD});
+
+    // ── Woodmac forecast overlay (annual only) ────────────────────────────
+    if (showForecast && period==='annual') {
+      const fcDs=buildForecastDatasets(fname, labels);
+      datasets.push(...fcDs);
+      if (fcDs.length>0) {
+        legend.push({label:'WM Forecast (liquid)',color:FC_LIQUID_COLOR,forecast:true});
+        legend.push({label:'WM Forecast (gas)',color:FC_GAS_COLOR,forecast:true});
+      }
+      lastDatasets.push(...fcDs.map(d=>({label:d.label,data:d.data})));
+    }
+
+    setChartTitle(fname,`Oil & Gas production · boe/day${showForecast&&period==='annual'?' + Woodmac forecast':''}`);
+    setInfo(`<strong>Field:</strong> ${fname} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas${showWater?', Water':''}${showForecast&&period==='annual'?' + Woodmac forecast':''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day`);
+  } else {
+    // Multi-field: no forecast
+    const oilD=labels.map(lbl=>{
+      if (period==='quarterly') return +quarterBoed(ids,lbl,qMap,(v,d)=>Math.max(0,oeBoed(v.oe,d)-gasBoed(v.gas,d)),a=>({oe:a.prfPrdOeNetMillSm3||0,gas:a.prfPrdGasNetBillSm3||0})).toFixed(0);
+      let tot=0;ids.forEach(id=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};const d=a.prfYear?days(a):30;tot+=oilBoed(a.prfPrdOilNetMillSm3||0,a.prfPrdGasNetBillSm3||0,a.prfPrdOeNetMillSm3||0,d);});return +tot.toFixed(0);
+    });
+    const gasD=labels.map(lbl=>{
+      if (period==='quarterly') return +quarterBoed(ids,lbl,qMap,(v,d)=>gasBoed(v,d),a=>a.prfPrdGasNetBillSm3||0).toFixed(0);
+      let tot=0;ids.forEach(id=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};const d=a.prfYear?days(a):30;tot+=gasBoed(a.prfPrdGasNetBillSm3||0,d);});return +tot.toFixed(0);
+    });
+    const watD=showWater?labels.map(lbl=>{
+      if (period==='quarterly') return +quarterBoed(ids,lbl,qMap,(v,d)=>waterBoed(v,d),a=>a.prfPrdProducedWaterInFieldMillS||0).toFixed(0);
+      let tot=0;ids.forEach(id=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};const d=a.prfYear?days(a):30;tot+=waterBoed(a.prfPrdProducedWaterInFieldMillS||0,d);});return +tot.toFixed(0);
+    }):[];
+    datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
+    datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
+    if (showWater) datasets.push({label:'Water',data:watD,backgroundColor:WATER_COLOR,borderWidth:0,stack:'s'});
+    legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
+    if (showWater) legend.push({label:'Water',color:WATER_COLOR});
+    lastDatasets=[{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
+    if (showWater) lastDatasets.push({label:'Water',data:watD});
+    const fnames=ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
+    setChartTitle(`${ids.length} fields · Oil & Gas production`,`${fnames} · boe/day`);
+    setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day`);
+  }
+  renderChart(labels,datasets,legend,'boe/day');
+}
+
+// ── FIELDS: OE PER FIELD ─────────────────────────────────────────────────────
+function drawFieldsOePerField() {
+  const ids=[...selectedFieldIds], labels=unionLabels(ids);
+  if (!labels.length){setChartEmpty('No data for selected period.');return;}
+  const qMap=period==='quarterly'?buildQuarterMap(ids):null;
+  const datasets=[],legend=[];lastDatasets=[];
+  ids.forEach((id,i)=>{
+    const fname=allFields.find(f=>f.id===id)?.name||id, color=PALETTE[i%PALETTE.length][0];
+    const d=labels.map(lbl=>{
+      if (period==='quarterly') return +quarterBoed([id],lbl,qMap,(v,dy)=>oeBoed(v,dy),a=>a.prfPrdOeNetMillSm3||0).toFixed(0);
+      const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};const dy=a.prfYear?days(a):30;return +oeBoed(a.prfPrdOeNetMillSm3||0,dy).toFixed(0);
+    });
+    if (!hasAnyValue(d)) return;
+    datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:fname,color}); lastDatasets.push({label:fname,data:d});
+  });
+  const fnames=ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
+  setChartTitle('Net production · OE per field',`${fnames} · boe/day`);
+  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day`);
+  renderChart(labels,datasets,legend,'boe/day');
+}
+
+// ── FIELDS: OE PER COMPANY ───────────────────────────────────────────────────
+function drawFieldsOePerCompany() {
+  const ids=[...selectedFieldIds], labels=unionLabels(ids);
+  if (!labels.length){setChartEmpty('No data for selected period.');return;}
+  const qMap=period==='quarterly'?buildQuarterMap(ids):null;
+  const cmpSet=new Set();
+  ids.forEach(id=>(fieldLicCache[id]||[]).forEach(r=>{if(r.cmpLongName)cmpSet.add(r.cmpLongName);}));
+  const companies=[...cmpSet].sort(), datasets=[],legend=[];lastDatasets=[];
+  companies.forEach((cmp,i)=>{
+    const color=PALETTE[i%PALETTE.length][0];
+    const d=labels.map(lbl=>{
+      if (period==='quarterly') return +quarterBoedEquity(ids,lbl,qMap,(v,dy)=>oeBoed(v,dy),a=>a.prfPrdOeNetMillSm3||0,cmp).toFixed(0);
+      let total=0;ids.forEach(id=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};if (!a.prfYear) return;const dy=days(a);const share=getShare(id,midDate(a.prfYear,a.prfMonth||7),cmp)/100;total+=oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;});return +total.toFixed(0);
+    });
+    if (!hasAnyValue(d)) return;
+    datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:cmp,color}); lastDatasets.push({label:cmp,data:d});
+  });
+  const fnames=ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
+  setChartTitle(`${fnames} · OE per company`,'Equity-adjusted · boe/day');
+  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> boe/day`);
+  renderChart(labels,datasets,legend,'boe/day');
+}
+
+// ── COMPANIES: OIL & GAS ─────────────────────────────────────────────────────
+function drawCompaniesOilGas() {
+  const companies=[...selectedCompanyNames];
+  const relevantIds=[...new Set([...allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField),...Object.entries(TRIAL_PROD_OWNERSHIP).filter(([,o])=>[...selectedCompanyNames].some(c=>(o[c]||0)>0)).map(([id])=>+id)])];
+  const labels=unionLabels(relevantIds);
+  if (!labels.length){setChartEmpty('No data for selected period.');return;}
+  const qMap=period==='quarterly'?buildQuarterMap(relevantIds):null;
+  const datasets=[],legend=[];lastDatasets=[];
+  if (companies.length===1) {
+    const cmp=companies[0], cmpFields=getFieldsForCompany(cmp);
+    const oilD=labels.map(lbl=>{
+      if (period==='quarterly') return +quarterBoedEquity(cmpFields,lbl,qMap,(v,d)=>Math.max(0,oeBoed(v.oe,d)-gasBoed(v.gas,d)),a=>({oe:a.prfPrdOeNetMillSm3||0,gas:a.prfPrdGasNetBillSm3||0}),cmp).toFixed(0);
+      let tot=0;cmpFields.forEach(id=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};if (!a.prfYear) return;const dy=days(a),share=getShare(id,midDate(a.prfYear,a.prfMonth||7),cmp)/100;tot+=oilBoed(a.prfPrdOilNetMillSm3||0,a.prfPrdGasNetBillSm3||0,a.prfPrdOeNetMillSm3||0,dy)*share;});return +tot.toFixed(0);
+    });
+    const gasD=labels.map(lbl=>{
+      if (period==='quarterly') return +quarterBoedEquity(cmpFields,lbl,qMap,(v,d)=>gasBoed(v,d),a=>a.prfPrdGasNetBillSm3||0,cmp).toFixed(0);
+      let tot=0;cmpFields.forEach(id=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};if (!a.prfYear) return;const dy=days(a),share=getShare(id,midDate(a.prfYear,a.prfMonth||7),cmp)/100;tot+=gasBoed(a.prfPrdGasNetBillSm3||0,dy)*share;});return +tot.toFixed(0);
+    });
+    datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
+    datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
+    legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
+    lastDatasets=[{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
+    setChartTitle(cmp,'Oil & Gas production · equity-adjusted · boe/day');
+    setInfo(`<strong>Company:</strong> ${cmp} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted`);
+  } else {
+    companies.forEach((cmp,i)=>{
+      const cmpFields=getFieldsForCompany(cmp), color=PALETTE[i%PALETTE.length][0];
+      const d=labels.map(lbl=>{
+        if (period==='quarterly') return +quarterBoedEquity(cmpFields,lbl,qMap,(v,dy)=>oeBoed(v,dy),a=>a.prfPrdOeNetMillSm3||0,cmp).toFixed(0);
+        let tot=0;cmpFields.forEach(id=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};if (!a.prfYear) return;const dy=days(a),share=getShare(id,midDate(a.prfYear,a.prfMonth||7),cmp)/100;tot+=oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;});return +tot.toFixed(0);
+      });
+      if (!hasAnyValue(d)) return;
+      datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+      legend.push({label:cmp,color}); lastDatasets.push({label:cmp,data:d});
+    });
+    setChartTitle(`${companies.length} companies · Net OE production`,'Equity-adjusted · boe/day');
+    setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted`);
+  }
+  renderChart(labels,datasets,legend,'boe/day');
+}
+
+// ── COMPANIES: OE PER FIELD ───────────────────────────────────────────────────
+function drawCompaniesOePerField() {
+  const companies=[...selectedCompanyNames];
+  const relevantIds=[...new Set([...allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField),...Object.entries(TRIAL_PROD_OWNERSHIP).filter(([,o])=>companies.some(c=>(o[c]||0)>0)).map(([id])=>+id)])];
+  const labels=unionLabels(relevantIds);
+  if (!labels.length){setChartEmpty('No data for selected period.');return;}
+  const qMap=period==='quarterly'?buildQuarterMap(relevantIds):null;
+  const datasets=[],legend=[];lastDatasets=[];
+  relevantIds.forEach((id,i)=>{
+    const fname=allFields.find(f=>f.id===id)?.name||`Field ${id}`, color=PALETTE[i%PALETTE.length][0];
+    const d=labels.map(lbl=>{
+      if (period==='quarterly') return +companies.reduce((tot,cmp)=>tot+quarterBoedEquity([id],lbl,qMap,(v,dy)=>oeBoed(v,dy),a=>a.prfPrdOeNetMillSm3||0,cmp),0).toFixed(0);
+      let tot=0;companies.forEach(cmp=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};if (!a.prfYear) return;const dy=days(a),share=getShare(id,midDate(a.prfYear,a.prfMonth||7),cmp)/100;tot+=oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;});return +tot.toFixed(0);
+    });
+    if (!hasAnyValue(d)) return;
+    datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:fname,color}); lastDatasets.push({label:fname,data:d});
+  });
+  const cmpStr=companies.join(', ');
+  setChartTitle(`${companies.length===1?companies[0]:companies.length+' companies'} · OE per field`,'Equity-adjusted · boe/day');
+  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted`);
+  renderChart(labels,datasets,legend,'boe/day');
+}
+
+// ── RENDER CHART ─────────────────────────────────────────────────────────────
+function renderChart(labels,datasets,legend,yTitle) {
+  lastLabels=labels;
+  document.getElementById('chartArea').innerHTML=`
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${legend.map(l=>`
+      <div class="legend-item">
+        <div class="legend-dot${l.forecast?' forecast':''}" style="${l.forecast?'':'background:'+l.color}"></div>${l.label}
+      </div>`).join('')}
+    </div>`;
+  if (chartInstance){chartInstance.destroy();}
+
+  // Chart.js plugin to draw dashed borders on forecast bars
+  const dashedBorderPlugin = {
+    id:'dashedBorder',
+    afterDatasetsDraw(chart) {
+      const ctx=chart.ctx;
+      chart.data.datasets.forEach((ds,di)=>{
+        if (!ds.borderDash) return;
+        const meta=chart.getDatasetMeta(di);
+        meta.data.forEach(bar=>{
+          const {x,y,width,height}=bar;
+          if (!width||!height) return;
+          ctx.save();
+          ctx.setLineDash(ds.borderDash);
+          ctx.strokeStyle=ds.borderColor||'#888';
+          ctx.lineWidth=ds.borderWidth||1.5;
+          ctx.strokeRect(x-width/2,y,width,height);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
+  chartInstance=new Chart(document.getElementById('prodChart').getContext('2d'),{
+    type:'bar', data:{labels,datasets},
+    plugins:[dashedBorderPlugin],
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:ctx=>` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('en')} ${yTitle}`,
+          footer:items=>{const tot=items.reduce((s,i)=>s+i.parsed.y,0);return `Total: ${Math.round(tot).toLocaleString('en')} ${yTitle}`;}
+        }}
+      },
+      scales:{
+        x:{stacked:true,ticks:{maxTicksLimit:period==='annual'?15:period==='quarterly'?12:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{stacked:true,beginAtZero:true,title:{display:true,text:yTitle,color:'#4a5568',font:{size:10}},ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
+      }
+    }
+  });
+  document.getElementById('downloadBtn').disabled=false;
+}
+
+function setChartTitle(main,sub) {
+  document.getElementById('chartTitle').innerHTML=main?`${main}${sub?`<span class="ct-sub">${sub}</span>`:''}`:'';
+}
+function setInfo(html) {
+  const box=document.getElementById('infoBox'); box.style.display=html?'':'none'; box.innerHTML=html;
+}
+
+// ── EXCEL ─────────────────────────────────────────────────────────────────────
+async function downloadExcel() {
+  if (!lastLabels.length||!lastDatasets.length) return;
+  const fy=document.getElementById('yearFrom').value, ty=document.getElementById('yearTo').value;
+  const periodLabel=period==='monthly'?'Monthly':period==='quarterly'?'Quarterly':'Annual';
+  const wb=new ExcelJS.Workbook(); wb.creator='NCS Production Tool'; wb.created=new Date();
+  const wsInfo=wb.addWorksheet('Info');
+  wsInfo.columns=[{width:24},{width:80}];
+  wsInfo.addRow(['NCS Production Export']).getCell(1).font={bold:true,size:14};
+  wsInfo.addRow([]);
+  wsInfo.addRow(['Generated',new Date().toLocaleString()]);
+  wsInfo.addRow(['Period type',periodLabel]);
+  wsInfo.addRow(['Year range',`${fy} – ${ty}`]);
+  wsInfo.addRow([]);
+  wsInfo.addRow(['Data description']).getCell(1).font={bold:true};
+  wsInfo.addRow([document.getElementById('infoBox').innerText||'']);
+  wsInfo.addRow([]);
+  wsInfo.addRow(['Source']).getCell(1).font={bold:true};
+  const srcRow=wsInfo.addRow(['Norwegian Offshore Directorate (Sodir) FactPages – https://factpages.sodir.no – License: NLOD 2.0']);
+  srcRow.getCell(1).font={color:{argb:'FF0071B8'}};
+  const wsData=wb.addWorksheet('Data');
+  const header=[periodLabel==='Monthly'?'Period':periodLabel==='Quarterly'?'Quarter':'Year',...lastDatasets.map(d=>d.label)];
+  wsData.columns=header.map((h,i)=>({header:h,width:i===0?12:20}));
+  wsData.getRow(1).font={bold:true};
+  wsData.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}};
+  lastLabels.forEach((lbl,i)=>{
+    const row=wsData.addRow([lbl,...lastDatasets.map(d=>d.data[i]??0)]);
+    if (i%2===1) row.eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF7F9FC'}};});
+  });
+  const buf=await wb.xlsx.writeBuffer();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})); a.download=`NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── STARTUP ───────────────────────────────────────────────────────────────────
+async function init() {
+  renderViewTabs(); updateFab(); setInfo('');
+  const licPromise=loadAllLicensees();
+  const reservesPromise=loadReserves();
+  await loadFields();
+  await licPromise;
+  const akerBpFieldIds=new Set(allLicRecords.filter(r=>r.cmpLongName==='Aker BP ASA').map(r=>r.fldNpdidField));
+  Object.entries(TRIAL_PROD_OWNERSHIP).forEach(([id,owners])=>{if (owners['Aker BP ASA']>0) akerBpFieldIds.add(+id);});
+  allFields.sort((a,b)=>{const aA=akerBpFieldIds.has(a.id),aB=akerBpFieldIds.has(b.id);if (aA!==aB) return aA?-1:1;return a.name.localeCompare(b.name,'en');});
+  filteredFields=allFields;
+  selectedCompanyNames.add('Aker BP ASA');
+  updateFab(); refresh();
+  reservesPromise.then(()=>{allCompanies=sortCompanies(allCompanies);filteredCompanies=allCompanies;if(sheetOpen&&topMode==='companies')renderCompanyList();});
+  setTimeout(()=>prefetchAllFields(),2000);
+}
+
+async function prefetchAllFields() {
+  const fy=+document.getElementById('yearFrom').value, ty=+document.getElementById('yearTo').value;
+  allFields.forEach(f=>{if (fieldProdCache[f.id]===undefined){const c=sessionGet(`${SESSION_PROD_PREFIX}prod_${f.id}_${fy}_${ty}`);if (c) fieldProdCache[f.id]=c;}});
+  const unfetched=allFields.map(f=>f.id).filter(id=>fieldProdCache[id]===undefined);
+  if (!unfetched.length) return;
+  const IN_BATCH=30;
+  const PROD_FIELDS='prfNpdidInformationCarrier,prfYear,prfMonth,prfPrdOilNetMillSm3,prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdProducedWaterInFieldMillS';
+  for (let i=0;i<unfetched.length;i+=IN_BATCH) {
+    const batch=unfetched.slice(i,i+IN_BATCH).filter(id=>fieldProdCache[id]===undefined);
+    if (!batch.length) continue;
+    const inClause=batch.join(',');
+    try {
+      let offset=0;const allRows=[];
+      while (true) {
+        const rows=await queryLayer(PROD_LAYER,{where:`prfNpdidInformationCarrier IN (${inClause}) AND prfYear>=${fy} AND prfYear<=${ty}`,outFields:PROD_FIELDS,resultRecordCount:2000,resultOffset:offset});
+        allRows.push(...rows); if (rows.length<2000) break; offset+=2000;
+      }
+      const byField={};
+      allRows.forEach(r=>{const fid=r.attributes.prfNpdidInformationCarrier;if (!byField[fid]) byField[fid]=[];byField[fid].push(r);});
+      batch.forEach(id=>{if (fieldProdCache[id]!==undefined) return;const rows=byField[id]||[];fieldProdCache[id]=rows;sessionSet(`${SESSION_PROD_PREFIX}prod_${id}_${fy}_${ty}`,rows);});
+    } catch(e){}
+    await new Promise(r=>setTimeout(r,200));
+  }
+}
+
+init();
+</script>
+</body>
+</html>
