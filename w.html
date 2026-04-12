@@ -107,9 +107,7 @@
     .cmp-loading-notice.visible{display:block;}
     .sheet-bottom-pad{height:env(safe-area-inset-bottom,12px);flex-shrink:0;}
 
-    /* Forecast notice banner */
-    .forecast-notice{margin:0 12px 8px;background:#f5f5f5;border:1px dashed #aaa;border-radius:8px;padding:8px 12px;font-size:0.72rem;color:#555;line-height:1.5;display:none;}
-    .forecast-notice.visible{display:block;}
+
   </style>
 </head>
 <body>
@@ -175,9 +173,7 @@
   </div>
 </div>
 
-<div class="forecast-notice" id="forecastNotice">
-  <strong>Woodmac forecast</strong> – Grey bars show Woodmac annual production forecast from <span id="forecastFromYear"></span>. Proxy must be running on localhost:8787.
-</div>
+
 
 <div class="info-box" id="infoBox"></div>
 
@@ -627,7 +623,7 @@ function renderViewTabs() {
   if (!(singleField&&isOilGas&&isAnnual) && showForecast) {
     showForecast=false; document.getElementById('forecastToggle').checked=false;
   }
-  updateForecastNotice();
+
 }
 
 function setSubView(v) {
@@ -638,7 +634,7 @@ function setWater(val) { showWater=val; drawChart(); }
 
 async function setForecast(val) {
   showForecast=val;
-  updateForecastNotice();
+
   if (val) {
     // Pre-fetch forecast for selected field
     const ids=[...selectedFieldIds];
@@ -653,15 +649,7 @@ async function setForecast(val) {
   drawChart();
 }
 
-function updateForecastNotice() {
-  const notice=document.getElementById('forecastNotice');
-  if (showForecast && period==='annual' && topMode==='fields' && selectedFieldIds.size===1) {
-    notice.classList.add('visible');
-    document.getElementById('forecastFromYear').textContent=CURRENT_YEAR;
-  } else {
-    notice.classList.remove('visible');
-  }
-}
+
 
 function setPeriod(p) {
   if (period===p) return; period=p;
