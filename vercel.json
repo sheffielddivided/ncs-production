@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/api/woodmac", "destination": "/api/woodmac" }]
+}
