@@ -764,7 +764,10 @@ function setPeriod(p) {
     fieldProdCache = {};
     refresh().then(() => {
       const firstYear = firstYearInCache();
-      if (firstYear) document.getElementById('yearFrom').value = firstYear;
+      if (firstYear) {
+        document.getElementById('yearFrom').value = firstYear;
+        drawChart();
+      }
     });
   } else {
     refresh();
