@@ -727,12 +727,35 @@ function setSubView(v) {
   refresh();
 }
 function setWater(val) { showWater = val; drawChart(); }
+function firstYearInCurrentData() {
+  const ids = topMode === 'fields'
+    ? [...selectedFieldIds]
+    : [...new Set([
+        ...allLicRecords.filter(r => selectedCompanyNames.has(r.cmpLongName)).map(r => r.fldNpdidField),
+        ...Object.entries(TRIAL_PROD_OWNERSHIP)
+          .filter(([,owners]) => [...selectedCompanyNames].some(c => (owners[c]||0) > 0))
+          .map(([id]) => +id)
+      ])];
+  let min = null;
+  ids.forEach(id => {
+    (fieldProdCache[id] || []).forEach(f => {
+      const y = f.attributes.prfYear;
+      if (y && (min === null || y < min)) min = y;
+    });
+  });
+  return min;
+}
+
 function setPeriod(p) {
   if (period === p) return;
   period = p;
   document.getElementById('btnMonthly').classList.toggle('active',   p === 'monthly');
   document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
   document.getElementById('btnAnnual').classList.toggle('active',    p === 'annual');
+  if (p === 'annual') {
+    const firstYear = firstYearInCurrentData();
+    if (firstYear) document.getElementById('yearFrom').value = firstYear;
+  }
   refresh();
 }
 
