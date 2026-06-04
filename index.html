@@ -256,14 +256,14 @@ let sheetOpen       = false;
 const currentYear = new Date().getFullYear();
 ['yearFrom','yearTo'].forEach(id => {
   const sel = document.getElementById(id);
-  for (let y = 1970; y <= currentYear; y++) sel.appendChild(new Option(y, y));
+  for (let y = currentYear; y >= 1970; y--) sel.appendChild(new Option(y, y));
   sel.addEventListener('change', () => {
     sessionClearProd();
     fieldProdCache = {};
     refresh();
   });
 });
-document.getElementById('yearFrom').value = 2024;
+document.getElementById('yearFrom').value = currentYear - 1;
 document.getElementById('yearTo').value   = currentYear;
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
