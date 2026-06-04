@@ -727,7 +727,7 @@ function setSubView(v) {
   refresh();
 }
 function setWater(val) { showWater = val; drawChart(); }
-function firstYearInCurrentData() {
+function firstYearInCache() {
   const ids = topMode === 'fields'
     ? [...selectedFieldIds]
     : [...new Set([
@@ -753,10 +753,17 @@ function setPeriod(p) {
   document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
   document.getElementById('btnAnnual').classList.toggle('active',    p === 'annual');
   if (p === 'annual') {
-    const firstYear = firstYearInCurrentData();
-    if (firstYear) document.getElementById('yearFrom').value = firstYear;
+    // Load full history: set yearFrom to 1970, clear cache, fetch, then snap to first real data year
+    document.getElementById('yearFrom').value = 1970;
+    sessionClearProd();
+    fieldProdCache = {};
+    refresh().then(() => {
+      const firstYear = firstYearInCache();
+      if (firstYear) document.getElementById('yearFrom').value = firstYear;
+    });
+  } else {
+    refresh();
   }
-  refresh();
 }
 
 function switchMode(m) {
