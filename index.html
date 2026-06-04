@@ -744,7 +744,10 @@ function firstYearInCache() {
   let min = null;
   ids.forEach(id => {
     (fieldProdCache[id] || []).forEach(f => {
-      const y = f.attributes.prfYear;
+      const a = f.attributes;
+      if (a.prfMonth !== 0) return; // annual rows only
+      if (!(a.prfPrdOeNetMillSm3 > 0)) return; // skip zero-production years
+      const y = a.prfYear;
       if (y && (min === null || y < min)) min = y;
     });
   });
