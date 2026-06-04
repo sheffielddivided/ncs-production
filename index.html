@@ -291,7 +291,7 @@ function sessionGet(key) {
 }
 function sessionSet(key, val) {
   if (_storageAvailable) {
-    try { sessionStorage.setItem(key, JSON.stringify(val)); return; } catch(e) {}
+    try { sessionStorage.setItem(key, JSON.stringify(val)); return; } catch(e) { /* quota exceeded — fall through to memStore */ }
   }
   _memStore.set(key, val);
 }
@@ -644,6 +644,7 @@ async function _doLoadAllLicensees() {
     allLicLoaded = true;
   } catch(e) {
     console.error('loadAllLicensees failed:', e);
+    allLicPromise = null; // allow retry on next call   ← ny linje
   } finally {
     allLicLoading = false;
     document.getElementById('cmpLoadingNotice').classList.remove('visible');
