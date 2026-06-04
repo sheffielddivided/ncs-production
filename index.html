@@ -762,6 +762,10 @@ function setPeriod(p) {
       if (firstYear) document.getElementById('yearFrom').value = firstYear;
     });
   } else {
+    // Reset to a sensible recent window when switching to monthly/quarterly
+    document.getElementById('yearFrom').value = currentYear - 1;
+    sessionClearProd();
+    fieldProdCache = {};
     refresh();
   }
 }
