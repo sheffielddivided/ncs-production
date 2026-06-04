@@ -442,13 +442,18 @@ function quarterBoedEquity(fieldIds, qk, qMap, toBoedFn, valueFn, companyName) {
 }
 
 function unionLabels(fieldIds) {
+  const fy = +document.getElementById('yearFrom').value;
+  const ty = +document.getElementById('yearTo').value;
   if (period === 'quarterly') {
-    return Object.keys(buildQuarterMap(fieldIds)).sort();
+    return Object.keys(buildQuarterMap(fieldIds)).filter(k => {
+      const y = +k.slice(0,4); return y >= fy && y <= ty;
+    }).sort();
   }
   const s = new Set();
   fieldIds.forEach(id => {
     (fieldProdCache[id]||[]).forEach(f => {
-      if (isValidRow(f.attributes)) s.add(periodKey(f.attributes));
+      const a = f.attributes;
+      if (isValidRow(a) && a.prfYear >= fy && a.prfYear <= ty) s.add(periodKey(a));
     });
   });
   return [...s].sort();
