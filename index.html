@@ -644,7 +644,7 @@ async function _doLoadAllLicensees() {
     allLicLoaded = true;
   } catch(e) {
     console.error('loadAllLicensees failed:', e);
-    allLicPromise = null; // allow retry on next call
+    allLicPromise = null; // allow retry on next call   ← ny linje
   } finally {
     allLicLoading = false;
     document.getElementById('cmpLoadingNotice').classList.remove('visible');
