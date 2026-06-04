@@ -1211,7 +1211,18 @@ function drawCompaniesOePerField() {
 }
 
 // ── RENDER CHART ─────────────────────────────────────────────────────────────
+function trimLeadingZeros(labels, datasets) {
+  let first = 0;
+  while (first < labels.length && datasets.every(d => !(d.data[first] > 0))) first++;
+  if (first === 0) return { labels, datasets };
+  return {
+    labels: labels.slice(first),
+    datasets: datasets.map(d => ({ ...d, data: d.data.slice(first) }))
+  };
+}
+
 function renderChart(labels, datasets, legend, yTitle) {
+  ({ labels, datasets } = trimLeadingZeros(labels, datasets));
   lastLabels = labels;
   document.getElementById('chartArea').innerHTML = `
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
