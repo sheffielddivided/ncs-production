@@ -205,11 +205,21 @@
     }
     footer a { color: var(--blue); text-decoration: none; }
 
+    /* ── Norway map ── */
+    .map-wrap {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .map-wrap svg { display: block; }
+
     @media (max-width: 360px) {
       .stat-card { flex-direction: column; align-items: flex-start; }
       .gauge-wrap { width: 72px; height: 72px; }
       .gauge-wrap canvas { width: 72px !important; height: 72px !important; }
       .gauge-pct .big { font-size: 1.05rem; }
+      .map-wrap { display: none; }
     }
   </style>
 </head>
@@ -261,6 +271,47 @@ const REGIONS = [
   { key: 'NO5',  label: 'NO5',   name: 'NO5 – Vestlandet', match: d => d.omrType === 'EL' && d.omrnr === 5 },
   { key: 'LAND', label: 'Norge', name: 'Hele Norge',        match: d => d.omrType !== 'EL' },
 ];
+
+// ── Norway map SVG ───────────────────────────────────────────
+// Simplified polygons for the 5 NVE power regions.
+// viewBox "0 0 55 115"  (roughly 1:2 aspect = Norway's shape)
+const MAP_PATHS = {
+  NO4: "M 8,4 L 22,0 L 42,4 L 50,20 L 49,55 L 22,58 L 6,55 L 6,20 Z",
+  NO3: "M 6,55 L 22,58 L 49,55 L 48,77 L 28,79 L 6,77 Z",
+  NO5: "M 6,77 L 28,79 L 26,95 L 22,107 L 10,99 L 4,86 Z",
+  NO1: "M 28,79 L 48,77 L 44,93 L 26,95 Z",
+  NO2: "M 26,95 L 44,93 L 38,108 L 22,107 Z",
+};
+const MAP_OUTER =
+  "M 6,20 L 8,4 L 22,0 L 42,4 L 50,20 L 49,55 L 48,77 L 44,93 " +
+  "L 38,108 L 22,107 L 10,99 L 4,86 L 6,77 L 6,55 L 6,20 Z";
+const MAP_BORDERS = [
+  "M 6,55 L 22,58 L 49,55",   // NO4 / NO3
+  "M 6,77 L 28,79 L 48,77",   // NO3 / (NO5+NO1)
+  "M 28,79 L 26,95",           // NO5 / NO1
+  "M 26,95 L 44,93",           // NO1 / NO2
+  "M 26,95 L 22,107",          // NO5 / NO2
+];
+
+function norwayMapSVG(activeKey) {
+  const isAll = activeKey === 'LAND';
+  const regions = Object.entries(MAP_PATHS).map(([key, d]) => {
+    const fill = isAll ? '#0072b0' : (key === activeKey ? '#dc2626' : '#d1d5db');
+    return `<path d="${d}" fill="${fill}"/>`;
+  }).join('');
+
+  const borders = MAP_BORDERS.map(d =>
+    `<path d="${d}" fill="none" stroke="#222" stroke-width="0.6"` +
+    ` stroke-dasharray="2.2,1.4" stroke-linecap="round"/>`
+  ).join('');
+
+  const outline =
+    `<path d="${MAP_OUTER}" fill="none" stroke="#111"` +
+    ` stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  return `<svg viewBox="2 0 51 113" width="38" height="84"` +
+         ` xmlns="http://www.w3.org/2000/svg">${regions}${borders}${outline}</svg>`;
+}
 
 // X-axis: week number → month label (show label at first week of each month)
 const MONTH_LABEL = {
@@ -413,6 +464,7 @@ function renderView() {
           ${deltaDisplay != null ? `<div class="pill ${deltaClass}"><div class="val">${deltaSign}${deltaDisplay.toFixed(1)} pp</div><div class="lbl">Fra forrige uke</div></div>` : ''}
         </div>
       </div>
+      <div class="map-wrap">${norwayMapSVG(activeKey)}</div>
     </div>
 
     <div class="chart-card">
