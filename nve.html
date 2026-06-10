@@ -456,6 +456,13 @@ function renderView() {
 
   const histFrom = CURRENT_YEAR - HIST_YEARS;
 
+  // Build chart data once — reused for both the chart and the median-diff pill
+  const chartData = buildChartData(rows);
+  const medianNow = chartData.med[latest.iso_uke - 1];
+  const diffMedian = (medianNow != null) ? pct - medianNow : null;
+  const diffSign  = diffMedian >= 0 ? '+' : '';
+  const diffClass = diffMedian >= 0 ? 'up' : 'down';
+
   document.getElementById('main-content').innerHTML = `
 
     <div class="stat-card">
@@ -473,6 +480,7 @@ function renderView() {
           ${twh != null ? `<div class="pill"><div class="val">${twh.toFixed(1)} TWh</div><div class="lbl">Magasinfylling</div></div>` : ''}
           ${cap != null ? `<div class="pill"><div class="val">${cap.toFixed(1)} TWh</div><div class="lbl">Kapasitet</div></div>` : ''}
           ${deltaDisplay != null ? `<div class="pill ${deltaClass}"><div class="val">${deltaSign}${deltaDisplay.toFixed(1)} pp</div><div class="lbl">Fra forrige uke</div></div>` : ''}
+          ${diffMedian != null ? `<div class="pill ${diffClass}"><div class="val">${diffSign}${diffMedian.toFixed(1)} pp</div><div class="lbl">vs. normalår</div></div>` : ''}
         </div>
       </div>
       <div class="map-wrap">${norwayMapSVG(activeKey)}</div>
@@ -504,7 +512,7 @@ function renderView() {
   `;
 
   drawDonut(pct);
-  drawYearChart(buildChartData(rows));
+  drawYearChart(chartData);
 }
 
 // ── Donut gauge ───────────────────────────────────────────────
