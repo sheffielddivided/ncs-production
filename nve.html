@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>NVE Magasinstatistikk</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy:  #004890;
+      --blue:  #0072b0;
+      --tint:  #e6f0f8;
+      --green: #16a34a;
+      --red:   #dc2626;
+      --text:  #111827;
+      --sub:   #6b7280;
+      --border:#e5e7eb;
+      --bg:    #f4f7fb;
+      --card:  #ffffff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 14px 16px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    header .header-inner { display: flex; align-items: center; gap: 10px; }
+    header svg { flex-shrink: 0; }
+    header h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; }
+    header p  { font-size: .72rem; opacity: .75; margin-top: 2px; }
+
+    /* ── Region tabs ── */
+    .tabs-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 0 8px;
+      gap: 2px;
+    }
+    .tabs-bar::-webkit-scrollbar { display: none; }
+
+    .tab {
+      flex-shrink: 0;
+      padding: 11px 13px;
+      font-size: .82rem;
+      font-weight: 500;
+      color: var(--sub);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color .15s, border-color .15s;
+    }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Layout ── */
+    .page { padding: 16px; max-width: 580px; margin: 0 auto; }
+
+    /* ── Stat card ── */
+    .stat-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    /* Gauge (doughnut) */
+    .gauge-wrap {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      flex-shrink: 0;
+    }
+    .gauge-wrap canvas { width: 88px !important; height: 88px !important; }
+    .gauge-pct {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .gauge-pct .big   { font-size: 1.25rem; font-weight: 800; color: var(--navy); line-height: 1; }
+    .gauge-pct .small { font-size: .65rem; color: var(--sub); margin-top: 1px; }
+
+    .stat-info { flex: 1; min-width: 0; }
+    .stat-region { font-size: .75rem; color: var(--sub); margin-bottom: 3px; }
+    .stat-week   { font-size: .88rem; font-weight: 600; margin-bottom: 10px; }
+
+    .stat-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      background: var(--tint);
+      border-radius: 8px;
+      padding: 6px 10px;
+      min-width: 70px;
+    }
+    .pill .val   { font-size: .88rem; font-weight: 700; color: var(--navy); }
+    .pill .lbl   { font-size: .68rem; color: var(--sub); margin-top: 1px; }
+    .pill.up   .val { color: var(--green); }
+    .pill.down .val { color: var(--red);   }
+
+    /* ── Chart card ── */
+    .chart-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      margin-bottom: 14px;
+    }
+    .chart-head { margin-bottom: 14px; }
+    .chart-head .title { font-size: .9rem; font-weight: 700; }
+    .chart-head .sub   { font-size: .73rem; color: var(--sub); margin-top: 2px; }
+
+    .range-pills {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .range-btn {
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: none;
+      font-size: .75rem;
+      font-weight: 500;
+      color: var(--sub);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .range-btn.active {
+      border-color: var(--blue);
+      background: var(--tint);
+      color: var(--blue);
+    }
+
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* ── Loading / Error ── */
+    .state-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+      gap: 14px;
+      color: var(--sub);
+      font-size: .85rem;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 16px;
+      color: #b91c1c;
+      font-size: .83rem;
+      line-height: 1.5;
+    }
+    .error-box strong { display: block; margin-bottom: 4px; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 16px 16px 24px;
+      font-size: .72rem;
+      color: var(--sub);
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+
+    /* ── Responsive ── */
+    @media (max-width: 360px) {
+      .stat-card { flex-direction: column; align-items: flex-start; }
+      .gauge-wrap { width: 72px; height: 72px; }
+      .gauge-wrap canvas { width: 72px !important; height: 72px !important; }
+      .gauge-pct .big { font-size: 1.05rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+      <path d="M2 12h4M18 12h4M12 2v4M12 18v4"/>
+      <path d="M7 7l2.5 2.5M14.5 14.5L17 17M17 7l-2.5 2.5M9.5 14.5L7 17"/>
+    </svg>
+    <div>
+      <h1>Magasinstatistikk</h1>
+      <p id="hdr-sub">Laster data…</p>
+    </div>
+  </div>
+</header>
+
+<div class="tabs-bar" id="tabs-bar">
+  <!-- generated by JS -->
+</div>
+
+<div class="page">
+  <div id="main-content">
+    <div class="state-box">
+      <div class="spinner"></div>
+      <span>Henter data fra NVE…</span>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Data: <a href="https://www.nve.no/energi/analyser-og-statistikk/magasinstatistikk/" target="_blank" rel="noopener">NVE Magasinstatistikk</a>
+  &nbsp;·&nbsp; Oppdateres ukentlig
+</footer>
+
+<script>
+'use strict';
+
+const API = 'https://biapi.nve.no/magasinstatistikk/api/Magasinstatistikk/HentOffentligData';
+
+const REGIONS = [
+  { key: 'NO1', label: 'NO1', name: 'NO1 – Østlandet',  match: d => d.omrType === 'EL' && d.omrnr === 1 },
+  { key: 'NO2', label: 'NO2', name: 'NO2 – Sørlandet',  match: d => d.omrType === 'EL' && d.omrnr === 2 },
+  { key: 'NO3', label: 'NO3', name: 'NO3 – Midt-Norge', match: d => d.omrType === 'EL' && d.omrnr === 3 },
+  { key: 'NO4', label: 'NO4', name: 'NO4 – Nord-Norge', match: d => d.omrType === 'EL' && d.omrnr === 4 },
+  { key: 'NO5', label: 'NO5', name: 'NO5 – Vestlandet', match: d => d.omrType === 'EL' && d.omrnr === 5 },
+  { key: 'LAND', label: 'Norge', name: 'Hele Norge',    match: d => d.omrType !== 'EL' },
+];
+
+const RANGES = [
+  { label: '13u',  weeks: 13 },
+  { label: '26u',  weeks: 26 },
+  { label: '52u',  weeks: 52 },
+  { label: 'Alt',  weeks: Infinity },
+];
+
+let allData     = [];
+let activeKey   = 'NO1';
+let activeRange = 52;
+let lineChart   = null;
+let donutChart  = null;
+
+// ── Sort key for a row ──────────────────────────────────────────
+function rowSortKey(r) {
+  return r.iso_aar * 100 + r.iso_uke;
+}
+
+// ── Filter + sort rows for active region ───────────────────────
+function getRows(key) {
+  const cfg = REGIONS.find(r => r.key === key);
+  return allData.filter(cfg.match).sort((a, b) => rowSortKey(a) - rowSortKey(b));
+}
+
+// ── Week label ─────────────────────────────────────────────────
+function weekLabel(r) {
+  return `Uke ${r.iso_uke}, ${r.iso_aar}`;
+}
+
+// ── Short axis label ───────────────────────────────────────────
+function axisLabel(r) {
+  return `U${r.iso_uke}/${String(r.iso_aar).slice(2)}`;
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function renderTabs() {
+  document.getElementById('tabs-bar').innerHTML = REGIONS.map(r => `
+    <button class="tab${r.key === activeKey ? ' active' : ''}"
+            onclick="switchRegion('${r.key}')">${r.label}</button>
+  `).join('');
+}
+
+function switchRegion(key) {
+  activeKey = key;
+  renderTabs();
+  renderView();
+}
+
+function switchRange(weeks) {
+  activeRange = weeks;
+  // re-render only chart & range buttons
+  const rows   = getRows(activeKey);
+  const recent = activeRange === Infinity ? rows : rows.slice(-activeRange);
+  updateRangePills();
+  redrawLine(recent);
+}
+
+function updateRangePills() {
+  document.querySelectorAll('.range-btn').forEach(btn => {
+    btn.classList.toggle('active', +btn.dataset.weeks === activeRange ||
+      (btn.dataset.weeks === 'Infinity' && activeRange === Infinity));
+  });
+}
+
+// ── Full view render ───────────────────────────────────────────
+function renderView() {
+  const cfg    = REGIONS.find(r => r.key === activeKey);
+  const rows   = getRows(activeKey);
+  const latest = rows[rows.length - 1];
+
+  if (!latest) {
+    document.getElementById('main-content').innerHTML = `
+      <div class="error-box"><strong>Ingen data</strong>Fant ingen data for ${cfg.name}.</div>`;
+    return;
+  }
+
+  const pct    = latest.fyllingsgrad ?? 0;
+  const twh    = latest.fylling_TWh;
+  const cap    = latest.kapasitet_TWh;
+  const delta  = latest.endring_fyllingsgrad;
+  const prevPct= latest.fyllingsgrad_forrige_uke;
+
+  const deltaSign  = delta >= 0 ? '+' : '';
+  const deltaClass = delta >= 0 ? 'up' : 'down';
+
+  const recent = activeRange === Infinity ? rows : rows.slice(-activeRange);
+
+  document.getElementById('hdr-sub').textContent = `Siste: ${weekLabel(latest)}`;
+
+  document.getElementById('main-content').innerHTML = `
+
+    <div class="stat-card">
+      <div class="gauge-wrap">
+        <canvas id="donut-canvas"></canvas>
+        <div class="gauge-pct">
+          <span class="big">${Math.round(pct)}<span style="font-size:.7em;font-weight:600">%</span></span>
+          <span class="small">fylt</span>
+        </div>
+      </div>
+      <div class="stat-info">
+        <div class="stat-region">${cfg.name}</div>
+        <div class="stat-week">${weekLabel(latest)}</div>
+        <div class="stat-pills">
+          ${twh != null ? `<div class="pill"><div class="val">${twh.toFixed(1)} TWh</div><div class="lbl">Magasinfylling</div></div>` : ''}
+          ${cap != null ? `<div class="pill"><div class="val">${cap.toFixed(1)} TWh</div><div class="lbl">Total kapasitet</div></div>` : ''}
+          ${delta != null ? `<div class="pill ${deltaClass}"><div class="val">${deltaSign}${delta.toFixed(1)} pp</div><div class="lbl">Fra forrige uke</div></div>` : ''}
+          ${prevPct != null ? `<div class="pill"><div class="val">${prevPct.toFixed(1)}%</div><div class="lbl">Forrige uke</div></div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="title">Fyllingsprosent over tid</div>
+        <div class="sub">${cfg.name}</div>
+        <div class="range-pills">
+          ${RANGES.map(r => `
+            <button class="range-btn${activeRange === r.weeks ? ' active' : ''}"
+                    data-weeks="${r.weeks}"
+                    onclick="switchRange(${r.weeks === Infinity ? 'Infinity' : r.weeks})">${r.label}</button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="line-canvas"></canvas>
+      </div>
+    </div>
+  `;
+
+  drawDonut(pct);
+  drawLine(recent);
+}
+
+// ── Donut gauge ────────────────────────────────────────────────
+function drawDonut(pct) {
+  const canvas = document.getElementById('donut-canvas');
+  if (!canvas) return;
+  if (donutChart) { donutChart.destroy(); donutChart = null; }
+
+  donutChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [pct, 100 - pct],
+        backgroundColor: [getColor(pct), '#e6f0f8'],
+        borderWidth: 0,
+        hoverOffset: 0,
+      }]
+    },
+    options: {
+      cutout: '76%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      animation: { duration: 700, easing: 'easeInOutQuart' },
+      events: [],
+    }
+  });
+}
+
+function getColor(pct) {
+  if (pct >= 70) return '#004890';
+  if (pct >= 40) return '#0072b0';
+  if (pct >= 20) return '#f59e0b';
+  return '#dc2626';
+}
+
+// ── Line chart ─────────────────────────────────────────────────
+function drawLine(rows) {
+  const canvas = document.getElementById('line-canvas');
+  if (!canvas) return;
+  if (lineChart) { lineChart.destroy(); lineChart = null; }
+
+  const labels = rows.map(axisLabel);
+  const values = rows.map(r => r.fyllingsgrad);
+
+  lineChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Fyllingsprosent',
+        data: values,
+        borderColor: '#0072b0',
+        backgroundColor: ctx => {
+          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 220);
+          g.addColorStop(0,   'rgba(0,114,176,.22)');
+          g.addColorStop(1,   'rgba(0,114,176,.01)');
+          return g;
+        },
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#0072b0',
+        fill: true,
+        tension: 0.35,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          titleColor: '#111',
+          bodyColor: '#004890',
+          borderColor: '#e5e7eb',
+          borderWidth: 1,
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            title: items => {
+              const r = rows[items[0].dataIndex];
+              return weekLabel(r);
+            },
+            label: ctx => `${ctx.parsed.y.toFixed(1)} %`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 7,
+            font: { size: 10 },
+            color: '#9ca3af',
+          },
+          grid: { display: false },
+          border: { display: false },
+        },
+        y: {
+          min: 0,
+          max: 100,
+          ticks: {
+            callback: v => v + '%',
+            font: { size: 10 },
+            color: '#9ca3af',
+            maxTicksLimit: 6,
+          },
+          grid: { color: '#f0f2f5' },
+          border: { dash: [3, 3], display: false },
+        }
+      }
+    }
+  });
+}
+
+function redrawLine(rows) {
+  const canvas = document.getElementById('line-canvas');
+  if (!canvas) return;
+  if (lineChart) { lineChart.destroy(); lineChart = null; }
+  drawLine(rows);
+}
+
+// ── Bootstrap ──────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch(API);
+    if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+    allData = await res.json();
+    if (!Array.isArray(allData) || allData.length === 0) throw new Error('Tom respons fra API');
+
+    renderTabs();
+    renderView();
+  } catch (err) {
+    document.getElementById('hdr-sub').textContent = 'Feil ved lasting';
+    document.getElementById('main-content').innerHTML = `
+      <div class="error-box">
+        <strong>Kunne ikke laste data</strong>
+        ${err.message}<br><br>
+        Kontroller nettilgang og at NVEs API er tilgjengelig.
+        <br><a href="https://biapi.nve.no/magasinstatistikk/swagger/index.html"
+               target="_blank" rel="noopener" style="color:#b91c1c">API-dokumentasjon →</a>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
