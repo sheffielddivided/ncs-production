@@ -647,6 +647,27 @@ function drawYearChart({ weeks, cur, med, min, max }) {
   });
 }
 
+// ── Auto-detect total-Norway aggregation ──────────────────────
+// After data is loaded, find the (omrType, omrnr) pair outside the
+// five EL price areas that has the most rows. That pair is the true
+// whole-country total, and we update the LAND match function to it.
+function detectLandFilter() {
+  const elNums = new Set([1, 2, 3, 4, 5]);
+  const counts = {};
+  for (const d of allData) {
+    if (d.omrType === 'EL' && elNums.has(d.omrnr)) continue;
+    const k = `${d.omrType}|${d.omrnr}`;
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  const entries = Object.entries(counts);
+  if (!entries.length) return;
+  const [best] = entries.sort((a, b) => b[1] - a[1]);
+  const [bestType, bestNrStr] = best[0].split('|');
+  const bestNr = Number(bestNrStr);
+  const landRegion = REGIONS.find(r => r.key === 'LAND');
+  if (landRegion) landRegion.match = d => d.omrType === bestType && d.omrnr === bestNr;
+}
+
 // ── Bootstrap ────────────────────────────────────────────────
 async function init() {
   try {
@@ -654,6 +675,7 @@ async function init() {
     if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
     allData = await res.json();
     if (!Array.isArray(allData) || !allData.length) throw new Error('Tom respons fra API');
+    detectLandFilter();
     renderTabs();
     renderView();
   } catch (err) {
