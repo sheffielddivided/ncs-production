@@ -301,7 +301,7 @@ function norwayMapSVG(activeKey) {
   const strokes = Object.values(MAP_PATHS).map(d =>
     `<path d="${d}" fill="none" stroke="#222" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>`
   ).join('');
-  return `<svg viewBox="7 13 760 896" style="width:44px;height:auto"` +
+  return `<svg viewBox="7 13 760 896" style="width:88px;height:auto"` +
          ` xmlns="http://www.w3.org/2000/svg">${fills}${strokes}</svg>`;
 }
 
