@@ -441,14 +441,37 @@ function quarterBoedEquity(fieldIds, qk, qMap, toBoedFn, valueFn, companyName) {
   return totalBbl / qi.totalDays;
 }
 
-function unionLabels(fieldIds) {
+function isCompletePeriod(label) {
+  const now = new Date();
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth() + 1;
+  if (period === 'annual') {
+    return +label < nowYear;
+  }
   if (period === 'quarterly') {
-    return Object.keys(buildQuarterMap(fieldIds)).sort();
+    const year = +label.slice(0, 4);
+    const q = +label.slice(6); // "2026-Q2" → 2
+    if (year < nowYear) return true;
+    if (year > nowYear) return false;
+    return nowMonth > q * 3; // complete if we're past the last month of the quarter
+  }
+  return true;
+}
+
+function unionLabels(fieldIds) {
+  const fy = +document.getElementById('yearFrom').value;
+  const ty = +document.getElementById('yearTo').value;
+  if (period === 'quarterly') {
+    return Object.keys(buildQuarterMap(fieldIds)).filter(k => {
+      const y = +k.slice(0, 4);
+      return y >= fy && y <= ty && isCompletePeriod(k);
+    }).sort();
   }
   const s = new Set();
   fieldIds.forEach(id => {
     (fieldProdCache[id]||[]).forEach(f => {
-      if (isValidRow(f.attributes)) s.add(periodKey(f.attributes));
+      const a = f.attributes;
+      if (isValidRow(a) && a.prfYear >= fy && a.prfYear <= ty && isCompletePeriod(periodKey(a))) s.add(periodKey(a));
     });
   });
   return [...s].sort();
