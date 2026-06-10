@@ -281,47 +281,28 @@ const REGIONS = [
 ];
 
 // ── Norway map SVG ───────────────────────────────────────────
-// Norway runs diagonally SW→NE. Coordinates based on real region
-// geography: NO4=far north, NO3=narrow corridor, NO5=west coast,
-// NO1=southeast, NO2=south tip.  viewBox "0 0 115 185"
+// Accurate region paths provided by user; viewBox "0 0 292.8 348.2"
 const MAP_PATHS = {
-  NO4: "M 20,42 L 22,28 L 35,14 L 58,5 L 85,8 L 112,18 L 108,38 L 102,60 L 95,76 L 22,68 Z",
-  NO3: "M 22,68 L 95,76 L 92,90 L 91,100 L 18,94 L 20,80 Z",
-  NO5: "M 18,94 L 36,96 L 42,162 L 22,170 L 18,162 L 12,148 L 8,132 L 15,110 Z",
-  NO1: "M 36,96 L 91,100 L 89,120 L 87,145 L 68,168 L 42,162 Z",
-  NO2: "M 22,170 L 42,162 L 68,168 L 50,180 L 30,172 Z",
+  NO4: "M271.7 66.6 L262.7 69.5 L267.4 47.3 L253.1 34.4 L235.9 45.4 L230.4 68.7 L219.8 82.3 L207.8 74.9 L193.3 76.4 L180.9 59.9 L174.3 68.2 L167.3 69.5 L165.7 89.7 L144.7 84.8 L141.8 101.6 L131.1 101.5 L112.6 153.6 L97.3 187.1 L68.4 187.1 L82.0 162.2 L108.7 107.5 L127.4 85.0 L158.0 45.6 L182.4 31.4 L200.7 33.1 L217.7 5.3 L238.0 6.8 L258.0 0.0 L292.8 24.8 L278.4 33.6 L290.6 54.0 Z",
+  NO3: "M68.4 187.1 L97.3 187.1 L99.4 200.2 L95.5 210.4 L84.5 209.9 L77.2 233.4 L77.8 261.9 L0.0 261.9 L0.0 261.4 L10.3 246.0 L39.6 225.4 L61.6 199.6 Z",
+  NO5: "M0.0 261.9 L77.8 261.9 L80.4 271.7 L73.8 329.9 L67.2 331.9 L53.2 327.5 L44.9 321.0 L32.8 311.7 L16.5 304.5 L0.0 304.7 Z",
+  NO1: "M77.8 261.9 L80.4 271.7 L73.8 329.9 L82.8 335.1 L88.1 322.2 L104.2 296.1 L110.0 240.5 L107.0 236.7 L98.8 246.7 L88.7 251.4 Z",
+  NO2: "M0.0 304.7 L16.5 304.5 L32.8 311.7 L44.9 321.0 L53.2 327.5 L67.2 331.9 L80.8 348.2 L83.4 339.4 L72.8 321.5 L55.8 344.5 L21.7 348.2 L3.1 334.2 L0.0 318.3 Z",
 };
-const MAP_OUTER =
-  "M 20,42 L 22,28 L 35,14 L 58,5 L 85,8 L 112,18 L 108,38 L 102,60 " +
-  "L 95,76 L 92,90 L 91,100 L 89,120 L 87,145 L 68,168 " +
-  "L 50,180 L 30,172 L 22,170 L 18,162 L 12,148 L 8,132 " +
-  "L 15,110 L 18,94 L 20,80 L 22,68 L 20,42 Z";
-const MAP_BORDERS = [
-  "M 22,68 L 95,76",      // NO4 / NO3
-  "M 18,94 L 91,100",     // NO3 / (NO5 + NO1)
-  "M 36,96 L 42,162",     // NO5 / NO1
-  "M 42,162 L 68,168",    // NO1 / NO2
-  "M 42,162 L 22,170",    // NO5 / NO2
-];
 
 function norwayMapSVG(activeKey) {
   const isAll = activeKey === 'LAND';
-  const regions = Object.entries(MAP_PATHS).map(([key, d]) => {
+  // Pass 1 — fills
+  const fills = Object.entries(MAP_PATHS).map(([key, d]) => {
     const fill = isAll ? '#0072b0' : (key === activeKey ? '#dc2626' : '#d1d5db');
     return `<path d="${d}" fill="${fill}"/>`;
   }).join('');
-
-  const borders = MAP_BORDERS.map(d =>
-    `<path d="${d}" fill="none" stroke="#222" stroke-width="1.2"` +
-    ` stroke-dasharray="4,2.5" stroke-linecap="round"/>`
+  // Pass 2 — borders (solid thin stroke over fills; shared edges appear doubled = slightly thicker inner lines)
+  const strokes = Object.values(MAP_PATHS).map(d =>
+    `<path d="${d}" fill="none" stroke="#222" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`
   ).join('');
-
-  const outline =
-    `<path d="${MAP_OUTER}" fill="none" stroke="#111"` +
-    ` stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
-
-  return `<svg viewBox="4 2 111 181" style="width:38px;height:auto"` +
-         ` xmlns="http://www.w3.org/2000/svg">${regions}${borders}${outline}</svg>`;
+  return `<svg viewBox="0 0 292.8 348.2" style="width:44px;height:auto"` +
+         ` xmlns="http://www.w3.org/2000/svg">${fills}${strokes}</svg>`;
 }
 
 // X-axis: week number → month label (show label at first week of each month)
