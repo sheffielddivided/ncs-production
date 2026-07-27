@@ -272,12 +272,12 @@ const CURRENT_YEAR = new Date().getFullYear();
 const HIST_YEARS   = 20;
 
 const REGIONS = [
+  { key: 'LAND', label: 'Norge', name: 'Hele Norge',        match: d => d.omrType !== 'EL' },
   { key: 'NO1',  label: 'NO1',   name: 'NO1 – Østlandet',  match: d => d.omrType === 'EL' && d.omrnr === 1 },
   { key: 'NO2',  label: 'NO2',   name: 'NO2 – Sørlandet',  match: d => d.omrType === 'EL' && d.omrnr === 2 },
   { key: 'NO3',  label: 'NO3',   name: 'NO3 – Midt-Norge', match: d => d.omrType === 'EL' && d.omrnr === 3 },
   { key: 'NO4',  label: 'NO4',   name: 'NO4 – Nord-Norge', match: d => d.omrType === 'EL' && d.omrnr === 4 },
   { key: 'NO5',  label: 'NO5',   name: 'NO5 – Vestlandet', match: d => d.omrType === 'EL' && d.omrnr === 5 },
-  { key: 'LAND', label: 'Norge', name: 'Hele Norge',        match: d => d.omrType !== 'EL' },
 ];
 
 // ── Norway map SVG ───────────────────────────────────────────
@@ -312,7 +312,7 @@ const MONTH_LABEL = {
 };
 
 let allData    = [];
-let activeKey  = 'NO1';
+let activeKey  = 'LAND';
 let lineChart  = null;
 let donutChart = null;
 
