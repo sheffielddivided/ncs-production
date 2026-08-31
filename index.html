@@ -173,7 +173,7 @@
   </button>
 </div>
 
-<div class="source-note"><a href="https://factpages.sodir.no" target="_blank">Norwegian Offshore Directorate</a> – NLOD 2.0</div>
+<div class="source-note"><a href="https://factpages.sodir.no" target="_blank">Norwegian Offshore Directorate</a> – NLOD 2.0<span id="dataDate"></span></div>
 
 <button class="select-fab" id="selectFab" onclick="toggleSheet()">
   <span id="fabLabel">Select</span>
@@ -205,6 +205,51 @@ const PROD_LAYER  = 7300;
 const LIC_LAYER   = 7108;
 const RES_LAYER   = 7114;
 const BBL_PER_SM3 = 6.29;
+
+// ── STATISK DATA-BUNDLE ──────────────────────────────────────────────────────
+// Dataene leses normalt fra JSON-filer i repoet, oppdatert daglig av
+// .github/workflows/update-sodir-data.yml. Det gir én rask fetch per fil i
+// stedet for titalls paginerte API-kall, og gjør appen uavhengig av at Sodir
+// svarer akkurat i det siden lastes.
+// Mangler eller feiler filene, faller alt tilbake til live-API-et under.
+const DATA_BASE = 'data/';
+
+const bundle = { fields:null, production:null, licensees:null, reserves:null, meta:null };
+
+async function fetchBundle(name) {
+  try {
+    const res = await fetch(`${DATA_BASE}${name}.json`, {cache:'no-cache'});
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+async function loadBundles() {
+  const names = ['fields','production','licensees','reserves','meta'];
+  const results = await Promise.all(names.map(fetchBundle));
+  names.forEach((n, i) => { bundle[n] = results[i]; });
+  const gen = bundle.meta && bundle.meta.generated;
+  const el = document.getElementById('dataDate');
+  if (gen && el) el.textContent = ` · data per ${gen}`;
+}
+
+// Bygg om kompakte [year,month,oil,gas,oe,water]-rader til samme form som
+// API-et returnerer, slik at all tegnekode kan brukes uendret.
+function prodRowsFromBundle(fieldId) {
+  const series = bundle.production && bundle.production.fields[fieldId];
+  if (!series) return [];
+  return series.map(([year, month, oil, gas, oe, water]) => ({
+    attributes: {
+      prfNpdidInformationCarrier: +fieldId,
+      prfYear: year,
+      prfMonth: month,
+      prfPrdOilNetMillSm3: oil,
+      prfPrdGasNetBillSm3: gas,
+      prfPrdOeNetMillSm3: oe,
+      prfPrdProducedWaterInFieldMillS: water,
+    }
+  }));
+}
 
 const PALETTE = [
   ['rgba(206,15,105,0.85)',  'rgba(206,15,105,0.45)'],
@@ -272,8 +317,8 @@ const daysInYear  = y => (y%4===0&&(y%100!==0||y%400===0))?366:365;
 
 // ── SESSION STORAGE ──────────────────────────────────────────────────────────
 // Versioned prefixes — bump version to invalidate old caches
-const SESSION_PROD_PREFIX = 'ncs_prod_v1_';
-const SESSION_LIC_KEY     = 'ncs_lic_v1';
+const SESSION_PROD_PREFIX = 'ncs_prod_v2_';
+const SESSION_LIC_KEY     = 'ncs_lic_v2';
 
 // Safari with tracking prevention throws on sessionStorage access.
 // Test once and fall back to an in-memory Map so the app still works —
@@ -512,12 +557,15 @@ function hasAnyValue(arr) { return arr.some(v => v > 0); }
 
 // ── DATA LOADING ─────────────────────────────────────────────────────────────
 async function loadFields() {
-  const features = await queryLayer(FIELD_LAYER, {
-    outFields:'fldNpdidField,fldName', orderByFields:'fldName ASC', resultRecordCount:500
-  });
-  allFields = features
-    .map(f => ({id:f.attributes.fldNpdidField, name:f.attributes.fldName}))
-    .sort((a,b) => a.name.localeCompare(b.name,'en'));
+  if (bundle.fields && bundle.fields.rows) {
+    allFields = bundle.fields.rows.map(([id, name]) => ({id, name}));
+  } else {
+    const features = await queryLayer(FIELD_LAYER, {
+      outFields:'fldNpdidField,fldName', orderByFields:'fldName ASC', resultRecordCount:500
+    });
+    allFields = features.map(f => ({id:f.attributes.fldNpdidField, name:f.attributes.fldName}));
+  }
+  allFields.sort((a,b) => a.name.localeCompare(b.name,'en'));
 
   const TRIAL_PROD_FIELDS = [
     { id: 17196400, name: '16/1-12 TROLDHAUGEN', trialProd: true },
@@ -533,6 +581,16 @@ async function loadFields() {
 }
 
 async function loadProdForFields(ids) {
+  // Bundelen har alle år for alle felt, så ingenting trenger å hentes.
+  // Array.isArray dekker både "ikke lastet" (undefined) og "forrige forsøk
+  // feilet" (null).
+  if (bundle.production) {
+    ids.forEach(id => {
+      if (!Array.isArray(fieldProdCache[id])) fieldProdCache[id] = prodRowsFromBundle(id);
+    });
+    return;
+  }
+
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
 
@@ -632,6 +690,16 @@ async function loadAllLicensees() {
 async function _doLoadAllLicensees() {
   document.getElementById('cmpLoadingNotice').classList.add('visible');
   try {
+    // ── 0. Statisk bundle først ─────────────────────────────────────────────
+    if (bundle.licensees && bundle.licensees.rows) {
+      _ingestLicRecords(bundle.licensees.rows.map(
+        ([fldNpdidField, cmpLongName, fldCompanyShare, fldLicenseeFrom, fldLicenseeTo]) =>
+          ({fldNpdidField, cmpLongName, fldCompanyShare, fldLicenseeFrom, fldLicenseeTo})
+      ));
+      allLicLoaded = true;
+      return;
+    }
+
     // ── 1. Try session cache first ──────────────────────────────────────────
     const cached = sessionGet(SESSION_LIC_KEY);
     if (cached && Array.isArray(cached) && cached.length > 0) {
@@ -691,6 +759,11 @@ function _ingestLicRecords(records) {
 // ── RESERVES ─────────────────────────────────────────────────────────────────
 async function loadReserves() {
   if (reservesLoaded) return;
+  if (bundle.reserves && bundle.reserves.companies) {
+    companyReserves = bundle.reserves.companies;
+    reservesLoaded = true;
+    return;
+  }
   try {
     // Parallel fetch reserves too
     const rows = await queryAllParallel(RES_LAYER, {
@@ -1343,6 +1416,10 @@ async function init() {
   updateFab();
   setInfo('');
 
+  // ── Phase 0: Prøv de statiske datafilene. Finnes de, serveres alt herfra;
+  //    hvis ikke faller lastefunksjonene under tilbake til live-API-et. ──
+  await loadBundles();
+
   // ── Phase 1: Load fields list (fast, ~100 records) ──
   //    and start licensee + reserves loads in parallel, but don't await them yet
   const licPromise      = loadAllLicensees();  // begins immediately, runs in background
@@ -1384,6 +1461,8 @@ async function init() {
 }
 
 async function prefetchAllFields() {
+  if (bundle.production) return; // alt ligger allerede i bundelen
+
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
 

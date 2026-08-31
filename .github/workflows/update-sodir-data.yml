@@ -1,0 +1,46 @@
+name: Oppdater SODIR-data
+
+on:
+  schedule:
+    # 04:15 UTC hver dag. Sodir publiserer nye produksjonstall månedlig,
+    # så de fleste kjøringene vil ikke gi noen commit.
+    - cron: '15 4 * * *'
+  workflow_dispatch:
+
+# Trengs for at jobben skal kunne pushe de oppdaterte datafilene.
+permissions:
+  contents: write
+
+concurrency:
+  group: sodir-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: pip install requests
+
+      - name: Hent data fra Sodir
+        run: python fetch_sodir.py
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+          else
+            git commit -m "Oppdater SODIR-data ($(date -u +%Y-%m-%d))"
+            git push
+          fi
