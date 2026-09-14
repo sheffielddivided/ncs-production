@@ -7,7 +7,8 @@ og datamodellen forstås uten å lese kildekoden.
 Alt nedenfor er verifisert mot kildekoden og mot live-APIet 2026-09-14.
 Påstander som ikke lot seg verifisere er markert med **USIKKER:**.
 
-Dokumenterer koden slik den står etter denne PR-en (basis: `f69eb13`).
+Dokumentert tilstand: commit `6176975` på `main`. Kode og datafiler er uendret
+siden dokumentet ble skrevet, så alle linjereferanser og volumtall gjelder.
 NVE-appen som tidligere lå her som `nve.html` er flyttet til et eget repo
 (`sheffielddivided/nve`) og er ikke en del av denne løsningen.
 
@@ -700,7 +701,7 @@ De framtidige årene er ikke prognoser. Verifisert mot kilden: rader for
 | `reserves.json` | 0,7 KB | 0,4 KB |
 | `meta.json` | 0,1 KB | 0,1 KB |
 | **Sum `data/`** | **1 920,4 KB** | **479,5 KB** |
-| `index.html` | 83,1 KB | — |
+| `index.html` | 82,3 KB | 27,3 KB |
 
 GitHub Pages komprimerer tekst automatisk, så reell overføring ved førstegangs
 last er ca. **480 KB** for data pluss selve HTML-fila.
@@ -727,7 +728,7 @@ Scriptet kunne parallelliseres, men 33 s i en daglig batchjobb gjør det unødve
 
 ### 11.0 Rettet — historikk
 
-Følgende ble funnet under dokumentasjonsarbeidet og **rettet i samme PR**.
+Følgende ble funnet under dokumentasjonsarbeidet og **er rettet** (PR #12).
 De er beholdt her fordi feilklassene er relevante for søsterløsningene.
 
 | Var | Problem | Fiks |
