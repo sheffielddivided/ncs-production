@@ -7,7 +7,7 @@ og datamodellen forstås uten å lese kildekoden.
 Alt nedenfor er verifisert mot kildekoden og mot live-APIet 2026-09-14.
 Påstander som ikke lot seg verifisere er markert med **USIKKER:**.
 
-Dokumentert commit: `f69eb13`. Filen `nve.html` er holdt utenfor etter avtale —
+Dokumenterer koden slik den står etter denne PR-en (basis: `f69eb13`). Filen `nve.html` er holdt utenfor etter avtale —
 den er en separat app (NVE magasinstatistikk) uten kobling til denne løsningen.
 
 ---
@@ -36,7 +36,7 @@ Brukeren velger enten *felt* eller *selskap*, og en periodeoppløsning
    JSON-filer under `data/` i selve repoet.
 2. **Presentasjon** — `index.html` er en helt statisk fil som leser disse
    JSON-filene ved oppstart. Finnes de ikke, faller appen tilbake til å kalle
-   Sodir-APIet direkte fra nettleseren (`index.html:559-592`, `690-701`, `760-766`).
+   Sodir-APIet direkte fra nettleseren (`index.html:562-595`, `690-701`, `760-766`).
 
 Det finnes **ingen backend, ingen database og ingen byggesteg**. Repoet *er*
 deployet.
@@ -47,7 +47,7 @@ deployet.
 
 | Lag | Teknologi | Referanse |
 |---|---|---|
-| Frontend | Vanilla JS/HTML/CSS i én fil, ingen rammeverk, ingen bundler | `index.html` (1549 linjer, 83 KB) |
+| Frontend | Vanilla JS/HTML/CSS i én fil, ingen rammeverk, ingen bundler | `index.html` (1529 linjer, 82 KB) |
 | Grafer | Chart.js 4.4.1 via cdnjs | `index.html:11` |
 | Excel-eksport | ExcelJS 4.3.0 via cdnjs | `index.html:12` |
 | Innsamling | Python 3.12 + `requests` (eneste avhengighet) | `fetch_sodir.py:23`, workflow linje 28, 31 |
@@ -246,7 +246,7 @@ Bygges av `fetch_sodir.py:144-169`.
 
 > **`month = 0` er ikke en måned — det er årssummen.** Kilden leverer både
 > månedsrader og en aggregert årsrad per år i samme tabell. Koden skiller dem i
-> `isValidRow` (`index.html:411-413`). Blander man dem, dobbelttelles alt.
+> `isValidRow` (`index.html:414-416`). Blander man dem, dobbelttelles alt.
 
 ### `data/licensees.json` — eierandeler over tid
 
@@ -274,7 +274,7 @@ Bygges av `fetch_sodir.py:172-191`.
 
 22 selskaper. Verdien er **opprinnelig utvinnbar** oljeekvivalent i mill Sm³ o.e.,
 summert over alle felt selskapet har andel i (`fetch_sodir.py:194-202`).
-Brukes **kun til å sortere selskapslisten** (`index.html:787-796`) — aldri vist.
+Brukes **kun til å sortere selskapslisten** (`index.html:789-798`) — aldri vist.
 
 ### `data/meta.json`
 
@@ -322,10 +322,10 @@ mekanisme for dette — den håndterer ett enkelt funn med hardkoding (se §11).
 Både lag 7108 og 7114 har kolonnen **`cmpNpdidCompany`** (heltalls-ID), men
 løsningen henter den ikke. Alle koblinger mellom eierandeler, reserver og
 diagramserier går på eksakt strengmatch av `cmpLongName`
-(`index.html:533`, `548`, `754`, `778`). Konsekvenser:
+(`index.html:536`, `548`, `754`, `778`). Konsekvenser:
 
 - Skrivemåteendring eller fusjon splitter ett selskap i to i UI-et
-- `getShare` returnerer stille `0` ved navnebom (`index.html:553`)
+- `getShare` returnerer stille `0` ved navnebom (`index.html:556`)
 - Sammenslåing på tvers av land blir skjør
 
 **Anbefaling ved reimplementasjon: bruk `cmpNpdidCompany` som nøkkel og behandle
@@ -377,7 +377,7 @@ const BBL_PER_SM3 = 6.29;   // index.html:207
 ```
 
 Hardkodet ett sted, i `index.html`. Brukes i alle fire konverteringsfunksjoner
-(`index.html:419-426`). Hentescriptet gjør **ingen** enhetskonvertering — det
+(`index.html:422-429`). Hentescriptet gjør **ingen** enhetskonvertering — det
 lagrer kildens tall som de er.
 
 ### Den implisitte faktoren — viktig
@@ -411,18 +411,18 @@ dager i perioden:
 
 - Månedlig: `daysInMonth(år, måned)` via `new Date(y,m,0).getDate()` (`index.html:315`)
 - Årlig: `daysInYear` med korrekt skuddårsregel inkl. 100/400-unntak (`index.html:316`)
-- Kvartalsvis: sum av dagene i kvartalets tre måneder (`index.html:432-435`)
+- Kvartalsvis: sum av dagene i kvartalets tre måneder (`index.html:435-438`)
 
 Faller en rad bort, brukes **30 dager** som nøddivisor
-(`index.html:1113`, `1136`, `1140`, `1144`, `1173`). Verdien er vilkårlig, men
+(`index.html:1102`, `1136`, `1140`, `1144`, `1173`). Verdien er vilkårlig, men
 treffer bare rader som uansett er tomme.
 
 ### Avrunding
 
 - Innsamling: 6 desimaler (`fetch_sodir.py:117`)
-- Enkeltfelt-visning: 1 desimal (`.toFixed(1)`, `index.html:1114-1116`)
+- Enkeltfelt-visning: 1 desimal (`.toFixed(1)`, `index.html:1103-1105`)
 - Alle andre visninger: 0 desimaler (`.toFixed(0)`)
-- Tooltip: `Math.round` (`index.html:1358`)
+- Tooltip: `Math.round` (`index.html:1338`)
 
 Merk at `.toFixed()` gir **streng**, som umiddelbart konverteres tilbake med
 unær `+`. Avrundingen er altså destruktiv og skjer *før* summering i Excel-eksporten.
@@ -447,11 +447,12 @@ Det finnes likevel geometri i kilden, og det er relevant ved sammenslåing:
 Hentescriptet setter eksplisitt `returnGeometry: 'false'` (`fetch_sodir.py:94`),
 og ingen av JSON-filene under `data/` inneholder koordinater.
 
-> **Fallgruve:** Frontendens fallback-sti setter **ikke** `returnGeometry`
-> (`index.html:357-366`). ArcGIS' standardverdi er `true`, så når appen faller
-> tilbake til live-API mot lag 7100, laster den ned polygongeometri den aldri
-> bruker. Verifisert live: et enkelt felt returnerte en ring med 258 punkter.
-> Tabellagene er upåvirket siden de ikke har geometri.
+> **Merk:** ArcGIS' standardverdi for `returnGeometry` er `true`. Frontendens
+> fallback-sti satte den ikke, og lastet dermed ned polygongeometri den aldri
+> brukte når den falt tilbake til live-API mot lag 7100 (verifisert live: ett
+> felt returnerte en ring med 258 punkter). `queryLayer` setter den nå eksplisitt
+> til `'false'` (`index.html:357-372`). Tabellagene var uansett upåvirket, siden
+> de ikke har geometri.
 
 ---
 
@@ -490,16 +491,16 @@ av avrundingsstøy i kilden.
 ### 8.2 Equity-justering (eierandel)
 
 Selskapsvisninger vekter produksjon med eierandelen som gjaldt **på det aktuelle
-tidspunktet** (`index.html:540-554`):
+tidspunktet** (`index.html:543-557`):
 
-1. Beregn en referansedato for perioden via `midDate` (`index.html:401-405`):
+1. Beregn en referansedato for perioden via `midDate` (`index.html:404-408`):
    - månedlig/kvartalsvis: **den 15. i måneden**
    - årlig: **1. juli** (`new Date(year, 6, 1)` — merk at 6 = juli, 0-indeksert)
 2. Finn **første** lisensiærrad der selskapsnavnet matcher og datoen ligger
    innenfor `[from, to]`. `null` tolkes som åpen ende i begge retninger.
 3. Del på 100 og multipliser med produksjonen.
 
-Ingen match gir `0` (`index.html:553`) — stille, uten advarsel.
+Ingen match gir `0` (`index.html:556`) — stille, uten advarsel.
 
 `records.find(...)` tar **første** treff. Finnes overlappende perioder for samme
 selskap, vinner den som tilfeldigvis kom først etter sorteringen. Dette er ikke
@@ -507,16 +508,16 @@ validert noe sted.
 
 ### 8.3 Kvartalsaggregering
 
-Kvartaler bygges kun av månedsrader, aldri av årsrader (`index.html:439-452`).
+Kvartaler bygges kun av månedsrader, aldri av årsrader (`index.html:442-455`).
 
 **Regelen for hvilke kvartaler som tas med er subtil:** et kvartal beholdes hvis
 unionen av *alle valgte felt* dekker minst 3 distinkte måneder
-(`index.html:451`). Det kreves altså ikke at hvert enkelt felt har alle tre
+(`index.html:454`). Det kreves altså ikke at hvert enkelt felt har alle tre
 månedene. Velger man to felt der det ene har jan+feb og det andre har mar, regnes
 Q1 som komplett.
 
 Selve verdien er et **dagvektet gjennomsnitt**, ikke et enkelt snitt
-(`index.html:457-470`):
+(`index.html:460-473`):
 
 ```
 kvartalsrate = Σ(månedsrate × dager_i_måned) / dager_i_kvartal
@@ -524,7 +525,7 @@ kvartalsrate = Σ(månedsrate × dager_i_måned) / dager_i_kvartal
 
 ### 8.4 Filtrering av ufullstendige perioder
 
-`isCompletePeriod` (`index.html:489-504`):
+`isCompletePeriod` (`index.html:492-507`):
 
 - **Årlig:** inneværende år ekskluderes helt (`+label < nowYear`)
 - **Kvartalsvis:** inneværende kvartal ekskluderes til siste måned er passert
@@ -534,9 +535,9 @@ Asymmetrien er tilsiktet, men udokumentert i koden.
 
 ### 8.5 Trimming av ledende nullperioder
 
-`trimLeadingZeros` (`index.html:1329-1337`) fjerner perioder fra starten der
+`trimLeadingZeros` (`index.html:1305-1313`) fjerner perioder fra starten der
 *alle* dataserier er 0 eller mangler. Kalles fra `renderChart`
-(`index.html:1340`). Formålet er at grafen skal begynne der produksjonen faktisk
+(`index.html:1316`). Formålet er at grafen skal begynne der produksjonen faktisk
 startet. Nullperioder *inne i* eller på slutten av serien beholdes.
 
 ### 8.6 Håndtering av manglende verdier
@@ -547,30 +548,30 @@ startet. Nullperioder *inne i* eller på slutten av serien beholdes.
 - Rader uten `prfYear` forkastes (`fetch_sodir.py:154`)
 - Frontend: `|| 0` overalt ved uthenting av måleverdier
 - Serier som er null hele veien skjules fra grafen via `hasAnyValue`
-  (`index.html:556`, brukt `1175`, `1205`, `1316`)
-- Felt uten navn vises som `Field <id>` (`index.html:1306`)
+  (`index.html:559`, brukt `1175`, `1205`, `1316`)
+- Felt uten navn vises som `Field <id>` (`index.html:1283`)
 
 ### 8.7 Sortering og standardvalg
 
 - **Selskapsliste:** `Aker BP ASA` tvinges alltid øverst, deretter synkende
-  reserver, deretter alfabetisk (`index.html:787-796`). Kun 22 av 263 selskaper
+  reserver, deretter alfabetisk (`index.html:789-798`). Kun 22 av 263 selskaper
   har reserver, så resten faller til alfabetisk.
 - **Feltliste:** felt der Aker BP er lisensiær sorteres øverst ved oppstart
-  (`index.html:1455-1466`).
+  (`index.html:1435-1446`).
 - **Standardvalg ved oppstart:** modus = `companies` (`index.html:271`),
-  `Aker BP ASA` forhåndsvalgt (`index.html:1468`), og `JOHAN SVERDRUP`
-  forhåndsvalgt i feltlisten (`index.html:578-579`).
+  `Aker BP ASA` forhåndsvalgt (`index.html:1448`), og `JOHAN SVERDRUP`
+  forhåndsvalgt i feltlisten (`index.html:581-582`).
 
 Dette er ikke nøytral produktlogikk — det er en innebygd preferanse for ett
 selskap. Ved sammenslåing bør det parametriseres.
 
 ### 8.8 Årsvelgerens oppførsel ved periodebytte
 
-`setPeriod` (`index.html:848-873`) overstyrer brukerens årsvalg:
+`setPeriod` (`index.html:850-875`) overstyrer brukerens årsvalg:
 
 - **Til årlig:** setter `yearFrom = 1970`, tømmer cache, henter, og «snapper»
   deretter til første år med faktisk produksjon via `firstYearInCache`
-  (`index.html:826-846`), som kun ser på årsrader med `oe > 0`.
+  (`index.html:828-848`), som kun ser på årsrader med `oe > 0`.
 - **Til månedlig/kvartalsvis:** setter `yearFrom = currentYear - 1`.
 
 Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
@@ -589,7 +590,7 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Årsintervall | `#yearFrom` / `#yearTo` (`:129-131`) | 1970–inneværende år, **synkende** (`:304`); standard `[år−1, år]` (`:311-312`) |
 | Periode | `#btnMonthly/Quarterly/Annual` (`:134-136`) | **Monthly** standard |
 | Undervisning | `#viewTabs` (`:141`) | Avhenger av modus, se under |
-| Produsert vann | `#waterToggle` (`:146`) | Kun synlig for Fields + Oil & Gas (`:815-816`) |
+| Produsert vann | `#waterToggle` (`:146`) | Kun synlig for Fields + Oil & Gas (`:817-818`) |
 | Valg | `#selectFab` → bottom sheet (`:178`, `:184-198`) | Søk, «Select all», «Clear all» |
 | Eksport | `#downloadBtn` (`:166`) | Excel (.xlsx) |
 
@@ -597,17 +598,17 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 
 | Modus | Fane | Funksjon | Hva som tegnes |
 |---|---|---|---|
-| Fields | Oil & Gas | `drawFieldsOilGas` (`:1086`) | Stablet Oil/Gas (+Water). Ett felt: 1 desimal. Flere felt: **summert**, 0 desimaler |
-| Fields | OE per field | `drawFieldsOePerField` (`:1161`) | Én serie per felt, brutto o.e. |
-| Fields | OE per company | `drawFieldsOePerCompany` (`:1187`) | Én serie per selskap, **equity-justert** |
-| Companies | Oil & Gas | `drawCompaniesOilGas` (`:1218`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
-| Companies | OE per field | `drawCompaniesOePerField` (`:1290`) | Én serie per felt, equity-justert |
+| Fields | Oil & Gas | `drawFieldsOilGas` (`:1076`) | Stablet Oil/Gas (+Water). Ett felt: 1 desimal. Flere felt: **summert**, 0 desimaler |
+| Fields | OE per field | `drawFieldsOePerField` (`:1146`) | Én serie per felt, brutto o.e. |
+| Fields | OE per company | `drawFieldsOePerCompany` (`:1170`) | Én serie per selskap, **equity-justert** |
+| Companies | Oil & Gas | `drawCompaniesOilGas` (`:1199`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
+| Companies | OE per field | `drawCompaniesOePerField` (`:1268`) | Én serie per felt, equity-justert |
 
-Merk at Companies-modus **ikke** har en «OE per company»-fane (`:804-807`) —
+Merk at Companies-modus **ikke** har en «OE per company»-fane (`:806-809`) —
 det er selskapene man allerede har valgt.
 
 Alle grafer er stablede søylediagram (`stack:'s'`) med delt Y-akse i boe/dag,
-felles tooltip med totalsum (`index.html:1350-1370`). Fargepaletten har 10
+felles tooltip med totalsum (`index.html:1330-1350`). Fargepaletten har 10
 farger og resirkuleres med modulo (`index.html:254-265`).
 
 Under grafen viser `#infoBox` en tekstlinje som eksplisitt oppgir serier, enhet
@@ -629,17 +630,17 @@ GET data/meta.json
 Alle hentes parallelt med `cache:'no-cache'` (revalidering mot ETag).
 **Etter dette gjør ingen brukerhandling noe nettverkskall** — all filtrering,
 periodebytte og selskapsvalg skjer i minnet. `prefetchAllFields` avbryter
-umiddelbart når bundelen finnes (`index.html:1484`).
+umiddelbart når bundelen finnes (`index.html:1464`).
 
 **Fallback (datafiler mangler):** appen kaller Sodir-APIet direkte:
 
 | Situasjon | Kall |
 |---|---|
-| Feltliste | 1 kall mot lag 7100 (`:563-565`) |
-| Selskapsliste | 1 `returnCountOnly` + N parallelle sider mot 7108 (`:713-727`) |
-| Reserver | `queryAllParallel` mot 7114 (`:769-772`) |
-| Produksjon | Batcher à 50 felt-ID-er med `IN (...)` mot 7300 (`:613-633`) |
-| Bakgrunn | Etter 2 s: batcher à 30 for alle felt (`:1480`, `:1505`) |
+| Feltliste | 1 kall mot lag 7100 (`:566-568`) |
+| Selskapsliste | 1 `returnCountOnly` + N parallelle sider mot 7108 (`:716-730`) |
+| Reserver | `queryAllParallel` mot 7114 (`:772-775`) |
+| Produksjon | Batcher à 50 felt-ID-er med `IN (...)` mot 7300 (`:616-636`) |
+| Bakgrunn | Etter 2 s: batcher à 30 for alle felt (`:1460`, `:1485`) |
 
 Fallbacken har egen sesjonscache i `sessionStorage` med versjonerte nøkler
 (`index.html:320-321`), og faller tilbake til en `Map` i minnet hvis
@@ -647,12 +648,12 @@ Fallbacken har egen sesjonscache i `sessionStorage` med versjonerte nøkler
 
 ### Excel-eksport
 
-`downloadExcel` (`index.html:1385-1431`) genererer i nettleseren en `.xlsx` med
+`downloadExcel` (`index.html:1365-1411`) genererer i nettleseren en `.xlsx` med
 to ark: **Info** (genereringstidspunkt, periodetype, årsintervall,
 databeskrivelse, kildehenvisning) og **Data** (én kolonne per serie, sebrastriper).
 Filnavn: `NCS_Production_<Periode>_<fra>-<til>.xlsx`.
 
-**Denne eksporten har en verifisert feil — se §11.1.**
+Eksporten hadde en forskyvningsfeil som er rettet — se §11.0.
 
 ---
 
@@ -716,43 +717,54 @@ ca. 17 sider for produksjon + 6 for lisensiærer + 1 for felt + 1 for reserver,
 pluss ett `returnCountOnly`- og ett metadata-kall per lag ≈ 33 HTTP-kall.
 
 Merk at hentescriptet paginerer **sekvensielt** (`fetch_sodir.py:89`), mens
-frontendens fallback paginerer **parallelt** (`index.html:394-396`, `720-727`).
+frontendens fallback paginerer **parallelt** (`index.html:397-399`, `720-727`).
 Scriptet kunne parallelliseres, men 33 s i en daglig batchjobb gjør det unødvendig.
 
 ---
 
 ## 11. Fallgruver og kjente problemer
 
-### 11.1 BUG: Excel-eksporten forskyves når ledende nullperioder trimmes
+### 11.0 Rettet — historikk
 
-**Alvorlighet: høy — eksporterte tall havner på feil periode.**
+Følgende ble funnet under dokumentasjonsarbeidet og **rettet i samme PR**.
+De er beholdt her fordi feilklassene er relevante for søsterløsningene.
 
-`renderChart` trimmer `labels` *og* `datasets`, og lagrer den trimmede
-etiketterekka i `lastLabels` (`index.html:1340-1341`). Men `lastDatasets` ble satt
-av tegnefunksjonen **før** kallet, og peker fortsatt på de **utrimmede** arrayene
-(f.eks. `index.html:1124`, `1151`, `1247`). `trimLeadingZeros` muterer ikke —
-den returnerer nye arrays (`index.html:1333-1336`) — så den opprinnelige
-referansen forblir utrimmet.
+| Var | Problem | Fiks |
+|---|---|---|
+| Excel-eksport | Forskjøvet når ledende nullperioder ble trimmet bort | `lastDatasets` utledes nå av de trimmede seriene inne i `renderChart` |
+| Fallback-sti | Lastet ned feltgeometri den aldri brukte | `returnGeometry:'false'` er nå eksplisitt i `queryLayer` |
+| `apply-companies-oilgas-fix.yml` | Etterlatt engangs-workflow som refererte en slettet fil | Slettet |
+| `labelValue` | Definert, aldri kalt | Slettet |
+| `showSpinner(progressMsg)` | Parameter aldri sendt inn | Parameter fjernet |
+| `loadReserves` | Ubrukt variabel + villedende kommentar | Ryddet |
+| `index.html` | Redigeringsartefakten `← ny linje` var committet inn | Fjernet |
+| `README.md` | Tom | Skrevet |
 
-`downloadExcel` parer så `lastLabels[i]` med `lastDatasets[...].data[i]`
-(`index.html:1417-1418`). Er N ledende perioder trimmet, er hele eksporten
-forskjøvet N plasser.
-
-Reprodusert med den faktiske funksjonen fra fila:
+**Detaljer om Excel-feilen**, siden mønsteret er lett å gjenskape:
+`renderChart` trimmet `labels` og `datasets` og lagret den trimmede
+etiketterekka i `lastLabels`, mens `lastDatasets` var satt av tegnefunksjonen
+**før** kallet og fortsatt pekte på de **utrimmede** arrayene. `trimLeadingZeros`
+muterer ikke — den returnerer nye arrays — så den opprinnelige referansen forble
+utrimmet. `downloadExcel` paret så `lastLabels[i]` med `lastDatasets[…].data[i]`,
+og hele eksporten ble forskjøvet N plasser.
 
 ```
 labels  = ['2020','2021','2022'],  Oil = [0, 5, 7],  Gas = [0, 2, 3]
 etter trimming:  lastLabels = ['2021','2022'],  lastDatasets[0].data = [0,5,7]
 
-Excel får:      2021 → Oil=0, Gas=0        2022 → Oil=5, Gas=2
+Excel fikk:     2021 → Oil=0, Gas=0        2022 → Oil=5, Gas=2
 Korrekt:        2021 → Oil=5, Gas=2        2022 → Oil=7, Gas=3
 ```
 
-Grafen på skjermen er riktig — kun nedlastingen er feil. Feilen oppstår bare når
-trimming faktisk skjer, altså typisk i årsvisning for felt som startet sent.
+Grafen på skjermen var riktig — kun nedlastingen var feil, og bare når trimming
+faktisk skjedde (typisk årsvisning for felt som startet sent).
+**Lærdommen for en reimplementasjon:** det som eksporteres må utledes av nøyaktig
+den samme datastrukturen som tegnes, på ett sted.
 
-**Fiks:** sett `lastDatasets` fra de trimmede dataene inne i `renderChart`, ikke
-i tegnefunksjonene.
+---
+
+De følgende punktene er **ikke rettet**. De krever produktbeslutninger eller
+større refaktorering, og er beskrevet som beslutningsgrunnlag.
 
 ### 11.2 «Oil» er egentlig alle væsker
 
@@ -783,84 +795,63 @@ eierandeler i appen.
 
 **Problemet:** eierandelene 80/20 er skrevet inn for hånd, har ingen kilde, og
 oppdateres aldri. `getShare` sjekker dette oppslaget *før* lisensiærdataene
-(`index.html:542-544`), så hardkodingen vinner alltid. Og som vist i §5 finnes
+(`index.html:545-547`), så hardkodingen vinner alltid. Og som vist i §5 finnes
 det **43 andre** funn-carriers som ikke har fått samme behandling — to av dem med
 faktisk produksjon (`25288497` = 7220/11-1 Alta, `44576` = 33/9-6 DELTA). De
 dukker opp som `Field <id>` uten eierandeler.
 
-Spesialtilfellet er spredt over seks steder: `:525`, `:534`, `:542`, `:570`,
-`:655-659`, `:831`, `:1032-1038`, `:1294-1296`, `:1458-1460`.
+Spesialtilfellet er spredt over seks steder: `:528`, `:537`, `:545`, `:573`,
+`:658-662`, `:833`, `:1034-1040`, `:1272-1274`, `:1438-1440`.
 
 ### 11.4 Selskaper kobles på navnestreng
 
 Se §5, fallgruve B. `cmpNpdidCompany` finnes i kilden, men brukes ikke. Enhver
 navneendring splitter historikken. `getShare` feiler stille med `0`.
 
-### 11.5 Etterlatt engangs-workflow som vil feile
+### 11.5 Faviconen ligger som base64 inne i `index.html`
 
-`.github/workflows/apply-companies-oilgas-fix.yml` ligger fortsatt i repoet.
-Den var en midlertidig hjelper som skulle fjernes etter bruk. Den kjører
-`python patch_companies_oilgas.py` (linje 36), men **den fila finnes ikke lenger**
-— den slettet seg selv i samme commit som den kjørte (linje 48).
+`index.html` har en ~13 KB base64-kodet PNG på **linje 7** (`apple-touch-icon`).
+Det gir to problemer:
 
-Trigger er `push` til branchen `claude/fix-companies-oilgas-multiselect`
-(nå slettet) samt `workflow_dispatch`. Kjøres den manuelt, feiler den med
-`No such file or directory`.
+1. Den lastes ned på nytt ved hver sidelast i stedet for å caches som egen fil,
+   og utgjør ~16 % av HTML-fila.
+2. Den gjør fila upraktisk å redigere programmatisk. Ethvert verktøy som må
+   reprodusere hele filinnholdet risikerer å korrumpere strengen. Repoets
+   historikk inneholder flere engangs-workflows som eksisterte utelukkende for å
+   patche `index.html` på en GitHub-runner og dermed unngå å skrive hele fila —
+   og én av dem hadde et eget verifiseringssteg som feilet hvis favicon-linja ble
+   berørt.
 
-**Bør slettes.** Den har ingen funksjon.
+**Ved sammenslåing bør faviconen flyttes til en egen fil.** Ikke rettet her
+fordi det endrer hvordan siden refererer ikonet.
 
-> **Bakgrunn for hvorfor dette mønsteret finnes i det hele tatt:** `index.html`
-> inneholder en ~13 KB base64-kodet favicon på linje 7. Endringer i fila ble
-> derfor gjort av et patch-script som kjørte på GitHub-runneren, i stedet for å
-> skrive hele fila via GitHub-APIet — nettopp fordi base64-strengen ikke kan
-> gjengis pålitelig gjennom et verktøy som må reprodusere hele filinnholdet.
-> Workflowen har et eget steg som feiler hvis favicon-linja skulle bli berørt
-> (linje 38-42). Ved sammenslåing bør faviconen legges i en egen fil.
+### 11.6 Død kode som gjenstår
 
-### 11.6 Redigeringsartefakt committet inn i koden
+- **`|| 7`** i `midDate(a.prfYear, a.prfMonth||7)` — i årsvisning ignorerer
+  `midDate` månedsargumentet uansett, og i månedsvisning er `prfMonth` alltid
+  > 0. Defensiv, men uten effekt. Ikke fjernet: det står i fire tette
+  one-linere der risikoen for en skrivefeil er større enn gevinsten.
 
-```js
-allLicPromise = null; // allow retry on next call   ← ny linje   // index.html:738
-```
-
-Pilen og den norske teksten «← ny linje» er en redigeringsnotis som ved et uhell
-ble committet. Kosmetisk, men et tegn på at fila er redigert med tekstutbytting.
-
-### 11.7 Død kode
-
-- **`labelValue`** (`index.html:1076-1083`) — definert, aldri kalt. Signaturen
-  passer heller ikke med hvordan `quarterBoed` faktisk brukes ellers.
-- **`showSpinner(progressMsg)`** (`index.html:1046`) — parameteren sendes aldri
-  inn fra noen av de tre kallstedene (`:1011`, `:1024`, `:1040`).
-- **`loadReserves`** (`index.html:775-776`) — variabelen `a` beregnes og
-  forkastes; `rec` gjør samme jobb på neste linje. Kommentaren på linje 775
-  beskriver et problem som ikke finnes.
-- **`|| 7`** i `midDate(a.prfYear, a.prfMonth||7)` (`:1203`, `:1238`, `:1261`,
-  `:1314`) — i årsvisning ignorerer `midDate` månedsargumentet uansett
-  (`:401-405`), og i månedsvisning er `prfMonth` alltid > 0. Defensiv, men uten effekt.
+Annen død kode (`labelValue`, ubrukt `showSpinner`-parameter, ubrukt variabel i
+`loadReserves`) er fjernet — se §11.0.
 
 ### 11.8 sessionStorage-laget er i praksis dødt
 
-Hele cache-laget (`index.html:318-354`, `:597-603`, `:646`, `:704-709`, `:732`)
+Hele cache-laget (`index.html:318-354`, `:600-606`, `:649`, `:707-712`, `:735`)
 kjører aldri så lenge `data/`-filene finnes, fordi bundle-stien returnerer tidlig
-(`index.html:587-592`, `:694-701`). `sessionClearProd()` kalles fortsatt ved
-årsbytte (`:306`) og periodebytte (`:857`, `:869`), men er en no-op for
+(`index.html:590-595`, `:697-704`). `sessionClearProd()` kalles fortsatt ved
+årsbytte (`:306`) og periodebytte (`:859`, `:871`), men er en no-op for
 korrektheten. Koden er ikke feil — bare uvirksom.
-
-### 11.9 Fallback-stien laster ned geometri den ikke bruker
-
-Se §7. `queryLayer` setter ikke `returnGeometry`, og ArcGIS' standard er `true`.
-Gjelder kun lag 7100.
 
 ### 11.10 Årsvelgeren overstyres ved periodebytte
 
 Se §8.8. Bytter brukeren periode, mistes et manuelt satt `yearFrom`.
-`setPeriod` tømmer i tillegg hele `fieldProdCache` (`:858`, `:870`) — harmløst
+`setPeriod` tømmer i tillegg hele `fieldProdCache` (`:860`, `:872`) — harmløst
 når bundelen finnes, men en full refetch i fallback-modus.
 
 ### 11.11 Inneværende måned vises ufullstendig
 
-`isCompletePeriod` returnerer `true` for månedlig (`index.html:503`). Er kilden
+`isCompletePeriod` returnerer `true` for månedlig (`index.html:506`). Er kilden
 delvis oppdatert for inneværende måned, vises et kunstig lavt tall som siste
 søyle. Årlig og kvartalsvis er beskyttet; månedlig er det ikke.
 
@@ -897,11 +888,6 @@ hvis den daglige jobben feiler. Feiler den, blir datafilene stille stående på
 gammelt innhold; appen fortsetter å fungere og viser bare en gammel dato i
 bunnteksten. Eneste synlige signal er et rødt kryss i Actions-fanen.
 
-### 11.17 README er tom
-
-`README.md` inneholder kun `# ncs-production`. All kontekst finnes i kommentarer
-i koden — og noen av de kommentarene er upresise (se 11.7).
-
 ---
 
 ## 12. Lisens og attribusjon
@@ -922,7 +908,7 @@ NLOD tillater fri bruk, viderebruk og kommersiell utnyttelse, mot at kilden
 navngis. Lisensen gir ingen garanti for at dataene er korrekte eller komplette.
 
 > **USIKKER:** Koden oppgir konsekvent «NLOD 2.0» (`fetch_sodir.py:37`,
-> `index.html:1409`). FactPages' egen forsidetekst nevner NLOD uten
+> `index.html:1389`). FactPages' egen forsidetekst nevner NLOD uten
 > versjonsnummer. NLOD 2.0 er gjeldende versjon, så påstanden er etter alt å
 > dømme riktig, men jeg fant ingen eksplisitt versjonsangivelse hos Sodir som
 > bekrefter det. Bør sjekkes mot Sodirs vilkårsside før publisering.
@@ -937,7 +923,7 @@ navngis. Lisensen gir ingen garanti for at dataene er korrekte eller komplette.
 
    Datoen fylles inn fra `data/meta.json` (`index.html:232-234`).
 
-2. **I Excel-eksporten**, på Info-arket (`index.html:1409`):
+2. **I Excel-eksporten**, på Info-arket (`index.html:1389`):
    > Norwegian Offshore Directorate (Sodir) FactPages – https://factpages.sodir.no – License: NLOD 2.0
 
 3. **I datafilene**, i `meta.json` (`fetch_sodir.py:37`):

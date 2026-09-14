@@ -356,7 +356,10 @@ function sessionClearProd() {
 // ── QUERY HELPERS ────────────────────────────────────────────────────────────
 async function queryLayer(layerId, params) {
   const url = new URL(`${BASE}/${layerId}/query`);
-  const p = {f:'json',outFields:'*',where:'1=1',resultRecordCount:2000,...params};
+  // returnGeometry må settes eksplisitt: ArcGIS' standard er true, og feltlaget
+  // (7100) er et polygonlag. Appen bruker ingen geometri, så uten dette lastes
+  // feltomriss ned og kastes.
+  const p = {f:'json',outFields:'*',where:'1=1',returnGeometry:'false',resultRecordCount:2000,...params};
   Object.entries(p).forEach(([k,v]) => url.searchParams.set(k,v));
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -735,7 +738,7 @@ async function _doLoadAllLicensees() {
     allLicLoaded = true;
   } catch(e) {
     console.error('loadAllLicensees failed:', e);
-    allLicPromise = null; // allow retry on next call   ← ny linje
+    allLicPromise = null; // allow retry on next call
   } finally {
     allLicLoading = false;
     document.getElementById('cmpLoadingNotice').classList.remove('visible');
@@ -772,7 +775,6 @@ async function loadReserves() {
     });
     const totals = {};
     rows.forEach(r => {
-      const a = r.attributes || r; // queryAllParallel returns features, but _ingestLicRecords uses raw attrs
       const rec = r.attributes ? r.attributes : r;
       if (!rec.cmpLongName) return;
       totals[rec.cmpLongName] = (totals[rec.cmpLongName] || 0) + (rec.cmpRecoverableOE || 0);
@@ -1043,12 +1045,11 @@ async function refreshCompanies() {
 }
 
 // ── CHART DRAWING ────────────────────────────────────────────────────────────
-function showSpinner(progressMsg) {
+function showSpinner() {
   document.getElementById('chartArea').innerHTML = `
     <div class="status">
       <div class="spinner"></div>
       <div>Loading…</div>
-      ${progressMsg ? `<div class="progress-text">${progressMsg}</div>` : ''}
     </div>`;
   document.getElementById('downloadBtn').disabled = true;
 }
@@ -1071,17 +1072,6 @@ function drawChart() {
   }
 }
 
-// ── HELPERS: value per label (monthly/annual/quarterly) ──────────────────────
-// Returns boe/day for a label, given a single-field boed calculation function.
-function labelValue(id, lbl, qMap, boedfn) {
-  if (period === 'quarterly') {
-    return quarterBoed([id], lbl, qMap, (vol, d) => boedfn({vol, d}), a => a);
-  }
-  const row = (fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);
-  const a = row?.attributes||{}; const d = a.prfYear ? days(a) : 30;
-  return boedfn({a, d});
-}
-
 // ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
 function drawFieldsOilGas() {
   const ids = [...selectedFieldIds];
@@ -1090,7 +1080,6 @@ function drawFieldsOilGas() {
   const qMap = period === 'quarterly' ? buildQuarterMap(ids) : null;
 
   const datasets = [], legend = [];
-  lastDatasets = [];
 
   if (ids.length === 1) {
     const id = ids[0];
@@ -1121,8 +1110,6 @@ function drawFieldsOilGas() {
     if (showWater) datasets.push({label:'Water',data:watD,backgroundColor:WATER_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
     if (showWater) legend.push({label:'Water',color:WATER_COLOR});
-    lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
-    if (showWater) lastDatasets.push({label:'Water',data:watD});
     setChartTitle(fname, `Oil${showWater?', Gas & Water production':' & Gas production'} · boe/day`);
     setInfo(`<strong>Field:</strong> ${fname} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas${showWater?', Water':''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   } else {
@@ -1148,8 +1135,6 @@ function drawFieldsOilGas() {
     if (showWater) datasets.push({label:'Water',data:watD,backgroundColor:WATER_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
     if (showWater) legend.push({label:'Water',color:WATER_COLOR});
-    lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
-    if (showWater) lastDatasets.push({label:'Water',data:watD});
     const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
     setChartTitle(`${ids.length} fields · Oil & Gas production`, `${fnames} · boe/day`);
     setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
@@ -1164,7 +1149,6 @@ function drawFieldsOePerField() {
   if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
   const qMap = period === 'quarterly' ? buildQuarterMap(ids) : null;
   const datasets = [], legend = [];
-  lastDatasets = [];
   ids.forEach((id, i) => {
     const fname = allFields.find(f=>f.id===id)?.name || id;
     const color = PALETTE[i % PALETTE.length][0];
@@ -1175,7 +1159,6 @@ function drawFieldsOePerField() {
     if (!hasAnyValue(d)) return;
     datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
     legend.push({label:fname,color});
-    lastDatasets.push({label:fname,data:d});
   });
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
   setChartTitle(`Net production · OE per field`, `${fnames} · boe/day`);
@@ -1194,7 +1177,6 @@ function drawFieldsOePerCompany() {
   ids.forEach(id => (fieldLicCache[id]||[]).forEach(r => { if(r.cmpLongName) cmpSet.add(r.cmpLongName); }));
   const companies = [...cmpSet].sort();
   const datasets = [], legend = [];
-  lastDatasets = [];
 
   companies.forEach((cmp, i) => {
     const color = PALETTE[i % PALETTE.length][0];
@@ -1205,7 +1187,6 @@ function drawFieldsOePerCompany() {
     if (!hasAnyValue(d)) return;
     datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
     legend.push({label:cmp,color});
-    lastDatasets.push({label:cmp,data:d});
   });
 
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
@@ -1228,7 +1209,6 @@ function drawCompaniesOilGas() {
   const qMap = period === 'quarterly' ? buildQuarterMap(relevantIds) : null;
 
   const datasets = [], legend = [];
-  lastDatasets = [];
 
   if (companies.length === 1) {
     const cmp = companies[0];
@@ -1244,7 +1224,6 @@ function drawCompaniesOilGas() {
     datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
     datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
-    lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
     setChartTitle(`${cmp}`, `Oil & Gas production · equity-adjusted · boe/day`);
     setInfo(`<strong>Company:</strong> ${cmp} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   } else {
@@ -1279,7 +1258,6 @@ function drawCompaniesOilGas() {
     datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
     datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
-    lastDatasets = [{label:'Oil',data:oilD},{label:'Gas',data:gasD}];
     setChartTitle(`${companies.length} companies · Oil & Gas production`, `${companies.join(', ')} · boe/day`);
     setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   }
@@ -1300,7 +1278,6 @@ function drawCompaniesOePerField() {
   const qMap = period === 'quarterly' ? buildQuarterMap(relevantIds) : null;
 
   const datasets = [], legend = [];
-  lastDatasets = [];
 
   relevantIds.forEach((id, i) => {
     const fname = allFields.find(f=>f.id===id)?.name || `Field ${id}`;
@@ -1316,7 +1293,6 @@ function drawCompaniesOePerField() {
     if (!hasAnyValue(d)) return;
     datasets.push({label:fname,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
     legend.push({label:fname,color});
-    lastDatasets.push({label:fname,data:d});
   });
 
   const cmpStr = companies.join(', ');
@@ -1339,6 +1315,10 @@ function trimLeadingZeros(labels, datasets) {
 function renderChart(labels, datasets, legend, yTitle) {
   ({ labels, datasets } = trimLeadingZeros(labels, datasets));
   lastLabels = labels;
+  // Utledes her, etter trimmingen, slik at Excel-eksporten ser nøyaktig de
+  // samme seriene som grafen. Settes den i tegnefunksjonene i stedet, blir
+  // labels og data forskjøvet i forhold til hverandre når trimming skjer.
+  lastDatasets = datasets.map(d => ({label: d.label, data: d.data}));
   document.getElementById('chartArea').innerHTML = `
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l=>`
