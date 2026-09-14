@@ -17,7 +17,6 @@ statiske JSON-filer i dette repoet.
 | `data/` | Datasnapshot: felt, produksjon, lisensiærer, reserver |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
 | `SOLUTION-CONTEXT.md` | Teknisk dokumentasjon — datamodell, enheter, fallgruver |
-| `nve.html` | Separat app (NVE magasinstatistikk), urelatert |
 
 ## Kjøre lokalt
 

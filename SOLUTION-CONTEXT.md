@@ -7,8 +7,9 @@ og datamodellen forstås uten å lese kildekoden.
 Alt nedenfor er verifisert mot kildekoden og mot live-APIet 2026-09-14.
 Påstander som ikke lot seg verifisere er markert med **USIKKER:**.
 
-Dokumenterer koden slik den står etter denne PR-en (basis: `f69eb13`). Filen `nve.html` er holdt utenfor etter avtale —
-den er en separat app (NVE magasinstatistikk) uten kobling til denne løsningen.
+Dokumenterer koden slik den står etter denne PR-en (basis: `f69eb13`).
+NVE-appen som tidligere lå her som `nve.html` er flyttet til et eget repo
+(`sheffielddivided/nve`) og er ikke en del av denne løsningen.
 
 ---
 
