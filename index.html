@@ -106,6 +106,37 @@
     .cmp-loading-notice{padding:0 16px 8px;font-size:0.75rem;color:var(--muted);display:none;flex-shrink:0;}
     .cmp-loading-notice.visible{display:block;}
     .sheet-bottom-pad{height:env(safe-area-inset-bottom,12px);flex-shrink:0;}
+
+    /* ── Hub-innstillinger ─────────────────────────────────────────────── */
+    .settings-btn{background:none;border:none;color:#fff;opacity:0.85;cursor:pointer;padding:4px;display:flex;align-items:center;flex-shrink:0;}
+    .settings-btn svg{width:20px;height:20px;}
+    .settings-btn:active{opacity:0.5;}
+    .settings-panel{position:fixed;inset:0;background:var(--bg);z-index:80;display:none;flex-direction:column;}
+    .settings-panel.open{display:flex;}
+    .settings-head{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;}
+    .settings-head h3{font-size:1rem;font-weight:700;}
+    .settings-head .sub{font-size:0.68rem;opacity:0.65;margin-top:2px;}
+    .settings-close{background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:0 4px;}
+    .settings-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
+    .settings-search{flex:1;min-width:140px;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:0.85rem;outline:none;}
+    .settings-search:focus{border-color:var(--blue);}
+    .save-btn{padding:8px 16px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-size:0.82rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+    .save-btn:disabled{opacity:0.4;pointer-events:none;}
+    .save-status{font-size:0.72rem;color:var(--muted);flex-basis:100%;}
+    .save-status.err{color:#c0392b;}
+    .save-status.ok{color:var(--green);}
+    .settings-list{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;padding-bottom:24px;}
+    .hub-group{border-bottom:1px solid var(--border);background:var(--card);}
+    .hub-group-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--light);}
+    .hub-name-input{flex:1;min-width:0;padding:5px 8px;border:1.5px solid transparent;border-radius:6px;font-size:0.85rem;font-weight:700;color:var(--navy);background:transparent;}
+    .hub-name-input:focus{border-color:var(--blue);background:#fff;outline:none;}
+    .hub-group-count{font-size:0.68rem;color:var(--muted);flex-shrink:0;}
+    .hub-member{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 22px;border-top:1px solid #f0f3f7;font-size:0.82rem;}
+    .hub-member-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .auto-badge{font-size:0.62rem;background:#fde8b0;color:#7a5b00;border-radius:4px;padding:1px 5px;flex-shrink:0;}
+    .move-input{width:118px;padding:4px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.75rem;flex-shrink:0;}
+    .move-input:focus{border-color:var(--blue);outline:none;}
+    .settings-note{padding:12px;font-size:0.72rem;color:var(--muted);line-height:1.5;background:var(--card);border-bottom:1px solid var(--border);}
   </style>
 </head>
 <body>
@@ -115,6 +146,12 @@
     <div class="topbar-title">NCS Production</div>
     <div class="topbar-sub">Norwegian Continental Shelf · Sodir FactPages</div>
   </div>
+  <button class="settings-btn" id="settingsBtn" onclick="openHubSettings()" title="Rediger huber" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+  </button>
 </div>
 
 <div class="controls-bar">
@@ -181,6 +218,28 @@
   <span id="fabLabel">Select</span>
   <span class="fab-badge" id="fabBadge">0</span>
 </button>
+
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-head">
+    <div>
+      <h3>Rediger huber</h3>
+      <div class="sub">Endringer lagres i data/hubs.json og gjelder for alle</div>
+    </div>
+    <button class="settings-close" onclick="closeHubSettings()">&#10005;</button>
+  </div>
+  <div class="settings-bar">
+    <input class="settings-search" id="hubSearch" type="text" placeholder="Søk felt eller hub…" oninput="renderHubSettings()"/>
+    <button class="save-btn" id="hubSaveBtn" onclick="saveHubs()" disabled>Lagre</button>
+    <div class="save-status" id="hubSaveStatus"></div>
+  </div>
+  <div class="settings-note">
+    Skriv i <strong>flytt til</strong> for å legge feltet i en annen hub — eller skriv et nytt navn for å opprette en hub.
+    Rediger hub-navnet i den rosa raden for å gi nytt navn til hele huben.
+    <span class="auto-badge">auto</span> betyr maskinelt forslag som ikke er kvalitetssikret.
+  </div>
+  <div class="settings-list" id="hubSettingsList"></div>
+  <datalist id="hubNameList"></datalist>
+</div>
 
 <div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
 <div class="bottom-sheet" id="bottomSheet">
@@ -859,6 +918,7 @@ function renderViewTabs() {
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
   const showWaterRow = topMode !== 'companies' && cur === 'oilgas';
+  document.getElementById('settingsBtn').style.display = topMode === 'hubs' ? '' : 'none';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
 }
 
@@ -1517,6 +1577,249 @@ async function downloadExcel() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+// ── HUB-INNSTILLINGER ────────────────────────────────────────────────────────
+// Appen er en statisk side uten backend, så redigering av data/hubs.json går
+// rett mot GitHubs Contents API med et fine-grained token brukeren limer inn
+// én gang. Tokenet lagres kun i localStorage på brukerens egen maskin — aldri
+// i sidekoden, som ligger i et offentlig repo.
+//
+// Ved sammenslåing med søsterløsningene må disse fire peke på riktig repo.
+const GH_OWNER     = 'sheffielddivided';
+const GH_REPO      = 'ncs-production';
+const GH_BRANCH    = 'main';
+const HUBS_PATH    = 'data/hubs.json';
+const GH_TOKEN_KEY = 'ncs_gh_token';
+
+let hubEdits = {};      // arbeidskopi: {fieldId: {hub, auto}}
+let hubDirty = false;
+
+function lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch(e) {} }
+
+function openHubSettings() {
+  hubEdits = {};
+  const assign = (bundle.hubs && bundle.hubs.assignments) || {};
+  Object.entries(assign).forEach(([k,v]) => { hubEdits[k] = {hub: v.hub, auto: !!v.auto}; });
+  hubDirty = false;
+  setHubStatus('');
+  document.getElementById('hubSaveBtn').disabled = true;
+  document.getElementById('hubSearch').value = '';
+  document.getElementById('settingsPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderHubSettings();
+}
+
+function closeHubSettings() {
+  if (hubDirty && !confirm('Du har ulagrede endringer. Lukke likevel?')) return;
+  document.getElementById('settingsPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function setHubStatus(msg, kind) {
+  const el = document.getElementById('hubSaveStatus');
+  el.textContent = msg || '';
+  el.className = 'save-status' + (kind ? ' ' + kind : '');
+}
+
+function markHubDirty() {
+  hubDirty = true;
+  document.getElementById('hubSaveBtn').disabled = false;
+  setHubStatus('Ulagrede endringer');
+}
+
+// Hub et felt tilhører i arbeidskopien. Uten oppføring er feltet sin egen hub.
+function editedHubOf(f) {
+  const e = hubEdits[String(f.id)];
+  return (e && e.hub) || f.name;
+}
+
+function setFieldHub(fieldId, target) {
+  const f = allFields.find(x => x.id === fieldId);
+  if (!f) return;
+  // Settes huben lik feltets eget navn, er feltet standalone igjen og
+  // oppføringen skal bort — da følger den automatisk med hvis Sodir
+  // senere endrer feltnavnet.
+  if (target.toUpperCase() === f.name.toUpperCase()) delete hubEdits[String(fieldId)];
+  else hubEdits[String(fieldId)] = {hub: target, auto: false};
+}
+
+function moveFieldToHub(fieldId, raw) {
+  const target = (raw || '').trim();
+  if (!target) return;
+  setFieldHub(fieldId, target);
+  markHubDirty();
+  renderHubSettings();
+}
+
+function renameHub(oldName, raw) {
+  const nu = (raw || '').trim();
+  if (!nu || nu === oldName) { renderHubSettings(); return; }
+  allFields.forEach(f => { if (editedHubOf(f) === oldName) setFieldHub(f.id, nu); });
+  markHubDirty();
+  renderHubSettings();
+}
+
+function renderHubSettings() {
+  const q = (document.getElementById('hubSearch').value || '').trim().toLowerCase();
+
+  const groups = {};
+  allFields.forEach(f => { const h = editedHubOf(f); (groups[h] = groups[h] || []).push(f); });
+  const hubNames = Object.keys(groups).sort((a,b) => a.localeCompare(b,'en'));
+
+  // Datalist for «flytt til»-feltene
+  const dl = document.getElementById('hubNameList');
+  dl.innerHTML = '';
+  hubNames.forEach(h => { const o = document.createElement('option'); o.value = h; dl.appendChild(o); });
+
+  const list = document.getElementById('hubSettingsList');
+  list.innerHTML = '';
+  let shown = 0;
+
+  hubNames.forEach(hub => {
+    const members = groups[hub].slice().sort((a,b) => a.name.localeCompare(b.name,'en'));
+    if (q && !hub.toLowerCase().includes(q) && !members.some(m => m.name.toLowerCase().includes(q))) return;
+    shown++;
+
+    const grp = document.createElement('div');
+    grp.className = 'hub-group';
+
+    const head = document.createElement('div');
+    head.className = 'hub-group-head';
+    const nameIn = document.createElement('input');
+    nameIn.className = 'hub-name-input';
+    nameIn.value = hub;
+    nameIn.addEventListener('change', () => renameHub(hub, nameIn.value));
+    head.appendChild(nameIn);
+    const cnt = document.createElement('span');
+    cnt.className = 'hub-group-count';
+    cnt.textContent = members.length === 1 ? 'standalone' : `${members.length} felt`;
+    head.appendChild(cnt);
+    grp.appendChild(head);
+
+    members.forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'hub-member';
+      const nm = document.createElement('span');
+      nm.className = 'hub-member-name';
+      nm.textContent = m.name;
+      row.appendChild(nm);
+      const e = hubEdits[String(m.id)];
+      if (e && e.auto) {
+        const b = document.createElement('span');
+        b.className = 'auto-badge';
+        b.textContent = 'auto';
+        row.appendChild(b);
+      }
+      const mv = document.createElement('input');
+      mv.className = 'move-input';
+      mv.setAttribute('list', 'hubNameList');
+      mv.placeholder = 'flytt til…';
+      mv.addEventListener('change', () => moveFieldToHub(m.id, mv.value));
+      row.appendChild(mv);
+      grp.appendChild(row);
+    });
+
+    list.appendChild(grp);
+  });
+
+  if (!shown) {
+    const empty = document.createElement('div');
+    empty.className = 'list-empty';
+    empty.textContent = 'Ingen treff';
+    list.appendChild(empty);
+  }
+}
+
+function utf8ToBase64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+
+function hubsPayloadText() {
+  const sorted = {};
+  Object.keys(hubEdits).sort((a,b) => +a - +b).forEach(k => {
+    sorted[k] = {hub: hubEdits[k].hub, auto: !!hubEdits[k].auto};
+  });
+  return JSON.stringify({
+    version: 1,
+    updated: new Date().toISOString().slice(0,10),
+    note: (bundle.hubs && bundle.hubs.note) ||
+          'Felt som ikke star her er sin egen hub.',
+    assignments: sorted,
+  }, null, 2) + '\n';
+}
+
+async function saveHubs() {
+  let token = lsGet(GH_TOKEN_KEY);
+  if (!token) {
+    token = prompt(
+      `Lim inn et GitHub fine-grained token med "Contents: read and write" på ${GH_OWNER}/${GH_REPO}.\n\n` +
+      'Tokenet lagres kun i din egen nettleser, aldri i sidekoden.');
+    if (!token) return;
+    token = token.trim();
+    lsSet(GH_TOKEN_KEY, token);
+  }
+
+  const btn = document.getElementById('hubSaveBtn');
+  btn.disabled = true;
+  setHubStatus('Lagrer…');
+
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${HUBS_PATH}`;
+  const headers = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json'};
+
+  try {
+    // Hent gjeldende blob-sha rett før skriving. GitHub avviser PUT med
+    // utdatert sha, så dette er den optimistiske låsen mot at to personer
+    // lagrer samtidig.
+    let sha;
+    const cur = await fetch(`${api}?ref=${GH_BRANCH}`, {headers, cache: 'no-store'});
+    if (cur.status === 401 || cur.status === 403) {
+      lsDel(GH_TOKEN_KEY);
+      setHubStatus('Tokenet ble avvist. Prøv å lagre igjen og lim inn et nytt.', 'err');
+      btn.disabled = false;
+      return;
+    }
+    if (cur.ok) sha = (await cur.json()).sha;
+
+    const text = hubsPayloadText();
+    const res = await fetch(api, {
+      method: 'PUT', headers: {...headers, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        message: 'Oppdater hub-tilhørighet fra appen',
+        content: utf8ToBase64(text),
+        branch: GH_BRANCH,
+        ...(sha ? {sha} : {}),
+      }),
+    });
+
+    if (res.status === 409 || res.status === 422) {
+      setHubStatus('Fila er endret av noen andre. Last siden på nytt og gjør endringen om igjen.', 'err');
+      btn.disabled = false;
+      return;
+    }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setHubStatus(`Lagring feilet: ${d.message || res.status}`, 'err');
+      btn.disabled = false;
+      return;
+    }
+
+    // Oppdater appen med det som nå ligger i repoet.
+    bundle.hubs = JSON.parse(text);
+    buildHubs();
+    hubDirty = false;
+    setHubStatus('Lagret. GitHub Pages publiserer om et par minutter.', 'ok');
+    renderHubSettings();
+    refresh();
+  } catch (e) {
+    setHubStatus(`Lagring feilet: ${e.message}`, 'err');
+    btn.disabled = false;
+  }
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────

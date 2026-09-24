@@ -686,6 +686,43 @@ Fallbacken har egen sesjonscache i `sessionStorage` med versjonerte nøkler
 (`index.html:320-321`), og faller tilbake til en `Map` i minnet hvis
 `sessionStorage` kaster — noe Safari med sporingsvern gjør (`index.html:323-341`).
 
+### Hub-innstillinger — appens eneste skriveoperasjon
+
+Tannhjulet øverst til høyre vises kun i Hub-modus (`index.html`, `renderViewTabs`).
+Det åpner et fullskjermspanel som redigerer `data/hubs.json`:
+
+- Feltene er gruppert under huben de tilhører. Hub-navnet er et fritekstfelt —
+  endres det, følger alle medlemsfeltene med.
+- Hvert felt har et «flytt til»-felt med autofullfør på eksisterende huber. Skriver
+  du et nytt navn, opprettes huben.
+- Settes en hub lik feltets eget navn, **slettes** oppføringen i stedet for å
+  lagres. Feltet blir dermed standalone igjen, og følger automatisk med hvis
+  Sodir senere endrer feltnavnet.
+- Rader merket `auto` er maskinelle forslag fra `seed_hubs.py`. Enhver manuell
+  endring setter `auto: false`.
+
+**Lagring går rett mot GitHubs Contents API fra nettleseren.** Appen har ingen
+backend, så dette er den eneste måten en endring kan bli gjeldende for alle
+uten å innføre hosting. Flyten er:
+
+1. `GET /repos/{owner}/{repo}/contents/data/hubs.json?ref=main` → blob-sha
+2. `PUT` samme sti med base64-kodet innhold og den sha-en
+
+Sha-en hentes rett før skriving og fungerer som optimistisk lås: har noen andre
+lagret i mellomtiden, avviser GitHub med 409/422 og brukeren får beskjed om å
+laste siden på nytt.
+
+> **Token:** brukeren limer inn et fine-grained GitHub-token med
+> `Contents: read and write` første gang hen lagrer. Det lagres i
+> `localStorage` på brukerens egen maskin og ligger **aldri** i sidekoden —
+> repoet er offentlig. Avvises tokenet (401/403), slettes det og brukeren bes
+> om et nytt. Repo-koordinatene er fire konstanter i `index.html`
+> (`GH_OWNER`, `GH_REPO`, `GH_BRANCH`, `HUBS_PATH`) som må endres ved
+> sammenslåing.
+>
+> Konsekvensen er at **kun personer med skrivetilgang til repoet kan redigere**.
+> Alle andre ser gjeldende gruppering, men får en feilmelding ved lagring.
+
 ### Excel-eksport
 
 `downloadExcel` (`index.html:1365-1411`) genererer i nettleseren en `.xlsx` med

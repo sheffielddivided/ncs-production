@@ -41,6 +41,20 @@ Workflowen kjører 04:15 UTC hver dag og committer **kun** når Sodir faktisk ha
 publisert nye tall. Sodir oppdaterer produksjonstall månedlig, så de fleste
 kjøringene blir en no-op. Jobben kan også kjøres manuelt fra Actions-fanen.
 
+## Redigere huber
+
+En hub er en gruppe felt som deler prosesseringsanlegg. Åpne **Hubs**-visningen
+og klikk tannhjulet øverst til høyre. Endringer lagres direkte til
+`data/hubs.json` og gjelder for alle når GitHub Pages har publisert.
+
+Første gang du lagrer blir du bedt om et
+[fine-grained token](https://github.com/settings/personal-access-tokens/new)
+med `Contents: read and write` på dette repoet. Det lagres kun i din egen
+nettleser.
+
+`seed_hubs.py` kan generere et nytt forslag fra Sodirs feltbeskrivelser, men
+bevarer alt du har bekreftet manuelt. Den kjøres aldri automatisk.
+
 ## Dokumentasjon
 
 Se [`SOLUTION-CONTEXT.md`](SOLUTION-CONTEXT.md) for datamodell, enheter og
