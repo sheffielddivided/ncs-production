@@ -15,6 +15,8 @@ statiske JSON-filer i dette repoet.
 | `index.html` | Hele frontenden. Én fil, vanilla JS, ingen byggesteg |
 | `fetch_sodir.py` | Henter data fra Sodir og skriver `data/*.json` |
 | `data/` | Datasnapshot: felt, produksjon, lisensiærer, reserver |
+| `data/hubs.json` | Hub-tilhørighet per felt — brukerstyrt, ikke fra Sodir |
+| `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
 | `SOLUTION-CONTEXT.md` | Teknisk dokumentasjon — datamodell, enheter, fallgruver |
 

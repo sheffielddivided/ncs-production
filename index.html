@@ -100,6 +100,7 @@
     .check-item:last-child{border-bottom:none;}
     .check-item.checked{background:var(--light);font-weight:500;color:var(--navy);}
     .check-item input[type=checkbox]{accent-color:var(--blue);width:17px;height:17px;flex-shrink:0;}
+    .hub-count{margin-left:auto;font-size:0.72rem;color:var(--muted);font-weight:400;flex-shrink:0;}
     .list-empty{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
     .list-loading{padding:20px;color:#a0aab8;font-size:0.85rem;text-align:center;}
     .cmp-loading-notice{padding:0 16px 8px;font-size:0.75rem;color:var(--muted);display:none;flex-shrink:0;}
@@ -119,6 +120,7 @@
 <div class="controls-bar">
   <div class="ctrl-row">
     <div class="mode-switcher">
+      <button class="mode-btn" id="modeBtnHubs" onclick="switchMode('hubs')">Hubs</button>
       <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
       <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
     </div>
@@ -214,7 +216,7 @@ const BBL_PER_SM3 = 6.29;
 // Mangler eller feiler filene, faller alt tilbake til live-API-et under.
 const DATA_BASE = 'data/';
 
-const bundle = { fields:null, production:null, licensees:null, reserves:null, meta:null };
+const bundle = { fields:null, production:null, licensees:null, reserves:null, meta:null, hubs:null };
 
 async function fetchBundle(name) {
   try {
@@ -225,7 +227,7 @@ async function fetchBundle(name) {
 }
 
 async function loadBundles() {
-  const names = ['fields','production','licensees','reserves','meta'];
+  const names = ['fields','production','licensees','reserves','meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   const gen = bundle.meta && bundle.meta.generated;
@@ -273,6 +275,7 @@ let period     = 'monthly';
 let showWater  = false;
 
 let fieldSubView   = 'oilgas';
+let hubSubView     = 'oilgas';
 let companySubView = 'oilgas';
 
 let allFields            = [];
@@ -282,6 +285,13 @@ let selectedFieldIds     = new Set();
 let allCompanies         = [];
 let filteredCompanies    = [];
 let selectedCompanyNames = new Set();
+
+// Hub = brukerstyrt gruppe av felt, definert i data/hubs.json. Felt som ikke
+// står oppført der er sin egen hub.
+let allHubs          = [];   // [{name, fieldIds}]
+let filteredHubs     = [];
+let selectedHubNames = new Set();
+let hubOfField       = {};   // fieldId -> hubnavn
 
 let fieldProdCache  = {};
 let companyReserves = {};
@@ -558,6 +568,35 @@ function getShare(fieldId, date, companyName) {
 
 function hasAnyValue(arr) { return arr.some(v => v > 0); }
 
+// ── HUBS ─────────────────────────────────────────────────────────────────────
+// Bygges av allFields + data/hubs.json. Må kjøres etter loadFields().
+function buildHubs() {
+  const assign = (bundle.hubs && bundle.hubs.assignments) || {};
+  hubOfField = {};
+  const byHub = {};
+  allFields.forEach(f => {
+    const a = assign[String(f.id)];
+    const h = (a && a.hub) || f.name;   // uten oppføring er feltet sin egen hub
+    hubOfField[f.id] = h;
+    (byHub[h] = byHub[h] || []).push(f.id);
+  });
+  allHubs = Object.keys(byHub)
+    .sort((a,b) => a.localeCompare(b,'en'))
+    .map(name => ({name, fieldIds: byHub[name]}));
+  filteredHubs = allHubs;
+}
+
+function hubFieldIds(names) {
+  const want = new Set(names);
+  return allHubs.filter(h => want.has(h.name)).flatMap(h => h.fieldIds);
+}
+
+function hubScope(names) {
+  return names.length === 1
+    ? {label: names[0], noun: 'Hub'}
+    : {label: `${names.length} hubs`, noun: 'Hubs'};
+}
+
 // ── DATA LOADING ─────────────────────────────────────────────────────────────
 async function loadFields() {
   if (bundle.fields && bundle.fields.rows) {
@@ -803,23 +842,29 @@ const FIELD_TABS   = [
   {id:'oe_per_field',   label:'OE per field'},
   {id:'oe_per_company', label:'OE per company'},
 ];
+const HUB_TABS     = [
+  {id:'oilgas',        label:'Oil & Gas'},
+  {id:'oe_per_field',  label:'OE per field'},
+];
 const COMPANY_TABS = [
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'oe_per_field',  label:'OE per field'},
 ];
 
 function renderViewTabs() {
-  const tabs = topMode === 'fields' ? FIELD_TABS : COMPANY_TABS;
-  const cur  = topMode === 'fields' ? fieldSubView : companySubView;
+  const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS : COMPANY_TABS;
+  const cur  = topMode === 'fields' ? fieldSubView : topMode === 'hubs' ? hubSubView : companySubView;
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
-  const showWaterRow = topMode === 'fields' && cur === 'oilgas';
+  // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
+  const showWaterRow = topMode !== 'companies' && cur === 'oilgas';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
 }
 
 function setSubView(v) {
   if (topMode === 'fields') fieldSubView = v;
+  else if (topMode === 'hubs') hubSubView = v;
   else companySubView = v;
   renderViewTabs();
   refresh();
@@ -877,8 +922,9 @@ function setPeriod(p) {
 function switchMode(m) {
   if (topMode === m) return;
   topMode = m;
-  document.getElementById('modeBtnFields').classList.toggle('active', m === 'fields');
-  document.getElementById('modeBtnCompanies').classList.toggle('active', m === 'companies');
+  document.getElementById('modeBtnHubs').classList.toggle('active',      m === 'hubs');
+  document.getElementById('modeBtnFields').classList.toggle('active',     m === 'fields');
+  document.getElementById('modeBtnCompanies').classList.toggle('active',  m === 'companies');
   renderViewTabs();
   updateFab();
   refresh();
@@ -886,14 +932,15 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
-  const count = topMode === 'fields' ? selectedFieldIds.size : selectedCompanyNames.size;
+  const count = topMode === 'fields' ? selectedFieldIds.size
+              : topMode === 'hubs'   ? selectedHubNames.size
+              : selectedCompanyNames.size;
   document.getElementById('fabBadge').textContent = count;
-  const noun = topMode === 'fields' ? 'field' : 'company';
-  const nounP = topMode === 'fields' ? 'fields' : 'companies';
+  const noun  = topMode === 'fields' ? 'field'  : topMode === 'hubs' ? 'hub'  : 'company';
+  const nounP = topMode === 'fields' ? 'fields' : topMode === 'hubs' ? 'hubs' : 'companies';
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
-  document.getElementById('sheetTitle').textContent =
-    `Select ${topMode === 'fields' ? 'fields' : 'companies'}`;
+  document.getElementById('sheetTitle').textContent = `Select ${nounP}`;
 }
 
 function toggleSheet() { sheetOpen ? closeSheet() : openSheet(); }
@@ -914,7 +961,41 @@ function closeSheet() {
 // ── LIST ─────────────────────────────────────────────────────────────────────
 function renderList() {
   if (topMode === 'fields') renderFieldList();
+  else if (topMode === 'hubs') renderHubList();
   else renderCompanyList();
+}
+
+function renderHubList() {
+  const el = document.getElementById('checkList');
+  if (!filteredHubs.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
+  el.innerHTML = '';
+  filteredHubs.forEach(h => {
+    const item = document.createElement('div');
+    item.className = 'check-item' + (selectedHubNames.has(h.name) ? ' checked' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selectedHubNames.has(h.name);
+    cb.addEventListener('change', () => toggleHub(h.name, item, cb));
+    item.appendChild(cb);
+    item.appendChild(document.createTextNode(h.name));
+    if (h.fieldIds.length > 1) {
+      const n = document.createElement('span');
+      n.className = 'hub-count';
+      n.textContent = `${h.fieldIds.length} felt`;
+      item.appendChild(n);
+    }
+    item.addEventListener('click', e => { if (e.target !== cb) cb.click(); });
+    el.appendChild(item);
+  });
+}
+
+function toggleHub(name, item, cb) {
+  if (selectedHubNames.has(name)) selectedHubNames.delete(name);
+  else selectedHubNames.add(name);
+  cb.checked = selectedHubNames.has(name);
+  item.classList.toggle('checked', selectedHubNames.has(name));
+  updateFab();
+  refresh();
 }
 
 function renderFieldList() {
@@ -981,6 +1062,9 @@ function filterList() {
   if (topMode === 'fields') {
     filteredFields = allFields.filter(f=>f.name.toLowerCase().includes(q));
     renderFieldList();
+  } else if (topMode === 'hubs') {
+    filteredHubs = allHubs.filter(h=>h.name.toLowerCase().includes(q));
+    renderHubList();
   } else {
     filteredCompanies = allCompanies.filter(n=>n.toLowerCase().includes(q));
     renderCompanyList();
@@ -989,11 +1073,13 @@ function filterList() {
 
 function selectAll() {
   if (topMode === 'fields') { filteredFields.forEach(f=>selectedFieldIds.add(f.id)); renderFieldList(); }
+  else if (topMode === 'hubs') { filteredHubs.forEach(h=>selectedHubNames.add(h.name)); renderHubList(); }
   else { filteredCompanies.forEach(n=>selectedCompanyNames.add(n)); renderCompanyList(); }
   updateFab(); refresh();
 }
 function clearAll() {
   if (topMode === 'fields') { selectedFieldIds.clear(); fieldProdCache = {}; renderFieldList(); }
+  else if (topMode === 'hubs') { selectedHubNames.clear(); renderHubList(); }
   else { selectedCompanyNames.clear(); renderCompanyList(); }
   updateFab(); refresh();
 }
@@ -1001,7 +1087,19 @@ function clearAll() {
 // ── MAIN REFRESH ─────────────────────────────────────────────────────────────
 async function refresh() {
   if (topMode === 'fields') await refreshFields();
+  else if (topMode === 'hubs') await refreshHubs();
   else await refreshCompanies();
+}
+
+async function refreshHubs() {
+  const names = [...selectedHubNames];
+  if (!names.length) {
+    setChartTitle('',''); setChartEmpty('Tap the button below to select one or more hubs.');
+    setInfo(''); return;
+  }
+  showSpinner();
+  await loadProdForFields(hubFieldIds(names));
+  drawChart();
 }
 
 async function refreshFields() {
@@ -1065,6 +1163,12 @@ function drawChart() {
     if (sv === 'oilgas')          drawFieldsOilGas();
     else if (sv === 'oe_per_field')    drawFieldsOePerField();
     else if (sv === 'oe_per_company')  drawFieldsOePerCompany();
+  } else if (topMode === 'hubs') {
+    // Gjenbruker feltvisningene med hubens medlemsfelt.
+    const names = [...selectedHubNames];
+    const opts = {ids: hubFieldIds(names), scope: hubScope(names)};
+    if (hubSubView === 'oilgas') drawFieldsOilGas(opts);
+    else drawFieldsOePerField(opts);
   } else {
     const sv = companySubView;
     if (sv === 'oilgas')         drawCompaniesOilGas();
@@ -1073,8 +1177,12 @@ function drawChart() {
 }
 
 // ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
-function drawFieldsOilGas() {
-  const ids = [...selectedFieldIds];
+// opts.ids overstyrer feltutvalget, og opts.scope {label, noun} overstyrer
+// tittel/infotekst. Hub-modus bruker dette til å gjenbruke hele tegnelogikken
+// med hubens medlemsfelt i stedet for brukerens feltutvalg.
+function drawFieldsOilGas(opts = {}) {
+  const ids = opts.ids || [...selectedFieldIds];
+  const scope = opts.scope;
   const labels = unionLabels(ids);
   if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
   const qMap = period === 'quarterly' ? buildQuarterMap(ids) : null;
@@ -1110,8 +1218,8 @@ function drawFieldsOilGas() {
     if (showWater) datasets.push({label:'Water',data:watD,backgroundColor:WATER_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
     if (showWater) legend.push({label:'Water',color:WATER_COLOR});
-    setChartTitle(fname, `Oil${showWater?', Gas & Water production':' & Gas production'} · boe/day`);
-    setInfo(`<strong>Field:</strong> ${fname} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas${showWater?', Water':''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+    setChartTitle(scope ? scope.label : fname, `Oil${showWater?', Gas & Water production':' & Gas production'} · boe/day`);
+    setInfo(`<strong>${scope ? scope.noun : 'Field'}:</strong> ${scope ? scope.label : fname} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas${showWater?', Water':''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   } else {
     const oilD = labels.map(lbl => {
       if (period === 'quarterly') {
@@ -1136,15 +1244,16 @@ function drawFieldsOilGas() {
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
     if (showWater) legend.push({label:'Water',color:WATER_COLOR});
     const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-    setChartTitle(`${ids.length} fields · Oil & Gas production`, `${fnames} · boe/day`);
-    setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+    setChartTitle(scope ? `${scope.label} · Oil & Gas production` : `${ids.length} fields · Oil & Gas production`, `${fnames} · boe/day`);
+    setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? scope.label : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   }
   renderChart(labels, datasets, legend, 'boe/day');
 }
 
 // ── FIELDS: OE PER FIELD ─────────────────────────────────────────────────────
-function drawFieldsOePerField() {
-  const ids = [...selectedFieldIds];
+function drawFieldsOePerField(opts = {}) {
+  const ids = opts.ids || [...selectedFieldIds];
+  const scope = opts.scope;
   const labels = unionLabels(ids);
   if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
   const qMap = period === 'quarterly' ? buildQuarterMap(ids) : null;
@@ -1161,8 +1270,8 @@ function drawFieldsOePerField() {
     legend.push({label:fname,color});
   });
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-  setChartTitle(`Net production · OE per field`, `${fnames} · boe/day`);
-  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
+  setChartTitle(scope ? `${scope.label} · OE per field` : `Net production · OE per field`, `${fnames} · boe/day`);
+  setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? scope.label : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   renderChart(labels, datasets, legend, 'boe/day');
 }
 
@@ -1426,6 +1535,7 @@ async function init() {
   const reservesPromise = loadReserves();       // begins immediately, runs in background
 
   await loadFields();
+  buildHubs();
 
   // ── Phase 2: Render initial chart for Aker BP immediately after licensees
   //    arrive — no need to wait for reserves (only used for sorting the list)
