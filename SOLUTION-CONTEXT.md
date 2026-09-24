@@ -52,6 +52,7 @@ deployet.
 | Frontend | Vanilla JS/HTML/CSS i én fil, ingen rammeverk, ingen bundler | `index.html` (1529 linjer, 82 KB) |
 | Grafer | Chart.js 4.4.1 via cdnjs | `index.html:11` |
 | Excel-eksport | ExcelJS 4.3.0 via cdnjs | `index.html:12` |
+| Hub-seeding | `seed_hubs.py` — engangsscript, **ikke** i daglig pipeline |
 | Innsamling | Python 3.12 + `requests` (eneste avhengighet) | `fetch_sodir.py:23`, workflow linje 28, 31 |
 | Lagring | Statiske JSON-filer i git under `data/` | `fetch_sodir.py:32` |
 | Hosting | GitHub Pages fra `main`-branchens rot | repo-innstilling `has_pages: true` |
@@ -278,6 +279,39 @@ Bygges av `fetch_sodir.py:172-191`.
 summert over alle felt selskapet har andel i (`fetch_sodir.py:194-202`).
 Brukes **kun til å sortere selskapslisten** (`index.html:789-798`) — aldri vist.
 
+### `data/hubs.json` — hub-tilhørighet (brukerstyrt masterdata)
+
+```json
+{
+  "version": 1,
+  "updated": "2026-09-24",
+  "assignments": {
+    "3392471": {"hub": "ALVHEIM", "auto": true, "via": "field"}
+  }
+}
+```
+
+| Nøkkel | Type | Beskrivelse |
+|---|---|---|
+| nøkkel i `assignments` | string | `fldNpdidField` som streng |
+| `hub` | string | Hubens navn — konvensjonelt navnet på vertsfeltet |
+| `auto` | bool | `true` = maskinelt forslag som bør kvalitetssikres, `false` = bekreftet av et menneske |
+| `via` | string | Hvordan forslaget ble utledet: `facility` eller `field` |
+
+**Et felt som ikke står i fila er sin egen hub.** Det betyr at nye felt fra
+Sodir automatisk dukker opp som egne huber, og at fila bare inneholder avvik
+(79 av 142 felt per 2026-09-24).
+
+> **Dette er det eneste datasettet som ikke kommer fra Sodir.** Hub-begrepet
+> finnes ikke i API-et — verifisert: `facility_belongs_to_rel_hst` (lag 6003)
+> peker tilbake til feltets *eget* felt, ikke til verten. Fila er derfor
+> lokalt eid masterdata, og `fetch_sodir.py` rører den aldri.
+>
+> For sammenslåingen betyr det at søsterløsningene trenger sin egen
+> ekvivalent. Merk også at dette bryter med «ingen ID-er er laget lokalt»
+> under: hubene identifiseres av et *navn* vi selv velger, ikke av en
+> kilde-ID.
+
 ### `data/meta.json`
 
 ```json
@@ -295,7 +329,9 @@ Brukes **kun til å sortere selskapslisten** (`index.html:789-798`) — aldri vi
 | **Selskap** | **`cmpLongName` (streng)** | Ja | **Ingen ID brukes** — se under |
 | Lisens / brønn | — | — | **Ikke modellert i det hele tatt** |
 
-**Ingen ID-er er laget lokalt.** Alt er kildens egne nøkler.
+**Ingen ID-er er laget lokalt** for felt, produksjon eller selskap — alt er
+kildens egne nøkler. Unntaket er **hub**, som er lokalt definert masterdata
+identifisert ved navnestreng (se `data/hubs.json` over).
 
 #### Fallgruve A: carrier ≠ felt
 
@@ -588,7 +624,7 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 
 | Kontroll | Element | Verdier |
 |---|---|---|
-| Modusvelger | `#modeBtnFields` / `#modeBtnCompanies` (`:122-123`) | Fields / **Companies** (standard) |
+| Modusvelger | `#modeBtnHubs` / `#modeBtnFields` / `#modeBtnCompanies` (`:122-123`) | Fields / **Companies** (standard) |
 | Årsintervall | `#yearFrom` / `#yearTo` (`:129-131`) | 1970–inneværende år, **synkende** (`:304`); standard `[år−1, år]` (`:311-312`) |
 | Periode | `#btnMonthly/Quarterly/Annual` (`:134-136`) | **Monthly** standard |
 | Undervisning | `#viewTabs` (`:141`) | Avhenger av modus, se under |
@@ -600,6 +636,8 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 
 | Modus | Fane | Funksjon | Hva som tegnes |
 |---|---|---|---|
+| Hubs | Oil & Gas | `drawFieldsOilGas({ids, scope})` | Stablet Oil/Gas summert over hubens medlemsfelt, brutto |
+| Hubs | OE per field | `drawFieldsOePerField({ids, scope})` | Én serie per medlemsfelt i huben |
 | Fields | Oil & Gas | `drawFieldsOilGas` (`:1076`) | Stablet Oil/Gas (+Water). Ett felt: 1 desimal. Flere felt: **summert**, 0 desimaler |
 | Fields | OE per field | `drawFieldsOePerField` (`:1146`) | Én serie per felt, brutto o.e. |
 | Fields | OE per company | `drawFieldsOePerCompany` (`:1170`) | Én serie per selskap, **equity-justert** |
