@@ -5,398 +5,327 @@
   "assignments": {
     "43437": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43444": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43464": {
       "hub": "SLEIPNER ØST",
-      "auto": true,
-      "via": "facility"
+      "auto": true
     },
     "43485": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43492": {
       "hub": "ULA",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43513": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43520": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43527": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43534": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43541": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43568": {
       "hub": "FRIGG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43576": {
       "hub": "FRIGG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43583": {
       "hub": "FRIGG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43597": {
       "hub": "FRIGG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43645": {
       "hub": "OSEBERG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43672": {
       "hub": "STATFJORD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43679": {
       "hub": "STATFJORD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43699": {
       "hub": "GULLFAKS",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43725": {
       "hub": "GULLFAKS",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43732": {
       "hub": "SNORRE",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43745": {
       "hub": "GULLFAKS",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43785": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "43792": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "97002": {
       "hub": "VESLEFRIKK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "104718": {
       "hub": "STATFJORD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "853376": {
       "hub": "OSEBERG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "1028599": {
       "hub": "ULA",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "1578840": {
       "hub": "TROLL",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "1578893": {
       "hub": "HEIMDAL",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "1630100": {
       "hub": "SLEIPNER ØST",
-      "auto": true,
-      "via": "facility"
+      "auto": true
     },
     "1630514": {
       "hub": "ÅSGARD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "2138816": {
       "hub": "HEIMDAL",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "2834734": {
       "hub": "NORNE",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "3392471": {
       "hub": "ALVHEIM",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "3420717": {
       "hub": "SLEIPNER ØST",
-      "auto": true,
-      "via": "facility"
+      "auto": true
     },
     "3437650": {
       "hub": "ULA",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "3505505": {
       "hub": "BALDER",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "4005142": {
       "hub": "GULLFAKS",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "4380167": {
       "hub": "ALVHEIM",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "4467595": {
       "hub": "GJØA",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "4966234": {
       "hub": "ÅSGARD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "4973114": {
       "hub": "ÅSGARD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "5506919": {
       "hub": "ULA",
-      "auto": true,
-      "via": "field"
+      "auto": true
+    },
+    "17196400": {
+      "hub": "EIGA",
+      "auto": false
     },
     "18212090": {
       "hub": "NORNE",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "20460969": {
       "hub": "KVITEBJØRN",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "20461008": {
       "hub": "GULLFAKS",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "20474183": {
       "hub": "NJORD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "21106284": {
       "hub": "HEIMDAL",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "21350124": {
       "hub": "NORNE",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "21613906": {
       "hub": "JOTUN",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "21675447": {
       "hub": "FRIGG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "22492497": {
       "hub": "ALVHEIM",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "22507971": {
       "hub": "GRANE",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "23384520": {
       "hub": "EDVARD GRIEG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "23410947": {
       "hub": "TROLL",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "25307278": {
       "hub": "EDVARD GRIEG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "26465170": {
       "hub": "TYRIHANS",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "28975067": {
       "hub": "TROLL",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "28975098": {
       "hub": "SLEIPNER VEST",
-      "auto": true,
-      "via": "facility"
+      "auto": true
     },
     "29393934": {
       "hub": "HEIDRUN",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "29396445": {
       "hub": "ÅSGARD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "29401178": {
       "hub": "GULLFAKS",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "29412516": {
       "hub": "ULA",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "29446221": {
       "hub": "NJORD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "31164600": {
       "hub": "ALVHEIM",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "31164879": {
       "hub": "NJORD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "33197696": {
       "hub": "GJØA",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "34833011": {
       "hub": "EDVARD GRIEG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "34833026": {
       "hub": "GJØA",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "38542241": {
       "hub": "SKARV",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "40867462": {
       "hub": "EKOFISK",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "42002471": {
       "hub": "ALVHEIM",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "42002473": {
       "hub": "ÅSGARD",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "42002476": {
       "hub": "HUGIN",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "42002478": {
       "hub": "VALHALL",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "42002479": {
       "hub": "HUGIN",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "42002480": {
       "hub": "EDVARD GRIEG",
-      "auto": true,
-      "via": "field"
+      "auto": true
+    },
+    "42002483": {
+      "hub": "Skarv Hub",
+      "auto": false
     },
     "42002492": {
       "hub": "GINA KROG",
-      "auto": true,
-      "via": "field"
+      "auto": true
     },
     "42002507": {
       "hub": "BRAGE",
-      "auto": true,
-      "via": "field"
+      "auto": true
     }
   }
 }
