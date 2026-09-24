@@ -4,60 +4,72 @@
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "43444": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "43464": {
       "hub": "SLEIPNER ØST",
       "auto": true
     },
     "43485": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "VALHALL",
+      "auto": false
     },
     "43492": {
       "hub": "ULA",
       "auto": true
     },
+    "43506": {
+      "hub": "Ekofisk hub",
+      "auto": false
+    },
     "43513": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "43520": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "43527": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "43534": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "43541": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
+    },
+    "43555": {
+      "hub": "Nedstengte felt",
+      "auto": false
     },
     "43568": {
-      "hub": "FRIGG",
-      "auto": true
+      "hub": "Nedstengte felt",
+      "auto": false
     },
     "43576": {
-      "hub": "FRIGG",
-      "auto": true
+      "hub": "Nedstengte felt",
+      "auto": false
     },
     "43583": {
-      "hub": "FRIGG",
-      "auto": true
+      "hub": "Nedstengte felt",
+      "auto": false
     },
     "43597": {
-      "hub": "FRIGG",
-      "auto": true
+      "hub": "Nedstengte felt",
+      "auto": false
+    },
+    "43639": {
+      "hub": "OSEBERG",
+      "auto": false
     },
     "43645": {
       "hub": "OSEBERG",
@@ -88,12 +100,12 @@
       "auto": true
     },
     "43785": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "43792": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "97002": {
       "hub": "VESLEFRIKK",
@@ -135,9 +147,13 @@
       "hub": "NORNE",
       "auto": true
     },
+    "2845712": {
+      "hub": "Alvheim hub",
+      "auto": false
+    },
     "3392471": {
-      "hub": "ALVHEIM",
-      "auto": true
+      "hub": "Alvheim hub",
+      "auto": false
     },
     "3420717": {
       "hub": "SLEIPNER ØST",
@@ -156,12 +172,16 @@
       "auto": true
     },
     "4380167": {
-      "hub": "ALVHEIM",
-      "auto": true
+      "hub": "Alvheim hub",
+      "auto": false
     },
     "4467595": {
       "hub": "GJØA",
       "auto": true
+    },
+    "4704482": {
+      "hub": "Skarv Hub",
+      "auto": false
     },
     "4966234": {
       "hub": "ÅSGARD",
@@ -176,7 +196,7 @@
       "auto": true
     },
     "17196400": {
-      "hub": "EIGA",
+      "hub": "Eiga",
       "auto": false
     },
     "18212090": {
@@ -207,29 +227,29 @@
       "hub": "JOTUN",
       "auto": true
     },
-    "21675447": {
-      "hub": "FRIGG",
-      "auto": true
+    "21675433": {
+      "hub": "Eiga",
+      "auto": false
     },
     "22492497": {
-      "hub": "ALVHEIM",
-      "auto": true
+      "hub": "Alvheim hub",
+      "auto": false
     },
     "22507971": {
       "hub": "GRANE",
       "auto": true
     },
     "23384520": {
-      "hub": "EDVARD GRIEG",
-      "auto": true
+      "hub": "Eiga",
+      "auto": false
     },
     "23410947": {
       "hub": "TROLL",
       "auto": true
     },
     "25307278": {
-      "hub": "EDVARD GRIEG",
-      "auto": true
+      "hub": "Eiga",
+      "auto": false
     },
     "26465170": {
       "hub": "TYRIHANS",
@@ -251,6 +271,10 @@
       "hub": "ÅSGARD",
       "auto": true
     },
+    "29398828": {
+      "hub": "TROLL",
+      "auto": false
+    },
     "29401178": {
       "hub": "GULLFAKS",
       "auto": true
@@ -264,8 +288,8 @@
       "auto": true
     },
     "31164600": {
-      "hub": "ALVHEIM",
-      "auto": true
+      "hub": "Alvheim hub",
+      "auto": false
     },
     "31164879": {
       "hub": "NJORD",
@@ -276,8 +300,8 @@
       "auto": true
     },
     "34833011": {
-      "hub": "EDVARD GRIEG",
-      "auto": true
+      "hub": "Eiga",
+      "auto": false
     },
     "34833026": {
       "hub": "GJØA",
@@ -288,34 +312,46 @@
       "auto": true
     },
     "40867462": {
-      "hub": "EKOFISK",
-      "auto": true
+      "hub": "Ekofisk hub",
+      "auto": false
     },
     "42002471": {
-      "hub": "ALVHEIM",
-      "auto": true
+      "hub": "Alvheim hub",
+      "auto": false
     },
     "42002473": {
       "hub": "ÅSGARD",
       "auto": true
     },
+    "42002474": {
+      "hub": "Yggdrasil",
+      "auto": false
+    },
     "42002476": {
-      "hub": "HUGIN",
-      "auto": true
+      "hub": "Yggdrasil",
+      "auto": false
     },
     "42002478": {
       "hub": "VALHALL",
       "auto": true
     },
     "42002479": {
-      "hub": "HUGIN",
-      "auto": true
+      "hub": "Yggdrasil",
+      "auto": false
     },
     "42002480": {
-      "hub": "EDVARD GRIEG",
-      "auto": true
+      "hub": "Eiga",
+      "auto": false
+    },
+    "42002481": {
+      "hub": "NORNE",
+      "auto": false
     },
     "42002483": {
+      "hub": "Skarv Hub",
+      "auto": false
+    },
+    "42002484": {
       "hub": "Skarv Hub",
       "auto": false
     },
@@ -326,6 +362,10 @@
     "42002507": {
       "hub": "BRAGE",
       "auto": true
+    },
+    "42002537": {
+      "hub": "Yggdrasil",
+      "auto": false
     }
   }
 }
