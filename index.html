@@ -650,6 +650,17 @@ function buildHubs() {
   filteredHubs = allHubs;
 }
 
+// Hub-navn er fritekst og kan endres i settings-visningen, så defaulten slås
+// opp på prefiks framfor en eksakt streng. Finnes den ikke, står Hubs-viewet
+// tomt som før.
+const DEFAULT_HUB_PREFIX = 'alvheim';
+
+function selectDefaultHub() {
+  if (selectedHubNames.size) return;
+  const hub = allHubs.find(h => h.name.toLowerCase().startsWith(DEFAULT_HUB_PREFIX));
+  if (hub) selectedHubNames.add(hub.name);
+}
+
 function hubFieldIds(names) {
   const want = new Set(names);
   return allHubs.filter(h => want.has(h.name)).flatMap(h => h.fieldIds);
@@ -910,6 +921,7 @@ const FIELD_TABS   = [
 const HUB_TABS     = [
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'oe_per_field',  label:'OE per field'},
+  {id:'reserves',      label:'Reserves'},
 ];
 const COMPANY_TABS = [
   {id:'oilgas',        label:'Oil & Gas'},
@@ -1167,6 +1179,11 @@ async function refreshHubs() {
     setInfo(''); return;
   }
   showSpinner();
+  if (hubSubView === 'reserves') {
+    await loadFieldReserves();
+    drawChart();
+    return;
+  }
   await loadProdForFields(hubFieldIds(names));
   drawChart();
 }
@@ -1245,6 +1262,7 @@ function drawChart() {
     const names = [...selectedHubNames];
     const opts = {ids: hubFieldIds(names), scope: hubScope(names)};
     if (hubSubView === 'oilgas') drawFieldsOilGas(opts);
+    else if (hubSubView === 'reserves') drawFieldsReserves(opts);
     else drawFieldsOePerField(opts);
   } else {
     const sv = companySubView;
@@ -1360,7 +1378,10 @@ function drawFieldsOePerField(opts = {}) {
 let fieldReserves       = null;   // {fieldId: [{year, recoverableOE, remainingOE}, ...] sortert}
 let fieldReservesLoaded = false;
 
-function isReservesView() { return topMode === 'fields' && fieldSubView === 'reserves'; }
+function isReservesView() {
+  return (topMode === 'fields' && fieldSubView === 'reserves')
+      || (topMode === 'hubs'   && hubSubView   === 'reserves');
+}
 
 async function loadFieldReserves() {
   if (fieldReservesLoaded) return;
@@ -1398,15 +1419,18 @@ async function loadFieldReserves() {
   fieldReservesLoaded = true;
 }
 
-function drawFieldsReserves() {
-  const ids = [...selectedFieldIds];
+// opts.ids og opts.scope fungerer som i de øvrige feltvisningene, slik at
+// hub-modus gjenbruker denne med hubens medlemsfelt.
+function drawFieldsReserves(opts = {}) {
+  const ids = opts.ids || [...selectedFieldIds];
+  const scope = opts.scope;
   const series = ids
     .map(id => ({id, name: allFields.find(f => f.id === id)?.name || String(id),
                  rows: (fieldReserves && fieldReserves[id]) || []}))
     .filter(s => s.rows.length);
 
   if (!series.length) {
-    setChartEmpty('No reserves data for the selected fields.');
+    setChartEmpty(`No reserves data for the selected ${scope ? scope.noun.toLowerCase() : 'fields'}.`);
     setInfo('');
     return;
   }
@@ -1443,11 +1467,12 @@ function drawFieldsReserves() {
   ];
 
   const fnames = series.map(s => s.name).join(', ');
-  const scopeTitle = series.length === 1 ? series[0].name : `${series.length} fields`;
+  const scopeTitle = scope ? scope.label
+                   : series.length === 1 ? series[0].name : `${series.length} fields`;
   const carried = series.length > 1 && series.some(s => s.rows.length < years.length);
 
   setChartTitle(`${scopeTitle} · Reserves over time`, `${fnames} · million boe`);
-  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}`);
+  setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
 }
 
@@ -1966,6 +1991,7 @@ async function init() {
 
   await loadFields();
   buildHubs();
+  selectDefaultHub();
 
   // ── Phase 2: Render initial chart for Aker BP immediately after licensees
   //    arrive — no need to wait for reserves (only used for sorting the list)
