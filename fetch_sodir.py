@@ -28,6 +28,7 @@ FIELD_LAYER = 7100
 PROD_LAYER  = 7300
 LIC_LAYER   = 7108
 RES_LAYER   = 7114
+FLDRES_LAYER = 7113
 
 OUT_DIR   = 'data'
 PAGE_SIZE = 2000
@@ -202,6 +203,44 @@ def build_reserves():
     return {'companies': dict(sorted(totals.items()))}
 
 
+# Reservetall per felt per ar. fldVersion er arstallet estimatet gjelder for,
+# sa dette er en tidsserie 2004 -> i dag, ikke et oyeblikksbilde.
+#
+# Merk enhetene: olje og kondensat i mill Sm3, gass i bill Sm3, men NGL i
+# mill TONN - altsa masse, ikke volum. NGL kan derfor ikke summeres med de
+# ovrige. Bruk fldRecoverableOE/fldRemainingOE nar noe skal sammenliknes;
+# Sodir har da allerede gjort konverteringen.
+RESERVE_COLUMNS = [
+    'fldRecoverableOil', 'fldRecoverableGas', 'fldRecoverableNGL',
+    'fldRecoverableCondensate', 'fldRecoverableOE',
+    'fldRemainingOil', 'fldRemainingGas', 'fldRemainingNGL',
+    'fldRemainingCondensate', 'fldRemainingOE',
+    'fldInplaceOil', 'fldInplaceAssLiquid', 'fldInplaceAssGas', 'fldInplaceFreeGas',
+]
+
+
+def build_field_reserves():
+    rows = fetch_layer(
+        FLDRES_LAYER,
+        'fldNpdidField,fldVersion,' + ','.join(RESERVE_COLUMNS),
+    )
+    fields = {}
+    for r in rows:
+        fid  = as_int(r.get('fldNpdidField'))
+        year = as_int(r.get('fldVersion'))
+        if fid is None or year is None:
+            continue
+        fields.setdefault(str(fid), []).append(
+            [year] + [num(r.get(c)) for c in RESERVE_COLUMNS]
+        )
+    for series in fields.values():
+        series.sort(key=lambda x: x[0])
+    return {
+        'columns': ['year'] + RESERVE_COLUMNS,
+        'fields': fields,
+    }
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     """Skriv fila kun hvis innholdet faktisk er endret. Returnerer True ved endring."""
@@ -229,6 +268,7 @@ def main():
         ('production.json', 'produksjon',  build_production),
         ('licensees.json',  'lisensiaerer', build_licensees),
         ('reserves.json',   'reserver',    build_reserves),
+        ('reserves_field.json', 'reserver per felt', build_field_reserves),
     ]
 
     changed = False
