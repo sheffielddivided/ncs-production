@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-09-24",
+  "updated": "2026-09-25",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -180,7 +180,7 @@
       "auto": true
     },
     "4704482": {
-      "hub": "Skarv Hub",
+      "hub": "Skarv hub",
       "auto": false
     },
     "4966234": {
@@ -196,7 +196,7 @@
       "auto": true
     },
     "17196400": {
-      "hub": "Eiga",
+      "hub": "Eiga hub",
       "auto": false
     },
     "18212090": {
@@ -228,7 +228,7 @@
       "auto": true
     },
     "21675433": {
-      "hub": "Eiga",
+      "hub": "Eiga hub",
       "auto": false
     },
     "22492497": {
@@ -240,7 +240,7 @@
       "auto": true
     },
     "23384520": {
-      "hub": "Eiga",
+      "hub": "Eiga hub",
       "auto": false
     },
     "23410947": {
@@ -248,7 +248,7 @@
       "auto": true
     },
     "25307278": {
-      "hub": "Eiga",
+      "hub": "Eiga hub",
       "auto": false
     },
     "26465170": {
@@ -300,7 +300,7 @@
       "auto": true
     },
     "34833011": {
-      "hub": "Eiga",
+      "hub": "Eiga hub",
       "auto": false
     },
     "34833026": {
@@ -308,8 +308,8 @@
       "auto": true
     },
     "38542241": {
-      "hub": "SKARV",
-      "auto": true
+      "hub": "Skarv hub",
+      "auto": false
     },
     "40867462": {
       "hub": "Ekofisk hub",
@@ -331,6 +331,10 @@
       "hub": "Yggdrasil",
       "auto": false
     },
+    "42002477": {
+      "hub": "Skarv hub",
+      "auto": false
+    },
     "42002478": {
       "hub": "VALHALL",
       "auto": true
@@ -340,7 +344,7 @@
       "auto": false
     },
     "42002480": {
-      "hub": "Eiga",
+      "hub": "Eiga hub",
       "auto": false
     },
     "42002481": {
@@ -348,11 +352,11 @@
       "auto": false
     },
     "42002483": {
-      "hub": "Skarv Hub",
+      "hub": "Skarv hub",
       "auto": false
     },
     "42002484": {
-      "hub": "Skarv Hub",
+      "hub": "Skarv hub",
       "auto": false
     },
     "42002492": {
