@@ -1354,9 +1354,10 @@ function drawFieldsOePerField(opts = {}) {
 
 // ── FIELDS: RESERVES ─────────────────────────────────────────────────────────
 // Sodir lag 7113 er en tidsserie: fldVersion er året estimatet gjelder for.
-// Her brukes kun siste tilgjengelige estimat per felt, siden visningen viser
-// status i dag, ikke hvordan estimatet har utviklet seg.
-let fieldReserves       = null;   // {fieldId: {year, recoverableOE, remainingOE}}
+// Visningen viser hele serien, slik at oppjusteringer og nedskrivninger blir
+// synlige. Søylehøyden er opprinnelig utvinnbart det året; den deles i
+// gjenstående (nederst) og allerede produsert (øverst).
+let fieldReserves       = null;   // {fieldId: [{year, recoverableOE, remainingOE}, ...] sortert}
 let fieldReservesLoaded = false;
 
 function isReservesView() { return topMode === 'fields' && fieldSubView === 'reserves'; }
@@ -1364,11 +1365,12 @@ function isReservesView() { return topMode === 'fields' && fieldSubView === 'res
 async function loadFieldReserves() {
   if (fieldReservesLoaded) return;
 
-  const latest = {};
-  const keep = (id, year, recOE, remOE) => {
-    if (!(year >= 0)) return;
-    if (latest[id] && latest[id].year >= year) return;
-    latest[id] = {year, recoverableOE: recOE || 0, remainingOE: remOE || 0};
+  const byField = {};
+  const add = (id, year, recOE, remOE) => {
+    if (!(id >= 0) || !(year >= 0)) return;
+    (byField[id] = byField[id] || []).push({
+      year, recoverableOE: recOE || 0, remainingOE: remOE || 0,
+    });
   };
 
   const b = bundle.reserves_field;
@@ -1376,7 +1378,7 @@ async function loadFieldReserves() {
     const iRec = b.columns.indexOf('fldRecoverableOE');
     const iRem = b.columns.indexOf('fldRemainingOE');
     Object.entries(b.fields).forEach(([id, rows]) => {
-      rows.forEach(r => keep(+id, r[0], r[iRec], r[iRem]));
+      rows.forEach(r => add(+id, r[0], r[iRec], r[iRem]));
     });
   } else {
     // Fallback når datafilene mangler: hent laget direkte fra Sodir.
@@ -1386,54 +1388,67 @@ async function loadFieldReserves() {
       });
       feats.forEach(f => {
         const a = f.attributes || {};
-        keep(a.fldNpdidField, a.fldVersion, a.fldRecoverableOE, a.fldRemainingOE);
+        add(a.fldNpdidField, a.fldVersion, a.fldRecoverableOE, a.fldRemainingOE);
       });
     } catch (e) { /* tom visning håndteres av kalleren */ }
   }
 
-  fieldReserves = latest;
+  Object.values(byField).forEach(rows => rows.sort((a, b) => a.year - b.year));
+  fieldReserves = byField;
   fieldReservesLoaded = true;
 }
 
 function drawFieldsReserves() {
   const ids = [...selectedFieldIds];
-  const rows = [];
-  ids.forEach(id => {
-    const r = fieldReserves && fieldReserves[id];
-    if (!r) return;
-    const name = allFields.find(f => f.id === id)?.name || String(id);
-    // mill Sm3 o.e. -> mill fat o.e. Produsert utledes som opprinnelig
-    // utvinnbart minus gjenstående; Sodir oppgir ikke produsert direkte.
-    const remaining = r.remainingOE * BBL_PER_SM3;
-    const produced  = Math.max(0, (r.recoverableOE - r.remainingOE) * BBL_PER_SM3);
-    if (remaining <= 0 && produced <= 0) return;
-    rows.push({name, remaining, produced, total: remaining + produced, year: r.year});
-  });
+  const series = ids
+    .map(id => ({id, name: allFields.find(f => f.id === id)?.name || String(id),
+                 rows: (fieldReserves && fieldReserves[id]) || []}))
+    .filter(s => s.rows.length);
 
-  if (!rows.length) {
+  if (!series.length) {
     setChartEmpty('No reserves data for the selected fields.');
     setInfo('');
     return;
   }
 
-  rows.sort((a, b) => b.total - a.total);
+  const years = [...new Set(series.flatMap(s => s.rows.map(r => r.year)))].sort((a, b) => a - b);
 
-  const labels   = rows.map(r => r.name);
+  // Sodir revurderer ikke alle felt hvert år. Mangler et felt en årgang,
+  // videreføres forrige estimat i stedet for å telles som null — ellers ville
+  // summen falle og sprette tilbake uten at noe faktisk har endret seg.
+  // Før feltets første estimat bidrar det ikke, slik at nye felt kommer inn
+  // på det året de faktisk ble estimert.
+  const remaining = [], produced = [];
+  years.forEach(y => {
+    let rem = 0, prod = 0;
+    series.forEach(s => {
+      let cur = null;
+      for (const r of s.rows) { if (r.year <= y) cur = r; else break; }
+      if (!cur) return;
+      rem  += cur.remainingOE * BBL_PER_SM3;
+      prod += Math.max(0, (cur.recoverableOE - cur.remainingOE) * BBL_PER_SM3);
+    });
+    remaining.push(+rem.toFixed(1));
+    produced.push(+prod.toFixed(1));
+  });
+
+  const labels   = years.map(String);
   const datasets = [
-    {label:'Remaining', data:rows.map(r => +r.remaining.toFixed(1)), backgroundColor:REMAINING_COLOR, borderWidth:0, stack:'s'},
-    {label:'Produced',  data:rows.map(r => +r.produced.toFixed(1)),  backgroundColor:PRODUCED_COLOR,  borderWidth:0, stack:'s'},
+    {label:'Remaining', data:remaining, backgroundColor:REMAINING_COLOR, borderWidth:0, stack:'s'},
+    {label:'Produced',  data:produced,  backgroundColor:PRODUCED_COLOR,  borderWidth:0, stack:'s'},
   ];
   const legend = [
     {label:'Remaining', color:REMAINING_COLOR},
     {label:'Produced',  color:PRODUCED_COLOR},
   ];
 
-  const years = [...new Set(rows.map(r => r.year))].sort();
-  const vintage = years.length === 1 ? String(years[0]) : `${years[0]}–${years[years.length-1]}`;
+  const fnames = series.map(s => s.name).join(', ');
+  const scopeTitle = series.length === 1 ? series[0].name : `${series.length} fields`;
+  const carried = series.length > 1 && series.some(s => s.rows.length < years.length);
 
-  setChartTitle('Reserves · original recoverable OE', `${labels.join(', ')} · million boe`);
-  setInfo(`<strong>Fields:</strong> ${labels.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir estimate, vintage ${vintage}`);
-  renderChart(labels, datasets, legend, 'million boe', {xTitle:'Field'});
+  setChartTitle(`${scopeTitle} · Reserves over time`, `${fnames} · million boe`);
+  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}`);
+  renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
 }
 
 // ── FIELDS: OE PER COMPANY ───────────────────────────────────────────────────
@@ -1582,12 +1597,11 @@ function trimLeadingZeros(labels, datasets) {
   };
 }
 
-// opts.xTitle settes av visninger som ikke har en tidsakse (reserver: én
-// søyle per felt). Da er det ingen ledende nullperioder å trimme bort, alle
-// kategoriene skal vises, og Excel-arket skal ha feltnavn i første kolonne.
+// opts.xTitle overstyrer overskriften på første Excel-kolonne for visninger
+// som ikke følger periodevelgeren (reserver har sin egen årsakse).
+// opts.allTicks viser hver etikett på x-aksen i stedet for å tynne ut.
 function renderChart(labels, datasets, legend, yTitle, opts = {}) {
-  const categorical = !!opts.xTitle;
-  if (!categorical) ({ labels, datasets } = trimLeadingZeros(labels, datasets));
+  ({ labels, datasets } = trimLeadingZeros(labels, datasets));
   lastLabels = labels;
   lastXTitle = opts.xTitle || null;
   // Utledes her, etter trimmingen, slik at Excel-eksporten ser nøyaktig de
@@ -1618,7 +1632,7 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
         }}
       },
       scales:{
-        x:{stacked:true,ticks:{maxTicksLimit:categorical?labels.length:period==='annual'?15:period==='quarterly'?12:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+        x:{stacked:true,ticks:{maxTicksLimit:opts.allTicks?labels.length:period==='annual'?15:period==='quarterly'?12:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
         y:{stacked:true,beginAtZero:true,title:{display:true,text:yTitle,color:'#4a5568',font:{size:10}},ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
       }
     }
