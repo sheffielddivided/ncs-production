@@ -162,7 +162,7 @@
       <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
     </div>
   </div>
-  <div class="ctrl-row">
+  <div class="ctrl-row" id="periodRow">
     <div class="year-row">
       <label>From</label>
       <select class="year-select" id="yearFrom"></select>
@@ -265,6 +265,7 @@ const FIELD_LAYER = 7100;
 const PROD_LAYER  = 7300;
 const LIC_LAYER   = 7108;
 const RES_LAYER   = 7114;
+const FLDRES_LAYER = 7113;
 const BBL_PER_SM3 = 6.29;
 
 // ── STATISK DATA-BUNDLE ──────────────────────────────────────────────────────
@@ -275,7 +276,7 @@ const BBL_PER_SM3 = 6.29;
 // Mangler eller feiler filene, faller alt tilbake til live-API-et under.
 const DATA_BASE = 'data/';
 
-const bundle = { fields:null, production:null, licensees:null, reserves:null, meta:null, hubs:null };
+const bundle = { fields:null, production:null, licensees:null, reserves:null, reserves_field:null, meta:null, hubs:null };
 
 async function fetchBundle(name) {
   try {
@@ -286,7 +287,7 @@ async function fetchBundle(name) {
 }
 
 async function loadBundles() {
-  const names = ['fields','production','licensees','reserves','meta','hubs'];
+  const names = ['fields','production','licensees','reserves','reserves_field','meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   const gen = bundle.meta && bundle.meta.generated;
@@ -327,6 +328,9 @@ const PALETTE = [
 const OIL_COLOR   = 'rgba(206,15,105,0.85)';
 const GAS_COLOR   = 'rgba(246,141,46,0.75)';
 const WATER_COLOR = 'rgba(73,147,180,0.75)';
+// Reserver: gjenstående får farge, produsert er tilbakelagt og tones ned.
+const REMAINING_COLOR = 'rgba(0,179,115,0.85)';
+const PRODUCED_COLOR  = 'rgba(148,163,184,0.75)';
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let topMode    = 'companies';
@@ -364,6 +368,7 @@ let allLicLoading   = false;
 let chartInstance   = null;
 let lastLabels      = [];
 let lastDatasets    = [];
+let lastXTitle      = null;   // overskrift for første Excel-kolonne, når aksen ikke er tid
 let sheetOpen       = false;
 
 // ── YEAR SELECTORS ───────────────────────────────────────────────────────────
@@ -900,6 +905,7 @@ const FIELD_TABS   = [
   {id:'oilgas',         label:'Oil & Gas'},
   {id:'oe_per_field',   label:'OE per field'},
   {id:'oe_per_company', label:'OE per company'},
+  {id:'reserves',       label:'Reserves'},
 ];
 const HUB_TABS     = [
   {id:'oilgas',        label:'Oil & Gas'},
@@ -920,6 +926,9 @@ function renderViewTabs() {
   const showWaterRow = topMode !== 'companies' && cur === 'oilgas';
   document.getElementById('settingsBtn').style.display = topMode === 'hubs' ? '' : 'none';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
+  // Reservevisningen har ingen tidsakse — ett estimat per felt — så periode og
+  // årsutvalg gjelder ikke der.
+  document.getElementById('periodRow').style.display = isReservesView() ? 'none' : '';
 }
 
 function setSubView(v) {
@@ -1169,6 +1178,13 @@ async function refreshFields() {
     setInfo(''); return;
   }
   showSpinner();
+  // Reservevisningen bruker ikke produksjonstidsseriene, så den slipper å
+  // vente på dem.
+  if (fieldSubView === 'reserves') {
+    await loadFieldReserves();
+    drawChart();
+    return;
+  }
   await loadProdForFields(ids);
   if (fieldSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -1223,6 +1239,7 @@ function drawChart() {
     if (sv === 'oilgas')          drawFieldsOilGas();
     else if (sv === 'oe_per_field')    drawFieldsOePerField();
     else if (sv === 'oe_per_company')  drawFieldsOePerCompany();
+    else if (sv === 'reserves')        drawFieldsReserves();
   } else if (topMode === 'hubs') {
     // Gjenbruker feltvisningene med hubens medlemsfelt.
     const names = [...selectedHubNames];
@@ -1333,6 +1350,90 @@ function drawFieldsOePerField(opts = {}) {
   setChartTitle(scope ? `${scope.label} · OE per field` : `Net production · OE per field`, `${fnames} · boe/day`);
   setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? scope.label : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   renderChart(labels, datasets, legend, 'boe/day');
+}
+
+// ── FIELDS: RESERVES ─────────────────────────────────────────────────────────
+// Sodir lag 7113 er en tidsserie: fldVersion er året estimatet gjelder for.
+// Her brukes kun siste tilgjengelige estimat per felt, siden visningen viser
+// status i dag, ikke hvordan estimatet har utviklet seg.
+let fieldReserves       = null;   // {fieldId: {year, recoverableOE, remainingOE}}
+let fieldReservesLoaded = false;
+
+function isReservesView() { return topMode === 'fields' && fieldSubView === 'reserves'; }
+
+async function loadFieldReserves() {
+  if (fieldReservesLoaded) return;
+
+  const latest = {};
+  const keep = (id, year, recOE, remOE) => {
+    if (!(year >= 0)) return;
+    if (latest[id] && latest[id].year >= year) return;
+    latest[id] = {year, recoverableOE: recOE || 0, remainingOE: remOE || 0};
+  };
+
+  const b = bundle.reserves_field;
+  if (b && b.fields) {
+    const iRec = b.columns.indexOf('fldRecoverableOE');
+    const iRem = b.columns.indexOf('fldRemainingOE');
+    Object.entries(b.fields).forEach(([id, rows]) => {
+      rows.forEach(r => keep(+id, r[0], r[iRec], r[iRem]));
+    });
+  } else {
+    // Fallback når datafilene mangler: hent laget direkte fra Sodir.
+    try {
+      const feats = await queryLayer(FLDRES_LAYER, {
+        outFields: 'fldNpdidField,fldVersion,fldRecoverableOE,fldRemainingOE',
+      });
+      feats.forEach(f => {
+        const a = f.attributes || {};
+        keep(a.fldNpdidField, a.fldVersion, a.fldRecoverableOE, a.fldRemainingOE);
+      });
+    } catch (e) { /* tom visning håndteres av kalleren */ }
+  }
+
+  fieldReserves = latest;
+  fieldReservesLoaded = true;
+}
+
+function drawFieldsReserves() {
+  const ids = [...selectedFieldIds];
+  const rows = [];
+  ids.forEach(id => {
+    const r = fieldReserves && fieldReserves[id];
+    if (!r) return;
+    const name = allFields.find(f => f.id === id)?.name || String(id);
+    // mill Sm3 o.e. -> mill fat o.e. Produsert utledes som opprinnelig
+    // utvinnbart minus gjenstående; Sodir oppgir ikke produsert direkte.
+    const remaining = r.remainingOE * BBL_PER_SM3;
+    const produced  = Math.max(0, (r.recoverableOE - r.remainingOE) * BBL_PER_SM3);
+    if (remaining <= 0 && produced <= 0) return;
+    rows.push({name, remaining, produced, total: remaining + produced, year: r.year});
+  });
+
+  if (!rows.length) {
+    setChartEmpty('No reserves data for the selected fields.');
+    setInfo('');
+    return;
+  }
+
+  rows.sort((a, b) => b.total - a.total);
+
+  const labels   = rows.map(r => r.name);
+  const datasets = [
+    {label:'Remaining', data:rows.map(r => +r.remaining.toFixed(1)), backgroundColor:REMAINING_COLOR, borderWidth:0, stack:'s'},
+    {label:'Produced',  data:rows.map(r => +r.produced.toFixed(1)),  backgroundColor:PRODUCED_COLOR,  borderWidth:0, stack:'s'},
+  ];
+  const legend = [
+    {label:'Remaining', color:REMAINING_COLOR},
+    {label:'Produced',  color:PRODUCED_COLOR},
+  ];
+
+  const years = [...new Set(rows.map(r => r.year))].sort();
+  const vintage = years.length === 1 ? String(years[0]) : `${years[0]}–${years[years.length-1]}`;
+
+  setChartTitle('Reserves · original recoverable OE', `${labels.join(', ')} · million boe`);
+  setInfo(`<strong>Fields:</strong> ${labels.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir estimate, vintage ${vintage}`);
+  renderChart(labels, datasets, legend, 'million boe', {xTitle:'Field'});
 }
 
 // ── FIELDS: OE PER COMPANY ───────────────────────────────────────────────────
@@ -1481,9 +1582,14 @@ function trimLeadingZeros(labels, datasets) {
   };
 }
 
-function renderChart(labels, datasets, legend, yTitle) {
-  ({ labels, datasets } = trimLeadingZeros(labels, datasets));
+// opts.xTitle settes av visninger som ikke har en tidsakse (reserver: én
+// søyle per felt). Da er det ingen ledende nullperioder å trimme bort, alle
+// kategoriene skal vises, og Excel-arket skal ha feltnavn i første kolonne.
+function renderChart(labels, datasets, legend, yTitle, opts = {}) {
+  const categorical = !!opts.xTitle;
+  if (!categorical) ({ labels, datasets } = trimLeadingZeros(labels, datasets));
   lastLabels = labels;
+  lastXTitle = opts.xTitle || null;
   // Utledes her, etter trimmingen, slik at Excel-eksporten ser nøyaktig de
   // samme seriene som grafen. Settes den i tegnefunksjonene i stedet, blir
   // labels og data forskjøvet i forhold til hverandre når trimming skjer.
@@ -1512,7 +1618,7 @@ function renderChart(labels, datasets, legend, yTitle) {
         }}
       },
       scales:{
-        x:{stacked:true,ticks:{maxTicksLimit:period==='annual'?15:period==='quarterly'?12:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+        x:{stacked:true,ticks:{maxTicksLimit:categorical?labels.length:period==='annual'?15:period==='quarterly'?12:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
         y:{stacked:true,beginAtZero:true,title:{display:true,text:yTitle,color:'#4a5568',font:{size:10}},ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
       }
     }
@@ -1537,19 +1643,26 @@ async function downloadExcel() {
   const ty = document.getElementById('yearTo').value;
   const periodLabel = period==='monthly'?'Monthly':period==='quarterly'?'Quarterly':'Annual';
   const infoText = document.getElementById('infoBox').innerText || '';
-  const filename = `NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`;
+  // Uten tidsakse er periode og årsutvalg irrelevant, og ville bare villedet
+  // den som åpner arket.
+  const categorical = !!lastXTitle;
+  const filename = categorical
+    ? 'NCS_Reserves.xlsx'
+    : `NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'NCS Production Tool'; wb.created = new Date();
 
   const wsInfo = wb.addWorksheet('Info');
   wsInfo.columns = [{width:24},{width:80}];
-  const titleRow = wsInfo.addRow(['NCS Production Export']);
+  const titleRow = wsInfo.addRow([categorical ? 'NCS Reserves Export' : 'NCS Production Export']);
   titleRow.getCell(1).font = {bold:true, size:14};
   wsInfo.addRow([]);
   wsInfo.addRow(['Generated', new Date().toLocaleString()]);
-  wsInfo.addRow(['Period type', periodLabel]);
-  wsInfo.addRow(['Year range', `${fy} – ${ty}`]);
+  if (!categorical) {
+    wsInfo.addRow(['Period type', periodLabel]);
+    wsInfo.addRow(['Year range', `${fy} – ${ty}`]);
+  }
   wsInfo.addRow([]);
   wsInfo.addRow(['Data description']).getCell(1).font = {bold:true};
   wsInfo.addRow([infoText]);
@@ -1559,8 +1672,8 @@ async function downloadExcel() {
   srcRow.getCell(1).font = {color:{argb:'FF0071B8'}};
 
   const wsData = wb.addWorksheet('Data');
-  const header = [period==='monthly'?'Period':period==='quarterly'?'Quarter':'Year', ...lastDatasets.map(d=>d.label)];
-  wsData.columns = header.map((h,i) => ({header:h, width:i===0?12:20}));
+  const header = [lastXTitle || (period==='monthly'?'Period':period==='quarterly'?'Quarter':'Year'), ...lastDatasets.map(d=>d.label)];
+  wsData.columns = header.map((h,i) => ({header:h, width:i===0?(categorical?22:12):20}));
   wsData.getRow(1).font = {bold:true};
   wsData.getRow(1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}};
   lastLabels.forEach((lbl,i) => {
