@@ -1385,7 +1385,7 @@ function drawFieldsOePerField(opts = {}) {
 // Visningen viser hele serien, slik at oppjusteringer og nedskrivninger blir
 // synlige. Søylehøyden er opprinnelig utvinnbart det året; den deles i
 // gjenstående (nederst) og allerede produsert (øverst).
-let fieldReserves       = null;   // {fieldId: [{year, recoverableOE, remainingOE}, ...] sortert}
+let fieldReserves       = null;   // {fieldId: [{year, recoverableOE, remainingOE, remainingGas}, ...] sortert}
 let fieldReservesLoaded = false;
 
 function isReservesView() {
@@ -1398,10 +1398,14 @@ async function loadFieldReserves() {
   if (fieldReservesLoaded) return;
 
   const byField = {};
-  const add = (id, year, recOE, remOE) => {
+  // remainingGas er i bill Sm3, som numerisk er det samme som mill Sm3 o.e.
+  // (1 bill Sm3 gass = 1000 mill Sm3 gass = 1 mill Sm3 o.e.). Det er samme
+  // implisitte 1000:1 som produksjonstallene bruker, se gasBoed().
+  const add = (id, year, recOE, remOE, remGas) => {
     if (!(id >= 0) || !(year >= 0)) return;
     (byField[id] = byField[id] || []).push({
       year, recoverableOE: recOE || 0, remainingOE: remOE || 0,
+      remainingGas: remGas || 0,
     });
   };
 
@@ -1409,18 +1413,19 @@ async function loadFieldReserves() {
   if (b && b.fields) {
     const iRec = b.columns.indexOf('fldRecoverableOE');
     const iRem = b.columns.indexOf('fldRemainingOE');
+    const iGas = b.columns.indexOf('fldRemainingGas');
     Object.entries(b.fields).forEach(([id, rows]) => {
-      rows.forEach(r => add(+id, r[0], r[iRec], r[iRem]));
+      rows.forEach(r => add(+id, r[0], r[iRec], r[iRem], r[iGas]));
     });
   } else {
     // Fallback når datafilene mangler: hent laget direkte fra Sodir.
     try {
       const feats = await queryLayer(FLDRES_LAYER, {
-        outFields: 'fldNpdidField,fldVersion,fldRecoverableOE,fldRemainingOE',
+        outFields: 'fldNpdidField,fldVersion,fldRecoverableOE,fldRemainingOE,fldRemainingGas',
       });
       feats.forEach(f => {
         const a = f.attributes || {};
-        add(a.fldNpdidField, a.fldVersion, a.fldRecoverableOE, a.fldRemainingOE);
+        add(a.fldNpdidField, a.fldVersion, a.fldRecoverableOE, a.fldRemainingOE, a.fldRemainingGas);
       });
     } catch (e) { /* tom visning håndteres av kalleren */ }
   }
@@ -1679,10 +1684,17 @@ function drawCompaniesOePerHub() {
 }
 
 // ── COMPANIES: RESERVES ──────────────────────────────────────────────────────
-// Kun gjenstående reserver. Produsert volum er utledet av feltets totale
-// historikk og lar seg ikke meningsfullt fordeles på dagens lisensiærer —
-// et selskap som kjøpte seg inn i fjor har ikke produsert feltets historie.
-// Gjenstående derimot er en beholdning her og nå, og kan andelsberegnes.
+// Kun gjenstående reserver, splittet i væsker og gass. Produsert volum er
+// utledet av feltets totale historikk og lar seg ikke meningsfullt fordeles
+// på dagens lisensiærer — et selskap som kjøpte seg inn i fjor har ikke
+// produsert feltets historie. Gjenstående er derimot en beholdning her og nå,
+// og kan andelsberegnes.
+//
+// «Liquids» er OE minus gass, altså olje + NGL + kondensat. Det er samme
+// definisjon som «Oil» bruker i produksjonsgrafene (se oilBoed), og den er
+// nødvendig her fordi NGL oppgis i mill TONN og ikke kan summeres med
+// volumkolonnene. Verifisert mot rådata: for Johan Sverdrup 2025 er
+// OE − gass − olje − kondensat = 2,803, som svarer til de 1,475 mill tonn NGL.
 function drawCompaniesReserves() {
   const companies = [...selectedCompanyNames];
   const relevantIds = [...new Set([
@@ -1703,32 +1715,37 @@ function drawCompaniesReserves() {
 
   // Reserveestimatet gjelder per 31.12 i årgangen, så eierandelen slås opp på
   // samme dato. Et selskap bidrar dermed kun i de årene det faktisk var
-  // lisensiær — oppkjøp og salg vises som hopp i serien.
-  const datasets = [], legend = [];
-  companies.forEach((cmp, i) => {
-    const color = PALETTE[i % PALETTE.length][0];
-    const d = years.map(y => {
-      const at = new Date(Date.UTC(y, 11, 31));
-      let tot = 0;
-      series.forEach(s => {
-        const cur = reserveAt(s.rows, y);
-        if (!cur) return;
-        tot += cur.remainingOE * BBL_PER_SM3 * (getShare(s.id, at, cmp) / 100);
-      });
-      return +tot.toFixed(1);
+  // lisensiær — oppkjøp og salg vises som hopp i serien. Summert over alle
+  // valgte selskaper, på linje med Oil & Gas-fanen i samme modus.
+  const liquids = [], gas = [];
+  years.forEach(y => {
+    const at = new Date(Date.UTC(y, 11, 31));
+    let liq = 0, g = 0;
+    series.forEach(s => {
+      const cur = reserveAt(s.rows, y);
+      if (!cur) return;
+      let share = 0;
+      companies.forEach(cmp => { share += getShare(s.id, at, cmp) / 100; });
+      if (!share) return;
+      g   += cur.remainingGas * BBL_PER_SM3 * share;
+      liq += Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3 * share;
     });
-    if (!hasAnyValue(d)) return;
-    datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
-    legend.push({label:cmp,color});
+    liquids.push(+liq.toFixed(1));
+    gas.push(+g.toFixed(1));
   });
 
-  if (!datasets.length) { setChartEmpty('No reserves data for the selected companies.'); setInfo(''); return; }
+  const datasets = [
+    {label:'Liquids', data:liquids, backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
+    {label:'Gas',     data:gas,     backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'},
+  ];
+  const legend = [{label:'Liquids',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}];
 
   const cmpStr = companies.join(', ');
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Remaining reserves`, `Equity-adjusted · million boe`);
-  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Remaining reserves per company &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
+  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
 }
+
 
 // ── RENDER CHART ─────────────────────────────────────────────────────────────
 function trimLeadingZeros(labels, datasets) {
