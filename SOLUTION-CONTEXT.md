@@ -728,7 +728,7 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Valg | `#selectFab` → bottom sheet (`:178`, `:184-198`) | Søk, «Select all», «Clear all» |
 | Eksport | `#downloadBtn` (`:166`) | Excel (.xlsx) |
 
-### De ni visningene
+### De ti visningene
 
 | Modus | Fane | Funksjon | Hva som tegnes |
 |---|---|---|---|
@@ -740,10 +740,15 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Fields | OE per company | `drawFieldsOePerCompany` (`:1170`) | Én serie per selskap, **equity-justert** |
 | Fields | Reserves | `drawFieldsReserves` (`:1424`) | Stablet gjenstående/produsert per år, **mill fat o.e.** |
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:1199`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
-| Companies | OE per field | `drawCompaniesOePerField` (`:1268`) | Én serie per felt, equity-justert |
+| Companies | OE per field | `drawCompaniesOePerField` (`:1580`) | Én serie per felt, equity-justert |
+| Companies | OE per hub | `drawCompaniesOePerHub` (`:1620`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
 
-Merk at Companies-modus **ikke** har en «OE per company»-fane (`:806-809`) —
-det er selskapene man allerede har valgt.
+Merk at Companies-modus **ikke** har en «OE per company»-fane — det er
+selskapene man allerede har valgt.
+
+«OE per hub» i Companies-modus bruker `hubOfField` fra `data/hubs.json`. Felt
+uten oppføring er sin egen hub, så ingen produksjon faller utenfor
+grupperingen; summen over hub-seriene er lik summen over felt-seriene.
 
 Reserves-visningen skiller seg ut: X-aksen er reserveestimatets årgang, ikke
 periodevelgeren, og Y-aksen er mill fat o.e. i stedet for boe/dag. Periode- og
