@@ -926,6 +926,7 @@ const HUB_TABS     = [
 const COMPANY_TABS = [
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'oe_per_field',  label:'OE per field'},
+  {id:'oe_per_hub',    label:'OE per hub'},
 ];
 
 function renderViewTabs() {
@@ -1268,6 +1269,7 @@ function drawChart() {
     const sv = companySubView;
     if (sv === 'oilgas')         drawCompaniesOilGas();
     else if (sv === 'oe_per_field')  drawCompaniesOePerField();
+    else if (sv === 'oe_per_hub')    drawCompaniesOePerHub();
   }
 }
 
@@ -1608,6 +1610,57 @@ function drawCompaniesOePerField() {
   const cmpStr = companies.join(', ');
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · OE per field`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
+  renderChart(labels, datasets, legend, 'boe/day');
+}
+
+// ── COMPANIES: OE PER HUB ────────────────────────────────────────────────────
+// Samme beregning som OE per field, men medlemsfeltene summeres opp i huben
+// de tilhører. Hub-tilhørigheten kommer fra data/hubs.json; felt uten
+// oppføring er sin egen hub, så ingen produksjon faller utenfor.
+function drawCompaniesOePerHub() {
+  const companies = [...selectedCompanyNames];
+  const relevantIds = [...new Set([
+    ...allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField),
+    ...Object.entries(TRIAL_PROD_OWNERSHIP)
+      .filter(([,owners]) => companies.some(c=>(owners[c]||0)>0))
+      .map(([id])=>+id)
+  ])];
+  const labels = unionLabels(relevantIds);
+  if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
+  const qMap = period === 'quarterly' ? buildQuarterMap(relevantIds) : null;
+
+  const byHub = {};
+  relevantIds.forEach(id => {
+    const hub = hubOfField[id] || allFields.find(f=>f.id===id)?.name || `Field ${id}`;
+    (byHub[hub] = byHub[hub] || []).push(id);
+  });
+
+  // Størst hub først, slik at de dominerende seriene får de tydeligste
+  // palettfargene og legenden leses ovenfra og ned.
+  const series = Object.entries(byHub).map(([hub, ids]) => {
+    const d = labels.map(lbl => {
+      if (period === 'quarterly') {
+        return +companies.reduce((tot, cmp) =>
+          tot + quarterBoedEquity(ids, lbl, qMap, (v,dy)=>oeBoed(v,dy), a=>a.prfPrdOeNetMillSm3||0, cmp)
+        , 0).toFixed(0);
+      }
+      let tot=0;
+      ids.forEach(id=>{companies.forEach(cmp=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};if(!a.prfYear)return;const dy=days(a),share=getShare(id,midDate(a.prfYear,a.prfMonth||7),cmp)/100;tot+=oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;});});
+      return +tot.toFixed(0);
+    });
+    return {hub, d, total: d.reduce((x,y)=>x+y,0)};
+  }).filter(s => hasAnyValue(s.d)).sort((a,b) => b.total - a.total);
+
+  const datasets = [], legend = [];
+  series.forEach((s, i) => {
+    const color = PALETTE[i%PALETTE.length][0];
+    datasets.push({label:s.hub,data:s.d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:s.hub,color});
+  });
+
+  const cmpStr = companies.join(', ');
+  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · OE per hub`, `Equity-adjusted · boe/day`);
+  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per hub &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
 }
 
