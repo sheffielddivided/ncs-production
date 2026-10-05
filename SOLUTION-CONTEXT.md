@@ -742,12 +742,26 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:1199`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
 | Companies | OE per field | `drawCompaniesOePerField` (`:1580`) | Én serie per felt, equity-justert |
 | Companies | OE per hub | `drawCompaniesOePerHub` (`:1634`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
-| Companies | Reserves | `drawCompaniesReserves` (`:1686`) | **Kun gjenstående** reserver over tid, én serie per selskap, equity-justert |
+| Companies | Reserves | `drawCompaniesReserves` (`:1698`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert |
 
 Merk at Companies-modus **ikke** har en «OE per company»-fane — det er
 selskapene man allerede har valgt.
 
-Reserves i Companies-modus viser **bare gjenstående**. Produsert volum er
+Reserves i Companies-modus viser **bare gjenstående**, splittet i væsker og
+gass og summert over de valgte selskapene — på linje med Oil & Gas-fanen i
+samme modus.
+
+«Liquids» er `fldRemainingOE − fldRemainingGas`, altså olje + NGL +
+kondensat. Det er samme definisjon som «Oil» bruker i produksjonsgrafene
+(§8.1), og den er nødvendig her fordi NGL oppgis i mill tonn og ikke kan
+summeres med volumkolonnene. `fldRemainingGas` er i bill Sm³, som numerisk er
+det samme som mill Sm³ o.e. — samme implisitte 1000:1 som §6 beskriver.
+
+Verifisert mot rådata, Johan Sverdrup årgang 2025:
+`200,597 − 4,893 − 192,901 − 0,000 = 2,803`, som er bidraget fra de 1,475 mill
+tonn NGL. Identiteten holder for alle felt i datasettet.
+
+ Produsert volum er
 utledet av feltets samlede historikk (`utvinnbart − gjenstående`) og lar seg
 ikke meningsfullt fordeles på dagens lisensiærer — et selskap som kjøpte seg
 inn i fjor har ikke produsert feltets historie. Gjenstående er derimot en
