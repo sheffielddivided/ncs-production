@@ -728,7 +728,7 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Valg | `#selectFab` → bottom sheet (`:178`, `:184-198`) | Søk, «Select all», «Clear all» |
 | Eksport | `#downloadBtn` (`:166`) | Excel (.xlsx) |
 
-### De ti visningene
+### De elleve visningene
 
 | Modus | Fane | Funksjon | Hva som tegnes |
 |---|---|---|---|
@@ -741,10 +741,24 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Fields | Reserves | `drawFieldsReserves` (`:1424`) | Stablet gjenstående/produsert per år, **mill fat o.e.** |
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:1199`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
 | Companies | OE per field | `drawCompaniesOePerField` (`:1580`) | Én serie per felt, equity-justert |
-| Companies | OE per hub | `drawCompaniesOePerHub` (`:1620`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
+| Companies | OE per hub | `drawCompaniesOePerHub` (`:1634`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
+| Companies | Reserves | `drawCompaniesReserves` (`:1686`) | **Kun gjenstående** reserver over tid, én serie per selskap, equity-justert |
 
 Merk at Companies-modus **ikke** har en «OE per company»-fane — det er
 selskapene man allerede har valgt.
+
+Reserves i Companies-modus viser **bare gjenstående**. Produsert volum er
+utledet av feltets samlede historikk (`utvinnbart − gjenstående`) og lar seg
+ikke meningsfullt fordeles på dagens lisensiærer — et selskap som kjøpte seg
+inn i fjor har ikke produsert feltets historie. Gjenstående er derimot en
+beholdning, og kan andelsberegnes.
+
+Eierandelen slås opp per **31. desember i årgangen**, fordi reserveestimatet
+gjelder per årsslutt (`index.html:1711`). Et selskap bidrar dermed kun i de
+årene det faktisk var lisensiær, og oppkjøp vises som hopp i serien. Verifisert
+eksempel: Aker BPs andel i Johan Sverdrup går fra 11,5733 til 31,5733 med
+virkning 2023-01-01 i lag 7108, og selskapets gjenstående reserver hopper
+tilsvarende fra 778,5 til 1 764,4 mill fat o.e. mellom årgang 2022 og 2023.
 
 «OE per hub» i Companies-modus bruker `hubOfField` fra `data/hubs.json`. Felt
 uten oppføring er sin egen hub, så ingen produksjon faller utenfor
