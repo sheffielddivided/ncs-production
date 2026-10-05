@@ -927,6 +927,7 @@ const COMPANY_TABS = [
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'oe_per_field',  label:'OE per field'},
   {id:'oe_per_hub',    label:'OE per hub'},
+  {id:'reserves',      label:'Reserves'},
 ];
 
 function renderViewTabs() {
@@ -1232,6 +1233,12 @@ async function refreshCompanies() {
   });
   relevantIds.forEach(id => { if (fieldProdCache[id] === null) delete fieldProdCache[id]; });
   showSpinner();
+  // Reservevisningen trenger eierandelene, men ikke produksjonstidsseriene.
+  if (companySubView === 'reserves') {
+    await loadFieldReserves();
+    drawChart();
+    return;
+  }
   await loadProdForFields(relevantIds);
   drawChart();
 }
@@ -1270,6 +1277,7 @@ function drawChart() {
     if (sv === 'oilgas')         drawCompaniesOilGas();
     else if (sv === 'oe_per_field')  drawCompaniesOePerField();
     else if (sv === 'oe_per_hub')    drawCompaniesOePerHub();
+    else if (sv === 'reserves')      drawCompaniesReserves();
   }
 }
 
@@ -1381,8 +1389,9 @@ let fieldReserves       = null;   // {fieldId: [{year, recoverableOE, remainingO
 let fieldReservesLoaded = false;
 
 function isReservesView() {
-  return (topMode === 'fields' && fieldSubView === 'reserves')
-      || (topMode === 'hubs'   && hubSubView   === 'reserves');
+  return (topMode === 'fields'    && fieldSubView   === 'reserves')
+      || (topMode === 'hubs'      && hubSubView     === 'reserves')
+      || (topMode === 'companies' && companySubView === 'reserves');
 }
 
 async function loadFieldReserves() {
@@ -1423,6 +1432,17 @@ async function loadFieldReserves() {
 
 // opts.ids og opts.scope fungerer som i de øvrige feltvisningene, slik at
 // hub-modus gjenbruker denne med hubens medlemsfelt.
+// Siste estimat til og med året y. Null før feltets første estimat — da
+// bidrar feltet ikke, slik at nye felt kommer inn det året de ble estimert.
+// Sodir revurderer ikke alle felt hvert år; uten denne videreføringen ville
+// en sum over flere felt falle og sprette tilbake uten at noe faktisk hadde
+// endret seg.
+function reserveAt(rows, y) {
+  let cur = null;
+  for (const r of rows) { if (r.year <= y) cur = r; else break; }
+  return cur;
+}
+
 function drawFieldsReserves(opts = {}) {
   const ids = opts.ids || [...selectedFieldIds];
   const scope = opts.scope;
@@ -1439,17 +1459,11 @@ function drawFieldsReserves(opts = {}) {
 
   const years = [...new Set(series.flatMap(s => s.rows.map(r => r.year)))].sort((a, b) => a - b);
 
-  // Sodir revurderer ikke alle felt hvert år. Mangler et felt en årgang,
-  // videreføres forrige estimat i stedet for å telles som null — ellers ville
-  // summen falle og sprette tilbake uten at noe faktisk har endret seg.
-  // Før feltets første estimat bidrar det ikke, slik at nye felt kommer inn
-  // på det året de faktisk ble estimert.
   const remaining = [], produced = [];
   years.forEach(y => {
     let rem = 0, prod = 0;
     series.forEach(s => {
-      let cur = null;
-      for (const r of s.rows) { if (r.year <= y) cur = r; else break; }
+      const cur = reserveAt(s.rows, y);
       if (!cur) return;
       rem  += cur.remainingOE * BBL_PER_SM3;
       prod += Math.max(0, (cur.recoverableOE - cur.remainingOE) * BBL_PER_SM3);
@@ -1662,6 +1676,58 @@ function drawCompaniesOePerHub() {
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · OE per hub`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per hub &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
+}
+
+// ── COMPANIES: RESERVES ──────────────────────────────────────────────────────
+// Kun gjenstående reserver. Produsert volum er utledet av feltets totale
+// historikk og lar seg ikke meningsfullt fordeles på dagens lisensiærer —
+// et selskap som kjøpte seg inn i fjor har ikke produsert feltets historie.
+// Gjenstående derimot er en beholdning her og nå, og kan andelsberegnes.
+function drawCompaniesReserves() {
+  const companies = [...selectedCompanyNames];
+  const relevantIds = [...new Set([
+    ...allLicRecords.filter(r=>selectedCompanyNames.has(r.cmpLongName)).map(r=>r.fldNpdidField),
+    ...Object.entries(TRIAL_PROD_OWNERSHIP)
+      .filter(([,owners]) => companies.some(c=>(owners[c]||0)>0))
+      .map(([id])=>+id)
+  ])];
+
+  const series = relevantIds
+    .map(id => ({id, rows: (fieldReserves && fieldReserves[id]) || []}))
+    .filter(s => s.rows.length);
+
+  if (!series.length) { setChartEmpty('No reserves data for the selected companies.'); setInfo(''); return; }
+
+  const years = [...new Set(series.flatMap(s => s.rows.map(r => r.year)))].sort((a,b) => a-b);
+  const labels = years.map(String);
+
+  // Reserveestimatet gjelder per 31.12 i årgangen, så eierandelen slås opp på
+  // samme dato. Et selskap bidrar dermed kun i de årene det faktisk var
+  // lisensiær — oppkjøp og salg vises som hopp i serien.
+  const datasets = [], legend = [];
+  companies.forEach((cmp, i) => {
+    const color = PALETTE[i % PALETTE.length][0];
+    const d = years.map(y => {
+      const at = new Date(Date.UTC(y, 11, 31));
+      let tot = 0;
+      series.forEach(s => {
+        const cur = reserveAt(s.rows, y);
+        if (!cur) return;
+        tot += cur.remainingOE * BBL_PER_SM3 * (getShare(s.id, at, cmp) / 100);
+      });
+      return +tot.toFixed(1);
+    });
+    if (!hasAnyValue(d)) return;
+    datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
+    legend.push({label:cmp,color});
+  });
+
+  if (!datasets.length) { setChartEmpty('No reserves data for the selected companies.'); setInfo(''); return; }
+
+  const cmpStr = companies.join(', ');
+  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Remaining reserves`, `Equity-adjusted · million boe`);
+  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Remaining reserves per company &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
+  renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
 }
 
 // ── RENDER CHART ─────────────────────────────────────────────────────────────
