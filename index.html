@@ -72,6 +72,21 @@
     .legend-item{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--muted);}
     .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 
+    .res-table-wrap{margin:0 12px 10px;overflow-x:auto;}
+    .res-table-wrap:empty{display:none;}
+    .res-table{width:100%;border-collapse:collapse;font-size:0.72rem;background:var(--card);
+      border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);overflow:hidden;}
+    .res-table caption{text-align:left;font-size:0.72rem;color:var(--muted);padding:0 2px 6px;caption-side:top;}
+    .res-table th,.res-table td{padding:5px 8px;text-align:right;white-space:nowrap;}
+    .res-table th:first-child,.res-table td:first-child{text-align:left;white-space:normal;}
+    .res-table thead th{background:#e8eef5;color:var(--navy);font-weight:700;font-size:0.68rem;
+      position:sticky;top:0;}
+    .res-table tr.hub-row{background:var(--light);font-weight:700;color:#1a2332;}
+    .res-table tr.hub-row td{border-top:1px solid var(--border);}
+    .res-table tr.field-row td:first-child{padding-left:20px;color:var(--muted);}
+    .res-table tr.total-row{background:#e8eef5;font-weight:700;color:var(--navy);}
+    .res-table tr.total-row td{border-top:2px solid var(--border);}
+
     .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
     .info-box strong{color:#1a2332;}
 
@@ -198,6 +213,8 @@
     </div>
   </div>
 </div>
+
+<div class="res-table-wrap" id="reserveTable"></div>
 
 <div class="info-box" id="infoBox"></div>
 
@@ -1251,9 +1268,15 @@ function showSpinner() {
       <div>Loading…</div>
     </div>`;
   document.getElementById('downloadBtn').disabled = true;
+  setReserveTable('');
 }
+function setReserveTable(html) {
+  document.getElementById('reserveTable').innerHTML = html;
+}
+
 function setChartEmpty(msg) {
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  setReserveTable('');
   document.getElementById('chartArea').innerHTML = `<div class="status">${msg}</div>`;
   document.getElementById('downloadBtn').disabled = true;
 }
@@ -1744,6 +1767,59 @@ function drawCompaniesReserves() {
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Remaining reserves`, `Equity-adjusted · million boe`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
+  renderReserveTable(series, companies, years[years.length - 1]);
+}
+
+// Tabell under grafen: reserver per felt, gruppert under huben feltet tilhører.
+// Viser kun siste årgang — altså samme tall som den høyreste søylen i grafen.
+// Huber og felt sorteres synkende etter sin egen total.
+function renderReserveTable(series, companies, year) {
+  const at = new Date(Date.UTC(year, 11, 31));
+  const hubs = {};
+
+  series.forEach(s => {
+    const cur = reserveAt(s.rows, year);
+    if (!cur) return;
+    let share = 0;
+    companies.forEach(cmp => { share += getShare(s.id, at, cmp) / 100; });
+    if (!share) return;
+
+    const gas = cur.remainingGas * BBL_PER_SM3 * share;
+    const liq = Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3 * share;
+    const oe  = cur.remainingOE * BBL_PER_SM3 * share;
+    if (oe <= 0) return;
+
+    const fname = allFields.find(f => f.id === s.id)?.name || String(s.id);
+    const hub   = hubOfField[s.id] || fname;
+    const h = hubs[hub] = hubs[hub] || {liq:0, gas:0, oe:0, fields:[]};
+    h.liq += liq; h.gas += gas; h.oe += oe;
+    h.fields.push({name:fname, liq, gas, oe});
+  });
+
+  const rows = Object.entries(hubs).sort((a,b) => b[1].oe - a[1].oe);
+  if (!rows.length) { setReserveTable(''); return; }
+
+  const n = v => v.toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
+  const tot = rows.reduce((t,[,h]) => ({liq:t.liq+h.liq, gas:t.gas+h.gas, oe:t.oe+h.oe}), {liq:0,gas:0,oe:0});
+
+  const body = rows.map(([hub, h]) => {
+    // Én enkelt standalone-hub gjentar seg selv som feltrad. Da droppes
+    // feltraden, siden den ikke tilfører noe.
+    const single = h.fields.length === 1 && h.fields[0].name === hub;
+    const fieldRows = single ? '' : h.fields
+      .sort((a,b) => b.oe - a.oe)
+      .map(f => `<tr class="field-row"><td>${f.name}</td><td>${n(f.liq)}</td><td>${n(f.gas)}</td><td>${n(f.oe)}</td></tr>`)
+      .join('');
+    return `<tr class="hub-row"><td>${hub}</td><td>${n(h.liq)}</td><td>${n(h.gas)}</td><td>${n(h.oe)}</td></tr>${fieldRows}`;
+  }).join('');
+
+  setReserveTable(`
+    <table class="res-table">
+      <caption>Remaining reserves per field, vintage ${year} · million boe · equity-adjusted</caption>
+      <thead><tr><th>Hub / field</th><th>Liquids</th><th>Gas</th><th>Total OE</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td>${n(tot.liq)}</td><td>${n(tot.gas)}</td><td>${n(tot.oe)}</td></tr></tfoot>
+    </table>`);
 }
 
 
@@ -1762,6 +1838,9 @@ function trimLeadingZeros(labels, datasets) {
 // som ikke følger periodevelgeren (reserver har sin egen årsakse).
 // opts.allTicks viser hver etikett på x-aksen i stedet for å tynne ut.
 function renderChart(labels, datasets, legend, yTitle, opts = {}) {
+  // Tabellen under grafen hører til én enkelt visning. Nullstilles her, så
+  // ingen visning kan etterlate en tabell som hører til en annen graf.
+  setReserveTable('');
   ({ labels, datasets } = trimLeadingZeros(labels, datasets));
   lastLabels = labels;
   lastXTitle = opts.xTitle || null;
