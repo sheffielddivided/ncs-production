@@ -742,7 +742,7 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:1199`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
 | Companies | OE per field | `drawCompaniesOePerField` (`:1580`) | Én serie per felt, equity-justert |
 | Companies | OE per hub | `drawCompaniesOePerHub` (`:1634`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
-| Companies | Reserves | `drawCompaniesReserves` (`:1698`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert |
+| Companies | Reserves | `drawCompaniesReserves` (`:1721`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert. Eneste visning med en tabell under grafen |
 
 Merk at Companies-modus **ikke** har en «OE per company»-fane — det er
 selskapene man allerede har valgt.
@@ -773,6 +773,21 @@ gjelder per årsslutt (`index.html:1711`). Et selskap bidrar dermed kun i de
 eksempel: Aker BPs andel i Johan Sverdrup går fra 11,5733 til 31,5733 med
 virkning 2023-01-01 i lag 7108, og selskapets gjenstående reserver hopper
 tilsvarende fra 778,5 til 1 764,4 mill fat o.e. mellom årgang 2022 og 2023.
+
+Under grafen ligger en tabell med reserver per felt, gruppert under huben
+feltet tilhører (`renderReserveTable`, `index.html:1776-1823`). Den viser
+**kun siste årgang** — samme tall som den høyreste søylen i grafen — med
+delsum per hub, og huber og felt sortert synkende etter sin egen total OE. En
+standalone hub som bare gjentar seg selv som feltrad får ingen feltrad.
+
+Tabellen er `#reserveTable`, et eget element mellom grafkortet og infoboksen.
+`renderChart` nullstiller den ved hver tegning (`index.html:1843`), slik at
+ingen visning kan etterlate en tabell som hører til en annen graf; bare
+`drawCompaniesReserves` fyller den igjen etterpå. `showSpinner` og
+`setChartEmpty` tømmer den også.
+
+Merk at tabellen **ikke** følger med i Excel-eksporten — den eksporterer
+`lastLabels`/`lastDatasets`, altså de to seriene i grafen.
 
 «OE per hub» i Companies-modus bruker `hubOfField` fra `data/hubs.json`. Felt
 uten oppføring er sin egen hub, så ingen produksjon faller utenfor
