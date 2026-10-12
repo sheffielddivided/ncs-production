@@ -589,14 +589,23 @@ av avrundingsstøy i kilden.
 Selskapsvisninger vekter produksjon med eierandelen som gjaldt **på det aktuelle
 tidspunktet** (`index.html:543-557`):
 
-1. Beregn en referansedato for perioden via `midDate` (`index.html:404-408`):
+1. Beregn en referansedato for perioden via `midDate` (`index.html:500-504`):
    - månedlig/kvartalsvis: **den 15. i måneden**
-   - årlig: **1. juli** (`new Date(year, 6, 1)` — merk at 6 = juli, 0-indeksert)
+   - årlig: **1. juli** (`Date.UTC(year, 6, 1)` — merk at 6 = juli, 0-indeksert)
 2. Finn **første** lisensiærrad der selskapsnavnet matcher og datoen ligger
-   innenfor `[from, to]`. `null` tolkes som åpen ende i begge retninger.
+   innenfor `[from, to]`. `null` tolkes som åpen ende i begge retninger, og
+   `to` dekker **hele** den siste dagen, ikke bare midnatt.
 3. Del på 100 og multipliser med produksjonen.
 
-Ingen match gir `0` (`index.html:556`) — stille, uten advarsel.
+Ingen match gir `0` — stille, uten advarsel.
+
+> **Referansedatoen må være UTC.** `fldLicenseeFrom`/`fldLicenseeTo` er
+> UTC-midnatt. Ble datoen bygget i lokal tid, ble 1. juli i Norge
+> `30. juni 23:00 UTC`, som faller mellom en periode som slutter 30. juni og
+> den neste som starter 1. juli. Et eierskifte med virkning 1. juli ga da
+> **null allokert produksjon for hele året**, mens feltproduksjonen sto urørt.
+> Feilen var usynlig i UTC og rammet kun årlig oppløsning. Rettet i PR #25 —
+> se §11.0.
 
 `records.find(...)` tar **første** treff. Finnes overlappende perioder for samme
 selskap, vinner den som tilfeldigvis kom først etter sorteringen. Dette er ikke
@@ -989,6 +998,40 @@ De er beholdt her fordi feilklassene er relevante for søsterløsningene.
 | `loadReserves` | Ubrukt variabel + villedende kommentar | Ryddet |
 | `index.html` | Redigeringsartefakten `← ny linje` var committet inn | Fjernet |
 | `README.md` | Tom | Skrevet |
+| `midDate` + `getShare` | Eierskifte med virkning 1. juli ga null equity-justert produksjon for hele året (PR #25) | Referansedato bygges i UTC, og `to` dekker hele den siste dagen |
+
+**Detaljer om tidssonefeilen**, siden feilklassen er direkte overførbar til
+søsterløsningene:
+
+`midDate` bygget referansedatoen med `new Date(year, 6, 1)`, altså 1. juli i
+**nettleserens lokale tid**. Sodirs lisensgrenser er UTC-midnatt. I Norge
+(UTC+1) ble sonden dermed `30. juni 23:00 UTC`:
+
+```
+gammel lisens  to   = 1977-06-30 00:00 UTC   ->  ts > to    -> utelukket
+ny lisens      from = 1977-07-01 00:00 UTC   ->  ts < from  -> utelukket
+```
+
+Sonden landet i et ettdøgns tomrom mellom de to periodene, én time på feil side
+av begge. Alle andeler ble 0, og hele årets equity-justerte produksjon forsvant
+— mens feltproduksjonen, som ikke går via `getShare`, sto urørt.
+
+15 felt-år var rammet, verifisert mot datafilene: EKOFISK 1977, VEST EKOFISK
+1977, FRIGG 1977, COD 1977, STATFJORD 1994 og 1997, STATFJORD ØST 1997,
+STATFJORD NORD 1997, MURCHISON 1994 og 1997, DRAUGEN 1995, BLANE 2010,
+BRAGE 2011, KRISTIN 2005, ORMEN LANGE 2013. 1977-klyngen er Phillips/Elf-
+gruppens felt, som alle skiftet eierskap samme dato.
+
+To ting er verdt å merke seg for søsterløsningene. Feilen var **usynlig i
+UTC** — en test på en server i UTC ga 0 avvik, den slo kun ut i nettleseren
+til noen i en annen tidssone. Og den rammet **kun årlig** oppløsning;
+månedlig og kvartalsvis slår opp den 15., som aldri ligger inntil en
+døgngrense.
+
+Rettingen er todelt: referansedatoen bygges med `Date.UTC`, og `to`-datoen
+tolkes som hele det døgnet (`+ 86399999 ms`). Hver av dem lukker alle 15 alene;
+den andre gjør oppslaget robust mot at `to` og `from` i kilden ligger ett døgn
+fra hverandre istedenfor å møtes.
 
 **Detaljer om Excel-feilen**, siden mønsteret er lett å gjenskape:
 `renderChart` trimmet `labels` og `datasets` og lagret den trimmede

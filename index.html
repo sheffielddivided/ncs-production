@@ -492,10 +492,15 @@ async function queryAllParallel(layerId, params = {}, PAGE_SIZE = 2000) {
 }
 
 // ── PERIOD UTILS ─────────────────────────────────────────────────────────────
+// UTC, ikke lokal tid. Datoen her sammenlignes mot fldLicenseeFrom/To fra
+// Sodir, som er UTC-midnatt. Med lokal tid blir 1. juli i Norge
+// 30. juni 23:00 UTC, og et eierskifte som gjelder fra 1. juli treffer
+// hverken den gamle eller den nye lisensperioden. Det slo ut som null
+// equity-justert produksjon for hele året — Ekofisk 1977 og 14 andre felt-år.
 function midDate(year, month) {
   return (period === 'monthly' || period === 'quarterly')
-    ? new Date(year, month-1, 15)
-    : new Date(year, 6, 1);
+    ? new Date(Date.UTC(year, month-1, 15))
+    : new Date(Date.UTC(year, 6, 1));
 }
 function periodKey(a) {
   return (period === 'monthly' || period === 'quarterly')
@@ -641,7 +646,11 @@ function getShare(fieldId, date, companyName) {
   const match = records.find(r => {
     if (r.cmpLongName !== companyName) return false;
     if (r.fldLicenseeFrom !== null && ts < r.fldLicenseeFrom) return false;
-    if (r.fldLicenseeTo   !== null && ts > r.fldLicenseeTo)   return false;
+    // fldLicenseeTo er midnatt den siste gyldige dagen, så hele det døgnet
+    // hører med. Uten dette ligger det et tomrom på ett døgn mellom en
+    // periode som slutter 30. juni og den neste som starter 1. juli, og et
+    // oppslag i tomrommet finner ingen lisensiær.
+    if (r.fldLicenseeTo   !== null && ts > r.fldLicenseeTo + 86399999) return false;
     return true;
   });
   return match ? (match.fldCompanyShare || 0) : 0;
