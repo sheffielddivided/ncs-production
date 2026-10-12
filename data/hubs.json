@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-09-25",
+  "updated": "2026-10-12",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -48,23 +48,27 @@
       "auto": false
     },
     "43555": {
-      "hub": "Nedstengte felt",
+      "hub": "Old Frigg",
       "auto": false
     },
     "43568": {
-      "hub": "Nedstengte felt",
+      "hub": "Old Frigg",
       "auto": false
     },
     "43576": {
-      "hub": "Nedstengte felt",
+      "hub": "Old Frigg",
       "auto": false
     },
     "43583": {
-      "hub": "Nedstengte felt",
+      "hub": "Old Frigg",
       "auto": false
     },
     "43597": {
-      "hub": "Nedstengte felt",
+      "hub": "Old Frigg",
+      "auto": false
+    },
+    "43610": {
+      "hub": "Old Frigg",
       "auto": false
     },
     "43639": {
@@ -175,6 +179,10 @@
       "hub": "Alvheim hub",
       "auto": false
     },
+    "4444332": {
+      "hub": "NORNE",
+      "auto": false
+    },
     "4467595": {
       "hub": "GJØA",
       "auto": true
@@ -190,6 +198,10 @@
     "4973114": {
       "hub": "ÅSGARD",
       "auto": true
+    },
+    "4999528": {
+      "hub": "ULA",
+      "auto": false
     },
     "5506919": {
       "hub": "ULA",
@@ -369,6 +381,10 @@
     },
     "42002537": {
       "hub": "Yggdrasil",
+      "auto": false
+    },
+    "42148955": {
+      "hub": "ÅSGARD",
       "auto": false
     }
   }
