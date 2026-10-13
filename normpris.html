@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Normpriser olje</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -35,7 +36,10 @@
     }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); line-height:1.4; }
-    header { background:var(--bar); color:var(--bar-text); padding:14px 16px 12px; }
+    header { background:var(--bar); color:var(--bar-text); padding:14px 16px 12px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    #xlsx { background:#fff; color:#7d2248; border:none; border-radius:7px; font:inherit; font-size:.8rem; font-weight:700; padding:8px 14px; cursor:pointer; }
+    #xlsx:disabled { opacity:.5; cursor:default; }
+    #xlsx:focus-visible { outline:2px solid #fff; outline-offset:2px; }
     header h1 { font-size:1.05rem; font-weight:700; }
     header p { font-size:.75rem; opacity:.7; margin-top:2px; }
     main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
@@ -73,8 +77,11 @@
 </head>
 <body>
 <header>
-  <h1>Normpriser olje – norsk sokkel</h1>
-  <p id="meta">Laster data…</p>
+  <div>
+    <h1>Normpriser olje – norsk sokkel</h1>
+    <p id="meta">Laster data…</p>
+  </div>
+  <button id="xlsx" disabled>Last ned Excel</button>
 </header>
 <main>
   <div id="err"></div>
@@ -139,6 +146,7 @@ async function load() {
   const rows = brent.rows;
   document.getElementById('meta').textContent =
     `Datert Brent ${rows[0][0]} – ${rows[rows.length - 1][0]} · ${Object.keys(diff.fields).length} felt · differensialer ${diff.months[0]} – ${diff.months[diff.months.length - 1]}`;
+  document.getElementById('xlsx').disabled = false;
   setSelection(DEFAULT_SEL);
   buildTable();
   drawAll();
@@ -264,6 +272,49 @@ function paintTable() {
 }
 
 function drawAll() { drawBrent(); drawDiff(); drawChips(); paintTable(); }
+
+/* ── Excel-eksport ────────────────────────────────────────────── */
+async function downloadXlsx() {
+  const btn = document.getElementById('xlsx');
+  if (typeof ExcelJS === 'undefined') { alert('Excel-biblioteket kunne ikke lastes. Sjekk nettverkstilkoblingen og prøv igjen.'); return; }
+  btn.disabled = true;
+  try {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'ncs-production';
+
+    // Differensialer: ett felt per rad, én måned per kolonne. Manglende verdi = tom celle.
+    const ws = wb.addWorksheet('Differensialer', { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
+    ws.addRow(['Felt', ...diff.months]);
+    Object.keys(diff.fields).forEach(f => ws.addRow([f, ...diff.months.map(m => diff.fields[f][m] ?? null)]));
+    ws.getRow(1).font = { bold: true };
+    ws.getColumn(1).width = 18; ws.getColumn(1).font = { bold: true };
+    for (let c = 2; c <= diff.months.length + 1; c++) { ws.getColumn(c).width = 9; ws.getColumn(c).numFmt = '0.00##'; }
+
+    // Datert Brent: ekte datoer, så Excel kan lage tidsakse.
+    const wb2 = wb.addWorksheet('Datert Brent', { views: [{ state: 'frozen', ySplit: 1 }] });
+    wb2.addRow(['Dato', 'Datert Brent ($/fat)']);
+    brent.rows.forEach(([d, v]) => wb2.addRow([new Date(d + 'T00:00:00Z'), v]));
+    wb2.getRow(1).font = { bold: true };
+    wb2.getColumn(1).width = 12; wb2.getColumn(1).numFmt = 'yyyy-mm-dd';
+    wb2.getColumn(2).width = 20; wb2.getColumn(2).numFmt = '0.00';
+
+    const info = wb.addWorksheet('Info');
+    [['Innhold', 'Månedlige normpris-differensialer per felt og daglig Datert Brent'],
+     ['Enhet', '$/fat'],
+     ['Tomme celler', 'Ingen normpris for feltet den måneden (trolig ikke solgt olje)'],
+     ['Kilde', 'Petroleumsprisrådet / Energidepartementet (regjeringen.no)'],
+    ].forEach(r => info.addRow(r));
+    info.getColumn(1).font = { bold: true }; info.getColumn(1).width = 16; info.getColumn(2).width = 80;
+
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = 'normpriser.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } finally { btn.disabled = false; }
+}
+document.getElementById('xlsx').onclick = downloadXlsx;
 
 /* ── Hendelser ────────────────────────────────────────────────── */
 document.getElementById('brent-range').addEventListener('click', e => {
