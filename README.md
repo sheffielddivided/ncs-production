@@ -85,16 +85,22 @@ manuelt til `data/normpris-raw/`, og push til `main`. Workflowen
 som også kan kjøres lokalt.
 
 - `normpris_brent.json`: `{"columns":["date","usd"],"rows":[["2021-01-01",54.3],...]}`
-- `normpris_diff.json`: `{"months":["2019-01",...,"2026-03"],"fields":{"TROLL":{"2019-01":2.2,...}},"split":{"ALVHEIM":["2020-04"]}}`.
+- `normpris_diff.json`: `{"months":["2011-01",...,"2026-03"],"fields":{"TROLL":{"2011-01":2.7,...}},"split":{"ALVHEIM":["2020-04"]}}`.
   Måneder uten verdi finnes ikke under feltet (trolig ikke solgt olje), så
   grafer kan bruke `months` som akse og tegne hull. `split` lister felt-måneder
   der kilden har flere differensialer i måneden (merket `*`, delperioder i
-  2020); de har ingen månedsverdi og er ikke importert. Feltnavn er som i filene
+  2018 og 2020); de har ingen månedsverdi og er ikke importert. Feltnavn er som i filene
   (store bokstaver), ikke Sodir-id.
 - Tilleggsfiler (`...-troll-februar.xlsx` o.l.) retter eller fyller ut enkelte
   felt/måneder og overstyrer hovedfilen. Importen feiler uten å skrive noe hvis
   et ark ikke ser ut som forventet.
 - Daglige normpriser per felt, valutakurser og Draugens løftebaserte
   differensialer (arket `DRA` i 2022-filene) importeres ikke.
-- Kjent avvik i kilden: KNARR juli 2021 er tom i Differensialer, men feltarket
+- Foreløpig tall: 3Q 2011 finnes bare som «foreløpige differensialer».
+- Filnavnene varierer (2011-q1, np-q3-2016, ...). Hvilke filer som er
+  hovedfiler og hvilke som er rettelser avgjøres av innholdet: filer med flest
+  verdier leses først, mindre filer overstyrer. 4Q 2015 mangler dollar-blokk i
+  feltarkene og er derfor ikke kryssjekket.
+- Kjente avvik i kilden: STATFJORD februar 2011 er 0,0 i Differensialer, men
+  -0,4 i feltarket (tabellen følges). KNARR juli 2021 er tom i Differensialer, men feltarket
   har priser for måneden. Tabellen følges, så måneden mangler.
