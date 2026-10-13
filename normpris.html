@@ -71,6 +71,8 @@
     td.na { color:var(--text-3); text-align:center; }
     .legend { display:flex; align-items:center; gap:8px; font-size:.72rem; color:var(--text-2); margin:0 0 10px; flex-wrap:wrap; }
     .ramp { width:180px; height:10px; border-radius:5px; background:linear-gradient(90deg,var(--neg),var(--mid),var(--pos)); }
+    .period { display:inline-flex; align-items:center; gap:8px; font-size:.78rem; color:var(--text-2); }
+    .period select { font:inherit; font-size:.8rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:5px 8px; }
     #err { display:none; padding:16px; color:var(--text); }
     @media (max-width:600px) { .chart-box { height:260px; } }
   </style>
@@ -100,6 +102,12 @@
   <section>
     <h2>Normpris-differensial per felt</h2>
     <p class="sub">Månedlig, $/fat relativt til Datert Brent. Hull i linjen betyr at feltet ikke har noen månedsverdi: trolig ikke solgt olje, eller flere differensialer i måneden (delperioder i 2018 og 2020). Velg opptil 8 felt.</p>
+    <div class="row">
+      <span class="period">Periode
+        <select id="y0" aria-label="Fra år"></select> –
+        <select id="y1" aria-label="Til år"></select>
+      </span>
+    </div>
     <div class="chips" id="chips"></div>
     <div class="row">
       <button class="btn" id="reset">Standardutvalg</button>
@@ -110,7 +118,7 @@
 
   <section>
     <h2>Alle felt og måneder</h2>
-    <p class="sub">Differensial i $/fat. Blått er over Brent, oransje under, grått rundt null. Tomme ruter (–) har ingen verdi, og * betyr flere differensialer i måneden (delperioder i 2018 og 2020, ikke importert).</p>
+    <p class="sub">Differensial i $/fat. Blått er over Brent, oransje under, grått rundt null. Tomme ruter (–) har ingen verdi, og * betyr flere differensialer i måneden (delperioder i 2018 og 2020, ikke importert). Viser samme periode som diagrammet over.</p>
     <div class="legend"><span>Lavere</span><span class="ramp" aria-hidden="true"></span><span>Høyere</span><span id="scale-note"></span></div>
     <div class="scroll" tabindex="0" id="tbl-wrap"><table id="tbl"></table></div>
     <p class="note" id="source">Kilde: Petroleumsprisrådet / Energidepartementet (regjeringen.no).</p>
@@ -125,6 +133,7 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 
 let brent, diff, brentChart, diffChart;
 let range = 0;
+let y0, y1;                   // valgt periode (fra/til år) for differensialdiagram og tabell
 let selected = [];            // feltnavn i valgrekkefølge
 const slotOf = {};            // felt -> 1..8 (holdes så lenge feltet er valgt)
 
@@ -147,9 +156,39 @@ async function load() {
   document.getElementById('meta').textContent =
     `Datert Brent ${rows[0][0]} – ${rows[rows.length - 1][0]} · ${Object.keys(diff.fields).length} felt · differensialer ${diff.months[0]} – ${diff.months[diff.months.length - 1]}`;
   document.getElementById('xlsx').disabled = false;
+  initPeriod();
   setSelection(DEFAULT_SEL);
   buildTable();
   drawAll();
+}
+
+/* ── Periode (fra/til år) ─────────────────────────────────────── */
+function shownMonths() {
+  return diff.months.filter(m => { const y = +m.slice(0, 4); return y >= y0 && y <= y1; });
+}
+function initPeriod() {
+  const years = [...new Set(diff.months.map(m => +m.slice(0, 4)))];
+  const lo = years[0], hi = years[years.length - 1];
+  const clamp = y => Math.min(hi, Math.max(lo, y));
+  const cur = new Date().getFullYear();
+  y1 = clamp(cur); y0 = clamp(cur - 3);     // standard: inneværende år og tre år tilbake
+  for (const id of ['y0', 'y1']) {
+    const el = document.getElementById(id);
+    el.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  }
+  syncPeriod();
+}
+function syncPeriod() {
+  document.getElementById('y0').value = y0;
+  document.getElementById('y1').value = y1;
+}
+function onPeriodChange(changed) {
+  y0 = +document.getElementById('y0').value;
+  y1 = +document.getElementById('y1').value;
+  // Fra-året kan ikke ligge etter til-året: det året brukeren ikke rørte følger med.
+  if (y0 > y1) { if (changed === 'y0') y1 = y0; else y0 = y1; }
+  syncPeriod();
+  drawDiff(); paintTable();
 }
 
 /* ── Valg av felt ─────────────────────────────────────────────── */
@@ -221,10 +260,11 @@ function drawBrent() {
 }
 
 function drawDiff() {
-  const data = { labels: diff.months, datasets: selected.map(f => {
+  const months = shownMonths();
+  const data = { labels: months, datasets: selected.map(f => {
     const c = css(`--s${slotOf[f]}`);
     return {
-      label: f, data: diff.months.map(m => diff.fields[f][m] ?? null),
+      label: f, data: months.map(m => diff.fields[f][m] ?? null),
       borderColor: c, backgroundColor: c, borderWidth: 2, spanGaps: false,
       pointRadius: 3, pointBackgroundColor: c, pointBorderColor: css('--surface'), pointBorderWidth: 1.5, pointHoverRadius: 5, tension: 0,
     };
@@ -250,15 +290,16 @@ function buildTable() {
 function paintTable() {
   const mid = hex(css('--mid')), pos = hex(css('--pos')), neg = hex(css('--neg'));
   const mon = new Intl.DateTimeFormat('nb-NO', { month: 'short' });
+  const months = shownMonths();
   let h = '<thead><tr><th>Felt</th>';
-  diff.months.forEach(m => {
+  months.forEach(m => {
     const [y, mm] = m.split('-');
-    h += `<th class="${mm === '01' ? 'yr' : ''}">${mon.format(new Date(+y, +mm - 1, 1)).replace('.', '')}<br>${mm === '01' || m === diff.months[0] ? y : ''}</th>`;
+    h += `<th class="${mm === '01' ? 'yr' : ''}">${mon.format(new Date(+y, +mm - 1, 1)).replace('.', '')}<br>${mm === '01' || m === months[0] ? y : ''}</th>`;
   });
   h += '</tr></thead><tbody>';
   Object.keys(diff.fields).forEach(f => {
     h += `<tr><th scope="row">${f}</th>`;
-    diff.months.forEach(m => {
+    months.forEach(m => {
       const v = diff.fields[f][m];
       if (v == null) {
         const isSplit = (diff.split?.[f] || []).includes(m);
@@ -327,6 +368,8 @@ document.getElementById('brent-range').addEventListener('click', e => {
   document.querySelectorAll('#brent-range button').forEach(x => x.classList.toggle('on', x === b));
   drawBrent();
 });
+document.getElementById('y0').onchange = () => onPeriodChange('y0');
+document.getElementById('y1').onchange = () => onPeriodChange('y1');
 document.getElementById('reset').onclick = () => { setSelection(DEFAULT_SEL); drawDiff(); drawChips(); };
 document.getElementById('clear').onclick = () => { setSelection([]); drawDiff(); drawChips(); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => brent && drawAll());
