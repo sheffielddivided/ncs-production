@@ -24,12 +24,23 @@ tilleggsfil overstyrer hovedfilen, så en verdi som er rettet i ettertid vinner.
 Manglende celle = ingen verdi (trolig ikke solgt olje den måneden); slike
 måneder utelates, de lagres ikke som 0 eller null.
 
-Månedene leses fra overskriftene i rad 4 (kolonne C-I), ikke fra posisjon: i
-tilleggsfiler står én enkelt måned i første kolonne uansett hvilken måned det
-er, og eldre filer (2019) bruker andre kolonner. Er en celle merket '*' eller
-'**' hadde feltet flere differensialer i måneden (delperioder, 2019-2020).
-Det finnes da ingen månedsverdi; slike måneder lagres under "split" og ikke som
-tall. Delperiodene i sideblokken (kolonne > I) importeres ikke.
+Filene varierer en del (2011-2026), så parseren er tolerant der det er trygt og
+feiler høyt ellers:
+  - Månedene leses fra overskriftene i rad 4 (kolonne C-I), ikke fra posisjon:
+    i tilleggsfiler står én enkelt måned i første kolonne uansett hvilken måned
+    det er, og eldre filer bruker andre kolonner.
+  - Feltnavn normaliseres (store bokstaver, fotnotestjerner fjernes: 'TROLL*').
+    Rader som er fotnoter ('* ...', '(*) ...') hoppes over.
+  - 'N/A' er en manglende verdi.
+  - Er en celle merket '*' eller '**', eller har et felt flere rader i samme
+    måned ('GUDRUN (*)' / 'GUDRUN (**)' i 2Q 2018), hadde feltet flere
+    differensialer i måneden (delperioder). Det finnes da ingen månedsverdi;
+    slike måneder lagres under "split" og ikke som tall. Delperiodene i
+    sideblokken (kolonne > I) importeres ikke.
+  - Alt annet i en verdicelle (ukjent tekst) stopper importen.
+
+Rekkefølge: filene med flest verdier leses først, og mindre filer (rettelser og
+utfyllinger av enkeltfelt) overstyrer. Det er uavhengig av filnavn.
 
 Utdata er deterministisk (sorterte rader og nøkler), slik at filene bare
 endrer seg når dataene har endret seg.
@@ -69,20 +80,16 @@ BRENT_COLS = ((2, 3), (5, 6), (8, 9))
 
 TITLE_RE = re.compile(r'(\d)Q\s*(\d{4})')
 MARKER_RE = re.compile(r'\*+')
+NA_RE = re.compile(r'(n/?a|-+)', re.I)
+FOOTNOTE_MARK_RE = re.compile(r'\s*\(?\*+\)?\s*$')
 
 
 class ParseError(Exception):
     pass
 
 
-def is_supplement(path):
-    """Tilleggsfiler har et suffiks etter '-endelige-normpriser'."""
-    name = os.path.basename(path).lower()
-    return not re.fullmatch(r'np-\dq-\d{4}(-endelige)?(-normpriser)?\.xlsx', name)
-
-
 def _quarter(ws, path):
-    title = str(ws['B2'].value or '')
+    title = str(ws['B2'].value or ws['B1'].value or '')
     m = TITLE_RE.search(title)
     if not m:
         raise ParseError(f"{path}: fant ikke kvartal/år i tittel {title!r}")
@@ -122,20 +129,37 @@ def parse_diffs(wb, path):
     if not month_of:
         raise ParseError(f"{path}: fant ingen månedsoverskrifter i rad 4")
 
-    values, split = [], []
+    # Samle verdier per (felt, måned). Flere rader for samme felt og måned
+    # (f.eks. 'GUDRUN (*)' og 'GUDRUN (**)') betyr delperioder.
+    cells = defaultdict(list)    # (felt, ym) -> verdier, eller 'split'
     for row in range(5, ws.max_row + 1):
-        field = ws.cell(row, 2).value
-        if field is None or not str(field).strip():
+        raw = ws.cell(row, 2).value
+        if raw is None or not str(raw).strip():
             continue
-        field = str(field).strip().upper()
+        raw = str(raw).strip()
+        if raw.startswith(('*', '(')):
+            continue                      # fotnoterad
+        field = FOOTNOTE_MARK_RE.sub('', raw).strip().upper()
         for col, ym in month_of.items():
             cell = ws.cell(row, col)
-            if isinstance(cell.value, str) and MARKER_RE.fullmatch(cell.value.strip()):
-                split.append((field, ym))
-                continue
-            value = _num(cell.value, f'{path} {cell.coordinate}')
+            v = cell.value
+            if isinstance(v, str):
+                t = v.strip()
+                if MARKER_RE.fullmatch(t):
+                    cells[(field, ym)].append('split')
+                    continue
+                if t == '' or NA_RE.fullmatch(t):
+                    continue
+            value = _num(v, f'{path} {cell.coordinate}')
             if value is not None:
-                values.append((field, ym, value))
+                cells[(field, ym)].append(value)
+
+    values, split = [], []
+    for (field, ym), vs in cells.items():
+        if len(vs) == 1 and vs[0] != 'split':
+            values.append((field, ym, vs[0]))
+        else:
+            split.append((field, ym))
     return values, split
 
 
@@ -147,7 +171,7 @@ def parse_brent(wb, path):
     for row in range(5, ws.max_row + 1):
         for dcol, pcol in BRENT_COLS:
             d = ws.cell(row, dcol).value
-            if d is None:
+            if d is None or (isinstance(d, str) and not d.strip()):
                 continue
             if not isinstance(d, (datetime, date)):
                 raise ParseError(f"{path} {ws.cell(row, dcol).coordinate}: forventet dato, fant {d!r}")
@@ -158,34 +182,40 @@ def parse_brent(wb, path):
 
 
 def load_all(raw_dir=RAW_DIR):
-    """Leser alle xlsx-filer. Hovedfiler først, tilleggsfiler til slutt (de vinner)."""
+    """Leser alle xlsx-filer. Største filer først, mindre filer (rettelser) overstyrer."""
     paths = sorted(glob.glob(os.path.join(raw_dir, '*.xlsx')))
-    paths.sort(key=lambda p: (is_supplement(p), os.path.basename(p)))
     if not paths:
         raise ParseError(f"ingen xlsx-filer i {raw_dir}")
+
+    parsed = []
+    for path in paths:
+        wb = openpyxl.load_workbook(path, data_only=True, read_only=False)
+        try:
+            values, marked = parse_diffs(wb, path)
+            days = parse_brent(wb, path)
+        finally:
+            wb.close()
+        parsed.append((path, values, marked, days))
+    parsed.sort(key=lambda p: (-(len(p[1]) + len(p[2])), os.path.basename(p[0])))
 
     diffs = {}   # (felt, måned) -> (verdi, fil)
     split = {}   # (felt, måned) -> fil, for måneder med delperioder
     brent = {}   # dato -> (pris, fil)
     conflicts = []
-    for path in paths:
-        wb = openpyxl.load_workbook(path, data_only=True, read_only=False)
-        try:
-            values, marked = parse_diffs(wb, path)
-            for field, ym, value in values:
-                prev = diffs.get((field, ym))
-                if prev and prev[0] != value:
-                    conflicts.append(('diff', f'{field} {ym}', prev, (value, path)))
-                diffs[(field, ym)] = (value, path)
-            for field, ym in marked:
-                split[(field, ym)] = path
-            for d, price in parse_brent(wb, path):
-                prev = brent.get(d)
-                if prev and prev[0] != price:
-                    conflicts.append(('brent', d, prev, (price, path)))
-                brent[d] = (price, path)
-        finally:
-            wb.close()
+    for path, values, marked, days in parsed:
+        for field, ym, value in values:
+            prev = diffs.get((field, ym))
+            if prev and prev[0] != value:
+                conflicts.append(('diff', f'{field} {ym}', prev, (value, path)))
+            diffs[(field, ym)] = (value, path)
+        for field, ym in marked:
+            split[(field, ym)] = path
+        for d, price in days:
+            prev = brent.get(d)
+            if prev and prev[0] != price:
+                conflicts.append(('brent', d, prev, (price, path)))
+            brent[d] = (price, path)
+
     # En verdi (f.eks. fra en tilleggsfil) går foran en '*' fra hovedfilen.
     split = {k: v for k, v in split.items() if k not in diffs}
     return paths, diffs, brent, split, conflicts
