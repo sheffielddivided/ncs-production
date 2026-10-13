@@ -24,11 +24,19 @@ tilleggsfil overstyrer hovedfilen, så en verdi som er rettet i ettertid vinner.
 Manglende celle = ingen verdi (trolig ikke solgt olje den måneden); slike
 måneder utelates, de lagres ikke som 0 eller null.
 
+Månedene leses fra overskriftene i rad 4 (kolonne C-I), ikke fra posisjon: i
+tilleggsfiler står én enkelt måned i første kolonne uansett hvilken måned det
+er, og eldre filer (2019) bruker andre kolonner. Er en celle merket '*' eller
+'**' hadde feltet flere differensialer i måneden (delperioder, 2019-2020).
+Det finnes da ingen månedsverdi; slike måneder lagres under "split" og ikke som
+tall. Delperiodene i sideblokken (kolonne > I) importeres ikke.
+
 Utdata er deterministisk (sorterte rader og nøkler), slik at filene bare
 endrer seg når dataene har endret seg.
 
   normpris_brent.json  {"columns":["date","usd"], "rows":[["2021-01-01",54.3],...]}
-  normpris_diff.json   {"months":["2021-01",...], "fields":{"TROLL":{"2021-01":2.2,...}}}
+  normpris_diff.json   {"months":["2021-01",...], "fields":{"TROLL":{"2021-01":2.2,...}},
+                        "split":{"ALVHEIM":["2020-04"]}}
 """
 
 import glob
@@ -53,12 +61,14 @@ MONTHS = {
     'desember': 12,
 }
 
-# Kolonnene i Differensialer: D/F/H er måned 1/2/3 i kvartalet.
-DIFF_COLS = (4, 6, 8)
+# Månedsoverskriftene i Differensialer står i kolonne C-I (3-9). Kolonner til
+# høyre for det er en sideblokk med delperioder, som ikke importeres.
+DIFF_HEADER_COLS = range(3, 10)
 # Brent-arket: (dato-kolonne, pris-kolonne) per måned.
 BRENT_COLS = ((2, 3), (5, 6), (8, 9))
 
 TITLE_RE = re.compile(r'(\d)Q\s*(\d{4})')
+MARKER_RE = re.compile(r'\*+')
 
 
 class ParseError(Exception):
@@ -68,7 +78,7 @@ class ParseError(Exception):
 def is_supplement(path):
     """Tilleggsfiler har et suffiks etter '-endelige-normpriser'."""
     name = os.path.basename(path).lower()
-    return not re.fullmatch(r'np-\dq-\d{4}-endelige-normpriser\.xlsx', name)
+    return not re.fullmatch(r'np-\dq-\d{4}(-endelige)?(-normpriser)?\.xlsx', name)
 
 
 def _quarter(ws, path):
@@ -88,36 +98,45 @@ def _num(value, where):
 
 
 def parse_diffs(wb, path):
-    """Returnerer liste av (felt, 'YYYY-MM', verdi) for én fil."""
+    """Returnerer (verdier, delte) for én fil.
+
+    verdier: liste av (felt, 'YYYY-MM', verdi); delte: liste av (felt, 'YYYY-MM')
+    for celler merket '*' (flere differensialer i måneden).
+    """
     ws = wb[DIFF_SHEET]
     quarter, year = _quarter(ws, path)
-    first_month = (quarter - 1) * 3 + 1
 
-    # Overskriftene i rad 4 oppgir hvilke måneder kolonnene gjelder. Sjekk dem
-    # mot kvartalet fra tittelen, så en forskjøvet kolonne ikke går ubemerket.
     month_of = {}
-    for i, col in enumerate(DIFF_COLS):
+    for col in DIFF_HEADER_COLS:
         label = ws.cell(4, col).value
-        expected = first_month + i
         if label is None:
             continue
-        got = MONTHS.get(str(label).strip().lower())
-        if got != expected:
+        num = MONTHS.get(str(label).strip().lower())
+        if num is None:
+            raise ParseError(f"{path} {ws.cell(4, col).coordinate}: ukjent måned {label!r}")
+        # Måneden må høre til kvartalet i tittelen, ellers er filen noe annet enn forventet.
+        if (num - 1) // 3 + 1 != quarter:
             raise ParseError(
-                f"{path} {ws.cell(4, col).coordinate}: forventet måned {expected}, fant {label!r}")
-        month_of[col] = f'{year}-{expected:02d}'
+                f"{path} {ws.cell(4, col).coordinate}: {label!r} hører ikke til {quarter}Q {year}")
+        month_of[col] = f'{year}-{num:02d}'
+    if not month_of:
+        raise ParseError(f"{path}: fant ingen månedsoverskrifter i rad 4")
 
-    out = []
+    values, split = [], []
     for row in range(5, ws.max_row + 1):
         field = ws.cell(row, 2).value
         if field is None or not str(field).strip():
             continue
         field = str(field).strip().upper()
         for col, ym in month_of.items():
-            value = _num(ws.cell(row, col).value, f'{path} {ws.cell(row, col).coordinate}')
+            cell = ws.cell(row, col)
+            if isinstance(cell.value, str) and MARKER_RE.fullmatch(cell.value.strip()):
+                split.append((field, ym))
+                continue
+            value = _num(cell.value, f'{path} {cell.coordinate}')
             if value is not None:
-                out.append((field, ym, value))
-    return out
+                values.append((field, ym, value))
+    return values, split
 
 
 def parse_brent(wb, path):
@@ -146,16 +165,20 @@ def load_all(raw_dir=RAW_DIR):
         raise ParseError(f"ingen xlsx-filer i {raw_dir}")
 
     diffs = {}   # (felt, måned) -> (verdi, fil)
+    split = {}   # (felt, måned) -> fil, for måneder med delperioder
     brent = {}   # dato -> (pris, fil)
     conflicts = []
     for path in paths:
         wb = openpyxl.load_workbook(path, data_only=True, read_only=False)
         try:
-            for field, ym, value in parse_diffs(wb, path):
+            values, marked = parse_diffs(wb, path)
+            for field, ym, value in values:
                 prev = diffs.get((field, ym))
                 if prev and prev[0] != value:
                     conflicts.append(('diff', f'{field} {ym}', prev, (value, path)))
                 diffs[(field, ym)] = (value, path)
+            for field, ym in marked:
+                split[(field, ym)] = path
             for d, price in parse_brent(wb, path):
                 prev = brent.get(d)
                 if prev and prev[0] != price:
@@ -163,11 +186,13 @@ def load_all(raw_dir=RAW_DIR):
                 brent[d] = (price, path)
         finally:
             wb.close()
-    return paths, diffs, brent, conflicts
+    # En verdi (f.eks. fra en tilleggsfil) går foran en '*' fra hovedfilen.
+    split = {k: v for k, v in split.items() if k not in diffs}
+    return paths, diffs, brent, split, conflicts
 
 
-def build_payloads(diffs, brent):
-    months = sorted({ym for _, ym in diffs})
+def build_payloads(diffs, brent, split):
+    months = sorted({ym for _, ym in diffs} | {ym for _, ym in split})
     # Fullstendig månedsliste fra første til siste, så grafer kan vise hull.
     y, m = map(int, months[0].split('-'))
     ye, me = map(int, months[-1].split('-'))
@@ -179,6 +204,9 @@ def build_payloads(diffs, brent):
     fields = defaultdict(dict)
     for (field, ym), (value, _) in diffs.items():
         fields[field][ym] = value
+    split_by_field = defaultdict(list)
+    for field, ym in split:
+        split_by_field[field].append(ym)
 
     return {
         'normpris_brent.json': {
@@ -188,6 +216,7 @@ def build_payloads(diffs, brent):
         'normpris_diff.json': {
             'months': full,
             'fields': {f: dict(sorted(v.items())) for f, v in sorted(fields.items())},
+            'split': {f: sorted(v) for f, v in sorted(split_by_field.items())},
         },
     }
 
@@ -208,18 +237,19 @@ def write_if_changed(name, payload):
 
 def main():
     try:
-        paths, diffs, brent, conflicts = load_all()
+        paths, diffs, brent, split, conflicts = load_all()
     except ParseError as exc:
         # Avbryt uten å skrive noe, så forrige gyldige datasett består.
         print(f"FEIL: {exc}", file=sys.stderr)
         return 1
 
-    print(f"Leste {len(paths)} filer: {len(diffs)} differensialer, {len(brent)} Brent-dager")
+    print(f"Leste {len(paths)} filer: {len(diffs)} differensialer, {len(brent)} Brent-dager, "
+          f"{len(split)} felt-måneder med delperioder (ikke importert)")
     for kind, key, old, new in conflicts:
         print(f"  ! {kind} {key}: {old[0]} ({os.path.basename(old[1])}) "
               f"overstyres av {new[0]} ({os.path.basename(new[1])})")
 
-    payloads = build_payloads(diffs, brent)
+    payloads = build_payloads(diffs, brent, split)
     for name, payload in payloads.items():
         write_if_changed(name, payload)
     return 0
