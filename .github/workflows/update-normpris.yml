@@ -1,0 +1,49 @@
+name: Oppdater normpris-data
+
+# Normpris-xlsx-filene fra regjeringen.no kan ikke hentes automatisk
+# (Cloudflare). De legges manuelt i data/normpris-raw/, og denne jobben
+# bygger data/normpris_*.json på nytt fra dem.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/normpris-raw/**'
+      - 'fetch_normpris.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: normpris-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: pip install openpyxl
+
+      - name: Bygg normpris-JSON
+        run: python fetch_normpris.py
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/normpris_brent.json data/normpris_diff.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+          else
+            git commit -m "Oppdater normpris-data ($(date -u +%Y-%m-%d))"
+            git push
+          fi
