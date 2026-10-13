@@ -61,6 +61,8 @@
     .chip.on .dot { border:2px solid var(--surface); box-shadow:0 0 0 1px var(--text-3); }
     .chip:disabled { opacity:.4; cursor:not-allowed; }
     .note { font-size:.72rem; color:var(--text-3); margin-top:8px; }
+    .fav-status { margin-top:0; }
+    [hidden] { display:none !important; }
     .scroll { overflow:auto; max-height:560px; border:1px solid var(--border); border-radius:8px; }
     table { border-collapse:separate; border-spacing:0; font-size:.68rem; font-variant-numeric:tabular-nums; }
     th, td { padding:3px 4px; text-align:right; white-space:nowrap; min-width:42px; border-right:2px solid var(--surface); border-bottom:2px solid var(--surface); }
@@ -113,6 +115,9 @@
     <div class="row">
       <button class="btn" id="reset">Standardutvalg</button>
       <button class="btn" id="clear">Fjern alle</button>
+      <button class="btn" id="fav-save" title="Lagre valgte felt som favoritter i denne nettleseren">★ Lagre som favoritt</button>
+      <button class="btn" id="fav-del" hidden>Slett favoritter</button>
+      <span class="note fav-status" id="fav-status" role="status" aria-live="polite"></span>
     </div>
     <div class="chart-box"><canvas id="diff" role="img" aria-label="Linjediagram over månedlige normpris-differensialer per felt i dollar per fat"></canvas></div>
   </section>
@@ -129,6 +134,40 @@
 <script>
 const MAX_SEL = 8;
 const DEFAULT_SEL = ['TROLL', 'JOHAN SVERDRUP', 'EKOFISK', 'OSEBERG'];
+const FAV_KEY = 'normpris.favoriteFields.v1';
+
+/* ── Favoritter (lagres lokalt i nettleseren, per bruker) ───────── */
+let favStorageOk = true;
+function loadFavorites() {
+  let raw;
+  try { raw = localStorage.getItem(FAV_KEY); }
+  catch (e) { favStorageOk = false; return []; }          // lagring ikke tilgjengelig
+  if (!raw) return [];
+  let list;
+  try { list = JSON.parse(raw); } catch (e) { return []; }  // ødelagt verdi: som uten favoritter
+  if (!Array.isArray(list)) return [];
+  // Bare felt som fortsatt finnes i dataene, maks MAX_SEL.
+  return list.filter(f => typeof f === 'string' && diff.fields[f]).slice(0, MAX_SEL);
+}
+function saveFavorites(list) {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(list)); return true; }
+  catch (e) { favStorageOk = false; return false; }
+}
+function clearFavorites() {
+  try { localStorage.removeItem(FAV_KEY); return true; }
+  catch (e) { favStorageOk = false; return false; }
+}
+function startSelection() { const f = loadFavorites(); return f.length ? f : DEFAULT_SEL; }
+function favStatus(msg) { document.getElementById('fav-status').textContent = msg; }
+function updateFavUi() {
+  const has = loadFavorites().length > 0;
+  document.getElementById('reset').textContent = has ? 'Mine favoritter' : 'Standardutvalg';
+  document.getElementById('fav-del').hidden = !has;
+  const save = document.getElementById('fav-save');
+  save.disabled = !favStorageOk || selected.length === 0;
+  save.title = favStorageOk ? 'Lagre valgte felt som favoritter i denne nettleseren'
+                            : 'Nettleseren tillater ikke lagring på denne siden';
+}
 const nf = (v, d = 2) => v.toLocaleString('nb-NO', { minimumFractionDigits: 0, maximumFractionDigits: d });
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -157,7 +196,7 @@ async function load() {
     `Datert Brent ${rows[0][0]} – ${rows[rows.length - 1][0]} · ${Object.keys(diff.fields).length} felt · differensialer ${diff.months[0]} – ${diff.months[diff.months.length - 1]}`;
   document.getElementById('xlsx').disabled = false;
   initPeriod();
-  setSelection(DEFAULT_SEL);
+  setSelection(startSelection());
   buildTable();
   drawAll();
 }
@@ -207,6 +246,7 @@ function toggleField(f) {
   drawDiff(); drawChips();
 }
 function drawChips() {
+  updateFavUi();
   const box = document.getElementById('chips');
   box.innerHTML = '';
   const full = selected.length >= MAX_SEL;
@@ -362,8 +402,16 @@ document.getElementById('xlsx').onclick = downloadXlsx;
 /* ── Hendelser ────────────────────────────────────────────────── */
 document.querySelectorAll('.y0').forEach(el => { el.onchange = () => onPeriodChange('y0', el.value); });
 document.querySelectorAll('.y1').forEach(el => { el.onchange = () => onPeriodChange('y1', el.value); });
-document.getElementById('reset').onclick = () => { setSelection(DEFAULT_SEL); drawDiff(); drawChips(); };
-document.getElementById('clear').onclick = () => { setSelection([]); drawDiff(); drawChips(); };
+document.getElementById('reset').onclick = () => { setSelection(startSelection()); favStatus(''); drawDiff(); drawChips(); };
+document.getElementById('clear').onclick = () => { setSelection([]); favStatus(''); drawDiff(); drawChips(); };
+document.getElementById('fav-save').onclick = () => {
+  favStatus(saveFavorites(selected.slice()) ? `Lagret ${selected.length} favoritt${selected.length === 1 ? '' : 'er'}. Vises som standard neste gang.` : 'Kunne ikke lagre i denne nettleseren.');
+  updateFavUi();
+};
+document.getElementById('fav-del').onclick = () => {
+  favStatus(clearFavorites() ? 'Favoritter slettet. Standardutvalget brukes.' : 'Kunne ikke slette.');
+  updateFavUi();
+};
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => brent && drawAll());
 
 load();
