@@ -19,6 +19,11 @@ statiske JSON-filer i dette repoet.
 | `data/hubs.json` | Hub-tilhørighet per felt — brukerstyrt, ikke fra Sodir |
 | `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
+| `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
+| `fetch_normpris.py` | Bygger `data/normpris_*.json` fra xlsx-filene |
+| `data/normpris_brent.json` | Daglig Datert Brent, $/fat |
+| `data/normpris_diff.json` | Månedlige normpris-differensialer per felt, $/fat |
+| `.github/workflows/update-normpris.yml` | Bygger normpris-JSON når rådata endres |
 | `SOLUTION-CONTEXT.md` | Teknisk dokumentasjon — datamodell, enheter, fallgruver |
 
 ## Kjøre lokalt
@@ -67,3 +72,26 @@ Data: [Sokkeldirektoratet (Sodir) FactPages](https://factpages.sodir.no) —
 brukt under [NLOD](https://data.norge.no/nlod/en).
 
 Sodir gir ingen garanti for at dataene er korrekte eller komplette.
+
+## Normpriser (Petroleumsprisrådet)
+
+Månedlige normpris-differensialer per felt ($/fat, relativt til Datert Brent)
+og daglig Datert Brent, hentet fra kvartalsvise xlsx-filer på
+[regjeringen.no](https://www.regjeringen.no/no/tema/energi/olje-og-gass/petroleumsprisradet--og-fastsetting-av-n/id661459/).
+Siden ligger bak Cloudflare og kan ikke hentes automatisk: last ned nye filer
+manuelt til `data/normpris-raw/`, og push til `main`. Workflowen
+`update-normpris.yml` kjører da `fetch_normpris.py` (`pip install openpyxl`),
+som også kan kjøres lokalt.
+
+- `normpris_brent.json`: `{"columns":["date","usd"],"rows":[["2021-01-01",54.3],...]}`
+- `normpris_diff.json`: `{"months":["2021-01",...,"2026-03"],"fields":{"TROLL":{"2021-01":2.2,...}}}`.
+  Måneder uten verdi finnes ikke under feltet (trolig ikke solgt olje), så
+  grafer kan bruke `months` som akse og tegne hull. Feltnavn er som i filene
+  (store bokstaver), ikke Sodir-id.
+- Tilleggsfiler (`...-troll-februar.xlsx` o.l.) retter eller fyller ut enkelte
+  felt/måneder og overstyrer hovedfilen. Importen feiler uten å skrive noe hvis
+  et ark ikke ser ut som forventet.
+- Daglige normpriser per felt, valutakurser og Draugens løftebaserte
+  differensialer (arket `DRA` i 2022-filene) importeres ikke.
+- Kjent avvik i kilden: KNARR juli 2021 er tom i Differensialer, men feltarket
+  har priser for måneden. Tabellen følges, så måneden mangler.
