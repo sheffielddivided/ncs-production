@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Korrelasjon mellom differensialer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg:#f1f1f1; --surface:#fcfcfb; --border:#d5d5d5; --grid:#ebebe8;
+      --text:#0b0b0b; --text-2:#52514e; --text-3:#6f6e69;
+      --bar:#7d2248; --bar-text:#fff;
+      --pos:#2a78d6; --neg:#eb6834; --mid:#e9e8e4;
+      --s1:#2a78d6; --s2:#eb6834;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:where(:not([data-theme="light"])) {
+        color-scheme: dark;
+        --bg:#111110; --surface:#1a1a19; --border:#383835; --grid:#2a2a28;
+        --text:#f0efec; --text-2:#c3c2b7; --text-3:#9a998f;
+        --bar:#4d1630; --pos:#3987e5; --neg:#d95926; --mid:#2f2f2c;
+        --s1:#3987e5; --s2:#d95926;
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg:#111110; --surface:#1a1a19; --border:#383835; --grid:#2a2a28;
+      --text:#f0efec; --text-2:#c3c2b7; --text-3:#9a998f;
+      --bar:#4d1630; --pos:#3987e5; --neg:#d95926; --mid:#2f2f2c;
+      --s1:#3987e5; --s2:#d95926;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); line-height:1.45; }
+    header { background:var(--bar); color:var(--bar-text); padding:14px 16px 12px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    header h1 { font-size:1.05rem; font-weight:700; }
+    header p { font-size:.75rem; opacity:.7; margin-top:2px; }
+    header a { color:#fff; font-size:.8rem; font-weight:600; text-decoration:none; border:1px solid rgba(255,255,255,.5); border-radius:7px; padding:7px 12px; }
+    header a:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+    main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+    section { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px 16px; }
+    h2 { font-size:.95rem; font-weight:700; }
+    h3 { font-size:.85rem; font-weight:700; margin:12px 0 4px; }
+    .sub { font-size:.78rem; color:var(--text-2); margin:2px 0 10px; }
+    p.txt { font-size:.82rem; color:var(--text-2); margin:6px 0; }
+    .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:10px; }
+    .seg { display:flex; border:1px solid var(--border); border-radius:7px; overflow:hidden; }
+    .seg button { border:none; background:var(--surface); color:var(--text-2); font:inherit; font-size:.78rem; padding:6px 12px; cursor:pointer; }
+    .seg button + button { border-left:1px solid var(--border); }
+    .seg button.on { background:var(--bar); color:var(--bar-text); }
+    button:focus-visible, select:focus-visible { outline:2px solid var(--s1); outline-offset:2px; }
+    .period, .ctl { display:inline-flex; align-items:center; gap:8px; font-size:.78rem; color:var(--text-2); }
+    select { font:inherit; font-size:.8rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:5px 8px; }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:8px 0 4px; }
+    .stat { border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+    .stat b { display:block; font-size:1.25rem; font-variant-numeric:tabular-nums; }
+    .stat span { font-size:.72rem; color:var(--text-2); }
+    .scroll { overflow:auto; max-height:640px; border:1px solid var(--border); border-radius:8px; }
+    table { border-collapse:separate; border-spacing:0; font-size:.66rem; font-variant-numeric:tabular-nums; }
+    th, td { padding:3px 2px; text-align:center; white-space:nowrap; min-width:42px; border-right:2px solid var(--surface); border-bottom:2px solid var(--surface); }
+    thead th { position:sticky; top:0; background:var(--surface); color:var(--text-2); font-weight:600; z-index:2; height:92px; vertical-align:bottom; }
+    thead th span { display:inline-block; writing-mode:vertical-rl; transform:rotate(180deg); }
+    tbody th { position:sticky; left:0; background:var(--surface); color:var(--text); text-align:left; font-weight:600; z-index:1; min-width:110px; padding-left:6px; }
+    thead th:first-child { left:0; z-index:3; }
+    td.cell { cursor:pointer; }
+    td.cell:hover, td.sel { outline:2px solid var(--text); outline-offset:-2px; }
+    td.na { color:var(--text-3); }
+    td.diag { background:var(--grid); color:var(--text-3); }
+    .legend { display:flex; align-items:center; gap:8px; font-size:.72rem; color:var(--text-2); margin:0 0 10px; flex-wrap:wrap; }
+    .ramp { width:180px; height:10px; border-radius:5px; background:linear-gradient(90deg,var(--neg),var(--mid),var(--pos)); }
+    .chart-box { position:relative; height:300px; }
+    .chart-box.tall { height:460px; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:800px) { .two { grid-template-columns:1fr; } .chart-box { height:260px; } }
+    .pairhead { font-size:.9rem; font-weight:700; margin-bottom:2px; }
+    .kv { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:.8rem; color:var(--text-2); margin:4px 0 10px; font-variant-numeric:tabular-nums; }
+    .kv b { color:var(--text); }
+    details { margin-top:6px; font-size:.8rem; color:var(--text-2); }
+    details summary { cursor:pointer; font-weight:600; color:var(--text); }
+    details ul { margin:6px 0 0 18px; }
+    details li { margin:3px 0; }
+    #err { display:none; padding:16px; }
+    .hint { font-size:.75rem; color:var(--text-3); margin-top:6px; }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Henger differensialene sammen?</h1>
+    <p id="meta">Laster data…</p>
+  </div>
+  <a href="normpris.html">← Normpriser</a>
+</header>
+<main>
+  <div id="err"></div>
+
+  <section>
+    <h2>Hypotese</h2>
+    <p class="txt">Er normpris-differensialene for ulike oljetyper (felt) korrelert, slik at de ofte flytter seg i samme retning fra måned til måned? Studien beregner korrelasjonen for alle felt-par ut fra de månedlige differensialene og viser hvilke som henger sammen, og hvilke som går hver sin vei.</p>
+    <div class="row">
+      <span class="period">Periode
+        <select id="y0" aria-label="Fra år"></select> –
+        <select id="y1" aria-label="Til år"></select>
+      </span>
+      <div class="seg" role="group" aria-label="Mål" id="mode">
+        <button data-m="chg" class="on" title="Korrelasjon mellom månedlige endringer: unngår at felles trender gir falsk samvariasjon">Månedlig endring (anbefalt)</button>
+        <button data-m="lvl" title="Korrelasjon mellom selve nivåene">Nivå</button>
+      </div>
+      <label class="ctl">Minst
+        <select id="minn" aria-label="Minste antall felles måneder">
+          <option value="12">12</option><option value="24" selected>24</option><option value="36">36</option><option value="48">48</option>
+        </select> felles måneder
+      </label>
+    </div>
+    <div class="stats" id="stats"></div>
+    <p class="hint" id="stat-note"></p>
+  </section>
+
+  <section>
+    <h2>Korrelasjonsmatrise</h2>
+    <p class="sub">Pearson-korrelasjon (r) mellom to felt over månedene de begge har verdi. Feltene er ordnet etter likhet (hierarkisk gruppering), så grupper som henger sammen havner ved siden av hverandre. Klikk en rute for å se paret.</p>
+    <div class="legend"><span>−1 (motsatt)</span><span class="ramp" aria-hidden="true"></span><span>+1 (sammen)</span><span>· grå rute = for få felles måneder</span></div>
+    <div class="scroll" tabindex="0"><table id="mx"></table></div>
+  </section>
+
+  <section id="pair-sec" hidden>
+    <h2>Valgt par</h2>
+    <div class="pairhead" id="pair-title"></div>
+    <div class="kv" id="pair-kv"></div>
+    <div class="two">
+      <div><h3 id="sc-title">Spredning</h3><div class="chart-box"><canvas id="scatter" role="img" aria-label="Spredningsdiagram av to felts differensialer"></canvas></div></div>
+      <div><h3>Differensial over tid</h3><div class="chart-box"><canvas id="pairts" role="img" aria-label="Linjediagram over de to feltenes differensialer over tid"></canvas></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Følger feltet markedet?</h2>
+    <p class="sub">Korrelasjon mellom hvert felt og snittet av alle <i>andre</i> felts differensial (en felles markedsfaktor). Høy verdi betyr at feltet beveger seg med de andre, nær null at det i stor grad står for seg selv, og negativ at det går mot.</p>
+    <div class="chart-box tall"><canvas id="factor" role="img" aria-label="Søylediagram over hvert felts korrelasjon med snittet av de andre feltene"></canvas></div>
+  </section>
+
+  <section>
+    <h2>Endrer sammenhengen seg over tid?</h2>
+    <p class="sub">Median korrelasjon mellom alle par, beregnet separat for fireårsperioder (minst 18 felles måneder per par). Periodevalget over gjelder ikke her.</p>
+    <div class="chart-box"><canvas id="buckets" role="img" aria-label="Søylediagram over median korrelasjon per fireårsperiode"></canvas></div>
+  </section>
+
+  <section>
+    <h2>Om metoden</h2>
+    <details open>
+      <summary>Hva beregnes</summary>
+      <ul>
+        <li><b>Korrelasjon (Pearson r)</b> for hvert par, over månedene begge feltene har en differensial. Måneder uten verdi (ikke solgt, eller delperioder merket *) er utelatt, og antall felles måneder (n) varierer derfor fra par til par.</li>
+        <li><b>Månedlig endring</b> bruker forskjellen mellom to påfølgende måneder. Differensialene er sterkt autokorrelerte (en måned ligner forrige), og felles utslag som i 2022 gir høy korrelasjon i nivåene selv om feltene ikke har noe med hverandre å gjøre. Endringer er mindre utsatt for dette og er derfor standard.</li>
+        <li><b>Spearman (ρ)</b> vises for valgt par. Den er mindre følsom for enkeltstående utslag.</li>
+        <li><b>95 % konfidensintervall</b> for r er beregnet med Fisher-transformasjon. Det forutsetter uavhengige observasjoner og er for smalt for nivåer (autokorrelasjon). Les det som en nedre grense for usikkerheten.</li>
+        <li><b>Gruppering</b> av matrisen bruker gjennomsnittlig kobling på avstanden 1 − r, der par uten nok felles måneder får r = 0.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Begrensninger</summary>
+      <ul>
+        <li>Korrelasjon sier ikke noe om årsak. Felt kan henge sammen fordi de selges i samme marked, har lik kvalitet eller fordi de deler en felles drivkraft (som Brent-markedet), men dataene alene skiller ikke mellom disse.</li>
+        <li>Mange par testes samtidig. Enkeltstående høye eller lave verdier, særlig med få felles måneder, kan være tilfeldige.</li>
+        <li>Felt med få observasjoner (for eksempel Knarr, Jotun og Gina Krog) har usikre tall. Sjekk n i parvisningen.</li>
+        <li>Dataene er månedlige differensialer fra Petroleumsprisrådet, 2011–2026. Se hovedsiden for kilde og kjente avvik.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<script>
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const f2 = (v, d = 2) => v.toLocaleString('nb-NO', { minimumFractionDigits: d, maximumFractionDigits: d });
+const MIN_BUCKET = 18;
+
+let diff, months, names, series;     // series[felt] = Float64Array (NaN = mangler)
+let y0, y1, mode = 'chg', minN = 24;
+let order = [], R = null, N = null, valid = [], sel = null;
+let scatterChart, tsChart, factorChart, bucketChart;
+
+function fail(msg) {
+  const e = document.getElementById('err'); e.style.display = 'block'; e.textContent = msg;
+  document.getElementById('meta').textContent = 'Kunne ikke laste data';
+}
+
+/* ── Statistikk ───────────────────────────────────────────────── */
+function transform(arr, idx) {
+  // arr er indeksert på alle måneder; idx = indekser i valgt periode.
+  const v = idx.map(i => arr[i]);
+  if (mode === 'lvl') return v;
+  return v.map((x, k) => (k === 0 || Number.isNaN(x) || Number.isNaN(v[k - 1])) ? NaN : x - v[k - 1]);
+}
+function pearson(a, b, minOverlap) {
+  let n = 0, sa = 0, sb = 0;
+  for (let i = 0; i < a.length; i++) if (!Number.isNaN(a[i]) && !Number.isNaN(b[i])) { n++; sa += a[i]; sb += b[i]; }
+  if (n < Math.max(minOverlap, 3)) return { r: NaN, n };
+  const ma = sa / n, mb = sb / n; let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < a.length; i++) if (!Number.isNaN(a[i]) && !Number.isNaN(b[i])) {
+    const x = a[i] - ma, y = b[i] - mb; sxy += x * y; sxx += x * x; syy += y * y;
+  }
+  if (sxx === 0 || syy === 0) return { r: NaN, n };
+  return { r: sxy / Math.sqrt(sxx * syy), n };
+}
+function ranks(v) {
+  const idx = v.map((x, i) => [x, i]).sort((p, q) => p[0] - q[0]); const r = new Array(v.length);
+  for (let i = 0; i < idx.length;) {
+    let j = i; while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++;
+    const avg = (i + j) / 2 + 1; for (let k = i; k <= j; k++) r[idx[k][1]] = avg; i = j + 1;
+  }
+  return r;
+}
+function spearman(a, b) {
+  const x = [], y = [];
+  for (let i = 0; i < a.length; i++) if (!Number.isNaN(a[i]) && !Number.isNaN(b[i])) { x.push(a[i]); y.push(b[i]); }
+  return pearson(ranks(x), ranks(y), 3).r;
+}
+function fisherCI(r, n) {
+  if (n < 4 || Math.abs(r) >= 1) return [NaN, NaN];
+  const z = Math.atanh(r), se = 1 / Math.sqrt(n - 3);
+  return [Math.tanh(z - 1.96 * se), Math.tanh(z + 1.96 * se)];
+}
+const median = a => { const s = a.slice().sort((p, q) => p - q); const m = s.length >> 1; return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : NaN; };
+
+function periodIdx() { return months.map((m, i) => i).filter(i => { const y = +months[i].slice(0, 4); return y >= y0 && y <= y1; }); }
+
+function compute() {
+  const idx = periodIdx();
+  const T = {}; names.forEach(f => { T[f] = transform(series[f], idx); });
+  const n = names.length;
+  R = names.map(() => new Array(n).fill(NaN)); N = names.map(() => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const { r, n: nn } = pearson(T[names[i]], T[names[j]], minN);
+    R[i][j] = R[j][i] = r; N[i][j] = N[j][i] = nn;
+  }
+  valid = names.map((f, i) => R[i].some(v => !Number.isNaN(v)));
+  return T;
+}
+
+// Hierarkisk gruppering (gjennomsnittlig kobling) -> bladrekkefølge
+function clusterOrder(ids) {
+  let clusters = ids.map(i => ({ items: [i], order: [i] }));
+  const dist = (a, b) => { let s = 0, c = 0; for (const i of a.items) for (const j of b.items) { const r = R[i][j]; s += 1 - (Number.isNaN(r) ? 0 : r); c++; } return s / c; };
+  while (clusters.length > 1) {
+    let best = [0, 1, Infinity];
+    for (let a = 0; a < clusters.length; a++) for (let b = a + 1; b < clusters.length; b++) {
+      const d = dist(clusters[a], clusters[b]); if (d < best[2]) best = [a, b, d];
+    }
+    const [a, b] = best; const A = clusters[a], B = clusters[b];
+    clusters = clusters.filter((_, k) => k !== a && k !== b);
+    clusters.push({ items: [...A.items, ...B.items], order: [...A.order, ...B.order] });
+  }
+  return clusters[0].order;
+}
+
+/* ── Matrise ──────────────────────────────────────────────────── */
+function hex(c) { return [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)); }
+function mix(a, b, t) { return a.map((v, i) => Math.round(v + (b[i] - v) * t)); }
+function lum([r, g, b]) { const f = v => (v /= 255) <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); }
+function colorFor(r) {
+  const mid = hex(css('--mid')), pos = hex(css('--pos')), neg = hex(css('--neg'));
+  const bg = mix(mid, r >= 0 ? pos : neg, Math.min(1, Math.abs(r)));
+  return { bg: `rgb(${bg})`, fg: lum(bg) > .35 ? '#0b0b0b' : '#fff' };
+}
+function drawMatrix() {
+  const ids = names.map((f, i) => i).filter(i => valid[i]);
+  order = ids.length > 1 ? clusterOrder(ids) : ids;
+  let h = '<thead><tr><th></th>' + order.map(j => `<th><span>${names[j]}</span></th>`).join('') + '</tr></thead><tbody>';
+  for (const i of order) {
+    h += `<tr><th scope="row">${names[i]}</th>`;
+    for (const j of order) {
+      if (i === j) { h += '<td class="diag">–</td>'; continue; }
+      const r = R[i][j];
+      if (Number.isNaN(r)) { h += `<td class="na" title="${names[i]} / ${names[j]}: for få felles måneder (${N[i][j]})">·</td>`; continue; }
+      const c = colorFor(r);
+      const on = sel && ((sel[0] === i && sel[1] === j) || (sel[0] === j && sel[1] === i));
+      h += `<td class="cell${on ? ' sel' : ''}" data-i="${i}" data-j="${j}" style="background:${c.bg};color:${c.fg}" title="${names[i]} / ${names[j]}: r = ${f2(r)}, n = ${N[i][j]}">${f2(r)}</td>`;
+    }
+    h += '</tr>';
+  }
+  document.getElementById('mx').innerHTML = h + '</tbody>';
+}
+
+/* ── Sammendrag ───────────────────────────────────────────────── */
+function drawStats() {
+  const pairs = [];
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) if (!Number.isNaN(R[i][j])) pairs.push({ i, j, r: R[i][j], n: N[i][j] });
+  const box = document.getElementById('stats');
+  if (!pairs.length) { box.innerHTML = '<div class="stat"><b>–</b><span>Ingen par har nok felles måneder. Velg lengre periode eller lavere minimum.</span></div>'; document.getElementById('stat-note').textContent = ''; return pairs; }
+  const rs = pairs.map(p => p.r);
+  const pct = f => Math.round(100 * rs.filter(f).length / rs.length) + ' %';
+  const mx = pairs.reduce((a, b) => b.r > a.r ? b : a), mn = pairs.reduce((a, b) => b.r < a.r ? b : a);
+  const st = (v, l) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`;
+  box.innerHTML = st(pairs.length, 'par med nok data') + st(f2(median(rs)), 'median korrelasjon') +
+    st(pct(r => r > 0), 'par med positiv r') + st(pct(r => r > 0.5), 'par med r over 0,5') + st(pct(r => r < 0), 'par med negativ r') +
+    st(f2(mx.r), `sterkest: ${names[mx.i]} / ${names[mx.j]} (n=${mx.n})`) + st(f2(mn.r), `svakest: ${names[mn.i]} / ${names[mn.j]} (n=${mn.n})`);
+  document.getElementById('stat-note').textContent = mode === 'chg'
+    ? 'Basert på korrelasjon mellom månedlige endringer.' : 'Basert på nivåer. Merk at nivåer er sterkt autokorrelerte og gir ofte høyere korrelasjon enn endringer.';
+  return pairs;
+}
+
+/* ── Valgt par ────────────────────────────────────────────────── */
+function chartOpts(xt, yt) {
+  const tick = css('--text-3');
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { labels: { color: css('--text-2'), usePointStyle: true, boxWidth: 8 } },
+      tooltip: { backgroundColor: css('--surface'), titleColor: css('--text'), bodyColor: css('--text-2'), borderColor: css('--border'), borderWidth: 1, padding: 10 } },
+    scales: {
+      x: { grid: { color: css('--grid') }, border: { color: css('--border') }, ticks: { color: tick }, title: { display: !!xt, text: xt, color: tick } },
+      y: { grid: { color: css('--grid') }, border: { display: false }, ticks: { color: tick }, title: { display: !!yt, text: yt, color: tick } },
+    },
+  };
+}
+function drawPair() {
+  const sec = document.getElementById('pair-sec');
+  if (!sel) { sec.hidden = true; return; }
+  const [i, j] = sel, A = names[i], Bn = names[j];
+  const idx = periodIdx(), TA = transform(series[A], idx), TB = transform(series[Bn], idx);
+  const { r, n } = pearson(TA, TB, 3);
+  if (Number.isNaN(r)) { sec.hidden = true; return; }
+  sec.hidden = false;
+  const rho = spearman(TA, TB), [lo, hi] = fisherCI(r, n);
+  document.getElementById('pair-title').textContent = `${A} og ${Bn}`;
+  document.getElementById('pair-kv').innerHTML =
+    `<span>Pearson r <b>${f2(r)}</b></span><span>Spearman ρ <b>${f2(rho)}</b></span><span>95 % KI for r <b>${f2(lo)} til ${f2(hi)}</b></span><span>Felles måneder <b>${n}</b></span><span>R² <b>${f2(r * r)}</b></span>`;
+  const label = mode === 'chg' ? 'endring' : 'differensial';
+  document.getElementById('sc-title').textContent = mode === 'chg' ? 'Månedlig endring: felt mot felt' : 'Differensial: felt mot felt';
+  // spredning + minste kvadraters linje
+  const pts = []; for (let k = 0; k < TA.length; k++) if (!Number.isNaN(TA[k]) && !Number.isNaN(TB[k])) pts.push({ x: TA[k], y: TB[k], m: months[idx[k]] });
+  const xs = pts.map(p => p.x), mxv = xs.reduce((a, b) => a + b, 0) / xs.length, myv = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+  const sxx = xs.reduce((a, x) => a + (x - mxv) ** 2, 0), sxy = pts.reduce((a, p) => a + (p.x - mxv) * (p.y - myv), 0);
+  const slope = sxx ? sxy / sxx : 0, icpt = myv - slope * mxv, x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const o = chartOpts(`${A} (${label}, $/fat)`, `${Bn} (${label}, $/fat)`);
+  o.plugins.legend.display = false;
+  o.plugins.tooltip.callbacks = { label: c => ` ${c.raw.m}: ${f2(c.raw.x)} / ${f2(c.raw.y)}` };
+  if (scatterChart) scatterChart.destroy();
+  scatterChart = new Chart(document.getElementById('scatter'), { type: 'scatter', data: { datasets: [
+    { data: pts, backgroundColor: css('--s1'), borderColor: css('--surface'), borderWidth: 1, pointRadius: 3.5, pointHoverRadius: 5 },
+    { type: 'line', data: [{ x: x0, y: icpt + slope * x0 }, { x: x1, y: icpt + slope * x1 }], borderColor: css('--text-3'), borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 }] }, options: o });
+  // tidsserier (alltid nivå)
+  const labels = idx.map(k => months[k]);
+  const o2 = chartOpts('', '$/fat'); o2.interaction = { mode: 'index', intersect: false };
+  o2.plugins.tooltip.callbacks = { label: c => c.parsed.y == null ? null : ` ${c.dataset.label}: ${f2(c.parsed.y)} $/fat` };
+  const mk = (f, col) => ({ label: f, data: idx.map(k => Number.isNaN(series[f][k]) ? null : series[f][k]), borderColor: css(col), backgroundColor: css(col), borderWidth: 2, pointRadius: 2.5, spanGaps: false, tension: 0 });
+  if (tsChart) tsChart.destroy();
+  tsChart = new Chart(document.getElementById('pairts'), { type: 'line', data: { labels, datasets: [mk(A, '--s1'), mk(Bn, '--s2')] }, options: o2 });
+}
+
+/* ── Felles markedsfaktor ─────────────────────────────────────── */
+function drawFactor(T) {
+  const n = names.length, L = T[names[0]].length;
+  const mean = names.map(f => { const v = T[f].filter(x => !Number.isNaN(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; });
+  const res = [];
+  for (let i = 0; i < n; i++) {
+    if (!valid[i]) continue;
+    const common = new Array(L).fill(NaN);
+    for (let t = 0; t < L; t++) {
+      let s = 0, c = 0;
+      for (let j = 0; j < n; j++) if (j !== i && !Number.isNaN(T[names[j]][t]) && !Number.isNaN(mean[j])) { s += T[names[j]][t] - mean[j]; c++; }
+      if (c >= 3) common[t] = s / c;
+    }
+    const { r, n: nn } = pearson(T[names[i]], common, minN);
+    if (!Number.isNaN(r)) res.push({ f: names[i], r, n: nn });
+  }
+  res.sort((a, b) => b.r - a.r);
+  const o = chartOpts('', 'Korrelasjon med snittet av de andre');
+  o.indexAxis = 'y'; o.plugins.legend.display = false;
+  o.scales.x.min = -1; o.scales.x.max = 1; o.scales.x.title = { display: true, text: 'Korrelasjon med snittet av de andre feltene', color: css('--text-3') };
+  o.scales.y.title = { display: false }; o.scales.y.grid = { display: false };
+  o.plugins.tooltip.callbacks = { label: c => ` r = ${f2(c.raw)} (n = ${res[c.dataIndex].n})` };
+  if (factorChart) factorChart.destroy();
+  factorChart = new Chart(document.getElementById('factor'), { type: 'bar', data: { labels: res.map(x => x.f), datasets: [{ data: res.map(x => x.r), backgroundColor: res.map(x => x.r >= 0 ? css('--pos') : css('--neg')), borderRadius: 3, barThickness: 14 }] }, options: o });
+}
+
+/* ── Tidsperioder (uavhengig av periodevalget) ─────────────────── */
+function drawBuckets() {
+  const years = [...new Set(months.map(m => +m.slice(0, 4)))], lo = years[0], hi = years[years.length - 1];
+  const out = [];
+  for (let a = lo; a <= hi; a += 4) {
+    const b = Math.min(a + 3, hi), idx = months.map((m, i) => i).filter(i => { const y = +months[i].slice(0, 4); return y >= a && y <= b; });
+    const T = {}; names.forEach(f => { T[f] = transform(series[f], idx); });
+    const rs = [];
+    for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) { const { r } = pearson(T[names[i]], T[names[j]], MIN_BUCKET); if (!Number.isNaN(r)) rs.push(r); }
+    out.push({ label: a === b ? `${a}` : `${a}–${b}`, med: median(rs), n: rs.length });
+  }
+  const o = chartOpts('', 'Median korrelasjon');
+  o.plugins.legend.display = false; o.scales.y.min = -0.2; o.scales.y.max = 1;
+  o.plugins.tooltip.callbacks = { label: c => ` median r = ${Number.isNaN(c.raw) ? '–' : f2(c.raw)} (${out[c.dataIndex].n} par)` };
+  if (bucketChart) bucketChart.destroy();
+  bucketChart = new Chart(document.getElementById('buckets'), { type: 'bar', data: { labels: out.map(x => x.label), datasets: [{ data: out.map(x => x.med), backgroundColor: css('--s1'), borderRadius: 4 }] }, options: o });
+}
+
+/* ── Oppstart og hendelser ────────────────────────────────────── */
+function render() {
+  const T = compute();
+  const first = sel && (!valid[sel[0]] || !valid[sel[1]] || Number.isNaN(R[sel[0]][sel[1]]));
+  if (first) sel = null;
+  drawStats(); drawMatrix(); drawPair(); drawFactor(T); drawBuckets();
+}
+function initPeriod() {
+  const years = [...new Set(months.map(m => +m.slice(0, 4)))];
+  y0 = years[0]; y1 = years[years.length - 1];    // standard: hele perioden, siden korrelasjon trenger mange observasjoner
+  document.querySelectorAll('#y0, #y1').forEach(el => { el.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); });
+  document.getElementById('y0').value = y0; document.getElementById('y1').value = y1;
+}
+async function load() {
+  try {
+    const r = await fetch('data/normpris_diff.json'); if (!r.ok) throw new Error('data/normpris_diff.json ' + r.status);
+    diff = await r.json();
+  } catch (e) { fail('Kunne ikke hente dataene (' + e.message + '). Siden må åpnes over HTTP, ikke som file:// – kjør f.eks. «python3 -m http.server».'); return; }
+  months = diff.months; names = Object.keys(diff.fields); series = {};
+  names.forEach(f => { series[f] = Float64Array.from(months, m => diff.fields[f][m] ?? NaN); });
+  document.getElementById('meta').textContent = `${names.length} felt · månedlige differensialer ${months[0]} – ${months[months.length - 1]}`;
+  initPeriod(); render();
+}
+document.getElementById('mode').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m;
+  document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x === b)); render();
+});
+function onPeriod(changed) {
+  y0 = +document.getElementById('y0').value; y1 = +document.getElementById('y1').value;
+  if (y0 > y1) { if (changed === 'y0') y1 = y0; else y0 = y1; }
+  document.getElementById('y0').value = y0; document.getElementById('y1').value = y1; render();
+}
+document.getElementById('y0').onchange = () => onPeriod('y0');
+document.getElementById('y1').onchange = () => onPeriod('y1');
+document.getElementById('minn').onchange = e => { minN = +e.target.value; render(); };
+document.getElementById('mx').addEventListener('click', e => {
+  const td = e.target.closest('td.cell'); if (!td) return;
+  sel = [+td.dataset.i, +td.dataset.j]; drawMatrix(); drawPair();
+  document.getElementById('pair-sec').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => diff && render());
+load();
+</script>
+</body>
+</html>
