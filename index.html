@@ -1208,7 +1208,9 @@ async function refreshHubs() {
   }
   showSpinner();
   if (hubSubView === 'reserves') {
-    await loadFieldReserves();
+    // Partnertabellen under grafen trenger eierandelene, men ikke
+    // produksjonstidsseriene.
+    await Promise.all([loadFieldReserves(), loadLicForFields(hubFieldIds(names))]);
     drawChart();
     return;
   }
@@ -1226,7 +1228,7 @@ async function refreshFields() {
   // Reservevisningen bruker ikke produksjonstidsseriene, så den slipper å
   // vente på dem.
   if (fieldSubView === 'reserves') {
-    await loadFieldReserves();
+    await Promise.all([loadFieldReserves(), loadLicForFields(ids)]);
     drawChart();
     return;
   }
@@ -1527,6 +1529,10 @@ function drawFieldsReserves(opts = {}) {
   setChartTitle(`${scopeTitle} · Reserves over time`, `${fnames} · million boe`);
   setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
+  const last = years[years.length - 1];
+  // Hub-modus bryter ned på felt og partner; feltmodus summerer per partner.
+  if (scope) renderReserveTableByFieldPartner(series, last);
+  else       renderReserveTableByPartner(series, last);
 }
 
 // ── FIELDS: OE PER COMPANY ───────────────────────────────────────────────────
@@ -1776,59 +1782,140 @@ function drawCompaniesReserves() {
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Remaining reserves`, `Equity-adjusted · million boe`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
-  renderReserveTable(series, companies, years[years.length - 1]);
+  renderReserveTableByHub(series, companies, years[years.length - 1]);
 }
 
 // Tabell under grafen: reserver per felt, gruppert under huben feltet tilhører.
 // Viser kun siste årgang — altså samme tall som den høyreste søylen i grafen.
 // Huber og felt sorteres synkende etter sin egen total.
-function renderReserveTable(series, companies, year) {
+// Gjenstående reserver for ett felt i en årgang, skalert med en andel (0-1),
+// delt i væsker og gass. «Liquids» er OE minus gass, se drawCompaniesReserves.
+function remainingSplit(cur, share) {
+  return {
+    liq: Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3 * share,
+    gas: cur.remainingGas * BBL_PER_SM3 * share,
+    oe:  cur.remainingOE * BBL_PER_SM3 * share,
+  };
+}
+
+// Lisensiærene i et felt på en gitt dato, som [{name, share}] med share i
+// prosent. Samme datologikk som getShare, inkludert at to-datoen dekker hele
+// den siste dagen. Første rad per selskap vinner, slik getShare også gjør.
+function fieldPartners(fieldId, at) {
+  if (TRIAL_PROD_OWNERSHIP[fieldId]) {
+    return Object.entries(TRIAL_PROD_OWNERSHIP[fieldId])
+      .filter(([, pct]) => pct > 0)
+      .map(([name, pct]) => ({name, share: pct}));
+  }
+  const ts = at.getTime();
+  const seen = new Set(), out = [];
+  (fieldLicCache[fieldId] || []).forEach(r => {
+    if (!r.cmpLongName || seen.has(r.cmpLongName)) return;
+    if (r.fldLicenseeFrom !== null && ts < r.fldLicenseeFrom) return;
+    if (r.fldLicenseeTo   !== null && ts > r.fldLicenseeTo + 86399999) return;
+    seen.add(r.cmpLongName);
+    if ((r.fldCompanyShare || 0) > 0) out.push({name: r.cmpLongName, share: r.fldCompanyShare});
+  });
+  return out;
+}
+
+const UNALLOCATED = 'Unallocated (cross-border share)';
+
+// Felles tabellbygger. groups: [{name, liq, gas, oe, children?}]. Gruppene og
+// barna sorteres synkende etter total OE. Et barn som gjentar gruppenavnet
+// droppes, siden raden ikke tilfører noe.
+function reserveTableHtml(groups, headLabel, caption) {
+  groups = groups.filter(g => g.oe > 0).sort((a, b) => b.oe - a.oe);
+  if (!groups.length) return '';
+
+  const n = v => v.toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
+  const tot = groups.reduce((t, g) => ({liq:t.liq+g.liq, gas:t.gas+g.gas, oe:t.oe+g.oe}),
+                            {liq:0, gas:0, oe:0});
+
+  const body = groups.map(g => {
+    const kids = (g.children || []).filter(c => c.oe > 0);
+    const single = kids.length === 1 && kids[0].name === g.name;
+    const rows = single ? '' : kids
+      .sort((a, b) => b.oe - a.oe)
+      .map(c => `<tr class="field-row"><td>${c.name}</td><td>${n(c.liq)}</td><td>${n(c.gas)}</td><td>${n(c.oe)}</td></tr>`)
+      .join('');
+    return `<tr class="hub-row"><td>${g.name}</td><td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>${rows}`;
+  }).join('');
+
+  return `
+    <table class="res-table">
+      <caption>${caption}</caption>
+      <thead><tr><th>${headLabel}</th><th>Liquids</th><th>Gas</th><th>Total OE</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td>${n(tot.liq)}</td><td>${n(tot.gas)}</td><td>${n(tot.oe)}</td></tr></tfoot>
+    </table>`;
+}
+
+// Companies-visningen: per hub, med medlemsfeltene under. Andelen er summen av
+// de valgte selskapenes andeler, så tabellen speiler grafen.
+function renderReserveTableByHub(series, companies, year) {
   const at = new Date(Date.UTC(year, 11, 31));
   const hubs = {};
-
   series.forEach(s => {
     const cur = reserveAt(s.rows, year);
     if (!cur) return;
     let share = 0;
     companies.forEach(cmp => { share += getShare(s.id, at, cmp) / 100; });
     if (!share) return;
-
-    const gas = cur.remainingGas * BBL_PER_SM3 * share;
-    const liq = Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3 * share;
-    const oe  = cur.remainingOE * BBL_PER_SM3 * share;
-    if (oe <= 0) return;
-
+    const v = remainingSplit(cur, share);
+    if (v.oe <= 0) return;
     const fname = allFields.find(f => f.id === s.id)?.name || String(s.id);
-    const hub   = hubOfField[s.id] || fname;
-    const h = hubs[hub] = hubs[hub] || {liq:0, gas:0, oe:0, fields:[]};
-    h.liq += liq; h.gas += gas; h.oe += oe;
-    h.fields.push({name:fname, liq, gas, oe});
+    const hub = hubOfField[s.id] || fname;
+    const h = hubs[hub] = hubs[hub] || {name:hub, liq:0, gas:0, oe:0, children:[]};
+    h.liq += v.liq; h.gas += v.gas; h.oe += v.oe;
+    h.children.push({name:fname, ...v});
   });
+  setReserveTable(reserveTableHtml(Object.values(hubs), 'Hub / field',
+    `Remaining reserves per field, vintage ${year} · million boe · equity-adjusted`));
+}
 
-  const rows = Object.entries(hubs).sort((a,b) => b[1].oe - a[1].oe);
-  if (!rows.length) { setReserveTable(''); return; }
+// Hubs-visningen: per felt, med partnerne under. Her er grafen brutto, så
+// feltraden er feltets fulle gjenstående reserver og partnerradene er
+// andelene av den. Summerer ikke andelene til 100 % — det gjelder felt som
+// deles med britisk sokkel — havner resten på en egen rad, slik at
+// feltsummen fortsatt stemmer.
+function renderReserveTableByFieldPartner(series, year) {
+  const at = new Date(Date.UTC(year, 11, 31));
+  const groups = [];
+  series.forEach(s => {
+    const cur = reserveAt(s.rows, year);
+    if (!cur) return;
+    const full = remainingSplit(cur, 1);
+    if (full.oe <= 0) return;
+    const fname = allFields.find(f => f.id === s.id)?.name || String(s.id);
+    const partners = fieldPartners(s.id, at);
+    const children = partners.map(pt => ({name:pt.name, ...remainingSplit(cur, pt.share/100)}));
+    const rest = 1 - partners.reduce((t, pt) => t + pt.share/100, 0);
+    if (rest > 0.0005) children.push({name:UNALLOCATED, ...remainingSplit(cur, rest)});
+    groups.push({name:fname, ...full, children});
+  });
+  setReserveTable(reserveTableHtml(groups, 'Field / partner',
+    `Remaining reserves per field and partner, vintage ${year} · million boe`));
+}
 
-  const n = v => v.toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
-  const tot = rows.reduce((t,[,h]) => ({liq:t.liq+h.liq, gas:t.gas+h.gas, oe:t.oe+h.oe}), {liq:0,gas:0,oe:0});
-
-  const body = rows.map(([hub, h]) => {
-    // Én enkelt standalone-hub gjentar seg selv som feltrad. Da droppes
-    // feltraden, siden den ikke tilfører noe.
-    const single = h.fields.length === 1 && h.fields[0].name === hub;
-    const fieldRows = single ? '' : h.fields
-      .sort((a,b) => b.oe - a.oe)
-      .map(f => `<tr class="field-row"><td>${f.name}</td><td>${n(f.liq)}</td><td>${n(f.gas)}</td><td>${n(f.oe)}</td></tr>`)
-      .join('');
-    return `<tr class="hub-row"><td>${hub}</td><td>${n(h.liq)}</td><td>${n(h.gas)}</td><td>${n(h.oe)}</td></tr>${fieldRows}`;
-  }).join('');
-
-  setReserveTable(`
-    <table class="res-table">
-      <caption>Remaining reserves per field, vintage ${year} · million boe · equity-adjusted</caption>
-      <thead><tr><th>Hub / field</th><th>Liquids</th><th>Gas</th><th>Total OE</th></tr></thead>
-      <tbody>${body}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td>${n(tot.liq)}</td><td>${n(tot.gas)}</td><td>${n(tot.oe)}</td></tr></tfoot>
-    </table>`);
+// Fields-visningen: per partner, summert over de valgte feltene.
+function renderReserveTableByPartner(series, year) {
+  const at = new Date(Date.UTC(year, 11, 31));
+  const byPartner = {};
+  const add = (name, v) => {
+    const g = byPartner[name] = byPartner[name] || {name, liq:0, gas:0, oe:0};
+    g.liq += v.liq; g.gas += v.gas; g.oe += v.oe;
+  };
+  series.forEach(s => {
+    const cur = reserveAt(s.rows, year);
+    if (!cur || remainingSplit(cur, 1).oe <= 0) return;
+    const partners = fieldPartners(s.id, at);
+    partners.forEach(pt => add(pt.name, remainingSplit(cur, pt.share/100)));
+    const rest = 1 - partners.reduce((t, pt) => t + pt.share/100, 0);
+    if (rest > 0.0005) add(UNALLOCATED, remainingSplit(cur, rest));
+  });
+  setReserveTable(reserveTableHtml(Object.values(byPartner), 'Partner',
+    `Remaining reserves per partner, vintage ${year} · million boe`));
 }
 
 
