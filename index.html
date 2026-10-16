@@ -1821,14 +1821,24 @@ function fieldPartners(fieldId, at) {
 
 const UNALLOCATED = 'Unallocated (cross-border share)';
 
-// Felles tabellbygger. groups: [{name, liq, gas, oe, children?}]. Gruppene og
-// barna sorteres synkende etter total OE. Et barn som gjentar gruppenavnet
-// droppes, siden raden ikke tilfører noe.
-function reserveTableHtml(groups, headLabel, caption) {
+// Felles tabellbygger. groups: [{name, liq, gas, oe, share?, children?}].
+// Gruppene og barna sorteres synkende etter total OE. Et barn som gjentar
+// gruppenavnet droppes, siden raden ikke tilfører noe.
+//
+// opts.shareHead slår på en eierandelskolonne. Andelen settes på de radene
+// der den er definert — partnerrader — og står tom ellers, siden et felt
+// eller en hub ikke har noen eierandel. Er share.exact false, er verdien et
+// snitt av ulike andeler og merkes med «~».
+function reserveTableHtml(groups, headLabel, caption, opts = {}) {
   groups = groups.filter(g => g.oe > 0).sort((a, b) => b.oe - a.oe);
   if (!groups.length) return '';
 
   const n = v => v.toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
+  const sh = r => {
+    if (!opts.shareHead) return '';
+    if (!r.share) return '<td></td>';
+    return `<td>${r.share.exact ? '' : '~'}${r.share.pct.toFixed(2)} %</td>`;
+  };
   const tot = groups.reduce((t, g) => ({liq:t.liq+g.liq, gas:t.gas+g.gas, oe:t.oe+g.oe}),
                             {liq:0, gas:0, oe:0});
 
@@ -1837,17 +1847,19 @@ function reserveTableHtml(groups, headLabel, caption) {
     const single = kids.length === 1 && kids[0].name === g.name;
     const rows = single ? '' : kids
       .sort((a, b) => b.oe - a.oe)
-      .map(c => `<tr class="field-row"><td>${c.name}</td><td>${n(c.liq)}</td><td>${n(c.gas)}</td><td>${n(c.oe)}</td></tr>`)
+      .map(c => `<tr class="field-row"><td>${c.name}</td>${sh(c)}<td>${n(c.liq)}</td><td>${n(c.gas)}</td><td>${n(c.oe)}</td></tr>`)
       .join('');
-    return `<tr class="hub-row"><td>${g.name}</td><td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>${rows}`;
+    return `<tr class="hub-row"><td>${g.name}</td>${sh(g)}<td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>${rows}`;
   }).join('');
 
+  const shHead = opts.shareHead ? `<th>${opts.shareHead}</th>` : '';
+  const shFoot = opts.shareHead ? '<td></td>' : '';
   return `
     <table class="res-table">
       <caption>${caption}</caption>
-      <thead><tr><th>${headLabel}</th><th>Liquids</th><th>Gas</th><th>Total OE</th></tr></thead>
+      <thead><tr><th>${headLabel}</th>${shHead}<th>Liquids</th><th>Gas</th><th>Total OE</th></tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td>${n(tot.liq)}</td><td>${n(tot.gas)}</td><td>${n(tot.oe)}</td></tr></tfoot>
+      <tfoot><tr class="total-row"><td>Total</td>${shFoot}<td>${n(tot.liq)}</td><td>${n(tot.gas)}</td><td>${n(tot.oe)}</td></tr></tfoot>
     </table>`;
 }
 
@@ -1889,33 +1901,51 @@ function renderReserveTableByFieldPartner(series, year) {
     if (full.oe <= 0) return;
     const fname = allFields.find(f => f.id === s.id)?.name || String(s.id);
     const partners = fieldPartners(s.id, at);
-    const children = partners.map(pt => ({name:pt.name, ...remainingSplit(cur, pt.share/100)}));
+    const children = partners.map(pt => ({
+      name: pt.name, share: {pct: pt.share, exact: true}, ...remainingSplit(cur, pt.share/100),
+    }));
     const rest = 1 - partners.reduce((t, pt) => t + pt.share/100, 0);
-    if (rest > 0.0005) children.push({name:UNALLOCATED, ...remainingSplit(cur, rest)});
+    if (rest > 0.0005) children.push({
+      name: UNALLOCATED, share: {pct: rest*100, exact: true}, ...remainingSplit(cur, rest),
+    });
     groups.push({name:fname, ...full, children});
   });
   setReserveTable(reserveTableHtml(groups, 'Field / partner',
-    `Remaining reserves per field and partner, vintage ${year} · million boe`));
+    `Remaining reserves per field and partner, vintage ${year} · million boe`,
+    {shareHead: 'Share'}));
 }
 
 // Fields-visningen: per partner, summert over de valgte feltene.
+//
+// Eierandelen er feltspesifikk, så med flere felt valgt finnes det ingen én
+// andel. Da vises et snitt vektet med feltenes gjenstående OE, merket «~».
+// Er andelen den samme i alle feltene partneren bidrar i — typisk når bare
+// ett felt er valgt — er verdien eksakt og står umerket.
 function renderReserveTableByPartner(series, year) {
   const at = new Date(Date.UTC(year, 11, 31));
   const byPartner = {};
-  const add = (name, v) => {
-    const g = byPartner[name] = byPartner[name] || {name, liq:0, gas:0, oe:0};
+  const add = (name, pct, v) => {
+    const g = byPartner[name] = byPartner[name] ||
+      {name, liq:0, gas:0, oe:0, _wsum:0, _pcts:new Set()};
     g.liq += v.liq; g.gas += v.gas; g.oe += v.oe;
+    g._wsum += pct * v.oe;              // vektes med partnerens egen OE
+    g._pcts.add(Math.round(pct * 1e4));
   };
   series.forEach(s => {
     const cur = reserveAt(s.rows, year);
     if (!cur || remainingSplit(cur, 1).oe <= 0) return;
     const partners = fieldPartners(s.id, at);
-    partners.forEach(pt => add(pt.name, remainingSplit(cur, pt.share/100)));
+    partners.forEach(pt => add(pt.name, pt.share, remainingSplit(cur, pt.share/100)));
     const rest = 1 - partners.reduce((t, pt) => t + pt.share/100, 0);
-    if (rest > 0.0005) add(UNALLOCATED, remainingSplit(cur, rest));
+    if (rest > 0.0005) add(UNALLOCATED, rest*100, remainingSplit(cur, rest));
   });
-  setReserveTable(reserveTableHtml(Object.values(byPartner), 'Partner',
-    `Remaining reserves per partner, vintage ${year} · million boe`));
+  const groups = Object.values(byPartner).map(g => ({
+    name: g.name, liq: g.liq, gas: g.gas, oe: g.oe,
+    share: g.oe > 0 ? {pct: g._wsum / g.oe, exact: g._pcts.size === 1} : null,
+  }));
+  setReserveTable(reserveTableHtml(groups, 'Partner',
+    `Remaining reserves per partner, vintage ${year} · million boe`,
+    {shareHead: 'Share'}));
 }
 
 

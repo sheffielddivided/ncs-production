@@ -8,7 +8,7 @@ Alt nedenfor er verifisert mot kildekoden og mot live-APIet 2026-09-14, og
 oppdatert fortløpende etter hvert som hub- og reservedimensjonen kom til.
 Påstander som ikke lot seg verifisere er markert med **USIKKER:**.
 
-Dokumentert tilstand: `main` etter PR #27. **Samtlige 167
+Dokumentert tilstand: `main` etter PR #27. **Samtlige 168
 linjereferanser er etterkontrollert maskinelt mot kilden 2026-10-16** — hver
 peker på en ikke-tom blokk som inneholder det dokumentet beskriver. Endres
 `index.html`, forskyver de seg igjen; referansen til et navngitt symbol er
@@ -55,7 +55,7 @@ deployet.
 
 | Lag | Teknologi | Referanse |
 |---|---|---|
-| Frontend | Vanilla JS/HTML/CSS i én fil, ingen rammeverk, ingen bundler | `index.html` (2406 linjer, 123 KB) |
+| Frontend | Vanilla JS/HTML/CSS i én fil, ingen rammeverk, ingen bundler | `index.html` (2436 linjer, 124 KB) |
 | Grafer | Chart.js 4.4.1 via cdnjs | `index.html:11` |
 | Excel-eksport | ExcelJS 4.3.0 via cdnjs | `index.html:12` |
 | Hub-seeding | `seed_hubs.py` — engangsscript, **ikke** i daglig pipeline |
@@ -664,11 +664,11 @@ startet. Nullperioder *inne i* eller på slutten av serien beholdes.
   reserver, deretter alfabetisk (`index.html:929-938`). Kun 22 av 263 selskaper
   har reserver, så resten faller til alfabetisk.
 - **Feltliste:** felt der Aker BP er lisensiær sorteres øverst ved oppstart
-  (`index.html:2312-2323`).
+  (`index.html:2342-2353`).
 - **Standardvalg ved oppstart:** modus = `companies`, `Aker BP ASA`
-  forhåndsvalgt (`index.html:2325`), `JOHAN SVERDRUP` forhåndsvalgt i feltlisten
+  forhåndsvalgt (`index.html:2355`), `JOHAN SVERDRUP` forhåndsvalgt i feltlisten
   (`index.html:721-722`), og i hub-listen den første huben hvis navn starter med
-  `alvheim` (`index.html:684-688`, kalt fra `index.html:2305`). Hub-defaulten
+  `alvheim` (`index.html:684-688`, kalt fra `index.html:2335`). Hub-defaulten
   slås opp på prefiks fordi hub-navn er fritekst og kan endres i
   settings-visningen; finnes ingen treff, står Hubs-viewet tomt.
 
@@ -788,13 +788,26 @@ tilsvarende fra 778,5 til 1 764,4 mill fat o.e. mellom årgang 2022 og 2023.
 Alle tre reservevisningene har en tabell under grafen. Alle viser **kun siste
 årgang** og **kun gjenstående** reserver, delt i Liquids / Gas / Total OE, med
 grupper og rader sortert synkende etter total OE. De deler byggeren
-`reserveTableHtml` (`index.html:1827-1854`):
+`reserveTableHtml` (`index.html:1832-1864`):
 
-| Visning | Gruppe / rad | Funksjon |
-|---|---|---|
-| Companies | hub / felt | `renderReserveTableByHub` (`:1856-1880`) |
-| Hubs | felt / partner | `renderReserveTableByFieldPartner` (`:1882-1900`) |
-| Fields | partner (flat) | `renderReserveTableByPartner` (`:1902-1920`) |
+| Visning | Gruppe / rad | Eierandel | Funksjon |
+|---|---|---|---|
+| Companies | hub / felt | nei | `renderReserveTableByHub` (`:1868-1887`) |
+| Hubs | felt / partner | ja | `renderReserveTableByFieldPartner` (`:1894-1916`) |
+| Fields | partner (flat) | ja | `renderReserveTableByPartner` (`:1924-1949`) |
+
+De to partnertabellene har en **Share**-kolonne (`opts.shareHead`). Andelen
+settes kun på radene der den er definert — partnerradene — og står tom på
+felt- og hubrader, som ikke har noen eierandel. Companies-tabellen har ingen
+slik kolonne, siden radene der er huber og felt, ikke selskaper.
+
+I Fields-tabellen er partnerne summert over flere felt, og eierandelen er
+feltspesifikk. Er andelen den samme i alle feltene partneren bidrar i —
+typisk når bare ett felt er valgt — vises den eksakt. Ellers vises et snitt
+vektet med partnerens egen gjenstående OE per felt, merket med `~`
+(`index.html:1924-1949`). Eksempel, Johan Sverdrup + Troll: Aker BP står
+umerket på 31,57 % fordi selskapet bare er inne i Johan Sverdrup, mens
+Equinor står `~34,50 %` som vektet snitt av 42,63 % i Johan Sverdrup og 30,55 % i Troll.
 
 Companies-tabellen er equity-justert som grafen. Hubs- og Fields-tabellene
 dekomponerer **brutto** feltreserver på lisensiærene, siden de grafene er
@@ -866,7 +879,7 @@ GET data/hubs.json
 Alle hentes parallelt med `cache:'no-cache'` (revalidering mot ETag).
 **Etter dette gjør ingen brukerhandling noe nettverkskall** — all filtrering,
 periodebytte og selskapsvalg skjer i minnet. `prefetchAllFields` avbryter
-umiddelbart når bundelen finnes (`index.html:2341`).
+umiddelbart når bundelen finnes (`index.html:2371`).
 
 **Fallback (datafiler mangler):** appen kaller Sodir-APIet direkte:
 
@@ -877,7 +890,7 @@ umiddelbart når bundelen finnes (`index.html:2341`).
 | Reserver | `queryAllParallel` mot 7114 (`:912-915`) |
 | Reserver per felt | 1 kall mot lag 7113 (`index.html:1457-1459`) |
 | Produksjon | Batcher à 50 felt-ID-er med `IN (...)` mot 7300 (`:756-776`) |
-| Bakgrunn | Etter 2 s: batcher à 30 for alle felt (`:2340`, `:2362`) |
+| Bakgrunn | Etter 2 s: batcher à 30 for alle felt (`:2370`, `:2392`) |
 
 Fallbacken har egen sesjonscache i `sessionStorage` med versjonerte nøkler
 (`index.html:411-412`), og faller tilbake til en `Map` i minnet hvis
@@ -986,7 +999,7 @@ De framtidige årene er ikke prognoser. Verifisert mot kilden: rader for
 | `hubs.json` | 6,4 KB | 1,0 KB |
 | `meta.json` | 0,1 KB | 0,1 KB |
 | **Sum `data/`** | **2 118,6 KB** | **535,4 KB** |
-| `index.html` | 122,5 KB | 38,4 KB |
+| `index.html` | 123,9 KB | 38,9 KB |
 
 GitHub Pages komprimerer tekst automatisk, så reell overføring ved førstegangs
 last er ca. **535 KB** for data pluss selve HTML-fila.
@@ -1127,7 +1140,7 @@ faktisk produksjon (`25288497` = 7220/11-1 Alta, `44576` = 33/9-6 DELTA). De
 dukker opp som `Field <id>` uten eierandeler.
 
 Spesialtilfellet er spredt over elleve steder: `:624-631`, `:633-636`, `:641-642`, `:713-717`, `:798-799`, `:987-989`,
-`:1255-1261`, `:2315-2317`, og i hvert av de fem `relevantIds`-uttrykkene
+`:1255-1261`, `:2345-2347`, og i hvert av de fem `relevantIds`-uttrykkene
 (`:1568-1570`, `:1641-1643`, `:1681-1683`, `:1740-1742`).
 
 ### 11.4 Selskaper kobles på navnestreng
