@@ -74,6 +74,11 @@
 
     .res-table-wrap{margin:0 12px 10px;overflow-x:auto;}
     .res-table-wrap:empty{display:none;}
+    .grp-row{display:flex;align-items:center;gap:6px;padding:0 2px 7px;}
+    .grp-label{font-size:0.68rem;color:var(--muted);margin-right:2px;}
+    .grp-btn{padding:3px 10px;border:1px solid var(--border);border-radius:11px;background:#fff;
+      font-size:0.68rem;color:var(--muted);cursor:pointer;}
+    .grp-btn.active{background:var(--light);border-color:#eeabcb;color:#1a2332;font-weight:600;}
     .res-table{width:100%;border-collapse:collapse;font-size:0.72rem;background:var(--card);
       border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);overflow:hidden;}
     .res-table caption{text-align:left;font-size:0.72rem;color:var(--muted);padding:0 2px 6px;caption-side:top;}
@@ -1282,6 +1287,9 @@ function showSpinner() {
   setReserveTable('');
 }
 function setReserveTable(html) {
+  // Tømmes tabellen, forsvinner også grupperingsveksleren. Da skal det ikke
+  // ligge igjen et datasett den kunne tegnet om.
+  if (!html) lastHubReserve = null;
   document.getElementById('reserveTable').innerHTML = html;
 }
 
@@ -1891,29 +1899,90 @@ function renderReserveTableByHub(series, companies, year) {
 // andelene av den. Summerer ikke andelene til 100 % — det gjelder felt som
 // deles med britisk sokkel — havner resten på en egen rad, slik at
 // feltsummen fortsatt stemmer.
+// Hubs-visningen kan grupperes to veier. Valget huskes i minnet, ikke i
+// nettleserlagring, siden det er et lesevalg og ikke en innstilling.
+let hubReserveGrouping = 'field';
+let lastHubReserve = null;   // {series, year} for å kunne tegne tabellen om alene
+
+function setHubReserveGrouping(g) {
+  hubReserveGrouping = g;
+  if (lastHubReserve) renderReserveTableByFieldPartner(lastHubReserve.series, lastHubReserve.year);
+}
+
+function hubGroupingToggle() {
+  const btn = (id, label) =>
+    `<button class="grp-btn${hubReserveGrouping===id?' active':''}" ` +
+    `onclick="setHubReserveGrouping('${id}')">${label}</button>`;
+  return `<div class="grp-row"><span class="grp-label">Group by</span>` +
+         btn('field','Field') + btn('company','Company') + `</div>`;
+}
+
+// Hubs-visningen: brutto feltreserver dekomponert på lisensiærene, gruppert
+// enten per felt med partnerne under, eller per selskap med feltene under.
+// Grafen er brutto, så feltraden er feltets fulle gjenstående reserver.
+// Summerer ikke andelene til 100 % — det gjelder felt som deles med britisk
+// sokkel — havner resten på en egen rad, slik at summen fortsatt stemmer.
 function renderReserveTableByFieldPartner(series, year) {
+  lastHubReserve = {series, year};
   const at = new Date(Date.UTC(year, 11, 31));
-  const groups = [];
+
+  // Felles grunnlag: per felt, feltets fulle reserver og andelene i det.
+  const fields = [];
   series.forEach(s => {
     const cur = reserveAt(s.rows, year);
     if (!cur) return;
     const full = remainingSplit(cur, 1);
     if (full.oe <= 0) return;
-    const fname = allFields.find(f => f.id === s.id)?.name || String(s.id);
     const partners = fieldPartners(s.id, at);
-    const children = partners.map(pt => ({
-      name: pt.name, share: {pct: pt.share, exact: true}, ...remainingSplit(cur, pt.share/100),
-    }));
+    const parts = partners.map(pt => ({name: pt.name, pct: pt.share}));
     const rest = 1 - partners.reduce((t, pt) => t + pt.share/100, 0);
-    if (rest > 0.0005) children.push({
-      name: UNALLOCATED, share: {pct: rest*100, exact: true}, ...remainingSplit(cur, rest),
+    if (rest > 0.0005) parts.push({name: UNALLOCATED, pct: rest*100});
+    fields.push({
+      name: allFields.find(f => f.id === s.id)?.name || String(s.id),
+      cur, full, parts,
     });
-    groups.push({name:fname, ...full, children});
   });
-  setReserveTable(reserveTableHtml(groups, 'Field / partner',
-    `Remaining reserves per field and partner, vintage ${year} · million boe`,
-    {shareHead: 'Share'}));
+
+  if (!fields.length) { setReserveTable(''); return; }
+
+  let html;
+  if (hubReserveGrouping === 'company') {
+    // Per selskap, med feltene under. Gruppens andel er selskapets beregnede
+    // eierandel av HELE hubens gjenstående reserver — altså selskapets OE
+    // delt på hubens OE — ikke en lisensandel. Barneradene viser derimot
+    // lisensandelen i det enkelte feltet.
+    const hubOe = fields.reduce((t, f) => t + f.full.oe, 0);
+    const byCmp = {};
+    fields.forEach(f => f.parts.forEach(pt => {
+      const v = remainingSplit(f.cur, pt.pct/100);
+      if (v.oe <= 0) return;
+      const g = byCmp[pt.name] = byCmp[pt.name] ||
+        {name: pt.name, liq:0, gas:0, oe:0, children:[]};
+      g.liq += v.liq; g.gas += v.gas; g.oe += v.oe;
+      g.children.push({name: f.name, share: {pct: pt.pct, exact: true}, ...v});
+    }));
+    const groups = Object.values(byCmp).map(g => ({
+      ...g, share: {pct: hubOe > 0 ? g.oe / hubOe * 100 : 0, exact: true},
+    }));
+    html = reserveTableHtml(groups, 'Company / field',
+      `Remaining reserves per company and field, vintage ${year} · million boe · ` +
+      `company share is its share of the hub total, field share is the licence interest`,
+      {shareHead: 'Share'});
+  } else {
+    const groups = fields.map(f => ({
+      name: f.name, ...f.full,
+      children: f.parts.map(pt => ({
+        name: pt.name, share: {pct: pt.pct, exact: true}, ...remainingSplit(f.cur, pt.pct/100),
+      })),
+    }));
+    html = reserveTableHtml(groups, 'Field / partner',
+      `Remaining reserves per field and partner, vintage ${year} · million boe · ` +
+      `share is the licence interest in the field`,
+      {shareHead: 'Share'});
+  }
+  setReserveTable(hubGroupingToggle() + html);
 }
+
 
 // Fields-visningen: per partner, summert over de valgte feltene.
 //
