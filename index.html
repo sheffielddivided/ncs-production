@@ -72,6 +72,8 @@
     .legend-item{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--muted);}
     .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 
+    /* Tabellen under grafen. .res-* er generisk tabellstil — den brukes av
+       både reserve- og produksjonstabellene. */
     .res-table-wrap{margin:0 12px 10px;overflow-x:auto;}
     .res-table-wrap:empty{display:none;}
     .grp-row{display:flex;align-items:center;gap:6px;padding:0 2px 7px;}
@@ -219,7 +221,7 @@
   </div>
 </div>
 
-<div class="res-table-wrap" id="reserveTable"></div>
+<div class="res-table-wrap" id="chartTable"></div>
 
 <div class="info-box" id="infoBox"></div>
 
@@ -1284,18 +1286,18 @@ function showSpinner() {
       <div>Loading…</div>
     </div>`;
   document.getElementById('downloadBtn').disabled = true;
-  setReserveTable('');
+  setChartTable('');
 }
-function setReserveTable(html) {
+function setChartTable(html) {
   // Tømmes tabellen, forsvinner også grupperingsveksleren. Da skal det ikke
   // ligge igjen et datasett den kunne tegnet om.
   if (!html) lastHubReserve = null;
-  document.getElementById('reserveTable').innerHTML = html;
+  document.getElementById('chartTable').innerHTML = html;
 }
 
 function setChartEmpty(msg) {
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-  setReserveTable('');
+  setChartTable('');
   document.getElementById('chartArea').innerHTML = `<div class="status">${msg}</div>`;
   document.getElementById('downloadBtn').disabled = true;
 }
@@ -1703,17 +1705,8 @@ function drawCompaniesOePerHub() {
   // Størst hub først, slik at de dominerende seriene får de tydeligste
   // palettfargene og legenden leses ovenfra og ned.
   const series = Object.entries(byHub).map(([hub, ids]) => {
-    const d = labels.map(lbl => {
-      if (period === 'quarterly') {
-        return +companies.reduce((tot, cmp) =>
-          tot + quarterBoedEquity(ids, lbl, qMap, (v,dy)=>oeBoed(v,dy), a=>a.prfPrdOeNetMillSm3||0, cmp)
-        , 0).toFixed(0);
-      }
-      let tot=0;
-      ids.forEach(id=>{companies.forEach(cmp=>{const row=(fieldProdCache[id]||[]).find(r=>periodKey(r.attributes)===lbl);const a=row?.attributes||{};if(!a.prfYear)return;const dy=days(a),share=getShare(id,midDate(a.prfYear,a.prfMonth||7),cmp)/100;tot+=oeBoed(a.prfPrdOeNetMillSm3||0,dy)*share;});});
-      return +tot.toFixed(0);
-    });
-    return {hub, d, total: d.reduce((x,y)=>x+y,0)};
+    const d = labels.map(lbl => equityOe(ids, lbl, qMap, companies));
+    return {hub, ids, d, total: d.reduce((x,y)=>x+y,0)};
   }).filter(s => hasAnyValue(s.d)).sort((a,b) => b.total - a.total);
 
   const datasets = [], legend = [];
@@ -1727,6 +1720,9 @@ function drawCompaniesOePerHub() {
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · OE per hub`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per hub &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
+  // lastLabels er trimmet av renderChart, så tabellen viser nøyaktig de
+  // periodene grafen faktisk tegner.
+  renderHubPeriodTable(series, companies, qMap, lastLabels.slice(-5));
 }
 
 // ── COMPANIES: RESERVES ──────────────────────────────────────────────────────
@@ -1796,6 +1792,76 @@ function drawCompaniesReserves() {
 // Tabell under grafen: reserver per felt, gruppert under huben feltet tilhører.
 // Viser kun siste årgang — altså samme tall som den høyreste søylen i grafen.
 // Huber og felt sorteres synkende etter sin egen total.
+// Equity-justert netto o.e. i boe/dag for ett eller flere felt i én periode,
+// summert over de valgte selskapene. Brukes av både grafen og tabellen under,
+// slik at de ikke kan komme i utakt.
+function equityOe(ids, lbl, qMap, companies) {
+  if (period === 'quarterly') {
+    return +companies.reduce((tot, cmp) =>
+      tot + quarterBoedEquity(ids, lbl, qMap, (v,dy)=>oeBoed(v,dy), a=>a.prfPrdOeNetMillSm3||0, cmp)
+    , 0).toFixed(0);
+  }
+  let tot = 0;
+  ids.forEach(id => companies.forEach(cmp => {
+    const row = (fieldProdCache[id]||[]).find(r => periodKey(r.attributes) === lbl);
+    const a = row?.attributes || {};
+    if (!a.prfYear) return;
+    const dy = days(a), share = getShare(id, midDate(a.prfYear, a.prfMonth||7), cmp) / 100;
+    tot += oeBoed(a.prfPrdOeNetMillSm3||0, dy) * share;
+  }));
+  return +tot.toFixed(0);
+}
+
+// Tabell med én kolonne per periode. groups: [{name, vals, children?}], der
+// vals har samme lengde som periods. Tomme rader er allerede filtrert bort av
+// kalleren.
+function periodTableHtml(groups, periods, headLabel, caption) {
+  if (!groups.length || !periods.length) return '';
+  const n = v => Math.round(v).toLocaleString('en');
+  const totals = periods.map((_, i) => groups.reduce((t, g) => t + g.vals[i], 0));
+  const cells = vals => vals.map(v => `<td>${n(v)}</td>`).join('');
+
+  const body = groups.map(g => {
+    const kids = (g.children || []);
+    const single = kids.length === 1 && kids[0].name === g.name;
+    const rows = single ? '' : kids
+      .map(c => `<tr class="field-row"><td>${c.name}</td>${cells(c.vals)}</tr>`).join('');
+    return `<tr class="hub-row"><td>${g.name}</td>${cells(g.vals)}</tr>${rows}`;
+  }).join('');
+
+  return `
+    <table class="res-table">
+      <caption>${caption}</caption>
+      <thead><tr><th>${headLabel}</th>${periods.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td>${cells(totals)}</tr></tfoot>
+    </table>`;
+}
+
+// Companies / OE per hub: de inntil fem nyeste periodene fra grafen, per felt
+// gruppert under huben feltet tilhører. Huber og felt sorteres synkende etter
+// siste periode, siden tabellen handler om situasjonen nå.
+function renderHubPeriodTable(series, companies, qMap, periods) {
+  if (!periods.length) { setChartTable(''); return; }
+  const last = periods.length - 1;
+
+  const groups = series.map(s => {
+    const vals = periods.map(lbl => equityOe(s.ids, lbl, qMap, companies));
+    const children = s.ids.map(id => ({
+      name: allFields.find(f => f.id === id)?.name || `Field ${id}`,
+      vals: periods.map(lbl => equityOe([id], lbl, qMap, companies)),
+    })).filter(c => c.vals.some(v => v > 0))
+       .sort((a, b) => b.vals[last] - a.vals[last]);
+    return {name: s.hub, vals, children};
+  }).filter(g => g.vals.some(v => v > 0))
+    .sort((a, b) => b.vals[last] - a.vals[last]);
+
+  setChartTable(periodTableHtml(groups, periods, 'Hub / field',
+    `Net OE per field, last ${periods.length} ${
+      period === 'monthly' ? 'months' : period === 'quarterly' ? 'quarters' : 'years'
+    } · boe/day · equity-adjusted`));
+}
+
 // Gjenstående reserver for ett felt i en årgang, skalert med en andel (0-1),
 // delt i væsker og gass. «Liquids» er OE minus gass, se drawCompaniesReserves.
 function remainingSplit(cur, share) {
@@ -1890,7 +1956,7 @@ function renderReserveTableByHub(series, companies, year) {
     h.liq += v.liq; h.gas += v.gas; h.oe += v.oe;
     h.children.push({name:fname, ...v});
   });
-  setReserveTable(reserveTableHtml(Object.values(hubs), 'Hub / field',
+  setChartTable(reserveTableHtml(Object.values(hubs), 'Hub / field',
     `Remaining reserves per field, vintage ${year} · million boe · equity-adjusted`));
 }
 
@@ -1943,7 +2009,7 @@ function renderReserveTableByFieldPartner(series, year) {
     });
   });
 
-  if (!fields.length) { setReserveTable(''); return; }
+  if (!fields.length) { setChartTable(''); return; }
 
   let html;
   if (hubReserveGrouping === 'company') {
@@ -1980,7 +2046,7 @@ function renderReserveTableByFieldPartner(series, year) {
       `share is the licence interest in the field`,
       {shareHead: 'Share'});
   }
-  setReserveTable(hubGroupingToggle() + html);
+  setChartTable(hubGroupingToggle() + html);
 }
 
 
@@ -2012,7 +2078,7 @@ function renderReserveTableByPartner(series, year) {
     name: g.name, liq: g.liq, gas: g.gas, oe: g.oe,
     share: g.oe > 0 ? {pct: g._wsum / g.oe, exact: g._pcts.size === 1} : null,
   }));
-  setReserveTable(reserveTableHtml(groups, 'Partner',
+  setChartTable(reserveTableHtml(groups, 'Partner',
     `Remaining reserves per partner, vintage ${year} · million boe`,
     {shareHead: 'Share'}));
 }
@@ -2035,7 +2101,7 @@ function trimLeadingZeros(labels, datasets) {
 function renderChart(labels, datasets, legend, yTitle, opts = {}) {
   // Tabellen under grafen hører til én enkelt visning. Nullstilles her, så
   // ingen visning kan etterlate en tabell som hører til en annen graf.
-  setReserveTable('');
+  setChartTable('');
   ({ labels, datasets } = trimLeadingZeros(labels, datasets));
   lastLabels = labels;
   lastXTitle = opts.xTitle || null;
