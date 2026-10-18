@@ -825,6 +825,12 @@ Topplinjen og kontrollraden har bakgrunnsfarge som skal gå helt ut til
 skjermkanten. De sentreres derfor med padding i stedet for maksbredde. Den
 flytende velgerknappen og bunnarket følger spalten, ikke skjermkanten.
 
+Elementene deler seg i to: de som er sin egen boks (`.res-table-wrap`,
+`.profile-wrap`, `.info-box`) får maksbredde **1100**, mens de som har 12 px
+egen padding (`.chart-wrap`, `.dl-row`, `.source-note`) får **1124**, slik at
+innholdet deres lander på de samme 1100. Uten det skillet ble grafkortet
+12 px smalere på hver side enn kortene under det.
+
 Regelblokken ligger **sist** i stilarket. Flere av elementene setter sin egen
 `margin` lenger nede i filen, og uten den plasseringen ville `margin:auto`
 tapt mot dem — en mediaspørring gir ikke høyere spesifisitet.
