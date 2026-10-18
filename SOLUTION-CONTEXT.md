@@ -815,6 +815,20 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Nullstill | `.topbar-title` (`:204`) | Sidetittelen er en knapp — `resetView` setter alt tilbake |
 | Del visning | `#shareBtn` (`:268`) | Kopierer lenke til gjeldende visning |
 
+### Maksbredde
+
+Fra 1148 px sentreres innholdet i en spalte på **1100 px**
+(`index.html:217-227`). Under det gjelder ingenting av det, så mobil- og
+nettbrettlayouten er uendret.
+
+Topplinjen og kontrollraden har bakgrunnsfarge som skal gå helt ut til
+skjermkanten. De sentreres derfor med padding i stedet for maksbredde. Den
+flytende velgerknappen og bunnarket følger spalten, ikke skjermkanten.
+
+Regelblokken ligger **sist** i stilarket. Flere av elementene setter sin egen
+`margin` lenger nede i filen, og uten den plasseringen ville `margin:auto`
+tapt mot dem — en mediaspørring gir ikke høyere spesifisitet.
+
 ### Nullstilling
 
 Sidetittelen øverst er en `<button>` som kaller `resetView`
