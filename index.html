@@ -25,7 +25,9 @@
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1a2332;overscroll-behavior:none;}
 
     .topbar{background:var(--navy);color:#fff;padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;}
-    .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;}
+    .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;display:block;
+      background:none;border:0;padding:0;margin:0;color:inherit;font-family:inherit;
+      text-align:left;cursor:pointer;}
     .topbar-sub{font-size:0.7rem;opacity:0.65;margin-top:1px;}
     .mode-switcher{display:flex;background:var(--light);border-radius:8px;padding:3px;gap:2px;}
     .mode-btn{padding:6px 14px;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;background:none;color:var(--muted);transition:all 0.15s;letter-spacing:0.01em;}
@@ -172,7 +174,7 @@
 
 <div class="topbar">
   <div>
-    <div class="topbar-title">NCS Production</div>
+    <button class="topbar-title" onclick="resetView()" title="Reset all selections">NCS Production</button>
     <div class="topbar-sub">Norwegian Continental Shelf · Sodir FactPages</div>
   </div>
   <button class="settings-btn" id="settingsBtn" onclick="openHubSettings()" title="Rediger huber" style="display:none">
@@ -1365,6 +1367,54 @@ async function loadDiscoveries() {
 // området det tilhører. Tom liste når kilden ikke oppgir noen eier.
 function discoveryPartners(d) {
   return licenceOwners[(d.ownerKind || '') + '|' + (d.owner || '')] || [];
+}
+
+// Tilbake til utgangspunktet: samme tilstand som en ren sidelasting uten
+// hash. Kalles fra tittelen øverst. Adressen skrives om av refresh() til
+// slutt, så en delt visning man har åpnet blir borte også fra adressefeltet.
+function resetView() {
+  topMode = 'companies';
+  fieldSubView = hubSubView = companySubView = 'oilgas';
+  discoverySubView = 'per_discovery';
+  hubReserveGrouping = 'field';
+  period = 'monthly';
+  showWater = false;
+
+  document.getElementById('modeBtnHubs').classList.remove('active');
+  document.getElementById('modeBtnFields').classList.remove('active');
+  document.getElementById('modeBtnDiscoveries').classList.remove('active');
+  document.getElementById('modeBtnCompanies').classList.add('active');
+  document.getElementById('btnMonthly').classList.add('active');
+  document.getElementById('btnQuarterly').classList.remove('active');
+  document.getElementById('btnAnnual').classList.remove('active');
+  document.getElementById('waterToggle').checked = false;
+  document.getElementById('yearFrom').value = currentYear - 1;
+  document.getElementById('yearTo').value   = currentYear;
+  document.getElementById('listSearch').value = '';
+
+  // Samme standardvalg som init setter.
+  selectedCompanyNames = new Set(['Aker BP ASA']);
+  selectedFieldIds = new Set();
+  const js = allFields.find(f => f.name === 'JOHAN SVERDRUP');
+  if (js) selectedFieldIds.add(js.id);
+  selectedHubNames = new Set();
+  selectDefaultHub();
+  selectedDiscoveryIds = new Set(allDiscoveries.map(d => d.id));
+
+  filteredFields = allFields;
+  filteredHubs = allHubs;
+  filteredCompanies = allCompanies;
+  filteredDiscoveries = allDiscoveries;
+
+  // Årsintervallet er endret, og i fallback-modus er produksjonscachen
+  // nøklet på det.
+  sessionClearProd();
+  fieldProdCache = {};
+
+  closeSheet();
+  renderViewTabs();
+  updateFab();
+  refresh();
 }
 
 // ── DELBAR LENKE ─────────────────────────────────────────────────────────────
