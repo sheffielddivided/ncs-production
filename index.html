@@ -138,6 +138,11 @@
     .res-table tr.field-row td:first-child{padding-left:20px;color:var(--muted);}
     .res-table tr.total-row{background:#e8eef5;font-weight:700;color:var(--navy);}
     .res-table tr.total-row td{border-top:2px solid var(--border);}
+    /* Funnavn som lenker til profilen. Arver radens farge og vekt, slik at
+       raden ser ut som før, og markeres med understreking. */
+    .row-link{color:inherit;font:inherit;text-decoration:underline;
+      text-decoration-color:var(--blue);text-underline-offset:2px;cursor:pointer;}
+    .row-link:hover,.row-link:focus-visible{color:var(--blue);}
 
     .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
     .info-box strong{color:#1a2332;}
@@ -1441,6 +1446,9 @@ async function loadDiscoveries() {
   // Uten et utvalg fra lenken vises hele porteføljen. Kjører bare denne ene
   // gangen, så «Clear all» blir ikke overstyrt etterpå.
   if (!selectedDiscoveryIds.size) known.forEach(id => selectedDiscoveryIds.add(id));
+  // Funnene er først kjent her, etter at updateFab har kjørt. Uten dette står
+  // knappen på «0 selected» mens tabellen viser hele porteføljen.
+  updateFab();
   discoveriesLoaded = true;
 }
 
@@ -1750,6 +1758,19 @@ function setChartEmpty(msg) {
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   setChartTable(''); setProfile('');
   document.getElementById('chartArea').innerHTML = `<div class="status">${msg}</div>`;
+  document.getElementById('downloadBtn').disabled = true;
+}
+
+// Funnprofilen har ingen graf — ressursanslaget står i tabellen i profilen.
+// Tømmer grafområdet uten å røre tittelen, og slår av Excel-knappen, siden
+// det ikke finnes noe datasett å eksportere. Rydder også bort tabellen, som
+// ellers ville blitt liggende igjen fra forrige fane; det er renderChart som
+// gjør den jobben for de andre visningene.
+function setChartNone() {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  setChartTable('');
+  lastLabels = []; lastDatasets = []; lastXTitle = null;
+  document.getElementById('chartArea').innerHTML = '';
   document.getElementById('downloadBtn').disabled = true;
 }
 
@@ -2559,12 +2580,14 @@ function discoveryByCompany(list, pick) {
     parts.forEach(p => {
       const f = p.share / 100;
       const w = {liq: v.liq*f, gas: v.gas*f, oe: v.oe*f};
-      add(p.name, w).children.push({name: d.name, share:{pct:p.share, exact:true}, ...w});
+      add(p.name, w).children.push({name: d.name, discoveryId: d.id,
+                                    share:{pct:p.share, exact:true}, ...w});
     });
     const rest = 1 - sum/100;
     if (rest > 0.0005) {
       const w = {liq: v.liq*rest, gas: v.gas*rest, oe: v.oe*rest};
-      add(UNALLOCATED, w).children.push({name: d.name, share:{pct:rest*100, exact:true}, ...w});
+      add(UNALLOCATED, w).children.push({name: d.name, discoveryId: d.id,
+                                         share:{pct:rest*100, exact:true}, ...w});
     }
   });
   return Object.values(out);
@@ -2596,7 +2619,8 @@ function drawDiscoveriesPerDiscovery() {
     const rest = 1 - parts.reduce((t,p)=>t+p.share,0)/100;
     if (rest > 0.0005) children.push({name: UNALLOCATED, share:{pct:rest*100, exact:true},
       liq:r.v.liq*BBL_PER_SM3*rest, gas:r.v.gas*BBL_PER_SM3*rest, oe:r.v.oe*BBL_PER_SM3*rest});
-    return {name:r.d.name, liq:r.v.liq*BBL_PER_SM3, gas:r.v.gas*BBL_PER_SM3, oe:r.v.oe*BBL_PER_SM3, children};
+    return {name:r.d.name, discoveryId:r.d.id, liq:r.v.liq*BBL_PER_SM3,
+            gas:r.v.gas*BBL_PER_SM3, oe:r.v.oe*BBL_PER_SM3, children};
   });
   setChartTable(reserveTableHtml(groups, 'Discovery / partner',
     'Contingent resources per discovery and partner · million boe', {shareHead:'Share'}));
@@ -2753,6 +2777,19 @@ function discoveryOwnership(d) {
        which owns the discovery.</div>`;
 }
 
+// Hopper fra et funnavn i tabellene til funnets profil. Tabellene ligger langt
+// nede på siden, så visningen rulles til topps — ellers blir man stående midt
+// i en tabell som er byttet ut under føttene.
+function openDiscoveryProfile(id) {
+  selectedDiscoveryIds = new Set([id]);
+  discoverySubView = 'profile';
+  renderViewTabs();
+  updateFab();
+  if (sheetOpen) renderDiscoveryList();
+  refresh();
+  try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) { window.scrollTo(0, 0); }
+}
+
 function drawDiscoveryProfile() {
   const list = selectedDiscoveries();
   if (list.length !== 1) {
@@ -2769,20 +2806,14 @@ function drawDiscoveryProfile() {
   const classes = CONTINGENT_RC.filter(rc => v && v.byRc[rc]);
 
   setChartTitle(d.name, [d.operator, d.area, d.status].filter(Boolean).join(' · '));
-  setInfo(`<strong>Discovery:</strong> ${esc(d.name)} &nbsp;|&nbsp; <strong>Chart:</strong> Contingent resources per resource class, Liquids and Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+  setInfo(`<strong>Discovery:</strong> ${esc(d.name)} &nbsp;|&nbsp; <strong>Resources:</strong> ${
+    classes.length ? classes.map(rc => `${rc} · ${RC_LABEL[rc]}`).join(', ') : '—'
+  } &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
 
-  if (classes.length) {
-    const labels = classes.map(rc => `${rc} · ${RC_LABEL[rc]}`);
-    renderChart(labels,
-      [{label:'Liquids', data:classes.map(rc => +(v.byRc[rc].liq*BBL_PER_SM3).toFixed(1)),
-        backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
-       {label:'Gas',     data:classes.map(rc => +(v.byRc[rc].gas*BBL_PER_SM3).toFixed(1)),
-        backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'}],
-      [{label:'Liquids',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}],
-      'million boe', {xTitle:'Resource class', allTicks:true});
-  } else {
-    setChartEmpty(DISC_NO_DATA);
-  }
+  // Ingen graf: et funn har ingen produksjonshistorikk, og ressursanslaget
+  // står allerede i volumtabellen under. En søyle per ressursklasse ga ingen
+  // innsikt tabellen ikke gir bedre.
+  setChartNone();
 
   const fact = (k, x) => x ? `<div class="pf-fact"><span>${k}</span><strong>${esc(x)}</strong></div>` : '';
   const descs = discoveryDescriptions(d.id);
@@ -3006,14 +3037,22 @@ function reserveTableHtml(groups, headLabel, caption, opts = {}) {
   const tot = groups.reduce((t, g) => ({liq:t.liq+g.liq, gas:t.gas+g.gas, oe:t.oe+g.oe}),
                             {liq:0, gas:0, oe:0});
 
+  // Rader som bærer en discoveryId blir lenker til funnprofilen. Funnvisningen
+  // setter den på gruppene i «Resources» og på barna i «Per company»; de andre
+  // kallerne sender den ikke, og får ren tekst.
+  const nm = r => r.discoveryId
+    ? `<a class="row-link" href="#" title="Open the profile for ${esc(r.name)}"` +
+      ` onclick="openDiscoveryProfile(${r.discoveryId});return false;">${esc(r.name)}</a>`
+    : esc(r.name);
+
   const body = groups.map(g => {
     const kids = (g.children || []).filter(c => c.oe > 0);
     const single = kids.length === 1 && kids[0].name === g.name;
     const rows = single ? '' : kids
       .sort((a, b) => b.oe - a.oe)
-      .map(c => `<tr class="field-row"><td>${c.name}</td>${sh(c)}<td>${n(c.liq)}</td><td>${n(c.gas)}</td><td>${n(c.oe)}</td></tr>`)
+      .map(c => `<tr class="field-row"><td>${nm(c)}</td>${sh(c)}<td>${n(c.liq)}</td><td>${n(c.gas)}</td><td>${n(c.oe)}</td></tr>`)
       .join('');
-    return `<tr class="hub-row"><td>${g.name}</td>${sh(g)}<td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>${rows}`;
+    return `<tr class="hub-row"><td>${nm(g)}</td>${sh(g)}<td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>${rows}`;
   }).join('');
 
   const shHead = opts.shareHead ? `<th>${opts.shareHead}</th>` : '';
