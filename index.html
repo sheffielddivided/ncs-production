@@ -2119,23 +2119,31 @@ function profileVolumes(id) {
     `<tr><td>${label}</td><td>${ip}</td><td>${rec}</td><td>${rem}</td></tr>`;
   const inplaceTotal = (r.fldInplaceOil||0) + (r.fldInplaceAssLiquid||0) +
                        (r.fldInplaceAssGas||0) + (r.fldInplaceFreeGas||0);
+  // Sodir oppgir NGL som masse (mill tonn), ikke volum, så det kan ikke
+  // regnes om direkte uten en tetthet. I stedet utledes NGL som restleddet
+  // av oljeekvivalenten: total o.e. minus olje, gass og kondensat. Da
+  // summerer kolonnen eksakt, og tallet er Sodirs egen omregning framfor
+  // vår antakelse om tetthet.
+  const nglOf = (oe, oil, gas, cond) =>
+    Math.max(0, (oe||0) - (oil||0) - (gas||0) - (cond||0));
+  const recNGL = nglOf(r.fldRecoverableOE, r.fldRecoverableOil, r.fldRecoverableGas, r.fldRecoverableCondensate);
+  const remNGL = nglOf(r.fldRemainingOE, r.fldRemainingOil, r.fldRemainingGas, r.fldRemainingCondensate);
   return `
     <table class="res-table">
-      <caption>Volumes, vintage ${cur.year} · million boe unless stated</caption>
+      <caption>Volumes, vintage ${cur.year} · million boe</caption>
       <thead><tr><th>&nbsp;</th><th>Original in place</th><th>Original recoverable</th><th>Remaining</th></tr></thead>
       <tbody>
         ${line('Oil', n(r.fldInplaceOil), n(r.fldRecoverableOil), n(r.fldRemainingOil))}
         ${line('Associated liquid', n(r.fldInplaceAssLiquid), '—', '—')}
         ${line('Gas', n((r.fldInplaceAssGas||0) + (r.fldInplaceFreeGas||0)), n(r.fldRecoverableGas), n(r.fldRemainingGas))}
         ${line('Condensate', '—', n(r.fldRecoverableCondensate), n(r.fldRemainingCondensate))}
-        ${line('NGL <small>(mill tonnes)</small>', '—',
-               (r.fldRecoverableNGL>0) ? r.fldRecoverableNGL.toFixed(2) : '—',
-               (r.fldRemainingNGL>0) ? r.fldRemainingNGL.toFixed(2) : '—')}
+        ${line('NGL', '—', n(recNGL), n(remNGL))}
       </tbody>
       <tfoot><tr class="total-row"><td>Total OE</td><td>${n(inplaceTotal)}</td>
         <td>${n(r.fldRecoverableOE)}</td><td>${n(r.fldRemainingOE)}</td></tr></tfoot>
     </table>
-    <div class="pf-map-note">NGL is reported as mass and is not converted. Gas is counted at
+    <div class="pf-map-note">Sodir reports NGL as mass, so it is derived here as total OE
+      less oil, gas and condensate — the column therefore adds up exactly. Gas is counted at
       1 bill Sm³ = 1 mill Sm³ o.e., as elsewhere in the app.</div>`;
 }
 
