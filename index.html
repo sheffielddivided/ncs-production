@@ -78,6 +78,33 @@
        både reserve- og produksjonstabellene. */
     .res-table-wrap{margin:0 12px 10px;overflow-x:auto;}
     .res-table-wrap:empty{display:none;}
+    /* ── Profile ── */
+    .profile-wrap{margin:0 12px 10px;}
+    .profile-wrap:empty{display:none;}
+    .pf-card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);
+      padding:12px 12px 14px;margin-bottom:10px;}
+    .pf-card h3{margin:0 0 9px;font-size:0.78rem;font-weight:700;color:var(--navy);
+      letter-spacing:0.01em;}
+    .pf-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px 14px;}
+    .pf-fact span{display:block;font-size:0.64rem;color:var(--muted);text-transform:uppercase;
+      letter-spacing:0.04em;}
+    .pf-fact strong{font-size:0.82rem;color:#1a2332;font-weight:600;}
+    .pf-map{width:100%;height:230px;display:block;border-radius:8px;background:#eef3f8;}
+    .pf-map-note{font-size:0.64rem;color:var(--muted);margin-top:6px;}
+    .pf-own{display:flex;flex-direction:column;gap:7px;}
+    .pf-own-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline;}
+    .pf-own-name{font-size:0.74rem;color:#1a2332;}
+    .pf-own-pct{font-size:0.74rem;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;}
+    .pf-own-bar{grid-column:1/-1;height:5px;border-radius:3px;background:#e8eef5;overflow:hidden;}
+    .pf-own-bar i{display:block;height:100%;background:var(--blue);}
+    .pf-own-row.op .pf-own-bar i{background:var(--green);}
+    .pf-op-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:9px;
+      background:var(--light);border:1px solid #eeabcb;font-size:0.6rem;color:#1a2332;
+      text-transform:uppercase;letter-spacing:0.04em;vertical-align:1px;}
+    .pf-desc h4{margin:10px 0 3px;font-size:0.72rem;color:var(--navy);}
+    .pf-desc h4:first-child{margin-top:0;}
+    .pf-desc p{margin:0;font-size:0.73rem;line-height:1.55;color:#2f2f2f;}
+
     .res-sum{background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);
       padding:10px 12px;margin:14px 0 10px;font-size:0.74rem;}
     .res-sum div{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);}
@@ -233,6 +260,8 @@
 
 <div class="res-table-wrap" id="chartTable"></div>
 
+<div class="profile-wrap" id="profileBox"></div>
+
 <div class="info-box" id="infoBox"></div>
 
 <div class="dl-row">
@@ -322,7 +351,9 @@ const BBL_PER_SM3 = 6.29;
 const DATA_BASE = 'data/';
 
 const bundle = { fields:null, production:null, licensees:null, reserves:null, reserves_field:null,
-                 discoveries:null, discovery_resources:null, licence_licensees:null, meta:null, hubs:null };
+                 discoveries:null, discovery_resources:null, licence_licensees:null,
+                 field_profile:null, field_descriptions:null, field_outlines:null, coastline:null,
+                 meta:null, hubs:null };
 
 async function fetchBundle(name) {
   try {
@@ -334,7 +365,9 @@ async function fetchBundle(name) {
 
 async function loadBundles() {
   const names = ['fields','production','licensees','reserves','reserves_field',
-                 'discoveries','discovery_resources','licence_licensees','meta','hubs'];
+                 'discoveries','discovery_resources','licence_licensees',
+                 'field_profile','field_descriptions','field_outlines','coastline',
+                 'meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   const gen = bundle.meta && bundle.meta.generated;
@@ -980,6 +1013,7 @@ const FIELD_TABS   = [
   {id:'oe_per_field',   label:'OE per field'},
   {id:'oe_per_company', label:'OE per company'},
   {id:'reserves',       label:'Reserves'},
+  {id:'profile',        label:'Profile'},
 ];
 const HUB_TABS     = [
   {id:'oilgas',        label:'Oil & Gas'},
@@ -1599,6 +1633,11 @@ async function refreshFields() {
     drawChart();
     return;
   }
+  if (fieldSubView === 'profile') {
+    await Promise.all([loadProdForFields(ids), loadLicForFields(ids), loadFieldReserves()]);
+    drawChart();
+    return;
+  }
   await loadProdForFields(ids);
   if (fieldSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -1647,8 +1686,12 @@ function showSpinner() {
       <div>Loading…</div>
     </div>`;
   document.getElementById('downloadBtn').disabled = true;
-  setChartTable('');
+  setChartTable(''); setProfile('');
 }
+function setProfile(html) {
+  document.getElementById('profileBox').innerHTML = html;
+}
+
 function setChartTable(html) {
   // Tømmes tabellen, forsvinner også grupperingsveksleren. Da skal det ikke
   // ligge igjen et datasett den kunne tegnet om.
@@ -1658,7 +1701,7 @@ function setChartTable(html) {
 
 function setChartEmpty(msg) {
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-  setChartTable('');
+  setChartTable(''); setProfile('');
   document.getElementById('chartArea').innerHTML = `<div class="status">${msg}</div>`;
   document.getElementById('downloadBtn').disabled = true;
 }
@@ -1670,6 +1713,7 @@ function drawChart() {
     else if (sv === 'oe_per_field')    drawFieldsOePerField();
     else if (sv === 'oe_per_company')  drawFieldsOePerCompany();
     else if (sv === 'reserves')        drawFieldsReserves();
+    else if (sv === 'profile')         drawFieldProfile();
   } else if (topMode === 'hubs') {
     // Gjenbruker feltvisningene med hubens medlemsfelt.
     const names = [...selectedHubNames];
@@ -1801,6 +1845,7 @@ let fieldReservesLoaded = false;
 // Visninger uten tidsakse: periode- og årsvelgeren gjelder ikke for dem.
 function isReservesView() {
   return topMode === 'discoveries'
+      || (topMode === 'fields'    && fieldSubView   === 'profile')
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'companies' && companySubView === 'reserves');
@@ -1813,11 +1858,14 @@ async function loadFieldReserves() {
   // remainingGas er i bill Sm3, som numerisk er det samme som mill Sm3 o.e.
   // (1 bill Sm3 gass = 1000 mill Sm3 gass = 1 mill Sm3 o.e.). Det er samme
   // implisitte 1000:1 som produksjonstallene bruker, se gasBoed().
-  const add = (id, year, recOE, remOE, remGas) => {
+  // raw bærer alle kolonnene videre til Profile-visningen, som trenger
+  // inplace- og fraksjonstallene. De øvrige visningene bruker bare de tre
+  // avledede feltene.
+  const add = (id, year, recOE, remOE, remGas, raw) => {
     if (!(id >= 0) || !(year >= 0)) return;
     (byField[id] = byField[id] || []).push({
       year, recoverableOE: recOE || 0, remainingOE: remOE || 0,
-      remainingGas: remGas || 0,
+      remainingGas: remGas || 0, raw: raw || {},
     });
   };
 
@@ -1827,17 +1875,20 @@ async function loadFieldReserves() {
     const iRem = b.columns.indexOf('fldRemainingOE');
     const iGas = b.columns.indexOf('fldRemainingGas');
     Object.entries(b.fields).forEach(([id, rows]) => {
-      rows.forEach(r => add(+id, r[0], r[iRec], r[iRem], r[iGas]));
+      rows.forEach(r => {
+        const raw = {};
+        b.columns.forEach((c, i) => { if (i) raw[c] = r[i]; });
+        add(+id, r[0], r[iRec], r[iRem], r[iGas], raw);
+      });
     });
   } else {
     // Fallback når datafilene mangler: hent laget direkte fra Sodir.
     try {
-      const feats = await queryLayer(FLDRES_LAYER, {
-        outFields: 'fldNpdidField,fldVersion,fldRecoverableOE,fldRemainingOE,fldRemainingGas',
-      });
+      const feats = await queryLayer(FLDRES_LAYER, {outFields: '*'});
       feats.forEach(f => {
         const a = f.attributes || {};
-        add(a.fldNpdidField, a.fldVersion, a.fldRecoverableOE, a.fldRemainingOE, a.fldRemainingGas);
+        add(a.fldNpdidField, a.fldVersion, a.fldRecoverableOE, a.fldRemainingOE,
+            a.fldRemainingGas, a);
       });
     } catch (e) { /* tom visning håndteres av kalleren */ }
   }
@@ -1911,6 +1962,225 @@ function drawFieldsReserves(opts = {}) {
   // Hub-modus bryter ned på felt og partner; feltmodus summerer per partner.
   if (scope) renderReserveTableByFieldPartner(series, last);
   else       renderReserveTableByPartner(series, last);
+}
+
+// ── FIELDS: PROFILE ──────────────────────────────────────────────────────────
+// Faktaark for ett felt: årlig produksjonshistorikk i grafen, og under den
+// nøkkeltall, kart, volumer, eierskap og Sodirs egen feltbeskrivelse.
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function profileRow(id) {
+  const b = bundle.field_profile;
+  if (!b) return null;
+  const i = n => b.columns.indexOf(n);
+  const r = b.rows.find(x => x[0] === id);
+  if (!r) return null;
+  return {
+    discoveryYear: r[i('discoveryYear')], operator: r[i('operator')],
+    hc: r[i('hc')], area: r[i('area')], supplyBase: r[i('supplyBase')],
+    status: r[i('status')], wellbore: r[i('wellbore')],
+    productionStart: r[i('productionStart')],
+  };
+}
+
+function fieldDescriptions(id) {
+  const b = bundle.field_descriptions;
+  if (!b) return [];
+  // Sodirs rekkefølge er alfabetisk i kilden; dette er den rekkefølgen som
+  // leser best — utbygging først, status sist.
+  const ORDER = ['Development', 'Reservoir', 'Recovery strategy', 'Transport', 'Status'];
+  const rows = b.rows.filter(r => r[0] === id).map(r => ({heading: r[1], text: r[2]}));
+  return rows.sort((a, c) => {
+    const ia = ORDER.indexOf(a.heading), ic = ORDER.indexOf(c.heading);
+    return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.heading.localeCompare(c.heading);
+  });
+}
+
+const fmtDate = ms => {
+  if (!ms) return '—';
+  const d = new Date(ms);
+  return d.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric', timeZone:'UTC'});
+};
+const mmboe = v => (v * BBL_PER_SM3).toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
+
+// Kart: kystlinje, nabofelt i grått og feltet selv uthevet. Utsnittet legges
+// rundt feltet med en margin, og låses til et minste vindu så små felt ikke
+// zoomes så langt inn at konteksten forsvinner.
+function profileMap(id) {
+  const outlines = bundle.field_outlines && bundle.field_outlines.fields;
+  const own = outlines && outlines[id];
+  if (!own) return '';
+
+  const W = 560, H = 230, MIN_SPAN = 1.6;   // grader bredde
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  own.forEach(r => r.forEach(([x, y]) => {
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+    y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }));
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const kx = Math.cos(cy * Math.PI / 180);          // enkel ekvirektangulær korreksjon
+  let spanX = Math.max((x1 - x0) * 3, MIN_SPAN);
+  let spanY = spanX * kx * H / W;
+  if ((y1 - y0) * 2.4 > spanY) { spanY = (y1 - y0) * 2.4; spanX = spanY / kx * W / H; }
+  const west = cx - spanX/2, south = cy - spanY/2;
+  const px = x => ((x - west) / spanX) * W;
+  const py = y => H - ((y - south) / spanY) * H;
+  // Punkter som havner nærmere enn én piksel fra forrige punkt droppes.
+  // Kartet er 560 px bredt, så finere detalj er usynlig uansett, og uten
+  // dette blir et stort felt som Troll titalls kilobyte SVG.
+  const path = (rings, minPx = 1) => rings.map(r => {
+    // Ringer som dekker noen få piksler på skjermen — skjær i skjærgården —
+    // koster byte uten å tilføre noe synlig.
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const [x, y] of r) {
+      const sx = px(x), sy = py(y);
+      bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx);
+      by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
+    }
+    if (bx1 - bx0 < 4 && by1 - by0 < 4) return '';
+
+    let d = '', lx = NaN, ly = NaN, n = 0;
+    for (const [x, y] of r) {
+      const sx = px(x), sy = py(y);
+      if (n && Math.abs(sx - lx) < minPx && Math.abs(sy - ly) < minPx) continue;
+      d += (n ? 'L' : 'M') + sx.toFixed(1) + ' ' + sy.toFixed(1);
+      lx = sx; ly = sy; n++;
+    }
+    return n >= 3 ? d + 'Z' : '';
+  }).join('');
+
+  // Klipp til utsnittet med en liten margin. Uten den strammingen drar et
+  // felt som Ekofisk inn halve sokkelen og kartet blir titalls kilobyte SVG.
+  const padX = spanX * 0.15, padY = spanY * 0.15;
+  const visible = r => r.some(([x, y]) => x > west - padX && x < west + spanX + padX &&
+                                          y > south - padY && y < south + spanY + padY);
+  const land = ((bundle.coastline && bundle.coastline.rings) || []).filter(visible);
+
+  const others = [];
+  Object.entries(outlines).forEach(([fid, rings]) => {
+    if (+fid === id) return;
+    rings.forEach(r => { if (visible(r)) others.push(r); });
+  });
+
+  return `
+    <svg class="pf-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice"
+         role="img" aria-label="Map of the field">
+      <rect width="${W}" height="${H}" fill="#eef3f8"/>
+      ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
+      ${others.length ? `<path d="${path(others, 2)}" fill="#cbd6e2" stroke="#b2bfcd" stroke-width="0.6"/>` : ''}
+      <path d="${path(own)}" fill="${OIL_COLOR}" stroke="#8e0a48" stroke-width="1.2"/>
+    </svg>
+    <div class="pf-map-note">Coastline: Natural Earth · field outlines: Sodir, simplified to ~110 m</div>`;
+}
+
+function profileVolumes(id) {
+  const rows = (fieldReserves && fieldReserves[id]) || [];
+  const cur = rows.length ? rows[rows.length - 1] : null;
+  if (!cur) return '';
+  const r = cur.raw || {};
+  const n = v => (v > 0 || v < 0) ? mmboe(v) : '—';
+  const line = (label, ip, rec, rem) =>
+    `<tr><td>${label}</td><td>${ip}</td><td>${rec}</td><td>${rem}</td></tr>`;
+  const inplaceTotal = (r.fldInplaceOil||0) + (r.fldInplaceAssLiquid||0) +
+                       (r.fldInplaceAssGas||0) + (r.fldInplaceFreeGas||0);
+  return `
+    <table class="res-table">
+      <caption>Volumes, vintage ${cur.year} · million boe unless stated</caption>
+      <thead><tr><th>&nbsp;</th><th>Original in place</th><th>Original recoverable</th><th>Remaining</th></tr></thead>
+      <tbody>
+        ${line('Oil', n(r.fldInplaceOil), n(r.fldRecoverableOil), n(r.fldRemainingOil))}
+        ${line('Associated liquid', n(r.fldInplaceAssLiquid), '—', '—')}
+        ${line('Gas', n((r.fldInplaceAssGas||0) + (r.fldInplaceFreeGas||0)), n(r.fldRecoverableGas), n(r.fldRemainingGas))}
+        ${line('Condensate', '—', n(r.fldRecoverableCondensate), n(r.fldRemainingCondensate))}
+        ${line('NGL <small>(mill tonnes)</small>', '—',
+               (r.fldRecoverableNGL>0) ? r.fldRecoverableNGL.toFixed(2) : '—',
+               (r.fldRemainingNGL>0) ? r.fldRemainingNGL.toFixed(2) : '—')}
+      </tbody>
+      <tfoot><tr class="total-row"><td>Total OE</td><td>${n(inplaceTotal)}</td>
+        <td>${n(r.fldRecoverableOE)}</td><td>${n(r.fldRemainingOE)}</td></tr></tfoot>
+    </table>
+    <div class="pf-map-note">NGL is reported as mass and is not converted. Gas is counted at
+      1 bill Sm³ = 1 mill Sm³ o.e., as elsewhere in the app.</div>`;
+}
+
+function profileOwnership(id, operator) {
+  const at = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+  const parts = fieldPartners(id, at).sort((a, b) => b.share - a.share);
+  if (!parts.length) return '';
+  const max = parts[0].share || 100;
+  return `<div class="pf-own">${parts.map(p => {
+    const isOp = operator && p.name === operator;
+    return `<div class="pf-own-row${isOp ? ' op' : ''}">
+      <div class="pf-own-name">${esc(p.name)}${isOp ? '<span class="pf-op-tag">Operator</span>' : ''}</div>
+      <div class="pf-own-pct">${p.share.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')} %</div>
+      <div class="pf-own-bar"><i style="width:${(p.share / max * 100).toFixed(1)}%"></i></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function drawFieldProfile() {
+  const ids = [...selectedFieldIds];
+  if (ids.length !== 1) {
+    setChartEmpty(ids.length
+      ? 'Select a single field to see its profile.'
+      : 'Tap the button below to select a field.');
+    setInfo('');
+    return;
+  }
+  const id = ids[0];
+  const name = allFields.find(f => f.id === id)?.name || String(id);
+  const p = profileRow(id) || {};
+
+  // Årlig produksjon, uavhengig av periodevelgeren — profilen viser alltid
+  // hele historikken.
+  const annual = (fieldProdCache[id] || [])
+    .map(r => r.attributes)
+    .filter(a => a && a.prfMonth === 0 && a.prfYear)
+    .sort((a, b) => a.prfYear - b.prfYear);
+  const labels = annual.map(a => String(a.prfYear));
+  const oil = annual.map(a => +oilBoed(a.prfPrdOilNetMillSm3||0, a.prfPrdGasNetBillSm3||0,
+                                       a.prfPrdOeNetMillSm3||0, daysInYear(a.prfYear)).toFixed(0));
+  const gas = annual.map(a => +gasBoed(a.prfPrdGasNetBillSm3||0, daysInYear(a.prfYear)).toFixed(0));
+
+  setChartTitle(name, [p.operator, p.area, p.status].filter(Boolean).join(' · '));
+  setInfo(`<strong>Field:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production, Oil and Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+
+  if (labels.length) {
+    renderChart(labels,
+      [{label:'Oil', data:oil, backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
+       {label:'Gas', data:gas, backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'}],
+      [{label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}],
+      'boe/day', {xTitle:'Year'});
+  } else {
+    setChartEmpty('No production reported for this field.');
+  }
+
+  const hub = hubOfField[id];
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+  const descs = fieldDescriptions(id);
+
+  setProfile(`
+    <div class="pf-card">
+      <h3>Key facts</h3>
+      <div class="pf-facts">
+        ${fact('Discovered', p.discoveryYear)}
+        ${fact('Discovery well', p.wellbore)}
+        ${fact('Production start', p.productionStart ? fmtDate(p.productionStart) : '')}
+        ${fact('Operator', p.operator)}
+        ${fact('Status', p.status)}
+        ${fact('Hydrocarbons', p.hc)}
+        ${fact('Main area', p.area)}
+        ${fact('Supply base', p.supplyBase)}
+        ${fact('Hub', hub && hub !== name ? hub : '')}
+      </div>
+    </div>
+    ${profileMap(id) ? `<div class="pf-card"><h3>Location</h3>${profileMap(id)}</div>` : ''}
+    ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
+    ${(() => { const o = profileOwnership(id, p.operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
+    ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
+      descs.map(d => `<h4>${esc(d.heading)}</h4><p>${esc(d.text)}</p>`).join('')}</div>` : ''}
+  `);
 }
 
 // ── FIELDS: OE PER COMPANY ───────────────────────────────────────────────────
@@ -2654,9 +2924,11 @@ function trimLeadingZeros(labels, datasets) {
 // som ikke følger periodevelgeren (reserver har sin egen årsakse).
 // opts.allTicks viser hver etikett på x-aksen i stedet for å tynne ut.
 function renderChart(labels, datasets, legend, yTitle, opts = {}) {
-  // Tabellen under grafen hører til én enkelt visning. Nullstilles her, så
-  // ingen visning kan etterlate en tabell som hører til en annen graf.
+  // Tabellen og profilen under grafen hører til én enkelt visning.
+  // Nullstilles her, så ingen visning kan etterlate noe som hører til en
+  // annen graf.
   setChartTable('');
+  setProfile('');
   ({ labels, datasets } = trimLeadingZeros(labels, datasets));
   lastLabels = labels;
   lastXTitle = opts.xTitle || null;
