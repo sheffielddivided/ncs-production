@@ -2115,27 +2115,58 @@ function profileVolumes(id) {
   if (!cur) return '';
   const r = cur.raw || {};
   const n = v => (v > 0 || v < 0) ? mmboe(v) : '—';
-  const line = (label, ip, rec, rem) =>
-    `<tr><td>${label}</td><td>${ip}</td><td>${rec}</td><td>${rem}</td></tr>`;
-  const inplaceTotal = (r.fldInplaceOil||0) + (r.fldInplaceAssLiquid||0) +
-                       (r.fldInplaceAssGas||0) + (r.fldInplaceFreeGas||0);
+  const line = (label, ip, rec, eur, rem) =>
+    `<tr><td>${label}</td><td>${ip}</td><td>${rec}</td><td>${eur}</td><td>${rem}</td></tr>`;
+  // Utvinningsgrad: hvor stor del av det som ligger i reservoaret som ventes
+  // utvunnet. Bare meningsfull der begge tallene finnes — kondensat og NGL
+  // har ingen inplace-kolonne hos Sodir, og assosiert væske har ingen
+  // tilsvarende recoverable-kolonne.
+  //
+  // Over 100 % utelates. Sodir deler væske i reservoaret mellom «oil» og
+  // «associated liquid», og for noen gass/kondensat-felt ligger nesten alt i
+  // den andre kolonnen mens det utvinnbare føres som olje. Da blir forholdet
+  // mellom de to oljekolonnene meningsløst — Vega gir 293 %. Det gjelder tre
+  // av 142 felt: Vega, Tune og Idun Nord.
+  const eurOf = (rec, ip) => {
+    if (!(ip > 0) || !(rec > 0)) return '—';
+    const pct = rec / ip * 100;
+    return pct > 100 ? '—' : pct.toFixed(1) + ' %';
+  };
+  const inplaceGas = (r.fldInplaceAssGas||0) + (r.fldInplaceFreeGas||0);
+  const inplaceTotal = (r.fldInplaceOil||0) + (r.fldInplaceAssLiquid||0) + inplaceGas;
+  // Sodir oppgir NGL som masse (mill tonn), ikke volum, så det kan ikke
+  // regnes om direkte uten en tetthet. I stedet utledes NGL som restleddet
+  // av oljeekvivalenten: total o.e. minus olje, gass og kondensat. Da
+  // summerer kolonnen eksakt, og tallet er Sodirs egen omregning framfor
+  // vår antakelse om tetthet.
+  const nglOf = (oe, oil, gas, cond) =>
+    Math.max(0, (oe||0) - (oil||0) - (gas||0) - (cond||0));
+  const recNGL = nglOf(r.fldRecoverableOE, r.fldRecoverableOil, r.fldRecoverableGas, r.fldRecoverableCondensate);
+  const remNGL = nglOf(r.fldRemainingOE, r.fldRemainingOil, r.fldRemainingGas, r.fldRemainingCondensate);
   return `
     <table class="res-table">
-      <caption>Volumes, vintage ${cur.year} · million boe unless stated</caption>
-      <thead><tr><th>&nbsp;</th><th>Original in place</th><th>Original recoverable</th><th>Remaining</th></tr></thead>
+      <caption>Volumes, vintage ${cur.year} · million boe</caption>
+      <thead><tr><th>&nbsp;</th><th>Original in place</th><th>Original recoverable</th><th>EUR</th><th>Remaining</th></tr></thead>
       <tbody>
-        ${line('Oil', n(r.fldInplaceOil), n(r.fldRecoverableOil), n(r.fldRemainingOil))}
-        ${line('Associated liquid', n(r.fldInplaceAssLiquid), '—', '—')}
-        ${line('Gas', n((r.fldInplaceAssGas||0) + (r.fldInplaceFreeGas||0)), n(r.fldRecoverableGas), n(r.fldRemainingGas))}
-        ${line('Condensate', '—', n(r.fldRecoverableCondensate), n(r.fldRemainingCondensate))}
-        ${line('NGL <small>(mill tonnes)</small>', '—',
-               (r.fldRecoverableNGL>0) ? r.fldRecoverableNGL.toFixed(2) : '—',
-               (r.fldRemainingNGL>0) ? r.fldRemainingNGL.toFixed(2) : '—')}
+        ${line('Oil', n(r.fldInplaceOil), n(r.fldRecoverableOil),
+               eurOf(r.fldRecoverableOil, r.fldInplaceOil), n(r.fldRemainingOil))}
+        ${line('Associated liquid', n(r.fldInplaceAssLiquid), '—', '—', '—')}
+        ${line('Gas', n(inplaceGas), n(r.fldRecoverableGas),
+               eurOf(r.fldRecoverableGas, inplaceGas), n(r.fldRemainingGas))}
+        ${line('Condensate', '—', n(r.fldRecoverableCondensate), '—', n(r.fldRemainingCondensate))}
+        ${line('NGL', '—', n(recNGL), '—', n(remNGL))}
       </tbody>
       <tfoot><tr class="total-row"><td>Total OE</td><td>${n(inplaceTotal)}</td>
-        <td>${n(r.fldRecoverableOE)}</td><td>${n(r.fldRemainingOE)}</td></tr></tfoot>
+        <td>${n(r.fldRecoverableOE)}</td><td>${eurOf(r.fldRecoverableOE, inplaceTotal)}</td>
+        <td>${n(r.fldRemainingOE)}</td></tr></tfoot>
     </table>
-    <div class="pf-map-note">NGL is reported as mass and is not converted. Gas is counted at
+    <div class="pf-map-note">EUR is the estimated ultimate recovery factor — original
+      recoverable over original in place — shown only where the source has both and the
+      ratio is below 100 %. Sodir splits liquid in place between oil and associated liquid,
+      and on a few gas fields almost all of it sits in the latter while the recoverable
+      volume is reported as oil, which makes the oil ratio meaningless.
+      Sodir reports NGL as mass, so it is derived here as total OE less oil, gas and
+      condensate; the volume columns therefore add up exactly. Gas is counted at
       1 bill Sm³ = 1 mill Sm³ o.e., as elsewhere in the app.</div>`;
 }
 
