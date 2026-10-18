@@ -20,6 +20,11 @@ statiske JSON-filer i dette repoet.
 | `data/discoveries.json` | Funn (lag 7000) — navn, status, funnår, eier |
 | `data/discovery_resources.json` | Ressursanslag per funn (lag 7008) |
 | `data/licence_licensees.json` | Eierandeler i lisenser og forretningsavtaleområder |
+| `data/field_profile.json` | Faktaark per felt — funnår, operatør, produksjonsstart |
+| `data/field_descriptions.json` | Sodirs feltbeskrivelser (lag 7102) |
+| `data/field_outlines.json` | Forenklede feltomriss til profilkartet |
+| `data/coastline.json` | Kystlinje til profilkartet — Natural Earth, bygget én gang |
+| `make_coastline.py` | Engangsscript som bygger `data/coastline.json` |
 | `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
