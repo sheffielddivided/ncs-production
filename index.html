@@ -218,8 +218,14 @@
       :root{ --gutter: calc((100% - 1100px) / 2); }
       .topbar{ padding-left:var(--gutter); padding-right:var(--gutter); }
       .controls-bar{ padding-left:var(--gutter); padding-right:var(--gutter); }
-      .chart-wrap, .res-table-wrap, .profile-wrap, .info-box, .dl-row, .source-note{
+      /* Innholdsspalten er 1100 px. Elementene som har 12 px egen padding
+         får 1124, slik at innholdet deres lander på de samme 1100 — ellers
+         blir grafkortet 12 px smalere på hver side enn kortene under. */
+      .res-table-wrap, .profile-wrap, .info-box{
         max-width:1100px; margin-left:auto; margin-right:auto;
+      }
+      .chart-wrap, .dl-row, .source-note{
+        max-width:1124px; margin-left:auto; margin-right:auto;
       }
       .select-fab{ right:calc(var(--gutter) + 4px); }
       .bottom-sheet{ max-width:1100px; margin:0 auto; border-radius:18px 18px 0 0; }
