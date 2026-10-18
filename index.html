@@ -387,6 +387,7 @@ const DATA_BASE = 'data/';
 
 const bundle = { fields:null, production:null, licensees:null, reserves:null, reserves_field:null,
                  discoveries:null, discovery_resources:null, licence_licensees:null,
+                 discovery_descriptions:null, discovery_outlines:null,
                  field_profile:null, field_descriptions:null, field_outlines:null, coastline:null,
                  meta:null, hubs:null };
 
@@ -401,6 +402,7 @@ async function fetchBundle(name) {
 async function loadBundles() {
   const names = ['fields','production','licensees','reserves','reserves_field',
                  'discoveries','discovery_resources','licence_licensees',
+                 'discovery_descriptions','discovery_outlines',
                  'field_profile','field_descriptions','field_outlines','coastline',
                  'meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
@@ -1059,6 +1061,7 @@ const DISCOVERY_TABS = [
   {id:'per_discovery', label:'Resources'},
   {id:'per_company',   label:'Per company'},
   {id:'maturity',      label:'Maturity'},
+  {id:'profile',       label:'Profile'},
 ];
 const COMPANY_TABS = [
   {id:'oilgas',        label:'Oil & Gas'},
@@ -1375,14 +1378,16 @@ async function loadDiscoveries() {
     try {
       const col = (feats, pick) => feats.map(f => pick(f.attributes || {}));
       const [d, r, pl, baa] = await Promise.all([
-        queryAllParallel(DISC_LAYER, {outFields:'dscNpdidDiscovery,dscName,dscCurrentActivityStatus,dscOwnerKind,dscOwnerName,dscHcType,dscDiscoveryYear,fldName'}),
-        queryAllParallel(DISCRES_LAYER, {outFields:'dscNpdidDiscovery,dscReservesRC,dscRecoverableGas,dscRecoverableOe'}),
+        queryAllParallel(DISC_LAYER, {outFields:'dscNpdidDiscovery,dscName,dscCurrentActivityStatus,dscOwnerKind,dscOwnerName,dscHcType,dscDiscoveryYear,fldName,cmpLongName,wlbName,nmaName,dscResInclInDiscoveryName'}),
+        queryAllParallel(DISCRES_LAYER, {outFields:'dscNpdidDiscovery,dscReservesRC,dscRecoverableOil,dscRecoverableGas,dscRecoverableCondensate,dscRecoverableOe'}),
         queryAllParallel(PRL_LIC_LAYER, {where:'prlLicenseeDateValidTo IS NULL', outFields:'prlName,cmpLongName,prlLicenseeInterest'}),
         queryAllParallel(BAA_LIC_LAYER, {where:'baaLicenseeDateValidTo IS NULL', outFields:'baaName,cmpLongName,baaLicenseeInterest'}),
       ]);
       discRows = col(d, a => [a.dscNpdidDiscovery, a.dscName, a.dscCurrentActivityStatus,
-                              a.dscOwnerKind, a.dscOwnerName, a.dscHcType, a.dscDiscoveryYear, a.fldName]);
-      resRows  = col(r, a => [a.dscNpdidDiscovery, a.dscReservesRC, 0, a.dscRecoverableGas, 0, 0, a.dscRecoverableOe]);
+                              a.dscOwnerKind, a.dscOwnerName, a.dscHcType, a.dscDiscoveryYear, a.fldName,
+                              a.cmpLongName, a.wlbName, a.nmaName, a.dscResInclInDiscoveryName]);
+      resRows  = col(r, a => [a.dscNpdidDiscovery, a.dscReservesRC, a.dscRecoverableOil,
+                              a.dscRecoverableGas, 0, a.dscRecoverableCondensate, a.dscRecoverableOe]);
       licRows  = col(pl,  a => [a.prlName, 'PRODUCTION LICENCE', a.cmpLongName, a.prlLicenseeInterest])
          .concat(col(baa, a => [a.baaName, 'BUSINESS ARRANGEMENT AREA', a.cmpLongName, a.baaLicenseeInterest]));
     } catch (e) {
@@ -1402,6 +1407,7 @@ async function loadDiscoveries() {
     ? bundle.discovery_resources.columns
     : ['id','rc','oil','gas','ngl','cond','oe'];
   const iRc = ci.indexOf('rc'), iGas = ci.indexOf('gas'), iOe = ci.indexOf('oe');
+  const iOil = ci.indexOf('oil'), iCond = ci.indexOf('cond');
   discoveryRes = {};
   resRows.forEach(row => {
     const rc = row[iRc];
@@ -1409,16 +1415,22 @@ async function loadDiscoveries() {
     const oe = row[iOe] || 0, gas = row[iGas] || 0;
     if (oe <= 0) return;
     const id = row[0];
-    const e = discoveryRes[id] = discoveryRes[id] || {liq:0, gas:0, oe:0, byRc:{}};
+    // oil og cond brukes bare av profilvisningen, som bryter væsken ned på
+    // fraksjoner. De øvrige visningene regner væske som o.e. minus gass.
+    const oil = row[iOil] || 0, cond = row[iCond] || 0;
+    const e = discoveryRes[id] = discoveryRes[id]
+      || {liq:0, gas:0, oe:0, oil:0, cond:0, byRc:{}};
     const liq = Math.max(0, oe - gas);
-    e.liq += liq; e.gas += gas; e.oe += oe;
-    const k = e.byRc[rc] = e.byRc[rc] || {liq:0, gas:0, oe:0};
-    k.liq += liq; k.gas += gas; k.oe += oe;
+    e.liq += liq; e.gas += gas; e.oe += oe; e.oil += oil; e.cond += cond;
+    const k = e.byRc[rc] = e.byRc[rc] || {liq:0, gas:0, oe:0, oil:0, cond:0};
+    k.liq += liq; k.gas += gas; k.oe += oe; k.oil += oil; k.cond += cond;
   });
 
   allDiscoveries = discRows
-    .map(([id, name, status, ownerKind, owner, hc, year, field]) =>
-      ({id, name, status, ownerKind, owner, hc, year, field}))
+    .map(([id, name, status, ownerKind, owner, hc, year, field,
+           operator, wellbore, area, inclIn]) =>
+      ({id, name, status, ownerKind, owner, hc, year, field,
+        operator, wellbore, area, inclIn}))
     .filter(d => discoveryRes[d.id])
     .sort((a, b) => discoveryRes[b.id].oe - discoveryRes[a.id].oe);
   filteredDiscoveries = allDiscoveries;
@@ -1760,6 +1772,7 @@ function drawChart() {
     const sv = discoverySubView;
     if (sv === 'per_company')    drawDiscoveriesPerCompany();
     else if (sv === 'maturity')  drawDiscoveriesMaturity();
+    else if (sv === 'profile')   drawDiscoveryProfile();
     else                         drawDiscoveriesPerDiscovery();
   } else {
     const sv = companySubView;
@@ -2039,14 +2052,15 @@ const fmtDate = ms => {
 };
 const mmboe = v => (v * BBL_PER_SM3).toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
 
-// Kart: kystlinje, nabofelt i grått og feltet selv uthevet. Utsnittet legges
-// rundt feltet med en margin, og låses til et minste vindu så små felt ikke
-// zoomes så langt inn at konteksten forsvinner.
-function profileMap(id) {
-  const outlines = bundle.field_outlines && bundle.field_outlines.fields;
-  const own = outlines && outlines[id];
-  if (!own) return '';
-
+// Kart: kystlinje, naboomriss i grått og forekomsten selv uthevet. Utsnittet
+// legges rundt den med en margin, og låses til et minste vindu så små
+// forekomster ikke zoomes så langt inn at konteksten forsvinner.
+//
+// own er ringene som skal utheves. opts.layers er bakgrunnslag som tegnes
+// over kystlinjen i den rekkefølgen de står, hvert med {rings, fill, stroke,
+// minPx}. Ringer utenfor utsnittet filtreres bort her, så kallerne kan sende
+// inn alt de har.
+function outlineMap(own, opts = {}) {
   const W = 560, H = 230, MIN_SPAN = 1.6;   // grader bredde
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   own.forEach(r => r.forEach(([x, y]) => {
@@ -2092,21 +2106,44 @@ function profileMap(id) {
                                           y > south - padY && y < south + spanY + padY);
   const land = ((bundle.coastline && bundle.coastline.rings) || []).filter(visible);
 
-  const others = [];
-  Object.entries(outlines).forEach(([fid, rings]) => {
-    if (+fid === id) return;
-    rings.forEach(r => { if (visible(r)) others.push(r); });
-  });
+  const back = (opts.layers || []).map(L => {
+    const rings = (L.rings || []).filter(visible);
+    if (!rings.length) return '';
+    return `<path d="${path(rings, L.minPx || 2)}" fill="${L.fill}" stroke="${L.stroke}" stroke-width="0.6"/>`;
+  }).join('');
 
   return `
     <svg class="pf-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice"
-         role="img" aria-label="Map of the field">
+         role="img" aria-label="${esc(opts.label || 'Map')}">
       <rect width="${W}" height="${H}" fill="#eef3f8"/>
       ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
-      ${others.length ? `<path d="${path(others, 2)}" fill="#cbd6e2" stroke="#b2bfcd" stroke-width="0.6"/>` : ''}
-      <path d="${path(own)}" fill="${OIL_COLOR}" stroke="#8e0a48" stroke-width="1.2"/>
+      ${back}
+      <path d="${path(own)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>
     </svg>
-    <div class="pf-map-note">Coastline: Natural Earth · field outlines: Sodir, simplified to ~110 m</div>`;
+    <div class="pf-map-note">${opts.note || ''}</div>`;
+}
+
+// Alle ringer i et omrisssett unntatt ett. outlineMap klipper selv til
+// utsnittet, så her sendes hele settet videre.
+function otherOutlines(set, skipId) {
+  const out = [];
+  Object.entries(set || {}).forEach(([k, rings]) => {
+    if (+k === skipId) return;
+    rings.forEach(r => out.push(r));
+  });
+  return out;
+}
+
+function profileMap(id) {
+  const outlines = bundle.field_outlines && bundle.field_outlines.fields;
+  const own = outlines && outlines[id];
+  if (!own) return '';
+  return outlineMap(own, {
+    label: 'Map of the field',
+    fill: OIL_COLOR, stroke: '#8e0a48',
+    layers: [{rings: otherOutlines(outlines, id), fill:'#cbd6e2', stroke:'#b2bfcd'}],
+    note: 'Coastline: Natural Earth · field outlines: Sodir, simplified to ~110 m',
+  });
 }
 
 function profileVolumes(id) {
@@ -2170,9 +2207,10 @@ function profileVolumes(id) {
       1 bill Sm³ = 1 mill Sm³ o.e., as elsewhere in the app.</div>`;
 }
 
-function profileOwnership(id, operator) {
-  const at = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
-  const parts = fieldPartners(id, at).sort((a, b) => b.share - a.share);
+// Eierskapet som kakediagram med forklaring. parts er [{name, share}], og en
+// part kan bære en egen color — det brukes til den uallokerte restandelen,
+// som ikke er et selskap og derfor ikke skal ta en palettfarge.
+function ownershipPie(parts, operator, label) {
   if (!parts.length) return '';
 
   // Operatøren beholder den grønne fargen den hadde på stolpene, slik at
@@ -2181,8 +2219,9 @@ function profileOwnership(id, operator) {
   // markeringen ellers mister betydning.
   const rest = PALETTE.map(c => c[0]).filter(c => c !== 'rgba(0,179,115,0.85)');
   let ri = 0;
-  const colors = parts.map(p => (operator && p.name === operator)
-    ? 'var(--green)' : rest[ri++ % rest.length]);
+  const colors = parts.map(p => p.color ? p.color
+    : (operator && p.name === operator) ? 'var(--green)'
+    : rest[ri++ % rest.length]);
   const colorOf = (p, i) => colors[i];
 
   const R = 70, C = 80;            // radius og sentrum i et 160×160-koordinatsystem
@@ -2213,9 +2252,16 @@ function profileOwnership(id, operator) {
 
   return `<div class="pf-own">
     <svg class="pf-pie" viewBox="0 0 160 160" role="img"
-         aria-label="Ownership split between ${parts.length} licensees">${slices}</svg>
+         aria-label="${esc(label || `Ownership split between ${parts.length} licensees`)}">${slices}</svg>
     <div class="pf-own-list">${legend}</div>
   </div>`;
+}
+
+function profileOwnership(id, operator) {
+  const at = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+  const parts = fieldPartners(id, at).sort((a, b) => b.share - a.share);
+  return ownershipPie(parts, operator,
+    `Ownership split between ${parts.length} licensees`);
 }
 
 function drawFieldProfile() {
@@ -2614,6 +2660,156 @@ function drawDiscoveriesMaturity() {
   }));
   setChartTable(periodTableHtml(groups, CONTINGENT_RC.map(rc => `${rc} · ${RC_LABEL[rc]}`),
     'Company', 'Contingent resources by resource class · million boe · equity-adjusted', 1));
+}
+
+// ── DISCOVERIES: PROFILE ─────────────────────────────────────────────────────
+// Faktaark for ett funn, bygget som feltprofilen: grafen viser ressursanslaget
+// per ressursklasse, og under den nøkkeltall, kart, volumer, eiere og Sodirs
+// egen funnbeskrivelse.
+function discoveryDescriptions(id) {
+  const b = bundle.discovery_descriptions;
+  if (!b) return [];
+  return b.rows.filter(r => r[0] === id)
+               .map(r => ({heading: r[1], text: r[2]}))
+               .sort((a, c) => a.heading.localeCompare(c.heading));
+}
+
+// Funnomriss finnes bare for de funnene som har et ressursanslag, og mangler
+// for de ferskeste — Sodir publiserer polygonet senere enn anslaget. Da
+// utelates kortet.
+function discoveryMap(id) {
+  const outlines = bundle.discovery_outlines && bundle.discovery_outlines.discoveries;
+  const own = outlines && outlines[id];
+  if (!own) return '';
+  const fields = (bundle.field_outlines && bundle.field_outlines.fields) || {};
+  return outlineMap(own, {
+    label: 'Map of the discovery',
+    fill: REMAINING_COLOR, stroke: '#00714a',
+    layers: [
+      {rings: otherOutlines(fields, null),   fill:'#cbd6e2', stroke:'#b2bfcd'},
+      {rings: otherOutlines(outlines, id),   fill:'#cfe7db', stroke:'#a6cab8'},
+    ],
+    note: 'Green: this discovery · pale green: other discoveries with a resource estimate · '
+        + 'grey: fields. Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
+  });
+}
+
+function discoveryVolumes(d) {
+  const v = discoveryRes[d.id];
+  if (!v) return '';
+  const classes = CONTINGENT_RC.filter(rc => v.byRc[rc]);
+  if (!classes.length) return '';
+  const cols = classes.map(rc => v.byRc[rc]);
+  const withTotal = classes.length > 1;
+  const n = x => (x > 0) ? mmboe(x) : '—';
+  // Samme utledning som i feltprofilen: Sodir oppgir NGL som masse
+  // (mill tonn), ikke volum, så det kan ikke regnes om uten en tetthet. NGL
+  // tas derfor som restleddet av oljeekvivalenten. Kontrollert mot kildens
+  // egen NGL-kolonne for alle anslagene: forholdet ligger på 1,89–1,91 Sm³
+  // per tonn hele veien, så restleddet er Sodirs egen omregning.
+  const ngl = e => Math.max(0, e.oe - e.oil - e.gas - e.cond);
+  const line = (label, pick) =>
+    `<tr><td>${label}</td>${cols.map(c => `<td>${n(pick(c))}</td>`).join('')}${
+      withTotal ? `<td>${n(pick(v))}</td>` : ''}</tr>`;
+  return `
+    <table class="res-table">
+      <caption>Contingent resources, recoverable · million boe</caption>
+      <thead><tr><th>&nbsp;</th>${
+        classes.map(rc => `<th>${rc} · ${RC_LABEL[rc]}</th>`).join('')}${
+        withTotal ? '<th>Total</th>' : ''}</tr></thead>
+      <tbody>
+        ${line('Oil',        e => e.oil)}
+        ${line('Gas',        e => e.gas)}
+        ${line('Condensate', e => e.cond)}
+        ${line('NGL',        ngl)}
+      </tbody>
+      <tfoot><tr class="total-row"><td>Total OE</td>${
+        cols.map(c => `<td>${n(c.oe)}</td>`).join('')}${
+        withTotal ? `<td>${n(v.oe)}</td>` : ''}</tr></tfoot>
+    </table>
+    <div class="pf-map-note">Sodir reports NGL as mass, so it is derived here as total OE
+      less oil, gas and condensate; the column therefore adds up exactly. Gas is counted at
+      1 bill Sm³ = 1 mill Sm³ o.e., as elsewhere in the app. Only the contingent classes are
+      shown — the rest of the Discoveries view is built on the same three.</div>`;
+}
+
+// Eierne er utvinningstillatelsens eller forretningsavtaleområdets
+// rettighetshavere; funnet har ingen egne andeler hos Sodir. I dagens data
+// summerer de til 100 % overalt, men skulle kilden mangle en andel får resten
+// sin egen grå skive, slik at kaken alltid er hel — samme sikring som
+// Unallocated-raden i de øvrige funnvisningene.
+function discoveryOwnership(d) {
+  const parts = discoveryPartners(d).slice().sort((a, b) => b.share - a.share);
+  if (!parts.length) return '';
+  const rest = 100 - parts.reduce((t, p) => t + p.share, 0);
+  const slices = rest > 0.0005
+    ? parts.concat([{name: UNALLOCATED, share: rest, color: 'rgba(150,160,172,0.75)'}])
+    : parts;
+  const kind = d.ownerKind === 'BUSINESS ARRANGEMENT AREA'
+    ? 'business arrangement area' : 'production licence';
+  return ownershipPie(slices, d.operator,
+      `Ownership split between ${parts.length} licensees`)
+    + `<div class="pf-map-note">Licence interests in ${kind} ${esc(d.owner || '—')},
+       which owns the discovery.</div>`;
+}
+
+function drawDiscoveryProfile() {
+  const list = selectedDiscoveries();
+  if (list.length !== 1) {
+    // Funnvisningen starter med hele porteføljen valgt, så her er det nesten
+    // alltid for mange — meldingen sier derfor hvordan man kommer videre.
+    setChartEmpty(list.length
+      ? `${list.length} discoveries selected. Open the list below and pick a single one to see its profile.`
+      : 'Tap the button below to select a discovery.');
+    setInfo('');
+    return;
+  }
+  const d = list[0];
+  const v = discoveryRes[d.id];
+  const classes = CONTINGENT_RC.filter(rc => v && v.byRc[rc]);
+
+  setChartTitle(d.name, [d.operator, d.area, d.status].filter(Boolean).join(' · '));
+  setInfo(`<strong>Discovery:</strong> ${esc(d.name)} &nbsp;|&nbsp; <strong>Chart:</strong> Contingent resources per resource class, Liquids and Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+
+  if (classes.length) {
+    const labels = classes.map(rc => `${rc} · ${RC_LABEL[rc]}`);
+    renderChart(labels,
+      [{label:'Liquids', data:classes.map(rc => +(v.byRc[rc].liq*BBL_PER_SM3).toFixed(1)),
+        backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
+       {label:'Gas',     data:classes.map(rc => +(v.byRc[rc].gas*BBL_PER_SM3).toFixed(1)),
+        backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'}],
+      [{label:'Liquids',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}],
+      'million boe', {xTitle:'Resource class', allTicks:true});
+  } else {
+    setChartEmpty(DISC_NO_DATA);
+  }
+
+  const fact = (k, x) => x ? `<div class="pf-fact"><span>${k}</span><strong>${esc(x)}</strong></div>` : '';
+  const descs = discoveryDescriptions(d.id);
+  const ownerLabel = d.ownerKind === 'BUSINESS ARRANGEMENT AREA'
+    ? 'Business arrangement area' : 'Production licence';
+
+  setProfile(`
+    <div class="pf-card">
+      <h3>Key facts</h3>
+      <div class="pf-facts">
+        ${fact('Discovered', d.year)}
+        ${fact('Discovery wellbore', d.wellbore)}
+        ${fact('Status', d.status)}
+        ${fact('Hydrocarbons', d.hc)}
+        ${fact('Operator', d.operator)}
+        ${fact(ownerLabel, d.owner)}
+        ${fact('Main area', d.area)}
+        ${fact('Part of field', d.field)}
+        ${fact('Resources booked under', d.inclIn)}
+      </div>
+    </div>
+    ${(() => { const m = discoveryMap(d.id); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
+    ${(() => { const t = discoveryVolumes(d); return t ? `<div class="pf-card"><h3>Resources</h3>${t}</div>` : ''; })()}
+    ${(() => { const o = discoveryOwnership(d); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
+    ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
+      descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
+  `);
 }
 
 // ── COMPANIES: RESERVES ──────────────────────────────────────────────────────
