@@ -91,13 +91,13 @@
     .pf-fact strong{font-size:0.82rem;color:#1a2332;font-weight:600;}
     .pf-map{width:100%;height:230px;display:block;border-radius:8px;background:#eef3f8;}
     .pf-map-note{font-size:0.64rem;color:var(--muted);margin-top:6px;}
-    .pf-own{display:flex;flex-direction:column;gap:7px;}
-    .pf-own-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline;}
-    .pf-own-name{font-size:0.74rem;color:#1a2332;}
+    .pf-own{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+    .pf-pie{width:150px;height:150px;flex:0 0 150px;}
+    .pf-own-list{flex:1 1 220px;display:flex;flex-direction:column;gap:7px;min-width:0;}
+    .pf-own-row{display:grid;grid-template-columns:auto 1fr auto;gap:0 8px;align-items:baseline;}
+    .pf-own-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;align-self:center;}
+    .pf-own-name{font-size:0.74rem;color:#1a2332;min-width:0;}
     .pf-own-pct{font-size:0.74rem;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;}
-    .pf-own-bar{grid-column:1/-1;height:5px;border-radius:3px;background:#e8eef5;overflow:hidden;}
-    .pf-own-bar i{display:block;height:100%;background:var(--blue);}
-    .pf-own-row.op .pf-own-bar i{background:var(--green);}
     .pf-op-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:9px;
       background:var(--light);border:1px solid #eeabcb;font-size:0.6rem;color:#1a2332;
       text-transform:uppercase;letter-spacing:0.04em;vertical-align:1px;}
@@ -2174,15 +2174,48 @@ function profileOwnership(id, operator) {
   const at = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
   const parts = fieldPartners(id, at).sort((a, b) => b.share - a.share);
   if (!parts.length) return '';
-  const max = parts[0].share || 100;
-  return `<div class="pf-own">${parts.map(p => {
+
+  // Operatøren beholder den grønne fargen den hadde på stolpene, slik at
+  // markeringen er den samme som før. De øvrige tar paletten i rekkefølge,
+  // men hopper over palettens egen grønne — den ligger så nær operatørens at
+  // markeringen ellers mister betydning.
+  const rest = PALETTE.map(c => c[0]).filter(c => c !== 'rgba(0,179,115,0.85)');
+  let ri = 0;
+  const colors = parts.map(p => (operator && p.name === operator)
+    ? 'var(--green)' : rest[ri++ % rest.length]);
+  const colorOf = (p, i) => colors[i];
+
+  const R = 70, C = 80;            // radius og sentrum i et 160×160-koordinatsystem
+  const total = parts.reduce((t, p) => t + p.share, 0) || 100;
+  let a0 = -Math.PI / 2;           // start klokka 12
+  const slices = parts.map((p, i) => {
+    const a1 = a0 + (p.share / total) * Math.PI * 2;
+    const x0 = C + R * Math.cos(a0), y0 = C + R * Math.sin(a0);
+    const x1 = C + R * Math.cos(a1), y1 = C + R * Math.sin(a1);
+    const large = (a1 - a0) > Math.PI ? 1 : 0;
+    a0 = a1;
+    // En eneste rettighetshaver gir sammenfallende start- og sluttpunkt, og
+    // da tegner buen ingenting. Tegn hele sirkelen i stedet.
+    const d = parts.length === 1
+      ? `M${C} ${C-R}A${R} ${R} 0 1 1 ${C-0.01} ${C-R}Z`
+      : `M${C} ${C}L${x0.toFixed(2)} ${y0.toFixed(2)}A${R} ${R} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}Z`;
+    return `<path d="${d}" fill="${colorOf(p, i)}" stroke="#fff" stroke-width="1.5"/>`;
+  }).join('');
+
+  const legend = parts.map((p, i) => {
     const isOp = operator && p.name === operator;
-    return `<div class="pf-own-row${isOp ? ' op' : ''}">
-      <div class="pf-own-name">${esc(p.name)}${isOp ? '<span class="pf-op-tag">Operator</span>' : ''}</div>
-      <div class="pf-own-pct">${p.share.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')} %</div>
-      <div class="pf-own-bar"><i style="width:${(p.share / max * 100).toFixed(1)}%"></i></div>
+    return `<div class="pf-own-row">
+      <span class="pf-own-dot" style="background:${colorOf(p, i)}"></span>
+      <span class="pf-own-name">${esc(p.name)}${isOp ? '<span class="pf-op-tag">Operator</span>' : ''}</span>
+      <span class="pf-own-pct">${p.share.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')} %</span>
     </div>`;
-  }).join('')}</div>`;
+  }).join('');
+
+  return `<div class="pf-own">
+    <svg class="pf-pie" viewBox="0 0 160 160" role="img"
+         aria-label="Ownership split between ${parts.length} licensees">${slices}</svg>
+    <div class="pf-own-list">${legend}</div>
+  </div>`;
 }
 
 function drawFieldProfile() {
