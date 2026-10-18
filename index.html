@@ -2403,10 +2403,31 @@ function renderReserveTableByHub(series, companies, year) {
     const hub = hubOfField[s.id] || fname;
     const h = hubs[hub] = hubs[hub] || {name:hub, liq:0, gas:0, oe:0, children:[]};
     h.liq += v.liq; h.gas += v.gas; h.oe += v.oe;
-    h.children.push({name:fname, ...v});
+    h.children.push({name:fname, share:{pct: share*100, exact:true}, ...v});
   });
-  return reserveTableHtml(Object.values(hubs), 'Hub / field',
-    `Remaining reserves per field, vintage ${year} · million boe · equity-adjusted`);
+
+  // Hubraden får selskapenes beregnede andel av HELE huben: equity-justert OE
+  // delt på hubens brutto gjenstående reserver. Nevneren er summen over
+  // *alle* medlemsfelt, også de selskapene ikke er inne i — det er det som
+  // gjør tallet til en eierandel i huben og ikke et snitt av lisensandelene.
+  const hubGross = {};
+  allFields.forEach(f => {
+    const cur = reserveAt((fieldReserves && fieldReserves[f.id]) || [], year);
+    if (!cur) return;
+    const g = remainingSplit(cur, 1).oe;
+    if (g <= 0) return;
+    const hub = hubOfField[f.id] || f.name;
+    hubGross[hub] = (hubGross[hub] || 0) + g;
+  });
+
+  // Feltradene viser lisensandelen i det enkelte feltet. De to er ulike
+  // størrelser; bildeteksten sier hvilken som er hvilken.
+  const groups = Object.values(hubs).map(h =>
+    ({...h, share: hubGross[h.name] > 0 ? {pct: h.oe / hubGross[h.name] * 100, exact: true} : null}));
+  return reserveTableHtml(groups, 'Hub / field',
+    `Remaining reserves per field, vintage ${year} · million boe · equity-adjusted · ` +
+    `field share is the licence interest, hub share is the companies' share of the hub total`,
+    {shareHead: 'Share'});
 }
 
 // Betingede ressurser for de valgte selskapene, som egen tabell under
