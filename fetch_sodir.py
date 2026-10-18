@@ -32,6 +32,7 @@ LIC_LAYER   = 7108
 RES_LAYER   = 7114
 FLDRES_LAYER = 7113
 DISC_LAYER   = 7000    # discovery
+DISCDESCR_LAYER = 7001 # discovery_description
 DISCRES_LAYER = 7008   # discovery_reserves
 PRL_LIC_LAYER = 3007   # licence_licensee_hst
 BAA_LIC_LAYER = 3304   # bsns_arr_area_licensee_hst
@@ -257,7 +258,8 @@ def build_discoveries():
     rows = fetch_layer(
         DISC_LAYER,
         'dscNpdidDiscovery,dscName,dscCurrentActivityStatus,dscOwnerKind,'
-        'dscOwnerName,dscHcType,dscDiscoveryYear,fldName',
+        'dscOwnerName,dscHcType,dscDiscoveryYear,fldName,'
+        'cmpLongName,wlbName,nmaName,dscResInclInDiscoveryName',
     )
     out = []
     for r in rows:
@@ -272,10 +274,37 @@ def build_discoveries():
             (r.get('dscHcType') or '').strip(),
             as_int(r.get('dscDiscoveryYear')),
             (r.get('fldName') or '').strip(),
+            # Kolonnene under brukes av Profile-visningen. cmpLongName er
+            # operatoren, nmaName hovedomradet, og dscResInclInDiscoveryName
+            # det funnet ressursene eventuelt er bokfort under.
+            (r.get('cmpLongName') or '').strip(),
+            (r.get('wlbName') or '').strip(),
+            (r.get('nmaName') or '').strip(),
+            (r.get('dscResInclInDiscoveryName') or '').strip(),
         ])
     out.sort(key=lambda x: x[1])
-    return {'columns': ['id', 'name', 'status', 'ownerKind', 'owner', 'hc', 'year', 'field'],
+    return {'columns': ['id', 'name', 'status', 'ownerKind', 'owner', 'hc', 'year', 'field',
+                        'operator', 'wellbore', 'area', 'inclIn'],
             'rows': out}
+
+
+# Sodirs egne funnbeskrivelser, engelsk utgave. Lag 7001 er tynt besatt -
+# bare en handfull funn har tekst - sa Profile-visningen utelater kortet nar
+# funnet ikke har noen.
+def build_discovery_descriptions():
+    rows = fetch_layer(DISCDESCR_LAYER,
+                       'dscNpdidDiscovery,dscDescriptionHeading,dscDescriptionText',
+                       "dscCultureCode='en'")
+    out = []
+    for r in rows:
+        did = as_int(r.get('dscNpdidDiscovery'))
+        head = (r.get('dscDescriptionHeading') or '').strip()
+        text = re.sub(r'\s+', ' ', r.get('dscDescriptionText') or '').strip()
+        if did is None or not head or not text:
+            continue
+        out.append([did, head, text])
+    out.sort(key=lambda x: (x[0], x[1]))
+    return {'columns': ['id', 'heading', 'text'], 'rows': out}
 
 
 # Ressursanslag per funn. Et funn kan ha flere rader, en per ressursklasse.
@@ -453,6 +482,42 @@ def build_field_outlines():
     return {'fields': dict(sorted(out.items(), key=lambda x: int(x[0])))}
 
 
+# Funnomriss til funnprofilens kart. Samme forenkling som feltomrissene, men
+# bare for de funnene appen faktisk lister - de som har et ressursanslag i lag
+# 7008. Hele lag 7000 ville vaert 324 KB mot 53 KB, og de ovrige funnene vises
+# ingen steder. Noen ferske funn har anslag men enna ingen polygon i FactMaps;
+# da utelates kartet i profilen.
+def build_discovery_outlines():
+    want = {as_int(r.get('dscNpdidDiscovery'))
+            for r in fetch_layer(DISCRES_LAYER, 'dscNpdidDiscovery')}
+    want.discard(None)
+    if not want:
+        return {'discoveries': {}}
+
+    ids = ','.join(str(i) for i in sorted(want))
+    print(f"  Lag {DISC_LAYER} (geometri): {len(want)} funn")
+    feats = _get(f'{BASE}/{DISC_LAYER}/query', {
+        'f': 'json', 'where': f'dscNpdidDiscovery IN ({ids})',
+        'outFields': 'dscNpdidDiscovery',
+        'returnGeometry': 'true', 'outSR': 4326, 'resultRecordCount': PAGE_SIZE,
+    }).get('features', [])
+
+    out = {}
+    for f in feats:
+        did = as_int((f.get('attributes') or {}).get('dscNpdidDiscovery'))
+        if did is None:
+            continue
+        rings = []
+        for ring in (f.get('geometry') or {}).get('rings', []):
+            s = _simplify_ring(ring, OUTLINE_SIMPLIFY)
+            if s:
+                rings.append([[round(x, OUTLINE_DECIMALS), round(y, OUTLINE_DECIMALS)]
+                              for x, y in s])
+        if rings:
+            out[str(did)] = rings
+    return {'discoveries': dict(sorted(out.items(), key=lambda x: int(x[0])))}
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     """Skriv fila kun hvis innholdet faktisk er endret. Returnerer True ved endring."""
@@ -483,6 +548,8 @@ def main():
         ('reserves_field.json', 'reserver per felt', build_field_reserves),
         ('discoveries.json', 'funn', build_discoveries),
         ('discovery_resources.json', 'funnressurser', build_discovery_resources),
+        ('discovery_descriptions.json', 'funnbeskrivelser', build_discovery_descriptions),
+        ('discovery_outlines.json', 'funnomriss', build_discovery_outlines),
         ('licence_licensees.json', 'lisensandeler', build_licence_licensees),
         ('field_profile.json', 'feltfakta', build_field_profile),
         ('field_descriptions.json', 'feltbeskrivelser', build_field_descriptions),
