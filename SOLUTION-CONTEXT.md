@@ -815,6 +815,20 @@ Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
 | Nullstill | `.topbar-title` (`:204`) | Sidetittelen er en knapp — `resetView` setter alt tilbake |
 | Del visning | `#shareBtn` (`:268`) | Kopierer lenke til gjeldende visning |
 
+### Maksbredde
+
+Fra 1148 px sentreres innholdet i en spalte på **1100 px**
+(`index.html:217-227`). Under det gjelder ingenting av det, så mobil- og
+nettbrettlayouten er uendret.
+
+Topplinjen og kontrollraden har bakgrunnsfarge som skal gå helt ut til
+skjermkanten. De sentreres derfor med padding i stedet for maksbredde. Den
+flytende velgerknappen og bunnarket følger spalten, ikke skjermkanten.
+
+Regelblokken ligger **sist** i stilarket. Flere av elementene setter sin egen
+`margin` lenger nede i filen, og uten den plasseringen ville `margin:auto`
+tapt mot dem — en mediaspørring gir ikke høyere spesifisitet.
+
 ### Nullstilling
 
 Sidetittelen øverst er en `<button>` som kaller `resetView`
@@ -1037,6 +1051,12 @@ grupperingen; summen over hub-seriene er lik summen over felt-seriene.
 Profilvisningen krever **nøyaktig ett** valgt felt; ellers vises en melding om
 å velge ett. Den har ingen tidsakse-kontroller — grafen viser alltid hele den
 årlige historikken, uavhengig av periodevelgeren, som derfor skjules.
+
+På skjermer fra 900 px flyter kortene i **to spalter** (`column-count`,
+`index.html:112-116`). Et rutenett ble prøvd først, men kortene er svært
+ulike i høyde, og rutenettet låste dem parvis og etterlot store tomrom ved
+siden av det høyeste i hver rad — profilen ble 1 627 px høy mot 938 px med
+spalteflyt. Målt i Chromium på 1400 px. Under 900 px er alt én spalte som før.
 
 Innholdet ligger i `#profileBox` (`index.html:263`), en egen beholder under
 `#chartTable`. `setProfile` er eneste vei inn, og den tømmes de samme tre
