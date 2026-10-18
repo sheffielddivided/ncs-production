@@ -17,6 +17,9 @@ statiske JSON-filer i dette repoet.
 | `data/` | Datasnapshot: felt, produksjon, lisensiærer, reserver |
 | `data/reserves_field.json` | Reserver per felt per år (2004→), fra Sodir lag 7113 |
 | `data/hubs.json` | Hub-tilhørighet per felt — brukerstyrt, ikke fra Sodir |
+| `data/discoveries.json` | Funn (lag 7000) — navn, status, funnår, eier |
+| `data/discovery_resources.json` | Ressursanslag per funn (lag 7008) |
+| `data/licence_licensees.json` | Eierandeler i lisenser og forretningsavtaleområder |
 | `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |

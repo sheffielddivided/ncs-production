@@ -76,6 +76,12 @@
        både reserve- og produksjonstabellene. */
     .res-table-wrap{margin:0 12px 10px;overflow-x:auto;}
     .res-table-wrap:empty{display:none;}
+    .res-sum{background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);
+      padding:10px 12px;margin:14px 0 10px;font-size:0.74rem;}
+    .res-sum div{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);}
+    .res-sum strong{color:#1a2332;font-variant-numeric:tabular-nums;}
+    .res-sum .res-sum-total{border-top:1px solid var(--border);margin-top:4px;padding-top:6px;color:var(--navy);}
+    .res-sum p{margin:8px 0 0;font-size:0.68rem;color:var(--muted);line-height:1.45;}
     .grp-row{display:flex;align-items:center;gap:6px;padding:0 2px 7px;}
     .grp-label{font-size:0.68rem;color:var(--muted);margin-right:2px;}
     .grp-btn{padding:3px 10px;border:1px solid var(--border);border-radius:11px;background:#fff;
@@ -182,6 +188,7 @@
     <div class="mode-switcher">
       <button class="mode-btn" id="modeBtnHubs" onclick="switchMode('hubs')">Hubs</button>
       <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
+      <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
     </div>
   </div>
@@ -298,6 +305,10 @@ const PROD_LAYER  = 7300;
 const LIC_LAYER   = 7108;
 const RES_LAYER   = 7114;
 const FLDRES_LAYER = 7113;
+const DISC_LAYER    = 7000;
+const DISCRES_LAYER = 7008;
+const PRL_LIC_LAYER = 3007;
+const BAA_LIC_LAYER = 3304;
 const BBL_PER_SM3 = 6.29;
 
 // ── STATISK DATA-BUNDLE ──────────────────────────────────────────────────────
@@ -308,7 +319,8 @@ const BBL_PER_SM3 = 6.29;
 // Mangler eller feiler filene, faller alt tilbake til live-API-et under.
 const DATA_BASE = 'data/';
 
-const bundle = { fields:null, production:null, licensees:null, reserves:null, reserves_field:null, meta:null, hubs:null };
+const bundle = { fields:null, production:null, licensees:null, reserves:null, reserves_field:null,
+                 discoveries:null, discovery_resources:null, licence_licensees:null, meta:null, hubs:null };
 
 async function fetchBundle(name) {
   try {
@@ -319,7 +331,8 @@ async function fetchBundle(name) {
 }
 
 async function loadBundles() {
-  const names = ['fields','production','licensees','reserves','reserves_field','meta','hubs'];
+  const names = ['fields','production','licensees','reserves','reserves_field',
+                 'discoveries','discovery_resources','licence_licensees','meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   const gen = bundle.meta && bundle.meta.generated;
@@ -371,6 +384,7 @@ let showWater  = false;
 
 let fieldSubView   = 'oilgas';
 let hubSubView     = 'oilgas';
+let discoverySubView = 'per_discovery';
 let companySubView = 'oilgas';
 
 let allFields            = [];
@@ -386,6 +400,12 @@ let selectedCompanyNames = new Set();
 let allHubs          = [];   // [{name, fieldIds}]
 let filteredHubs     = [];
 let selectedHubNames = new Set();
+let selectedDiscoveryIds = new Set();
+let allDiscoveries    = [];   // kun funn med betingede ressurser (RC4F/5F/7F)
+let filteredDiscoveries = [];
+let discoveryRes      = {};   // {id: {liq, gas, oe, byRc:{'4F':{liq,gas,oe}}}}
+let licenceOwners     = {};   // {'KIND|navn': [{name, share}]}
+let discoveriesLoaded = false;
 let hubOfField       = {};   // fieldId -> hubnavn
 
 let fieldProdCache  = {};
@@ -964,6 +984,11 @@ const HUB_TABS     = [
   {id:'oe_per_field',  label:'OE per field'},
   {id:'reserves',      label:'Reserves'},
 ];
+const DISCOVERY_TABS = [
+  {id:'per_discovery', label:'Resources'},
+  {id:'per_company',   label:'Per company'},
+  {id:'maturity',      label:'Maturity'},
+];
 const COMPANY_TABS = [
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'oe_per_field',  label:'OE per field'},
@@ -972,8 +997,9 @@ const COMPANY_TABS = [
 ];
 
 function renderViewTabs() {
-  const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS : COMPANY_TABS;
-  const cur  = topMode === 'fields' ? fieldSubView : topMode === 'hubs' ? hubSubView : companySubView;
+  const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
+             : topMode === 'discoveries' ? DISCOVERY_TABS : COMPANY_TABS;
+  const cur  = currentSubView();
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -989,6 +1015,7 @@ function renderViewTabs() {
 function setSubView(v) {
   if (topMode === 'fields') fieldSubView = v;
   else if (topMode === 'hubs') hubSubView = v;
+  else if (topMode === 'discoveries') discoverySubView = v;
   else companySubView = v;
   renderViewTabs();
   refresh();
@@ -1048,6 +1075,7 @@ function switchMode(m) {
   topMode = m;
   document.getElementById('modeBtnHubs').classList.toggle('active',      m === 'hubs');
   document.getElementById('modeBtnFields').classList.toggle('active',     m === 'fields');
+  document.getElementById('modeBtnDiscoveries').classList.toggle('active', m === 'discoveries');
   document.getElementById('modeBtnCompanies').classList.toggle('active',  m === 'companies');
   renderViewTabs();
   updateFab();
@@ -1058,10 +1086,13 @@ function switchMode(m) {
 function updateFab() {
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
+              : topMode === 'discoveries' ? selectedDiscoveryIds.size
               : selectedCompanyNames.size;
   document.getElementById('fabBadge').textContent = count;
-  const noun  = topMode === 'fields' ? 'field'  : topMode === 'hubs' ? 'hub'  : 'company';
-  const nounP = topMode === 'fields' ? 'fields' : topMode === 'hubs' ? 'hubs' : 'companies';
+  const noun  = topMode === 'fields' ? 'field'  : topMode === 'hubs' ? 'hub'
+              : topMode === 'discoveries' ? 'discovery' : 'company';
+  const nounP = topMode === 'fields' ? 'fields' : topMode === 'hubs' ? 'hubs'
+              : topMode === 'discoveries' ? 'discoveries' : 'companies';
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
   document.getElementById('sheetTitle').textContent = `Select ${nounP}`;
@@ -1086,7 +1117,39 @@ function closeSheet() {
 function renderList() {
   if (topMode === 'fields') renderFieldList();
   else if (topMode === 'hubs') renderHubList();
+  else if (topMode === 'discoveries') renderDiscoveryList();
   else renderCompanyList();
+}
+
+function renderDiscoveryList() {
+  const el = document.getElementById('checkList');
+  if (!filteredDiscoveries.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
+  el.innerHTML = '';
+  filteredDiscoveries.forEach(d => {
+    const item = document.createElement('div');
+    item.className = 'check-item' + (selectedDiscoveryIds.has(d.id) ? ' checked' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selectedDiscoveryIds.has(d.id);
+    cb.addEventListener('change', () => toggleDiscovery(d.id, item, cb));
+    item.appendChild(cb);
+    item.appendChild(document.createTextNode(d.name));
+    const n = document.createElement('span');
+    n.className = 'hub-count';
+    n.textContent = `${(discoveryRes[d.id].oe * BBL_PER_SM3).toFixed(0)} mill boe`;
+    item.appendChild(n);
+    item.addEventListener('click', e => { if (e.target !== cb) cb.click(); });
+    el.appendChild(item);
+  });
+}
+
+function toggleDiscovery(id, item, cb) {
+  if (selectedDiscoveryIds.has(id)) selectedDiscoveryIds.delete(id);
+  else selectedDiscoveryIds.add(id);
+  cb.checked = selectedDiscoveryIds.has(id);
+  item.classList.toggle('checked', selectedDiscoveryIds.has(id));
+  updateFab();
+  refresh();
 }
 
 function renderHubList() {
@@ -1189,6 +1252,9 @@ function filterList() {
   } else if (topMode === 'hubs') {
     filteredHubs = allHubs.filter(h=>h.name.toLowerCase().includes(q));
     renderHubList();
+  } else if (topMode === 'discoveries') {
+    filteredDiscoveries = allDiscoveries.filter(d=>d.name.toLowerCase().includes(q));
+    renderDiscoveryList();
   } else {
     filteredCompanies = allCompanies.filter(n=>n.toLowerCase().includes(q));
     renderCompanyList();
@@ -1198,14 +1264,107 @@ function filterList() {
 function selectAll() {
   if (topMode === 'fields') { filteredFields.forEach(f=>selectedFieldIds.add(f.id)); renderFieldList(); }
   else if (topMode === 'hubs') { filteredHubs.forEach(h=>selectedHubNames.add(h.name)); renderHubList(); }
+  else if (topMode === 'discoveries') { filteredDiscoveries.forEach(d=>selectedDiscoveryIds.add(d.id)); renderDiscoveryList(); }
   else { filteredCompanies.forEach(n=>selectedCompanyNames.add(n)); renderCompanyList(); }
   updateFab(); refresh();
 }
 function clearAll() {
   if (topMode === 'fields') { selectedFieldIds.clear(); fieldProdCache = {}; renderFieldList(); }
   else if (topMode === 'hubs') { selectedHubNames.clear(); renderHubList(); }
+  else if (topMode === 'discoveries') { selectedDiscoveryIds.clear(); renderDiscoveryList(); }
   else { selectedCompanyNames.clear(); renderCompanyList(); }
   updateFab(); refresh();
+}
+
+// ── DISCOVERIES ──────────────────────────────────────────────────────────────
+// Sodirs ressursklassifisering: RC4/RC5/RC7 er betingede ressurser, altså
+// funn uten utbyggingsvedtak. Suffikset F betyr «First» — første
+// utbyggingsprosjekt for forekomsten. Lag 7008 inneholder også noen få rader
+// i klasse 0, 0+1 og 2F; de er produserte eller besluttede volumer og hører
+// ikke med i en ressursportefølje. Se SOLUTION-CONTEXT §5.
+const CONTINGENT_RC = ['4F', '5F', '7F'];
+const RC_LABEL = {
+  '4F': 'Clarification phase',
+  '5F': 'Likely, not clarified',
+  '7F': 'Not evaluated',
+};
+
+async function loadDiscoveries() {
+  if (discoveriesLoaded) return;
+
+  let discRows = null, resRows = null, licRows = null;
+  const b = bundle;
+  if (b.discoveries && b.discovery_resources && b.licence_licensees) {
+    discRows = b.discoveries.rows;
+    resRows  = b.discovery_resources.rows;
+    licRows  = b.licence_licensees.rows;
+  } else {
+    // Fallback: hent direkte fra Sodir. Kun gjeldende lisensrader, ellers
+    // ville 3007 alene gitt 33 000 rader uten nytte her.
+    try {
+      const col = (feats, pick) => feats.map(f => pick(f.attributes || {}));
+      const [d, r, pl, baa] = await Promise.all([
+        queryAllParallel(DISC_LAYER, {outFields:'dscNpdidDiscovery,dscName,dscCurrentActivityStatus,dscOwnerKind,dscOwnerName,dscHcType,dscDiscoveryYear,fldName'}),
+        queryAllParallel(DISCRES_LAYER, {outFields:'dscNpdidDiscovery,dscReservesRC,dscRecoverableGas,dscRecoverableOe'}),
+        queryAllParallel(PRL_LIC_LAYER, {where:'prlLicenseeDateValidTo IS NULL', outFields:'prlName,cmpLongName,prlLicenseeInterest'}),
+        queryAllParallel(BAA_LIC_LAYER, {where:'baaLicenseeDateValidTo IS NULL', outFields:'baaName,cmpLongName,baaLicenseeInterest'}),
+      ]);
+      discRows = col(d, a => [a.dscNpdidDiscovery, a.dscName, a.dscCurrentActivityStatus,
+                              a.dscOwnerKind, a.dscOwnerName, a.dscHcType, a.dscDiscoveryYear, a.fldName]);
+      resRows  = col(r, a => [a.dscNpdidDiscovery, a.dscReservesRC, 0, a.dscRecoverableGas, 0, 0, a.dscRecoverableOe]);
+      licRows  = col(pl,  a => [a.prlName, 'PRODUCTION LICENCE', a.cmpLongName, a.prlLicenseeInterest])
+         .concat(col(baa, a => [a.baaName, 'BUSINESS ARRANGEMENT AREA', a.cmpLongName, a.baaLicenseeInterest]));
+    } catch (e) {
+      discoveriesLoaded = true;
+      return;   // tom visning håndteres av kallerne
+    }
+  }
+
+  licenceOwners = {};
+  licRows.forEach(([owner, kind, cmp, share]) => {
+    if (!owner || !cmp || !(share > 0)) return;
+    (licenceOwners[kind + '|' + owner] = licenceOwners[kind + '|' + owner] || [])
+      .push({name: cmp, share});
+  });
+
+  const ci = bundle.discovery_resources
+    ? bundle.discovery_resources.columns
+    : ['id','rc','oil','gas','ngl','cond','oe'];
+  const iRc = ci.indexOf('rc'), iGas = ci.indexOf('gas'), iOe = ci.indexOf('oe');
+  discoveryRes = {};
+  resRows.forEach(row => {
+    const rc = row[iRc];
+    if (!CONTINGENT_RC.includes(rc)) return;
+    const oe = row[iOe] || 0, gas = row[iGas] || 0;
+    if (oe <= 0) return;
+    const id = row[0];
+    const e = discoveryRes[id] = discoveryRes[id] || {liq:0, gas:0, oe:0, byRc:{}};
+    const liq = Math.max(0, oe - gas);
+    e.liq += liq; e.gas += gas; e.oe += oe;
+    const k = e.byRc[rc] = e.byRc[rc] || {liq:0, gas:0, oe:0};
+    k.liq += liq; k.gas += gas; k.oe += oe;
+  });
+
+  allDiscoveries = discRows
+    .map(([id, name, status, ownerKind, owner, hc, year, field]) =>
+      ({id, name, status, ownerKind, owner, hc, year, field}))
+    .filter(d => discoveryRes[d.id])
+    .sort((a, b) => discoveryRes[b.id].oe - discoveryRes[a.id].oe);
+  filteredDiscoveries = allDiscoveries;
+
+  // Et utvalg fra en delt lenke kan peke på funn som ikke lenger har anslag.
+  const known = new Set(allDiscoveries.map(d => d.id));
+  [...selectedDiscoveryIds].forEach(id => { if (!known.has(id)) selectedDiscoveryIds.delete(id); });
+  // Uten et utvalg fra lenken vises hele porteføljen. Kjører bare denne ene
+  // gangen, så «Clear all» blir ikke overstyrt etterpå.
+  if (!selectedDiscoveryIds.size) known.forEach(id => selectedDiscoveryIds.add(id));
+  discoveriesLoaded = true;
+}
+
+// Partnerne i funnet, via utvinningstillatelsen eller forretningsavtale-
+// området det tilhører. Tom liste når kilden ikke oppgir noen eier.
+function discoveryPartners(d) {
+  return licenceOwners[(d.ownerKind || '') + '|' + (d.owner || '')] || [];
 }
 
 // ── DELBAR LENKE ─────────────────────────────────────────────────────────────
@@ -1223,6 +1382,7 @@ const SEP = '~';   // finnes ikke i noe felt-, hub- eller selskapsnavn
 function currentSubView() {
   return topMode === 'fields' ? fieldSubView
        : topMode === 'hubs'   ? hubSubView
+       : topMode === 'discoveries' ? discoverySubView
        : companySubView;
 }
 
@@ -1237,6 +1397,7 @@ function stateToHash() {
   }
   if (topMode === 'fields')    q.set('f', [...selectedFieldIds].join(','));
   else if (topMode === 'hubs') q.set('h', [...selectedHubNames].join(SEP));
+  else if (topMode === 'discoveries') q.set('d', [...selectedDiscoveryIds].join(','));
   else                         q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && topMode !== 'companies' && currentSubView() === 'oilgas') q.set('w', '1');
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
@@ -1257,18 +1418,21 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['fields','hubs','companies'].includes(m)) {
+  if (['fields','hubs','discoveries','companies'].includes(m)) {
     topMode = m;
     document.getElementById('modeBtnHubs').classList.toggle('active',      m === 'hubs');
     document.getElementById('modeBtnFields').classList.toggle('active',    m === 'fields');
+    document.getElementById('modeBtnDiscoveries').classList.toggle('active', m === 'discoveries');
     document.getElementById('modeBtnCompanies').classList.toggle('active', m === 'companies');
   }
 
-  const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS : COMPANY_TABS;
+  const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
+             : topMode === 'discoveries' ? DISCOVERY_TABS : COMPANY_TABS;
   const v = q.get('v');
   if (tabs.some(t => t.id === v)) {
     if (topMode === 'fields') fieldSubView = v;
     else if (topMode === 'hubs') hubSubView = v;
+    else if (topMode === 'discoveries') discoverySubView = v;
     else companySubView = v;
   }
 
@@ -1301,6 +1465,12 @@ function applyHash() {
     selectedCompanyNames = new Set(
       (q.get('c') || '').split(SEP).filter(Boolean));
   }
+  // Funn-ID-ene kan ikke valideres her — listen bygges først når
+  // loadDiscoveries har kjørt. Ukjente ID-er faller bort ved tegning.
+  if (q.has('d')) {
+    selectedDiscoveryIds = new Set(
+      (q.get('d') || '').split(',').map(Number).filter(n => n > 0));
+  }
 
   showWater = q.get('w') === '1';
   if (q.get('g') === 'company') hubReserveGrouping = 'company';
@@ -1329,7 +1499,22 @@ async function refresh() {
   syncUrl();
   if (topMode === 'fields') await refreshFields();
   else if (topMode === 'hubs') await refreshHubs();
+  else if (topMode === 'discoveries') await refreshDiscoveries();
   else await refreshCompanies();
+}
+
+// Funnvisningene bruker verken produksjonstidsserier eller feltreserver.
+async function refreshDiscoveries() {
+  showSpinner();
+  await loadDiscoveries();
+  if (!allDiscoveries.length) {
+    setChartTitle('',''); setChartEmpty('No discovery data available.'); setInfo(''); return;
+  }
+  if (!selectedDiscoveryIds.size) {
+    setChartTitle('',''); setChartEmpty('Tap the button below to select one or more discoveries.');
+    setInfo(''); return;
+  }
+  drawChart();
 }
 
 async function refreshHubs() {
@@ -1395,7 +1580,8 @@ async function refreshCompanies() {
   showSpinner();
   // Reservevisningen trenger eierandelene, men ikke produksjonstidsseriene.
   if (companySubView === 'reserves') {
-    await loadFieldReserves();
+    // Funndataene brukes av tabellen under reservetabellen.
+    await Promise.all([loadFieldReserves(), loadDiscoveries()]);
     drawChart();
     return;
   }
@@ -1441,6 +1627,11 @@ function drawChart() {
     if (hubSubView === 'oilgas') drawFieldsOilGas(opts);
     else if (hubSubView === 'reserves') drawFieldsReserves(opts);
     else drawFieldsOePerField(opts);
+  } else if (topMode === 'discoveries') {
+    const sv = discoverySubView;
+    if (sv === 'per_company')    drawDiscoveriesPerCompany();
+    else if (sv === 'maturity')  drawDiscoveriesMaturity();
+    else                         drawDiscoveriesPerDiscovery();
   } else {
     const sv = companySubView;
     if (sv === 'oilgas')         drawCompaniesOilGas();
@@ -1557,8 +1748,10 @@ function drawFieldsOePerField(opts = {}) {
 let fieldReserves       = null;   // {fieldId: [{year, recoverableOE, remainingOE, remainingGas}, ...] sortert}
 let fieldReservesLoaded = false;
 
+// Visninger uten tidsakse: periode- og årsvelgeren gjelder ikke for dem.
 function isReservesView() {
-  return (topMode === 'fields'    && fieldSubView   === 'reserves')
+  return topMode === 'discoveries'
+      || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'companies' && companySubView === 'reserves');
 }
@@ -1850,6 +2043,134 @@ function drawCompaniesOePerHub() {
   renderHubPeriodTable(series, companies, qMap, lastLabels.slice(-5));
 }
 
+// ── DISCOVERIES ──────────────────────────────────────────────────────────────
+// Alle tre fanene er tverrsnitt, ikke tidsserier: lag 7008 har bare én
+// årgang. Enheten er mill fat o.e., som i reservevisningene.
+const DISC_NO_DATA = 'No resource estimates for the selected discoveries.';
+
+function selectedDiscoveries() {
+  return allDiscoveries.filter(d => selectedDiscoveryIds.has(d.id));
+}
+
+// Funnets ressurser fordelt på partnerne. Uten kjent eier havner alt på
+// Unallocated, slik at totalen stemmer med grafen.
+function discoveryByCompany(list, pick) {
+  const out = {}, add = (name, v) => {
+    const g = out[name] = out[name] || {name, liq:0, gas:0, oe:0, children:[]};
+    g.liq += v.liq; g.gas += v.gas; g.oe += v.oe;
+    return g;
+  };
+  list.forEach(d => {
+    const v = pick(d);
+    if (!v || v.oe <= 0) return;
+    const parts = discoveryPartners(d);
+    const sum = parts.reduce((t, p) => t + p.share, 0);
+    parts.forEach(p => {
+      const f = p.share / 100;
+      const w = {liq: v.liq*f, gas: v.gas*f, oe: v.oe*f};
+      add(p.name, w).children.push({name: d.name, share:{pct:p.share, exact:true}, ...w});
+    });
+    const rest = 1 - sum/100;
+    if (rest > 0.0005) {
+      const w = {liq: v.liq*rest, gas: v.gas*rest, oe: v.oe*rest};
+      add(UNALLOCATED, w).children.push({name: d.name, share:{pct:rest*100, exact:true}, ...w});
+    }
+  });
+  return Object.values(out);
+}
+
+function drawDiscoveriesPerDiscovery() {
+  const list = selectedDiscoveries();
+  if (!list.length) { setChartEmpty(DISC_NO_DATA); setInfo(''); return; }
+  const rows = list.map(d => ({d, v: discoveryRes[d.id]})).sort((a,b) => b.v.oe - a.v.oe);
+
+  const labels = rows.map(r => r.d.name);
+  const datasets = [
+    {label:'Liquids', data:rows.map(r => +(r.v.liq*BBL_PER_SM3).toFixed(1)), backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
+    {label:'Gas',     data:rows.map(r => +(r.v.gas*BBL_PER_SM3).toFixed(1)), backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'},
+  ];
+  setChartTitle(`${rows.length} ${rows.length===1?'discovery':'discoveries'} · Contingent resources`,
+                `Recoverable · million boe`);
+  setInfo(`<strong>Discoveries:</strong> ${rows.length} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir resource classes 4F, 5F and 7F — discoveries without a development decision`);
+  renderChart(labels, datasets,
+    [{label:'Liquids',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}],
+    'million boe', {xTitle:'Discovery', allTicks:true});
+
+  const groups = rows.map(r => {
+    const parts = discoveryPartners(r.d);
+    const children = parts.map(p => ({
+      name: p.name, share: {pct:p.share, exact:true},
+      liq: r.v.liq*BBL_PER_SM3*p.share/100, gas: r.v.gas*BBL_PER_SM3*p.share/100, oe: r.v.oe*BBL_PER_SM3*p.share/100,
+    }));
+    const rest = 1 - parts.reduce((t,p)=>t+p.share,0)/100;
+    if (rest > 0.0005) children.push({name: UNALLOCATED, share:{pct:rest*100, exact:true},
+      liq:r.v.liq*BBL_PER_SM3*rest, gas:r.v.gas*BBL_PER_SM3*rest, oe:r.v.oe*BBL_PER_SM3*rest});
+    return {name:r.d.name, liq:r.v.liq*BBL_PER_SM3, gas:r.v.gas*BBL_PER_SM3, oe:r.v.oe*BBL_PER_SM3, children};
+  });
+  setChartTable(reserveTableHtml(groups, 'Discovery / partner',
+    'Contingent resources per discovery and partner · million boe', {shareHead:'Share'}));
+}
+
+function drawDiscoveriesPerCompany() {
+  const list = selectedDiscoveries();
+  if (!list.length) { setChartEmpty(DISC_NO_DATA); setInfo(''); return; }
+  const groups = discoveryByCompany(list, d => discoveryRes[d.id])
+    .map(g => ({...g, liq:g.liq*BBL_PER_SM3, gas:g.gas*BBL_PER_SM3, oe:g.oe*BBL_PER_SM3,
+                children: g.children.map(c => ({...c, liq:c.liq*BBL_PER_SM3, gas:c.gas*BBL_PER_SM3, oe:c.oe*BBL_PER_SM3}))}))
+    .sort((a,b) => b.oe - a.oe);
+  if (!groups.length) { setChartEmpty(DISC_NO_DATA); setInfo(''); return; }
+
+  const labels = groups.map(g => g.name);
+  const datasets = [
+    {label:'Liquids', data:groups.map(g => +g.liq.toFixed(1)), backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
+    {label:'Gas',     data:groups.map(g => +g.gas.toFixed(1)), backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'},
+  ];
+  setChartTitle('Contingent resources per company', 'Equity-adjusted · million boe');
+  setInfo(`<strong>Discoveries:</strong> ${list.length} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Licence interest in the production licence or business arrangement area that owns the discovery`);
+  renderChart(labels, datasets,
+    [{label:'Liquids',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}],
+    'million boe', {xTitle:'Company', allTicks:true});
+
+  setChartTable(reserveTableHtml(groups, 'Company / discovery',
+    'Contingent resources per company and discovery · million boe · share is the licence interest in that discovery',
+    {shareHead:'Share'}));
+}
+
+function drawDiscoveriesMaturity() {
+  const list = selectedDiscoveries();
+  if (!list.length) { setChartEmpty(DISC_NO_DATA); setInfo(''); return; }
+
+  const perRc = CONTINGENT_RC.map(rc =>
+    ({rc, groups: discoveryByCompany(list, d => discoveryRes[d.id].byRc[rc])}));
+  const totals = {};
+  perRc.forEach(({rc, groups}) => groups.forEach(g => {
+    totals[g.name] = totals[g.name] || {};
+    totals[g.name][rc] = g.oe * BBL_PER_SM3;
+  }));
+  const names = Object.keys(totals)
+    .sort((a,b) => CONTINGENT_RC.reduce((s,rc)=>s+(totals[b][rc]||0),0)
+                 - CONTINGENT_RC.reduce((s,rc)=>s+(totals[a][rc]||0),0));
+  if (!names.length) { setChartEmpty(DISC_NO_DATA); setInfo(''); return; }
+
+  const datasets = [], legend = [];
+  CONTINGENT_RC.forEach((rc, i) => {
+    const color = PALETTE[i % PALETTE.length][0];
+    const label = `${rc} · ${RC_LABEL[rc]}`;
+    datasets.push({label, data:names.map(n => +(totals[n][rc]||0).toFixed(1)),
+                   backgroundColor:color, borderWidth:0, stack:'s'});
+    legend.push({label, color});
+  });
+  setChartTitle('Contingent resources by maturity', 'Equity-adjusted · million boe');
+  setInfo(`<strong>Discoveries:</strong> ${list.length} &nbsp;|&nbsp; <strong>Series:</strong> Sodir resource class — 4F in clarification phase, 5F production likely but not clarified, 7F not evaluated &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted via licence interest`);
+  renderChart(names, datasets, legend, 'million boe', {xTitle:'Company', allTicks:true});
+
+  const groups = names.map(n => ({
+    name: n, vals: CONTINGENT_RC.map(rc => totals[n][rc] || 0),
+  }));
+  setChartTable(periodTableHtml(groups, CONTINGENT_RC.map(rc => `${rc} · ${RC_LABEL[rc]}`),
+    'Company', 'Contingent resources by resource class · million boe · equity-adjusted', 1));
+}
+
 // ── COMPANIES: RESERVES ──────────────────────────────────────────────────────
 // Kun gjenstående reserver, splittet i væsker og gass. Produsert volum er
 // utledet av feltets totale historikk og lar seg ikke meningsfullt fordeles
@@ -1911,7 +2232,10 @@ function drawCompaniesReserves() {
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Remaining reserves`, `Equity-adjusted · million boe`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
-  renderReserveTableByHub(series, companies, years[years.length - 1]);
+  const lastYear = years[years.length - 1];
+  const reservesOe = liquids[liquids.length - 1] + gas[gas.length - 1];
+  setChartTable(renderReserveTableByHub(series, companies, lastYear)
+              + companyDiscoveryTable(companies, reservesOe));
 }
 
 // Tabell under grafen: reserver per felt, gruppert under huben feltet tilhører.
@@ -1940,9 +2264,9 @@ function equityOe(ids, lbl, qMap, companies) {
 // Tabell med én kolonne per periode. groups: [{name, vals, children?}], der
 // vals har samme lengde som periods. Tomme rader er allerede filtrert bort av
 // kalleren.
-function periodTableHtml(groups, periods, headLabel, caption) {
+function periodTableHtml(groups, periods, headLabel, caption, decimals = 0) {
   if (!groups.length || !periods.length) return '';
-  const n = v => Math.round(v).toLocaleString('en');
+  const n = v => v.toLocaleString('en', {minimumFractionDigits:decimals, maximumFractionDigits:decimals});
   const totals = periods.map((_, i) => groups.reduce((t, g) => t + g.vals[i], 0));
   const cells = vals => vals.map(v => `<td>${n(v)}</td>`).join('');
 
@@ -2081,8 +2405,42 @@ function renderReserveTableByHub(series, companies, year) {
     h.liq += v.liq; h.gas += v.gas; h.oe += v.oe;
     h.children.push({name:fname, ...v});
   });
-  setChartTable(reserveTableHtml(Object.values(hubs), 'Hub / field',
-    `Remaining reserves per field, vintage ${year} · million boe · equity-adjusted`));
+  return reserveTableHtml(Object.values(hubs), 'Hub / field',
+    `Remaining reserves per field, vintage ${year} · million boe · equity-adjusted`);
+}
+
+// Betingede ressurser for de valgte selskapene, som egen tabell under
+// reservetabellen. Reserver og ressurser er ikke samme type tall — det ene
+// har produksjonsvedtak, det andre ikke — så de holdes i hver sin tabell med
+// en eksplisitt oppsummering mellom.
+function companyDiscoveryTable(companies, reservesOe) {
+  if (!allDiscoveries.length) return '';
+  const want = new Set(companies);
+  const groups = [];
+  allDiscoveries.forEach(d => {
+    const v = discoveryRes[d.id];
+    let share = 0;
+    discoveryPartners(d).forEach(p => { if (want.has(p.name)) share += p.share; });
+    if (!share) return;
+    const f = share / 100;
+    groups.push({name: d.name, share: {pct: share, exact: true},
+                 liq: v.liq*BBL_PER_SM3*f, gas: v.gas*BBL_PER_SM3*f, oe: v.oe*BBL_PER_SM3*f});
+  });
+  if (!groups.length) return '';
+
+  const resOe = groups.reduce((t, g) => t + g.oe, 0);
+  const n = v => v.toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
+  const sum = `
+    <div class="res-sum">
+      <div><span>Remaining reserves</span><strong>${n(reservesOe)}</strong></div>
+      <div><span>Contingent resources</span><strong>${n(resOe)}</strong></div>
+      <div class="res-sum-total"><span>Total, million boe</span><strong>${n(reservesOe + resOe)}</strong></div>
+      <p>Reserves have a production decision; contingent resources do not. The two
+         are not directly comparable and the total is a sum, not a forecast.</p>
+    </div>`;
+  return sum + reserveTableHtml(groups, 'Discovery',
+    'Contingent resources in undeveloped discoveries · million boe · equity-adjusted · Sodir resource classes 4F, 5F and 7F',
+    {shareHead: 'Share'});
 }
 
 // Hubs-visningen: per felt, med partnerne under. Her er grafen brutto, så
