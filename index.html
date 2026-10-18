@@ -369,7 +369,7 @@
     <button class="sheet-close" onclick="closeSheet()">&#10005;</button>
   </div>
   <input class="sheet-search" id="listSearch" type="text" placeholder="Search…" oninput="filterList()" disabled/>
-  <div class="sheet-actions">
+  <div class="sheet-actions" id="sheetActions">
     <button class="sheet-action-btn" onclick="selectAll()">Select all</button>
     <button class="sheet-action-btn" onclick="clearAll()">Clear all</button>
   </div>
@@ -1106,9 +1106,11 @@ function renderViewTabs() {
 function setSubView(v) {
   if (topMode === 'fields') fieldSubView = v;
   else if (topMode === 'hubs') hubSubView = v;
-  else if (topMode === 'discoveries') discoverySubView = v;
+  else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
   else companySubView = v;
   renderViewTabs();
+  updateFab();
+  if (sheetOpen) renderList();
   refresh();
 }
 function setWater(val) { showWater = val; syncUrl(); drawChart(); }
@@ -1168,6 +1170,7 @@ function switchMode(m) {
   document.getElementById('modeBtnFields').classList.toggle('active',     m === 'fields');
   document.getElementById('modeBtnDiscoveries').classList.toggle('active', m === 'discoveries');
   document.getElementById('modeBtnCompanies').classList.toggle('active',  m === 'companies');
+  if (m === 'discoveries') syncDiscoverySelection(true);
   renderViewTabs();
   updateFab();
   refresh();
@@ -1186,7 +1189,11 @@ function updateFab() {
               : topMode === 'discoveries' ? 'discoveries' : 'companies';
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
-  document.getElementById('sheetTitle').textContent = `Select ${nounP}`;
+  document.getElementById('sheetTitle').textContent =
+    discoveryProfileMode() ? 'Select a discovery' : `Select ${nounP}`;
+  // «Select all» og «Clear all» gir ingen mening når bare ett funn kan velges.
+  document.getElementById('sheetActions').style.display =
+    discoveryProfileMode() ? 'none' : '';
 }
 
 function toggleSheet() { sheetOpen ? closeSheet() : openSheet(); }
@@ -1215,12 +1222,14 @@ function renderList() {
 function renderDiscoveryList() {
   const el = document.getElementById('checkList');
   if (!filteredDiscoveries.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
+  const single = discoveryProfileMode();
   el.innerHTML = '';
   filteredDiscoveries.forEach(d => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedDiscoveryIds.has(d.id) ? ' checked' : '');
     const cb = document.createElement('input');
-    cb.type = 'checkbox';
+    cb.type = single ? 'radio' : 'checkbox';
+    if (single) cb.name = 'discoveryPick';
     cb.checked = selectedDiscoveryIds.has(d.id);
     cb.addEventListener('change', () => toggleDiscovery(d.id, item, cb));
     item.appendChild(cb);
@@ -1235,6 +1244,16 @@ function renderDiscoveryList() {
 }
 
 function toggleDiscovery(id, item, cb) {
+  // Profilen viser ett funn om gangen, så der er listen en radioknapp: et
+  // klikk velger det funnet og fravelger det forrige. De tre andre fanene
+  // viser hele porteføljen og krysser av som før.
+  if (discoveryProfileMode()) {
+    selectedDiscoveryIds = new Set([id]);
+    renderDiscoveryList();
+    updateFab();
+    refresh();
+    return;
+  }
   if (selectedDiscoveryIds.has(id)) selectedDiscoveryIds.delete(id);
   else selectedDiscoveryIds.add(id);
   cb.checked = selectedDiscoveryIds.has(id);
@@ -1455,13 +1474,38 @@ async function loadDiscoveries() {
   // Et utvalg fra en delt lenke kan peke på funn som ikke lenger har anslag.
   const known = new Set(allDiscoveries.map(d => d.id));
   [...selectedDiscoveryIds].forEach(id => { if (!known.has(id)) selectedDiscoveryIds.delete(id); });
-  // Uten et utvalg fra lenken vises hele porteføljen. Kjører bare denne ene
-  // gangen, så «Clear all» blir ikke overstyrt etterpå.
-  if (!selectedDiscoveryIds.size) known.forEach(id => selectedDiscoveryIds.add(id));
   // Funnene er først kjent her, etter at updateFab har kjørt. Uten dette står
   // knappen på «0 selected» mens tabellen viser hele porteføljen.
+  syncDiscoverySelection();
   updateFab();
   discoveriesLoaded = true;
+}
+
+function discoveryProfileMode() {
+  return topMode === 'discoveries' && discoverySubView === 'profile';
+}
+
+// Funnmodusen har to utvalgsregler. De tre listevisningene viser hele
+// porteføljen — den samlede ressursbasen er poenget med dem — mens profilen
+// viser nøyaktig ett funn. Dette setter utvalget etter hvilken fane som er
+// aktiv, og kalles ved fanebytte, modusbytte og når funnlisten er lastet.
+//
+// Innenfor en fane står utvalget fritt: «Clear all» og avkryssingen i listen
+// virker som før, og overstyres ikke før man bytter fane.
+function syncDiscoverySelection(force) {
+  if (!allDiscoveries.length) return;
+  if (discoverySubView === 'profile') {
+    if (selectedDiscoveryIds.size === 1) return;
+    // allDiscoveries er sortert synkende på o.e., så det første treffet er
+    // det største funnet. Uten et utvalg å snevre inn faller vi tilbake på
+    // det største av alle.
+    const pick = allDiscoveries.find(d => selectedDiscoveryIds.has(d.id)) || allDiscoveries[0];
+    selectedDiscoveryIds = new Set([pick.id]);
+  } else if (force || !selectedDiscoveryIds.size) {
+    // force ved fanebytte; uten den beholdes et utvalg fra en delt lenke ved
+    // sidelasting, slik at en lenke til et håndplukket utvalg fortsatt virker.
+    selectedDiscoveryIds = new Set(allDiscoveries.map(d => d.id));
+  }
 }
 
 // Partnerne i funnet, via utvinningstillatelsen eller forretningsavtale-
