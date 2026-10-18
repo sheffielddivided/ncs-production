@@ -2199,18 +2199,44 @@ function drawFieldProfile() {
   const p = profileRow(id) || {};
 
   // Årlig produksjon, uavhengig av periodevelgeren — profilen viser alltid
-  // hele historikken.
-  const annual = (fieldProdCache[id] || [])
-    .map(r => r.attributes)
-    .filter(a => a && a.prfMonth === 0 && a.prfYear)
+  // hele historikken. Sodirs årsrader går for enkelte felt helt til 2100 og
+  // er nullrader; de stoppes ved inneværende år, og etterfølgende tomme år
+  // trimmes bort. Ledende nullår trimmer renderChart allerede.
+  const rows = (fieldProdCache[id] || []).map(r => r.attributes).filter(Boolean);
+  const annual = rows
+    .filter(a => a.prfMonth === 0 && a.prfYear && a.prfYear <= currentYear)
     .sort((a, b) => a.prfYear - b.prfYear);
-  const labels = annual.map(a => String(a.prfYear));
+  while (annual.length && !(annual[annual.length-1].prfPrdOeNetMillSm3 > 0)) annual.pop();
+
+  // Inneværende år dekker bare de månedene Sodir har publisert. Deles det på
+  // et helt år, blir siste søyle kunstig lav selv om tallene er per dag.
+  // Divisoren settes derfor til dagene i de månedene som faktisk finnes.
+  const monthsIn = y => rows
+    .filter(a => a.prfYear === y && a.prfMonth >= 1 && a.prfMonth <= 12)
+    .map(a => a.prfMonth)
+    .sort((x, y2) => x - y2);
+  const partial = annual.length ? monthsIn(annual[annual.length-1].prfYear) : [];
+  const isPartial = partial.length > 0 && partial.length < 12;
+  const daysOf = a => {
+    const ms = monthsIn(a.prfYear);
+    if (!ms.length || ms.length === 12) return daysInYear(a.prfYear);
+    return ms.reduce((t, m) => t + daysInMonth(a.prfYear, m), 0);
+  };
+
+  const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const partialNote = isPartial
+    ? `${MONTH[partial[0]-1]}–${MONTH[partial[partial.length-1]-1]}`
+    : '';
+  const labels = annual.map((a, i) =>
+    (isPartial && i === annual.length-1) ? `${a.prfYear} (${partialNote})` : String(a.prfYear));
   const oil = annual.map(a => +oilBoed(a.prfPrdOilNetMillSm3||0, a.prfPrdGasNetBillSm3||0,
-                                       a.prfPrdOeNetMillSm3||0, daysInYear(a.prfYear)).toFixed(0));
-  const gas = annual.map(a => +gasBoed(a.prfPrdGasNetBillSm3||0, daysInYear(a.prfYear)).toFixed(0));
+                                       a.prfPrdOeNetMillSm3||0, daysOf(a)).toFixed(0));
+  const gas = annual.map(a => +gasBoed(a.prfPrdGasNetBillSm3||0, daysOf(a)).toFixed(0));
 
   setChartTitle(name, [p.operator, p.area, p.status].filter(Boolean).join(' · '));
-  setInfo(`<strong>Field:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production, Oil and Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+  setInfo(`<strong>Field:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production, Oil and Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day${
+    isPartial ? ` &nbsp;|&nbsp; <strong>${annual[annual.length-1].prfYear}:</strong> ${partialNote} only, averaged over those months` : ''
+  } &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
 
   if (labels.length) {
     renderChart(labels,
