@@ -97,7 +97,8 @@
     .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
     .info-box strong{color:#1a2332;}
 
-    .dl-row{padding:0 12px 8px;display:flex;justify-content:flex-end;}
+    .dl-row{padding:0 12px 8px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+    .share-btn{border-color:var(--blue);color:var(--blue);}
     .dl-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--green);border-radius:8px;background:#fff;font-size:0.8rem;font-weight:500;color:var(--green);cursor:pointer;}
     .dl-btn:disabled{opacity:0.4;pointer-events:none;}
     .dl-btn svg{width:13px;height:13px;}
@@ -226,6 +227,13 @@
 <div class="info-box" id="infoBox"></div>
 
 <div class="dl-row">
+  <button class="dl-btn share-btn" id="shareBtn" onclick="copyViewLink()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/>
+      <path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/>
+    </svg>
+    Copy link
+  </button>
   <button class="dl-btn" id="downloadBtn" onclick="downloadExcel()" disabled>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -985,7 +993,7 @@ function setSubView(v) {
   renderViewTabs();
   refresh();
 }
-function setWater(val) { showWater = val; drawChart(); }
+function setWater(val) { showWater = val; syncUrl(); drawChart(); }
 function firstYearInCache() {
   const ids = topMode === 'fields'
     ? [...selectedFieldIds]
@@ -1200,8 +1208,125 @@ function clearAll() {
   updateFab(); refresh();
 }
 
+// ── DELBAR LENKE ─────────────────────────────────────────────────────────────
+// Hele visningstilstanden ligger i hash-delen av adressen. Hash fordi
+// GitHub Pages serverer samme fil uansett sti, og fordi den aldri sendes til
+// serveren. Adressen oppdateres med replaceState, så deling fungerer ved å
+// kopiere fra adressefeltet uten at hver justering fyller nettleserhistorikken.
+//
+// Utvalg lagres som felt-ID-er, men som NAVN for huber og selskaper. Navn kan
+// endres — en hub kan døpes om i settings-visningen — og da faller den
+// oppføringen bort ved åpning i stedet for å peke feil. Ukjente verdier
+// ignoreres, slik at en gammel lenke åpner det den fortsatt kan.
+const SEP = '~';   // finnes ikke i noe felt-, hub- eller selskapsnavn
+
+function currentSubView() {
+  return topMode === 'fields' ? fieldSubView
+       : topMode === 'hubs'   ? hubSubView
+       : companySubView;
+}
+
+function stateToHash() {
+  const q = new URLSearchParams();
+  q.set('m', topMode);
+  q.set('v', currentSubView());
+  if (!isReservesView()) {
+    q.set('p', period);
+    q.set('y', document.getElementById('yearFrom').value + '-' +
+               document.getElementById('yearTo').value);
+  }
+  if (topMode === 'fields')    q.set('f', [...selectedFieldIds].join(','));
+  else if (topMode === 'hubs') q.set('h', [...selectedHubNames].join(SEP));
+  else                         q.set('c', [...selectedCompanyNames].join(SEP));
+  if (showWater && topMode !== 'companies' && currentSubView() === 'oilgas') q.set('w', '1');
+  if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
+    q.set('g', hubReserveGrouping);
+  }
+  return q.toString();
+}
+
+function syncUrl() {
+  try { history.replaceState(null, '', '#' + stateToHash()); } catch (e) { /* ikke kritisk */ }
+}
+
+// Leser hash og setter tilstanden. Returnerer true hvis noe ble brukt, slik
+// at init kan la være å beholde standardvalgene.
+function applyHash() {
+  const raw = location.hash.replace(/^#/, '');
+  if (!raw) return false;
+  const q = new URLSearchParams(raw);
+
+  const m = q.get('m');
+  if (['fields','hubs','companies'].includes(m)) {
+    topMode = m;
+    document.getElementById('modeBtnHubs').classList.toggle('active',      m === 'hubs');
+    document.getElementById('modeBtnFields').classList.toggle('active',    m === 'fields');
+    document.getElementById('modeBtnCompanies').classList.toggle('active', m === 'companies');
+  }
+
+  const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS : COMPANY_TABS;
+  const v = q.get('v');
+  if (tabs.some(t => t.id === v)) {
+    if (topMode === 'fields') fieldSubView = v;
+    else if (topMode === 'hubs') hubSubView = v;
+    else companySubView = v;
+  }
+
+  const pr = q.get('p');
+  if (['monthly','quarterly','annual'].includes(pr)) {
+    period = pr;
+    document.getElementById('btnMonthly').classList.toggle('active',   pr === 'monthly');
+    document.getElementById('btnQuarterly').classList.toggle('active', pr === 'quarterly');
+    document.getElementById('btnAnnual').classList.toggle('active',    pr === 'annual');
+  }
+
+  const yr = (q.get('y') || '').match(/^(\d{4})-(\d{4})$/);
+  if (yr) {
+    const inRange = y => +y >= 1970 && +y <= currentYear;
+    if (inRange(yr[1])) document.getElementById('yearFrom').value = yr[1];
+    if (inRange(yr[2])) document.getElementById('yearTo').value   = yr[2];
+  }
+
+  if (q.has('f')) {
+    const known = new Set(allFields.map(f => f.id));
+    selectedFieldIds = new Set(
+      (q.get('f') || '').split(',').map(Number).filter(id => known.has(id)));
+  }
+  if (q.has('h')) {
+    const known = new Set(allHubs.map(h => h.name));
+    selectedHubNames = new Set(
+      (q.get('h') || '').split(SEP).filter(nm => known.has(nm)));
+  }
+  if (q.has('c')) {
+    selectedCompanyNames = new Set(
+      (q.get('c') || '').split(SEP).filter(Boolean));
+  }
+
+  showWater = q.get('w') === '1';
+  if (q.get('g') === 'company') hubReserveGrouping = 'company';
+  return true;
+}
+
+async function copyViewLink() {
+  const url = location.origin + location.pathname + '#' + stateToHash();
+  const btn = document.getElementById('shareBtn');
+  const done = ok => {
+    btn.textContent = ok ? 'Link copied' : url;
+    setTimeout(() => { btn.textContent = 'Copy link'; }, ok ? 1800 : 8000);
+  };
+  try {
+    await navigator.clipboard.writeText(url);
+    done(true);
+  } catch (e) {
+    // Utklippstavlen krever sikker kontekst og kan avvises. Vis lenken i
+    // stedet, så den kan merkes og kopieres manuelt.
+    done(false);
+  }
+}
+
 // ── MAIN REFRESH ─────────────────────────────────────────────────────────────
 async function refresh() {
+  syncUrl();
   if (topMode === 'fields') await refreshFields();
   else if (topMode === 'hubs') await refreshHubs();
   else await refreshCompanies();
@@ -1972,6 +2097,7 @@ let lastHubReserve = null;   // {series, year} for å kunne tegne tabellen om al
 
 function setHubReserveGrouping(g) {
   hubReserveGrouping = g;
+  syncUrl();
   if (lastHubReserve) renderReserveTableByFieldPartner(lastHubReserve.series, lastHubReserve.year);
 }
 
@@ -2488,6 +2614,10 @@ async function init() {
   filteredFields = allFields;
 
   selectedCompanyNames.add('Aker BP ASA');
+
+  // Lenke til en bestemt visning overstyrer standardvalgene over.
+  if (applyHash()) renderViewTabs();
+
   updateFab();
   refresh(); // First render — happens as soon as licensees are loaded
 
