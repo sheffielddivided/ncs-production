@@ -38,6 +38,7 @@ PRL_LIC_LAYER = 3007   # licence_licensee_hst
 BAA_LIC_LAYER = 3304   # bsns_arr_area_licensee_hst
 STATUS_LAYER  = 7101   # field_activity_status_hst
 DESCR_LAYER   = 7102   # field_description
+FACILITY_LAYER = 6000  # facility
 OUTLINE_SIMPLIFY = 0.001   # grader (~110 m) for Douglas-Peucker
 OUTLINE_DECIMALS = 4
 
@@ -456,6 +457,66 @@ def _simplify_ring(ring, tol):
     return s + [s[0]]
 
 
+# Innretninger til hubprofilen. Lag 6000 knytter anlegget til et felt via
+# fclNpdidBelongsTo, og det er nettopp den koblingen som gjor en hub til en
+# hub: hvilket prosessanlegg feltene deler. Bare anlegg som henger pa et felt
+# hentes - landanleggene (Nyhamna, Melkoya) henger pa et transportsystem
+# (TUF), ikke pa feltet, og hadde ikke latt seg plassere i en hub uansett.
+#
+# Punktgeometrien folger med, sa kartet kan vise anleggene der de star.
+def build_facilities():
+    where = "fclBelongsToKind='FIELD'"
+    total = count_rows(FACILITY_LAYER, where)
+    print(f"  Lag {FACILITY_LAYER}: {total} rader")
+    order = oid_field(FACILITY_LAYER)
+
+    feats, offset = [], 0
+    while offset < total:
+        params = {
+            'f': 'json', 'where': where,
+            'outFields': ('fclNpdidFacility,fclName,fclNpdidBelongsTo,fclKind,'
+                          'fclFunctions,fclPhase,fclStartupDate,fclWaterDepth,'
+                          'fclCurrentOperatorName,fclSurface'),
+            'returnGeometry': 'true', 'outSR': 4326,
+            'resultOffset': offset, 'resultRecordCount': PAGE_SIZE,
+        }
+        if order:
+            params['orderByFields'] = f'{order} ASC'
+        page = _get(f'{BASE}/{FACILITY_LAYER}/query', params).get('features', [])
+        if not page:
+            break
+        feats.extend(page)
+        offset += len(page)
+        print(f"    {offset}/{total}")
+
+    out = []
+    for f in feats:
+        a = f.get('attributes') or {}
+        fid = as_int(a.get('fclNpdidFacility'))
+        fld = as_int(a.get('fclNpdidBelongsTo'))
+        name = (a.get('fclName') or '').strip()
+        if fid is None or fld is None or not name:
+            continue
+        g = f.get('geometry') or {}
+        lon, lat = g.get('x'), g.get('y')
+        out.append([
+            fid, name, fld,
+            (a.get('fclKind') or '').strip(),
+            (a.get('fclFunctions') or '').strip(),
+            (a.get('fclPhase') or '').strip(),
+            as_int(a.get('fclStartupDate')),
+            num(a.get('fclWaterDepth')),
+            (a.get('fclCurrentOperatorName') or '').strip(),
+            1 if (a.get('fclSurface') or '').upper() == 'Y' else 0,
+            round(lon, 4) if isinstance(lon, (int, float)) else None,
+            round(lat, 4) if isinstance(lat, (int, float)) else None,
+        ])
+    out.sort(key=lambda x: (x[2], x[1]))
+    return {'columns': ['id', 'name', 'fieldId', 'kind', 'functions', 'phase',
+                        'startup', 'waterDepth', 'operator', 'surface', 'lon', 'lat'],
+            'rows': out}
+
+
 # Feltomriss til profilkartet. Hentes i WGS84 og forenkles kraftig: kartet er
 # en miniatyr, og rastallene fra Sodir er langt mer detaljerte enn nodvendig
 # (92 000 punkter mot 10 000 etter forenkling).
@@ -554,6 +615,7 @@ def main():
         ('field_profile.json', 'feltfakta', build_field_profile),
         ('field_descriptions.json', 'feltbeskrivelser', build_field_descriptions),
         ('field_outlines.json', 'feltomriss', build_field_outlines),
+        ('facilities.json', 'innretninger', build_facilities),
     ]
 
     changed = False
