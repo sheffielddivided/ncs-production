@@ -29,6 +29,10 @@ PROD_LAYER  = 7300
 LIC_LAYER   = 7108
 RES_LAYER   = 7114
 FLDRES_LAYER = 7113
+DISC_LAYER   = 7000    # discovery
+DISCRES_LAYER = 7008   # discovery_reserves
+PRL_LIC_LAYER = 3007   # licence_licensee_hst
+BAA_LIC_LAYER = 3304   # bsns_arr_area_licensee_hst
 
 OUT_DIR   = 'data'
 PAGE_SIZE = 2000
@@ -241,6 +245,81 @@ def build_field_reserves():
     }
 
 
+# Funn. Hele listen hentes, ikke bare de med ressursanslag — statusfordelingen
+# og funnaarene er nyttige i seg selv, og fila er liten.
+def build_discoveries():
+    rows = fetch_layer(
+        DISC_LAYER,
+        'dscNpdidDiscovery,dscName,dscCurrentActivityStatus,dscOwnerKind,'
+        'dscOwnerName,dscHcType,dscDiscoveryYear,fldName',
+    )
+    out = []
+    for r in rows:
+        did, name = as_int(r.get('dscNpdidDiscovery')), (r.get('dscName') or '').strip()
+        if did is None or not name:
+            continue
+        out.append([
+            did, name,
+            (r.get('dscCurrentActivityStatus') or '').strip(),
+            (r.get('dscOwnerKind') or '').strip(),
+            (r.get('dscOwnerName') or '').strip(),
+            (r.get('dscHcType') or '').strip(),
+            as_int(r.get('dscDiscoveryYear')),
+            (r.get('fldName') or '').strip(),
+        ])
+    out.sort(key=lambda x: x[1])
+    return {'columns': ['id', 'name', 'status', 'ownerKind', 'owner', 'hc', 'year', 'field'],
+            'rows': out}
+
+
+# Ressursanslag per funn. Et funn kan ha flere rader, en per ressursklasse.
+# Klassekoden er Sodirs egen: RC4/RC5/RC7 er betingede ressurser, suffiks F
+# betyr forste utbyggingsprosjekt. Se SOLUTION-CONTEXT §5.
+def build_discovery_resources():
+    rows = fetch_layer(
+        DISCRES_LAYER,
+        'dscNpdidDiscovery,dscReservesRC,dscRecoverableOil,dscRecoverableGas,'
+        'dscRecoverableNGL,dscRecoverableCondensate,dscRecoverableOe',
+    )
+    out = []
+    for r in rows:
+        did = as_int(r.get('dscNpdidDiscovery'))
+        if did is None:
+            continue
+        out.append([
+            did, (r.get('dscReservesRC') or '').strip(),
+            num(r.get('dscRecoverableOil')), num(r.get('dscRecoverableGas')),
+            num(r.get('dscRecoverableNGL')), num(r.get('dscRecoverableCondensate')),
+            num(r.get('dscRecoverableOe')),
+        ])
+    out.sort(key=lambda x: (x[0], x[1]))
+    return {'columns': ['id', 'rc', 'oil', 'gas', 'ngl', 'cond', 'oe'], 'rows': out}
+
+
+# Eierandeler i utvinningstillatelser og forretningsavtaleomraader, slaatt
+# sammen til en tabell. Et funn peker paa ett av dem via navn + type.
+#
+# Kun GJELDENDE rader hentes (to-dato er null). Ressursanslagene finnes bare
+# for en aargang, saa historiske eierandeler har ingen nytte her, og hele
+# historikken er 33 000+ rader mot 1 751.
+def build_licence_licensees():
+    out = []
+    for layer, kind, pre, where in (
+        (PRL_LIC_LAYER, 'PRODUCTION LICENCE', 'prl', 'prlLicenseeDateValidTo IS NULL'),
+        (BAA_LIC_LAYER, 'BUSINESS ARRANGEMENT AREA', 'baa', 'baaLicenseeDateValidTo IS NULL'),
+    ):
+        name_f = 'prlName' if pre == 'prl' else 'baaName'
+        int_f = f'{pre}LicenseeInterest'
+        for r in fetch_layer(layer, f'{name_f},cmpLongName,{int_f}', where):
+            owner = (r.get(name_f) or '').strip()
+            cmp_name = (r.get('cmpLongName') or '').strip()
+            if not owner or not cmp_name:
+                continue
+            out.append([owner, kind, cmp_name, num(r.get(int_f))])
+    out.sort(key=lambda x: (x[1], x[0], -x[3], x[2]))
+    return {'columns': ['owner', 'ownerKind', 'company', 'share'], 'rows': out}
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     """Skriv fila kun hvis innholdet faktisk er endret. Returnerer True ved endring."""
@@ -269,6 +348,9 @@ def main():
         ('licensees.json',  'lisensiaerer', build_licensees),
         ('reserves.json',   'reserver',    build_reserves),
         ('reserves_field.json', 'reserver per felt', build_field_reserves),
+        ('discoveries.json', 'funn', build_discoveries),
+        ('discovery_resources.json', 'funnressurser', build_discovery_resources),
+        ('licence_licensees.json', 'lisensandeler', build_licence_licensees),
     ]
 
     changed = False
