@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-12",
+  "updated": "2026-10-18",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -51,6 +51,10 @@
       "hub": "Old Frigg",
       "auto": false
     },
+    "43562": {
+      "hub": "Balder area",
+      "auto": false
+    },
     "43568": {
       "hub": "Old Frigg",
       "auto": false
@@ -67,17 +71,29 @@
       "hub": "Old Frigg",
       "auto": false
     },
+    "43604": {
+      "hub": "Balder area",
+      "auto": false
+    },
     "43610": {
       "hub": "Old Frigg",
       "auto": false
     },
+    "43625": {
+      "hub": "Oseberg area",
+      "auto": false
+    },
     "43639": {
-      "hub": "OSEBERG",
+      "hub": "Oseberg area",
       "auto": false
     },
     "43645": {
-      "hub": "OSEBERG",
-      "auto": true
+      "hub": "Oseberg area",
+      "auto": false
+    },
+    "43665": {
+      "hub": "Tieback to UK",
+      "auto": false
     },
     "43672": {
       "hub": "STATFJORD",
@@ -120,12 +136,16 @@
       "auto": true
     },
     "853376": {
-      "hub": "OSEBERG",
-      "auto": true
+      "hub": "Oseberg area",
+      "auto": false
     },
     "1028599": {
       "hub": "ULA",
       "auto": true
+    },
+    "1035937": {
+      "hub": "Grane area",
+      "auto": false
     },
     "1578840": {
       "hub": "TROLL",
@@ -152,11 +172,11 @@
       "auto": true
     },
     "2845712": {
-      "hub": "Alvheim hub",
+      "hub": "Alvheim area",
       "auto": false
     },
     "3392471": {
-      "hub": "Alvheim hub",
+      "hub": "Alvheim area",
       "auto": false
     },
     "3420717": {
@@ -167,20 +187,28 @@
       "hub": "ULA",
       "auto": true
     },
+    "3437659": {
+      "hub": "Tieback to UK",
+      "auto": false
+    },
     "3505505": {
-      "hub": "BALDER",
-      "auto": true
+      "hub": "Balder area",
+      "auto": false
     },
     "4005142": {
       "hub": "GULLFAKS",
       "auto": true
     },
     "4380167": {
-      "hub": "Alvheim hub",
+      "hub": "Alvheim area",
       "auto": false
     },
     "4444332": {
       "hub": "NORNE",
+      "auto": false
+    },
+    "4467554": {
+      "hub": "Tieback to UK",
       "auto": false
     },
     "4467595": {
@@ -211,6 +239,10 @@
       "hub": "Eiga hub",
       "auto": false
     },
+    "18161341": {
+      "hub": "Tieback to UK",
+      "auto": false
+    },
     "18212090": {
       "hub": "NORNE",
       "auto": true
@@ -227,6 +259,10 @@
       "hub": "NJORD",
       "auto": true
     },
+    "21105675": {
+      "hub": "Tieback to UK",
+      "auto": false
+    },
     "21106284": {
       "hub": "HEIMDAL",
       "auto": true
@@ -236,28 +272,36 @@
       "auto": true
     },
     "21613906": {
-      "hub": "JOTUN",
-      "auto": true
+      "hub": "Balder area",
+      "auto": false
     },
     "21675433": {
       "hub": "Eiga hub",
       "auto": false
     },
     "22492497": {
-      "hub": "Alvheim hub",
+      "hub": "Alvheim area",
       "auto": false
     },
     "22507971": {
-      "hub": "GRANE",
-      "auto": true
+      "hub": "Grane area",
+      "auto": false
     },
     "23384520": {
       "hub": "Eiga hub",
       "auto": false
     },
+    "23395946": {
+      "hub": "Aasta Hansteen area",
+      "auto": false
+    },
     "23410947": {
       "hub": "TROLL",
       "auto": true
+    },
+    "24635035": {
+      "hub": "Tieback to UK",
+      "auto": false
     },
     "25307278": {
       "hub": "Eiga hub",
@@ -300,7 +344,7 @@
       "auto": true
     },
     "31164600": {
-      "hub": "Alvheim hub",
+      "hub": "Alvheim area",
       "auto": false
     },
     "31164879": {
@@ -323,12 +367,16 @@
       "hub": "Skarv hub",
       "auto": false
     },
+    "38702206": {
+      "hub": "Grane area",
+      "auto": false
+    },
     "40867462": {
       "hub": "Ekofisk hub",
       "auto": false
     },
     "42002471": {
-      "hub": "Alvheim hub",
+      "hub": "Alvheim area",
       "auto": false
     },
     "42002473": {
@@ -361,6 +409,10 @@
     },
     "42002481": {
       "hub": "NORNE",
+      "auto": false
+    },
+    "42002482": {
+      "hub": "Aasta Hansteen area",
       "auto": false
     },
     "42002483": {
