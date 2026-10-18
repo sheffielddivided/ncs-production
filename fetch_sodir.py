@@ -15,7 +15,9 @@ data/meta.json oppdateres derfor også bare når noe annet har endret seg.
 """
 
 import json
+import math
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -33,6 +35,10 @@ DISC_LAYER   = 7000    # discovery
 DISCRES_LAYER = 7008   # discovery_reserves
 PRL_LIC_LAYER = 3007   # licence_licensee_hst
 BAA_LIC_LAYER = 3304   # bsns_arr_area_licensee_hst
+STATUS_LAYER  = 7101   # field_activity_status_hst
+DESCR_LAYER   = 7102   # field_description
+OUTLINE_SIMPLIFY = 0.001   # grader (~110 m) for Douglas-Peucker
+OUTLINE_DECIMALS = 4
 
 OUT_DIR   = 'data'
 PAGE_SIZE = 2000
@@ -320,6 +326,133 @@ def build_licence_licensees():
     return {'columns': ['owner', 'ownerKind', 'company', 'share'], 'rows': out}
 
 
+# Faktaark per felt: funnår, operatør, HC-type, område og produksjonsstart.
+#
+# Produksjonsstart finnes ikke i feltlaget. Lag 7101 har fasehistorikken, og
+# fra-datoen til den forste 'Producing'-raden er startdatoen. Kontrollert mot
+# Ekofisk, som skal vaere 15. juni 1971.
+def build_field_profile():
+    meta = fetch_layer(
+        FIELD_LAYER,
+        'fldNpdidField,fldName,fldDiscoveryYear,cmpLongName,fldHcType,fldMainArea,'
+        'fldMainSupplyBase,fldCurrentActivitySatus,wlbName',
+    )
+    starts = {}
+    for r in fetch_layer(STATUS_LAYER, 'fldNpdidField,fldStatus,fldStatusFromDate',
+                         "fldStatus='Producing'"):
+        fid, frm = as_int(r.get('fldNpdidField')), as_int(r.get('fldStatusFromDate'))
+        if fid is None or frm is None:
+            continue
+        if fid not in starts or frm < starts[fid]:
+            starts[fid] = frm
+
+    out = []
+    for r in meta:
+        fid = as_int(r.get('fldNpdidField'))
+        if fid is None:
+            continue
+        out.append([
+            fid,
+            as_int(r.get('fldDiscoveryYear')),
+            (r.get('cmpLongName') or '').strip(),
+            (r.get('fldHcType') or '').strip(),
+            (r.get('fldMainArea') or '').strip(),
+            (r.get('fldMainSupplyBase') or '').strip(),
+            (r.get('fldCurrentActivitySatus') or '').strip(),
+            (r.get('wlbName') or '').strip(),
+            starts.get(fid),
+        ])
+    out.sort(key=lambda x: x[0])
+    return {'columns': ['id', 'discoveryYear', 'operator', 'hc', 'area', 'supplyBase',
+                        'status', 'wellbore', 'productionStart'],
+            'rows': out}
+
+
+# Sodirs egne feltbeskrivelser, engelsk utgave. En rad per overskrift.
+def build_field_descriptions():
+    rows = fetch_layer(DESCR_LAYER, 'fldNpdidField,fldDescriptionHeading,fldDescriptionText',
+                       "fldCultureCode='en'")
+    out = []
+    for r in rows:
+        fid = as_int(r.get('fldNpdidField'))
+        head = (r.get('fldDescriptionHeading') or '').strip()
+        text = re.sub(r'\s+', ' ', r.get('fldDescriptionText') or '').strip()
+        if fid is None or not head or not text:
+            continue
+        out.append([fid, head, text])
+    out.sort(key=lambda x: (x[0], x[1]))
+    return {'columns': ['id', 'heading', 'text'], 'rows': out}
+
+
+def _simplify(points, tol):
+    """Douglas-Peucker pa en apen punktrekke."""
+    if len(points) < 3:
+        return list(points)
+
+    def dist(p, a, b):
+        (x, y), (x1, y1), (x2, y2) = p, a, b
+        dx, dy = x2 - x1, y2 - y1
+        n = math.hypot(dx, dy)
+        if n < 1e-12:
+            return math.hypot(x - x1, y - y1)
+        return abs(dy * x - dx * y + x2 * y1 - y2 * x1) / n
+
+    keep = [0, len(points) - 1]
+    stack = [(0, len(points) - 1)]
+    while stack:
+        a, b = stack.pop()
+        best, bi = -1.0, a
+        for i in range(a + 1, b):
+            dd = dist(points[i], points[a], points[b])
+            if dd > best:
+                best, bi = dd, i
+        if best > tol:
+            keep.append(bi)
+            stack.append((a, bi))
+            stack.append((bi, b))
+    return [points[i] for i in sorted(set(keep))]
+
+
+def _simplify_ring(ring, tol):
+    """Lukket ring. Deles ved punktet lengst fra startpunktet, ellers faller
+    start og slutt sammen og avstandsmalet blir meningslost."""
+    pts = ring[:-1] if len(ring) > 1 and ring[0] == ring[-1] else list(ring)
+    if len(pts) < 4:
+        return None
+    x0, y0 = pts[0]
+    m = max(range(1, len(pts)), key=lambda i: (pts[i][0]-x0)**2 + (pts[i][1]-y0)**2)
+    s = _simplify(pts[:m+1], tol)[:-1] + _simplify(pts[m:] + [pts[0]], tol)[:-1]
+    if len(s) < 3:
+        return None
+    return s + [s[0]]
+
+
+# Feltomriss til profilkartet. Hentes i WGS84 og forenkles kraftig: kartet er
+# en miniatyr, og rastallene fra Sodir er langt mer detaljerte enn nodvendig
+# (92 000 punkter mot 10 000 etter forenkling).
+def build_field_outlines():
+    total = count_rows(FIELD_LAYER)
+    print(f"  Lag {FIELD_LAYER} (geometri): {total} rader")
+    feats = _get(f'{BASE}/{FIELD_LAYER}/query', {
+        'f': 'json', 'where': '1=1', 'outFields': 'fldNpdidField',
+        'returnGeometry': 'true', 'outSR': 4326, 'resultRecordCount': PAGE_SIZE,
+    }).get('features', [])
+    out = {}
+    for f in feats:
+        fid = as_int((f.get('attributes') or {}).get('fldNpdidField'))
+        if fid is None:
+            continue
+        rings = []
+        for ring in (f.get('geometry') or {}).get('rings', []):
+            s = _simplify_ring(ring, OUTLINE_SIMPLIFY)
+            if s:
+                rings.append([[round(x, OUTLINE_DECIMALS), round(y, OUTLINE_DECIMALS)]
+                              for x, y in s])
+        if rings:
+            out[str(fid)] = rings
+    return {'fields': dict(sorted(out.items(), key=lambda x: int(x[0])))}
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     """Skriv fila kun hvis innholdet faktisk er endret. Returnerer True ved endring."""
@@ -351,6 +484,9 @@ def main():
         ('discoveries.json', 'funn', build_discoveries),
         ('discovery_resources.json', 'funnressurser', build_discovery_resources),
         ('licence_licensees.json', 'lisensandeler', build_licence_licensees),
+        ('field_profile.json', 'feltfakta', build_field_profile),
+        ('field_descriptions.json', 'feltbeskrivelser', build_field_descriptions),
+        ('field_outlines.json', 'feltomriss', build_field_outlines),
     ]
 
     changed = False
