@@ -17,8 +17,10 @@ statiske JSON-filer i dette repoet.
 | `data/` | Datasnapshot: felt, produksjon, lisensiærer, reserver |
 | `data/reserves_field.json` | Reserver per felt per år (2004→), fra Sodir lag 7113 |
 | `data/hubs.json` | Hub-tilhørighet per felt — brukerstyrt, ikke fra Sodir |
-| `data/discoveries.json` | Funn (lag 7000) — navn, status, funnår, eier |
+| `data/discoveries.json` | Funn (lag 7000) — navn, status, funnår, eier, operatør |
 | `data/discovery_resources.json` | Ressursanslag per funn (lag 7008) |
+| `data/discovery_descriptions.json` | Sodirs funnbeskrivelser (lag 7001) |
+| `data/discovery_outlines.json` | Forenklede funnomriss til funnprofilens kart |
 | `data/licence_licensees.json` | Eierandeler i lisenser og forretningsavtaleområder |
 | `data/field_profile.json` | Faktaark per felt — funnår, operatør, produksjonsstart |
 | `data/field_descriptions.json` | Sodirs feltbeskrivelser (lag 7102) |
