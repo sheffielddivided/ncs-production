@@ -105,6 +105,16 @@
     .pf-desc h4:first-child{margin-top:0;}
     .pf-desc p{margin:0;font-size:0.73rem;line-height:1.55;color:#2f2f2f;}
 
+    /* Brede skjermer: kortene i to spalter som flyter, ikke et rutenett.
+       Kortene er svært ulike i høyde, og et rutenett ville låst dem parvis og
+       etterlatt store tomrom ved siden av det høyeste i hver rad. Spalteflyt
+       pakker dem tett; break-inside hindrer at et kort deles i to. */
+    @media (min-width: 900px) {
+      .profile-wrap{column-count:2;column-gap:10px;}
+      .pf-card{break-inside:avoid;margin-bottom:10px;}
+      .pf-map{height:250px;}
+    }
+
     .res-sum{background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);
       padding:10px 12px;margin:14px 0 10px;font-size:0.74rem;}
     .res-sum div{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);}

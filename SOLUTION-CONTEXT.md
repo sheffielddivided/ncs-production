@@ -1038,6 +1038,12 @@ Profilvisningen krever **nøyaktig ett** valgt felt; ellers vises en melding om
 å velge ett. Den har ingen tidsakse-kontroller — grafen viser alltid hele den
 årlige historikken, uavhengig av periodevelgeren, som derfor skjules.
 
+På skjermer fra 900 px flyter kortene i **to spalter** (`column-count`,
+`index.html:112-116`). Et rutenett ble prøvd først, men kortene er svært
+ulike i høyde, og rutenettet låste dem parvis og etterlot store tomrom ved
+siden av det høyeste i hver rad — profilen ble 1 627 px høy mot 938 px med
+spalteflyt. Målt i Chromium på 1400 px. Under 900 px er alt én spalte som før.
+
 Innholdet ligger i `#profileBox` (`index.html:263`), en egen beholder under
 `#chartTable`. `setProfile` er eneste vei inn, og den tømmes de samme tre
 stedene som tabellen (`renderChart`, `showSpinner`, `setChartEmpty`).
