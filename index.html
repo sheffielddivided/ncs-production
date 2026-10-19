@@ -152,8 +152,6 @@
     /* Innretningstabellen har sju kolonner og er for bred for en halv spalte.
        Den legges over begge, nederst, der den ikke bryter flyten for de andre. */
     .pf-card.pf-wide{column-span:all;}
-    /* Faktarutenett som trenger full bredde til lange lister. */
-    .pf-facts-wide{grid-template-columns:1fr;}
     /* Lisenstabellen: klikkbare overskrifter, og en infokolonne som får bryte. */
     .lic-th{cursor:pointer;user-select:none;white-space:nowrap;}
     .lic-th:hover{color:var(--blue);}
@@ -3327,6 +3325,13 @@ function drawDiscoveryProfile() {
 // ── COMPANIES: PROFILE ───────────────────────────────────────────────────────
 // Faktaark for ett selskap. Visningen handler om dagens portefølje —
 // historiske andeler hører til tidsseriene i de andre fanene.
+// Hubnavnet et felt hører til. Felt uten hub-oppføring er sin egen hub; felt
+// som ikke finnes i feltlisten i det hele tatt — prøveproduksjonsfeltet — får
+// et id-basert navn, som i «OE per hub»-fanen.
+function hubNameOf(id) {
+  return hubOfField[id] || allFields.find(f => f.id === id)?.name || `Field ${id}`;
+}
+
 function companyRow(name) {
   const b = bundle.companies;
   if (!b) return null;
@@ -3399,63 +3404,70 @@ function companyPortfolio(name, holdings) {
     const cur = res.length ? res[res.length - 1] : null;
     return {
       id: h.id, name: allFields.find(f => f.id === h.id)?.name || String(h.id),
-      hub: hubOfField[h.id] || '', share: h.share, status: p.status || '',
-      operator: p.operator || '',
-      rem: cur ? (cur.remainingOE || 0) * BBL_PER_SM3 * h.share / 100 : null,
+      hub: hubNameOf(h.id),
+      share: h.share, status: p.status || '', operator: p.operator || '',
+      rem: cur ? (cur.remainingOE || 0) * BBL_PER_SM3 * h.share / 100 : 0,
+      hasRes: !!cur,
     };
-  }).sort((a, b) => (b.rem || 0) - (a.rem || 0) || a.name.localeCompare(b.name, 'en'));
-  const tot = rows.reduce((t, r) => t + (r.rem || 0), 0);
-  const pct = v => v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + ' %';
+  });
+
+  // Gruppert per hub. Hubens andel er selskapets beregnede eierandel av HELE
+  // hubens gjenstående reserver — selskapets o.e. delt på hubens o.e., over
+  // alle medlemsfelt, ikke bare dem selskapet sitter i. Samme definisjon som
+  // selskapsgrupperingen i hubenes reservetabell. Feltradene viser derimot
+  // lisensandelen i det enkelte feltet.
+  const hubTotalOf = hub => {
+    const members = (allHubs.find(x => x.name === hub) || {fieldIds: []}).fieldIds;
+    return members.reduce((t, id) => {
+      const rr = (fieldReserves && fieldReserves[id]) || [];
+      return t + (rr.length ? (rr[rr.length - 1].remainingOE || 0) * BBL_PER_SM3 : 0);
+    }, 0);
+  };
+  const byHub = {};
+  rows.forEach(r => { (byHub[r.hub] = byHub[r.hub] || []).push(r); });
+  const groups = Object.entries(byHub).map(([hub, list]) => {
+    const oe = list.reduce((t, r) => t + r.rem, 0);
+    const whole = hubTotalOf(hub);
+    return {
+      hub, oe,
+      pct: whole > 0 ? oe / whole * 100 : null,
+      // En hub med ett felt er feltet selv; da er hubandelen lisensandelen,
+      // og kolonnen trenger ingen tilnærmingsmarkør.
+      exact: list.length === 1 && Math.abs(oe - list[0].rem) < 1e-9 && whole > 0
+             && Math.abs((oe / whole * 100) - list[0].share) < 0.0005,
+      fields: list.sort((a, b) => b.rem - a.rem || a.name.localeCompare(b.name, 'en')),
+    };
+  }).sort((a, b) => b.oe - a.oe || a.hub.localeCompare(b.hub, 'en'));
+
+  const tot = groups.reduce((t, g) => t + g.oe, 0);
+  const pct = (v, exact) => v === null ? ''
+    : (exact ? '' : '~') + v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + ' %';
+  const vol = v => mmboe(v / BBL_PER_SM3);
   return `
     <div class="pf-scroll"><table class="res-table">
-      <caption>${rows.length} ${rows.length === 1 ? 'field' : 'fields'} · equity remaining reserves in million boe</caption>
-      <thead><tr><th>Field</th><th>Hub</th><th>Share</th><th>Status</th>
+      <caption>${rows.length} ${rows.length === 1 ? 'field' : 'fields'} in
+        ${groups.length} ${groups.length === 1 ? 'hub' : 'hubs'} ·
+        equity remaining reserves in million boe</caption>
+      <thead><tr><th>Hub / field</th><th>Share</th><th>Status</th>
         <th>Operator</th><th>Remaining</th></tr></thead>
-      <tbody>${rows.map(r => `
-        <tr><td><a class="row-link" href="#" title="Open the profile for ${esc(r.name)}"` +
+      <tbody>${groups.map(g => `
+        <tr class="hub-row"><td>${esc(g.hub)}</td><td>${pct(g.pct, g.exact)}</td>
+          <td></td><td></td><td>${vol(g.oe)}</td></tr>` +
+        g.fields.map(r => `
+        <tr class="field-row"><td><a class="row-link" href="#"` +
+          ` title="Open the profile for ${esc(r.name)}"` +
           ` onclick="openFieldProfile(${r.id});return false;">${esc(r.name)}</a></td>
-          <td>${esc(r.hub && r.hub !== r.name ? r.hub : '—')}</td><td>${pct(r.share)}</td>
-          <td>${esc(r.status || '—')}</td>
+          <td>${pct(r.share, true)}</td><td>${esc(r.status || '—')}</td>
           <td>${r.operator === name ? '<span class="pf-op-tag">Operator</span>' : esc(r.operator || '—')}</td>
-          <td>${r.rem === null ? '—' : mmboe(r.rem / BBL_PER_SM3)}</td></tr>`).join('')}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td></td>
-        <td>${mmboe(tot / BBL_PER_SM3)}</td></tr></tfoot>
+          <td>${r.hasRes ? vol(r.rem) : '—'}</td></tr>`).join('')).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td>
+        <td>${vol(tot)}</td></tr></tfoot>
     </table></div>
-    <div class="pf-map-note">Current licence interests only. The share is the company's own
-      interest in the field; remaining reserves are the field's latest estimate weighted by
-      that share.</div>`;
+    <div class="pf-map-note">Current licence interests only, grouped by hub. The field share
+      is the company's licence interest; the hub share is its computed share of the whole
+      hub's remaining reserves, across every member field — marked ~ because it is derived,
+      not a licence interest.</div>`;
 }
-
-function companyOperatorships(name) {
-  const fields = allFields
-    .filter(f => (profileRow(f.id) || {}).operator === name)
-    .map(f => f.name)
-    .sort((a, b) => a.localeCompare(b, 'en'));
-  const b = bundle.facilities;
-  let facs = [];
-  if (b) {
-    const i = Object.fromEntries(b.columns.map((c, k) => [c, k]));
-    facs = b.rows.filter(r => r[i.operator] === name && r[i.surface])
-                 .map(r => r[i.name])
-                 .sort((a, b2) => a.localeCompare(b2, 'en'));
-  }
-  if (!fields.length && !facs.length) return '';
-  const list = (label, arr) => arr.length
-    ? `<div class="pf-fact"><span>${label} · ${arr.length}</span><strong>${esc(arr.join(', '))}</strong></div>`
-    : '';
-  return `<div class="pf-facts pf-facts-wide">
-    ${list('Fields operated', fields)}
-    ${list('Surface installations operated', facs)}
-  </div>`;
-}
-
-// ── Lisenstabellen ───────────────────────────────────────────────────────────
-// Alle aktive utvinningstillatelser selskapet har en andel i. Infokolonnen
-// sier hvilket felt lisensen eier, eller hvilke funn som ligger i den — 69 av
-// de 540 aktive lisensene har et felt, 174 har funn, og 365 har ingen av
-// delene og står blanke.
-let licenceRows = null;                       // sist byggede tabell
-let licenceSort = {key: 'name', dir: 1};
 
 function licenceInfo() {
   const byField = {}, byDisc = {};
@@ -3576,9 +3588,10 @@ function drawCompanyProfile() {
   const c = companyRow(name) || {};
   const holdings = companyFields(name);
 
-  // Grafen: hele den årlige historikken, egenandelsjustert. Andelen slås opp
-  // per år, så oppkjøp og salg vises som hopp — samme logikk som
-  // reservevisningen i denne modusen.
+  // Grafen: hele den årlige historikken, egenandelsjustert, med én serie per
+  // hub. Andelen slås opp per år, så oppkjøp og salg vises som hopp — samme
+  // logikk som «OE per hub»-fanen, men med fast årsakse i stedet for
+  // periodevelgerens vindu.
   const ids = [...new Set([
     ...allLicRecords.filter(r => r.cmpLongName === name).map(r => r.fldNpdidField),
     ...Object.entries(TRIAL_PROD_OWNERSHIP)
@@ -3595,22 +3608,24 @@ function drawCompanyProfile() {
   const labels = years.map(y => (partialSrc && y === lastYear)
     ? `${y} (${partialSrc.partialNote})` : String(y));
 
-  const oil = [], gas = [];
-  years.forEach(y => {
-    const at = new Date(Date.UTC(y, 6, 1));   // midt i året
-    let o = 0, g = 0;
-    perField.forEach(s => {
-      const a = s.annual.find(x => x.prfYear === y);
-      if (!a) return;
-      const share = getShare(s.id, at, name) / 100;
-      if (!share) return;
-      const d = s.daysOf(a);
-      g += gasBoed(a.prfPrdGasNetBillSm3 || 0, d) * share;
-      o += oilBoed(a.prfPrdOilNetMillSm3 || 0, a.prfPrdGasNetBillSm3 || 0,
-                   a.prfPrdOeNetMillSm3 || 0, d) * share;
+  const byHub = {};
+  perField.forEach(s => { (byHub[hubNameOf(s.id)] = byHub[hubNameOf(s.id)] || []).push(s); });
+  // Størst hub først, slik at de dominerende seriene får de tydeligste
+  // palettfargene og legenden leses ovenfra og ned.
+  const hubSeries = Object.entries(byHub).map(([hub, list]) => {
+    const d = years.map(y => {
+      const at = new Date(Date.UTC(y, 6, 1));   // midt i året
+      let oe = 0;
+      list.forEach(s => {
+        const a = s.annual.find(x => x.prfYear === y);
+        if (!a) return;
+        const share = getShare(s.id, at, name) / 100;
+        if (share) oe += oeBoed(a.prfPrdOeNetMillSm3 || 0, s.daysOf(a)) * share;
+      });
+      return +oe.toFixed(0);
     });
-    oil.push(+o.toFixed(0)); gas.push(+g.toFixed(0));
-  });
+    return {hub, d, total: d.reduce((x, y2) => x + y2, 0)};
+  }).filter(h => hasAnyValue(h.d)).sort((a, b) => b.total - a.total);
 
   const roles = [
     [c.licenceOper, 'Licence operator'], [c.licensee, 'Licensee'],
@@ -3623,16 +3638,18 @@ function drawCompanyProfile() {
                        c.activeNcs ? 'Active on the NCS' : 'No current activity',
                        `${holdings.length} ${holdings.length === 1 ? 'field' : 'fields'}`]
     .filter(Boolean).join(' · '));
-  setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual production, equity-adjusted, Oil and Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day${
+  setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual production, equity-adjusted, OE per hub &nbsp;|&nbsp; <strong>Unit:</strong> boe/day${
     partialSrc ? ` &nbsp;|&nbsp; <strong>${lastYear}:</strong> ${partialSrc.partialNote} only, averaged over those months` : ''
   } &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
 
-  if (hasAnyValue(oil) || hasAnyValue(gas)) {
-    renderChart(labels,
-      [{label:'Oil', data:oil, backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
-       {label:'Gas', data:gas, backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'}],
-      [{label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}],
-      'boe/day', {xTitle:'Year'});
+  if (hubSeries.length) {
+    const datasets = [], legend = [];
+    hubSeries.forEach((h, i) => {
+      const color = PALETTE[i % PALETTE.length][0];
+      datasets.push({label: h.hub, data: h.d, backgroundColor: color, borderWidth: 0, stack: 's'});
+      legend.push({label: h.hub, color});
+    });
+    renderChart(labels, datasets, legend, 'boe/day', {xTitle:'Year'});
   } else {
     setChartNone();
   }
@@ -3655,7 +3672,6 @@ function drawCompanyProfile() {
       </div>
     </div>
     ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
-    ${(() => { const o = companyOperatorships(name); return o ? `<div class="pf-card"><h3>Operatorships</h3>${o}</div>` : ''; })()}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
     ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
