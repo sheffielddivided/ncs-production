@@ -2072,9 +2072,53 @@ async function loadFieldReserves() {
     } catch (e) { /* tom visning håndteres av kalleren */ }
   }
 
+  mergeSplitReserveEntries(byField);
   Object.values(byField).forEach(rows => rows.sort((a, b) => a.year - b.year));
   fieldReserves = byField;
   fieldReservesLoaded = true;
+}
+
+// Sodir delte Skarvs volumer på to oppføringer i årgangene 2018 og 2019.
+// Den andre, fldNpdidField 33310197, finnes ikke i noe annet lag — verken
+// feltlaget, beskrivelseslaget eller lisensiærlaget kjenner den — så den er
+// usynlig i appen, og Skarv ser ut til å miste en tredjedel av reservene i to
+// år for så å få dem tilbake.
+//
+// At de to hører sammen er regning, ikke gjetning. Lagt sammen blir serien
+// jevn i alle fire fraksjonene:
+//
+//   årgang   Skarv alene   Skarv + 33310197   (mill Sm³ o.e.)
+//   2017     109,723       109,723
+//   2018      60,767       109,412
+//   2019      60,245       111,062
+//   2020     111,017       111,017
+//
+// og oppføringen finnes i nøyaktig de to årene Skarv faller. Radene slås
+// derfor sammen her. Datafilene speiler Sodir uendret; korreksjonen hører
+// hjemme sammen med den øvrige forretningslogikken.
+const SPLIT_RESERVE_ENTRIES = {
+  33310197: 4704482,   // → SKARV, årgangene 2018 og 2019
+};
+
+function mergeSplitReserveEntries(byField) {
+  Object.entries(SPLIT_RESERVE_ENTRIES).forEach(([from, into]) => {
+    const extra = byField[from];
+    if (!extra) return;
+    delete byField[from];
+    const host = byField[into] = byField[into] || [];
+    extra.forEach(e => {
+      const t = host.find(r => r.year === e.year);
+      if (!t) { host.push(e); return; }
+      t.recoverableOE += e.recoverableOE;
+      t.remainingOE   += e.remainingOE;
+      t.remainingGas  += e.remainingGas;
+      // raw bærer fraksjonene som volumtabellen i profilen bruker. Alle
+      // kolonnene er volumer, så de summeres på samme måte.
+      Object.entries(e.raw || {}).forEach(([k, v]) => {
+        if (typeof v === 'number') t.raw[k] = (t.raw[k] || 0) + v;
+      });
+    });
+  });
 }
 
 // opts.ids og opts.scope fungerer som i de øvrige feltvisningene, slik at
