@@ -152,6 +152,15 @@
     /* Innretningstabellen har sju kolonner og er for bred for en halv spalte.
        Den legges over begge, nederst, der den ikke bryter flyten for de andre. */
     .pf-card.pf-wide{column-span:all;}
+    /* Faktarutenett som trenger full bredde til lange lister. */
+    .pf-facts-wide{grid-template-columns:1fr;}
+    /* Lisenstabellen: klikkbare overskrifter, og en infokolonne som får bryte. */
+    .lic-th{cursor:pointer;user-select:none;white-space:nowrap;}
+    .lic-th:hover{color:var(--blue);}
+    .lic-th.sorted{color:var(--blue);}
+    .lic-arrow{display:inline-block;width:0.9em;font-size:0.6rem;}
+    .res-table td.lic-info{white-space:normal;min-width:190px;}
+    .lic-more{color:var(--muted);}
     .res-table td.fac-fn{white-space:normal;min-width:120px;}
 
     .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
@@ -404,7 +413,7 @@ const bundle = { fields:null, production:null, licensees:null, reserves:null, re
                  discoveries:null, discovery_resources:null, licence_licensees:null,
                  discovery_descriptions:null, discovery_outlines:null,
                  field_profile:null, field_descriptions:null, field_outlines:null, coastline:null,
-                 facilities:null,
+                 facilities:null, licences:null, companies:null,
                  meta:null, hubs:null };
 
 async function fetchBundle(name) {
@@ -420,6 +429,7 @@ async function loadBundles() {
                  'discoveries','discovery_resources','licence_licensees',
                  'discovery_descriptions','discovery_outlines',
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
+                 'licences','companies',
                  'meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
@@ -1085,6 +1095,7 @@ const COMPANY_TABS = [
   {id:'oe_per_field',  label:'OE per field'},
   {id:'oe_per_hub',    label:'OE per hub'},
   {id:'reserves',      label:'Reserves'},
+  {id:'profile',       label:'Profile'},
 ];
 
 function renderViewTabs() {
@@ -1107,7 +1118,7 @@ function setSubView(v) {
   if (topMode === 'fields') fieldSubView = v;
   else if (topMode === 'hubs') hubSubView = v;
   else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
-  else companySubView = v;
+  else { companySubView = v; syncCompanySelection(); }
   renderViewTabs();
   updateFab();
   if (sheetOpen) renderList();
@@ -1171,6 +1182,7 @@ function switchMode(m) {
   document.getElementById('modeBtnDiscoveries').classList.toggle('active', m === 'discoveries');
   document.getElementById('modeBtnCompanies').classList.toggle('active',  m === 'companies');
   if (m === 'discoveries') syncDiscoverySelection(true);
+  if (m === 'companies') syncCompanySelection();
   renderViewTabs();
   updateFab();
   refresh();
@@ -1189,11 +1201,12 @@ function updateFab() {
               : topMode === 'discoveries' ? 'discoveries' : 'companies';
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
+  const onePick = discoveryProfileMode() || companyProfileMode();
   document.getElementById('sheetTitle').textContent =
-    discoveryProfileMode() ? 'Select a discovery' : `Select ${nounP}`;
-  // «Select all» og «Clear all» gir ingen mening når bare ett funn kan velges.
-  document.getElementById('sheetActions').style.display =
-    discoveryProfileMode() ? 'none' : '';
+    onePick ? `Select a ${noun}` : `Select ${nounP}`;
+  // «Select all» og «Clear all» gir ingen mening i profilvisningene, der bare
+  // ett funn eller selskap kan velges.
+  document.getElementById('sheetActions').style.display = onePick ? 'none' : '';
 }
 
 function toggleSheet() { sheetOpen ? closeSheet() : openSheet(); }
@@ -1322,11 +1335,13 @@ function renderCompanyList() {
     return;
   }
   el.innerHTML = '';
+  const single = companyProfileMode();
   filteredCompanies.forEach(name => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedCompanyNames.has(name) ? ' checked' : '');
     const cb = document.createElement('input');
-    cb.type = 'checkbox';
+    cb.type = single ? 'radio' : 'checkbox';
+    if (single) cb.name = 'companyPick';
     cb.checked = selectedCompanyNames.has(name);
     cb.addEventListener('change', () => toggleCompany(name, item, cb));
     item.appendChild(cb);
@@ -1346,6 +1361,14 @@ function toggleField(id, item, cb) {
 }
 
 function toggleCompany(name, item, cb) {
+  // Som i funnprofilen: ett selskap om gangen, så listen blir en radioknapp.
+  if (companyProfileMode()) {
+    selectedCompanyNames = new Set([name]);
+    renderCompanyList();
+    updateFab();
+    refresh();
+    return;
+  }
   if (selectedCompanyNames.has(name)) selectedCompanyNames.delete(name);
   else selectedCompanyNames.add(name);
   cb.checked = selectedCompanyNames.has(name);
@@ -1483,6 +1506,20 @@ async function loadDiscoveries() {
 
 function discoveryProfileMode() {
   return topMode === 'discoveries' && discoverySubView === 'profile';
+}
+
+function companyProfileMode() {
+  return topMode === 'companies' && companySubView === 'profile';
+}
+
+// Profilen viser ett selskap om gangen. Er flere valgt, beholdes det første —
+// selskapslisten er sortert med Aker BP øverst og deretter synkende reserver,
+// så det er det største av de valgte.
+function syncCompanySelection() {
+  if (!companyProfileMode() || selectedCompanyNames.size <= 1) return;
+  const pick = allCompanies.find(n => selectedCompanyNames.has(n))
+            || [...selectedCompanyNames][0];
+  selectedCompanyNames = new Set([pick]);
 }
 
 // Funnmodusen har to utvalgsregler. De tre listevisningene viser hele
@@ -1793,6 +1830,13 @@ async function refreshCompanies() {
     drawChart();
     return;
   }
+  // Profilen trenger alt: grafen produksjonen, ressurskortet reservene, og
+  // funnkortet og lisenstabellen funndataene.
+  if (companySubView === 'profile') {
+    await Promise.all([loadProdForFields(relevantIds), loadFieldReserves(), loadDiscoveries()]);
+    drawChart();
+    return;
+  }
   await loadProdForFields(relevantIds);
   drawChart();
 }
@@ -1866,6 +1910,7 @@ function drawChart() {
     else if (sv === 'oe_per_field')  drawCompaniesOePerField();
     else if (sv === 'oe_per_hub')    drawCompaniesOePerHub();
     else if (sv === 'reserves')      drawCompaniesReserves();
+    else if (sv === 'profile')       drawCompanyProfile();
   }
 }
 
@@ -1983,6 +2028,7 @@ function isReservesView() {
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
+      || (topMode === 'companies' && companySubView === 'profile')
       || (topMode === 'companies' && companySubView === 'reserves');
 }
 
@@ -2149,6 +2195,11 @@ const mmboe = v => (v * BBL_PER_SM3).toLocaleString('en', {minimumFractionDigits
 // inn alt de har.
 function outlineMap(own, opts = {}) {
   const W = 560, H = 230, MIN_SPAN = 1.6;   // grader bredde
+  // Hvor mye luft rundt forekomsten. Standard 3 passer for én forekomst eller
+  // en samlet hub. En selskapsportefølje kan spenne over hele sokkelen, og da
+  // blir 3 så mye at feltene blir usynlige prikker — derfor kan kallerne
+  // stramme inn.
+  const PAD = opts.pad || 3;
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   own.forEach(r => r.forEach(([x, y]) => {
     x0 = Math.min(x0, x); x1 = Math.max(x1, x);
@@ -2156,25 +2207,28 @@ function outlineMap(own, opts = {}) {
   }));
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   const kx = Math.cos(cy * Math.PI / 180);          // enkel ekvirektangulær korreksjon
-  let spanX = Math.max((x1 - x0) * 3, MIN_SPAN);
+  let spanX = Math.max((x1 - x0) * PAD, MIN_SPAN);
   let spanY = spanX * kx * H / W;
-  if ((y1 - y0) * 2.4 > spanY) { spanY = (y1 - y0) * 2.4; spanX = spanY / kx * W / H; }
+  const padY0 = PAD * 0.8;
+  if ((y1 - y0) * padY0 > spanY) { spanY = (y1 - y0) * padY0; spanX = spanY / kx * W / H; }
   const west = cx - spanX/2, south = cy - spanY/2;
   const px = x => ((x - west) / spanX) * W;
   const py = y => H - ((y - south) / spanY) * H;
   // Punkter som havner nærmere enn én piksel fra forrige punkt droppes.
   // Kartet er 560 px bredt, så finere detalj er usynlig uansett, og uten
   // dette blir et stort felt som Troll titalls kilobyte SVG.
-  const path = (rings, minPx = 1) => rings.map(r => {
+  const path = (rings, minPx = 1, keepSmall = false) => rings.map(r => {
     // Ringer som dekker noen få piksler på skjermen — skjær i skjærgården —
-    // koster byte uten å tilføre noe synlig.
+    // koster byte uten å tilføre noe synlig. Unntaket er laget som skal
+    // utheves: der er ringene få, og et lite felt som faller bort ville fått
+    // porteføljen til å se mindre ut enn den er.
     let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
     for (const [x, y] of r) {
       const sx = px(x), sy = py(y);
       bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx);
       by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
     }
-    if (bx1 - bx0 < 4 && by1 - by0 < 4) return '';
+    if (!keepSmall && bx1 - bx0 < 4 && by1 - by0 < 4) return '';
 
     let d = '', lx = NaN, ly = NaN, n = 0;
     for (const [x, y] of r) {
@@ -2218,12 +2272,12 @@ function outlineMap(own, opts = {}) {
     }).join('');
 
   return `
-    <svg class="pf-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice"
+    <svg class="pf-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid ${opts.fit ? 'meet' : 'slice'}"
          role="img" aria-label="${esc(opts.label || 'Map')}">
       <rect width="${W}" height="${H}" fill="#eef3f8"/>
       ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
       ${back}
-      <path d="${path(own)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>${marks}
+      <path d="${path(own, 1, true)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>${marks}
     </svg>
     <div class="pf-map-note">${opts.note || ''}</div>`;
 }
@@ -3270,6 +3324,346 @@ function drawDiscoveryProfile() {
   `);
 }
 
+// ── COMPANIES: PROFILE ───────────────────────────────────────────────────────
+// Faktaark for ett selskap. Visningen handler om dagens portefølje —
+// historiske andeler hører til tidsseriene i de andre fanene.
+function companyRow(name) {
+  const b = bundle.companies;
+  if (!b) return null;
+  const i = Object.fromEntries(b.columns.map((c, k) => [c, k]));
+  const r = b.rows.find(x => x[i.name] === name);
+  if (!r) return null;
+  const out = {};
+  b.columns.forEach((c, k) => { out[c] = r[k]; });
+  return out;
+}
+
+// Feltene selskapet er lisensiær i nå. Lisensradene uten sluttdato er fasiten;
+// prøveproduksjon har ingen slike rader hos Sodir og legges til separat.
+function companyFields(name) {
+  const out = [], seen = new Set();
+  allLicRecords.forEach(r => {
+    if (r.cmpLongName !== name || r.fldLicenseeTo !== null) return;
+    if (seen.has(r.fldNpdidField) || !((r.fldCompanyShare || 0) > 0)) return;
+    seen.add(r.fldNpdidField);
+    out.push({id: r.fldNpdidField, share: r.fldCompanyShare});
+  });
+  Object.entries(TRIAL_PROD_OWNERSHIP).forEach(([id, owners]) => {
+    if ((owners[name] || 0) > 0 && !seen.has(+id)) out.push({id: +id, share: owners[name]});
+  });
+  return out;
+}
+
+// Gjenstående reserver vektet med dagens andel, i mill fat o.e.
+function companyEquityRemaining(holdings) {
+  let oe = 0;
+  holdings.forEach(h => {
+    const rows = (fieldReserves && fieldReserves[h.id]) || [];
+    if (!rows.length) return;
+    oe += (rows[rows.length - 1].remainingOE || 0) * BBL_PER_SM3 * h.share / 100;
+  });
+  return oe;
+}
+
+function companyMap(holdings) {
+  const outlines = bundle.field_outlines && bundle.field_outlines.fields;
+  if (!outlines) return '';
+  const own = [];
+  holdings.forEach(h => (outlines[h.id] || []).forEach(r => own.push(r)));
+  if (!own.length) return '';
+  const member = new Set(holdings.map(h => h.id));
+  const others = [];
+  Object.entries(outlines).forEach(([k, rings]) => {
+    if (member.has(+k)) return;
+    rings.forEach(r => others.push(r));
+  });
+  return outlineMap(own, {
+    label: 'Map of the fields held',
+    fill: OIL_COLOR, stroke: '#8e0a48', pad: 1.25,
+    // «slice» fyller kortet, men beskjærer loddrett når kortet er bredere enn
+    // utsnittet — på en bred skjerm forsvinner nesten halve høyden. For ett
+    // felt eller én hub ligger innholdet midt i og merkes ikke, men en
+    // portefølje strekker seg utover og ville mistet felt i kanten.
+    fit: true,
+    layers: [{rings: others, fill:'#cbd6e2', stroke:'#b2bfcd'}],
+    note: 'Fields the company holds an interest in, in colour; other fields in grey. '
+        + 'Coastline: Natural Earth · field outlines: Sodir, simplified to ~110 m',
+  });
+}
+
+function companyPortfolio(name, holdings) {
+  if (!holdings.length) return '';
+  const rows = holdings.map(h => {
+    const p = profileRow(h.id) || {};
+    const res = (fieldReserves && fieldReserves[h.id]) || [];
+    const cur = res.length ? res[res.length - 1] : null;
+    return {
+      id: h.id, name: allFields.find(f => f.id === h.id)?.name || String(h.id),
+      hub: hubOfField[h.id] || '', share: h.share, status: p.status || '',
+      operator: p.operator || '',
+      rem: cur ? (cur.remainingOE || 0) * BBL_PER_SM3 * h.share / 100 : null,
+    };
+  }).sort((a, b) => (b.rem || 0) - (a.rem || 0) || a.name.localeCompare(b.name, 'en'));
+  const tot = rows.reduce((t, r) => t + (r.rem || 0), 0);
+  const pct = v => v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + ' %';
+  return `
+    <div class="pf-scroll"><table class="res-table">
+      <caption>${rows.length} ${rows.length === 1 ? 'field' : 'fields'} · equity remaining reserves in million boe</caption>
+      <thead><tr><th>Field</th><th>Hub</th><th>Share</th><th>Status</th>
+        <th>Operator</th><th>Remaining</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr><td><a class="row-link" href="#" title="Open the profile for ${esc(r.name)}"` +
+          ` onclick="openFieldProfile(${r.id});return false;">${esc(r.name)}</a></td>
+          <td>${esc(r.hub && r.hub !== r.name ? r.hub : '—')}</td><td>${pct(r.share)}</td>
+          <td>${esc(r.status || '—')}</td>
+          <td>${r.operator === name ? '<span class="pf-op-tag">Operator</span>' : esc(r.operator || '—')}</td>
+          <td>${r.rem === null ? '—' : mmboe(r.rem / BBL_PER_SM3)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td></td>
+        <td>${mmboe(tot / BBL_PER_SM3)}</td></tr></tfoot>
+    </table></div>
+    <div class="pf-map-note">Current licence interests only. The share is the company's own
+      interest in the field; remaining reserves are the field's latest estimate weighted by
+      that share.</div>`;
+}
+
+function companyOperatorships(name) {
+  const fields = allFields
+    .filter(f => (profileRow(f.id) || {}).operator === name)
+    .map(f => f.name)
+    .sort((a, b) => a.localeCompare(b, 'en'));
+  const b = bundle.facilities;
+  let facs = [];
+  if (b) {
+    const i = Object.fromEntries(b.columns.map((c, k) => [c, k]));
+    facs = b.rows.filter(r => r[i.operator] === name && r[i.surface])
+                 .map(r => r[i.name])
+                 .sort((a, b2) => a.localeCompare(b2, 'en'));
+  }
+  if (!fields.length && !facs.length) return '';
+  const list = (label, arr) => arr.length
+    ? `<div class="pf-fact"><span>${label} · ${arr.length}</span><strong>${esc(arr.join(', '))}</strong></div>`
+    : '';
+  return `<div class="pf-facts pf-facts-wide">
+    ${list('Fields operated', fields)}
+    ${list('Surface installations operated', facs)}
+  </div>`;
+}
+
+// ── Lisenstabellen ───────────────────────────────────────────────────────────
+// Alle aktive utvinningstillatelser selskapet har en andel i. Infokolonnen
+// sier hvilket felt lisensen eier, eller hvilke funn som ligger i den — 69 av
+// de 540 aktive lisensene har et felt, 174 har funn, og 365 har ingen av
+// delene og står blanke.
+let licenceRows = null;                       // sist byggede tabell
+let licenceSort = {key: 'name', dir: 1};
+
+function licenceInfo() {
+  const byField = {}, byDisc = {};
+  const pb = bundle.field_profile;
+  if (pb) {
+    const i = Object.fromEntries(pb.columns.map((c, k) => [c, k]));
+    pb.rows.forEach(r => {
+      if (r[i.ownerKind] !== 'PRODUCTION LICENCE' || !r[i.owner]) return;
+      (byField[r[i.owner]] = byField[r[i.owner]] || []).push(
+        {id: r[i.id], name: allFields.find(f => f.id === r[i.id])?.name || String(r[i.id])});
+    });
+  }
+  // Alle funn, ikke bare de med ressursanslag — spørsmålet er hvilke funn som
+  // ligger i lisensen, ikke hvor store de er. De som har anslag får lenke.
+  const db = bundle.discoveries;
+  if (db) {
+    const i = Object.fromEntries(db.columns.map((c, k) => [c, k]));
+    db.rows.forEach(r => {
+      if (r[i.ownerKind] !== 'PRODUCTION LICENCE' || !r[i.owner]) return;
+      (byDisc[r[i.owner]] = byDisc[r[i.owner]] || []).push({id: r[i.id], name: r[i.name]});
+    });
+  }
+  return {byField, byDisc};
+}
+
+function buildLicenceRows(name) {
+  const lb = bundle.licences, ll = bundle.licence_licensees;
+  if (!lb || !ll) return [];
+  const li = Object.fromEntries(lb.columns.map((c, k) => [c, k]));
+  const ci = Object.fromEntries(ll.columns.map((c, k) => [c, k]));
+  const mine = {};
+  ll.rows.forEach(r => {
+    if (r[ci.ownerKind] !== 'PRODUCTION LICENCE' || r[ci.company] !== name) return;
+    mine[r[ci.owner]] = r[ci.share];
+  });
+  const {byField, byDisc} = licenceInfo();
+  return lb.rows
+    .filter(r => mine[r[li.name]] !== undefined)
+    .map(r => ({
+      name: r[li.name], area: r[li.area] || '', phase: r[li.phase] || '',
+      validTo: r[li.validTo], operator: r[li.operator] || '',
+      share: mine[r[li.name]],
+      fields: byField[r[li.name]] || [], discoveries: byDisc[r[li.name]] || [],
+    }));
+}
+
+function licenceTableHtml(rows) {
+  if (!rows.length) return '';
+  const {key, dir} = licenceSort;
+  const known = new Set(allDiscoveries.map(d => d.id));
+  // Infokolonnen: feltet lisensen eier først, deretter funnene i den. Lange
+  // lister kuttes — PL 050 har 26 funn — og hele listen ligger i title.
+  const info = r => {
+    const parts = [];
+    r.fields.forEach(f => parts.push(
+      `<a class="row-link" href="#" title="Open the profile for ${esc(f.name)}"` +
+      ` onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a>`));
+    const ds = r.discoveries;
+    ds.slice(0, 3).forEach(d => parts.push(known.has(d.id)
+      ? `<a class="row-link" href="#" title="Open the profile for ${esc(d.name)}"` +
+        ` onclick="openDiscoveryProfile(${d.id});return false;">${esc(d.name)}</a>`
+      : esc(d.name)));
+    if (ds.length > 3) parts.push(`<span class="lic-more">+${ds.length - 3} more</span>`);
+    return parts.join(', ');
+  };
+  const sortVal = (r, k) =>
+    k === 'validTo' ? (r.validTo || 0)
+    : k === 'share' ? r.share
+    : k === 'info'  ? (r.fields[0]?.name || r.discoveries[0]?.name || '￿')
+    : String(r[k] || '￿');
+  const sorted = rows.slice().sort((a, b) => {
+    const x = sortVal(a, key), y = sortVal(b, key);
+    const c = typeof x === 'number' ? x - y : x.localeCompare(y, 'en');
+    return (c || a.name.localeCompare(b.name, 'en')) * dir;
+  });
+  const COLS = [['name','Licence'], ['area','Area'], ['phase','Phase'],
+                ['operator','Operator'], ['share','Share'], ['validTo','Valid to'],
+                ['info','Field / discoveries']];
+  const head = COLS.map(([k, label]) =>
+    `<th class="lic-th${key === k ? ' sorted' : ''}" onclick="setLicenceSort('${k}')"` +
+    ` title="Sort by ${label.toLowerCase()}">${label}` +
+    `<span class="lic-arrow">${key === k ? (dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
+  const pct = v => v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + ' %';
+  const yr = ms => ms ? new Date(ms).toLocaleDateString('en-GB',
+    {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}) : '—';
+  return `
+    <div class="pf-scroll"><table class="res-table lic-table">
+      <caption>${rows.length} active production ${rows.length === 1 ? 'licence' : 'licences'} ·
+        click a heading to sort</caption>
+      <thead><tr>${head}</tr></thead>
+      <tbody>${sorted.map(r => `
+        <tr><td>${esc(r.name)}</td><td>${esc(r.area || '—')}</td>
+          <td>${esc(r.phase || '—')}</td><td>${esc(r.operator || '—')}</td>
+          <td>${pct(r.share)}</td><td>${yr(r.validTo)}</td>
+          <td class="lic-info">${info(r)}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="pf-map-note">Active production licences only; business arrangement areas are
+      not included. The last column names the field the licence owns, then the discoveries
+      that sit in it — most licences have neither and stay blank. Source: Sodir layer 3000.</div>`;
+}
+
+function setLicenceSort(key) {
+  licenceSort = {key, dir: licenceSort.key === key ? -licenceSort.dir : 1};
+  const host = document.getElementById('licenceBox');
+  if (host && licenceRows) host.innerHTML = licenceTableHtml(licenceRows);
+}
+
+function drawCompanyProfile() {
+  const names = [...selectedCompanyNames];
+  if (names.length !== 1) {
+    setChartEmpty(names.length
+      ? 'Select a single company to see its profile.'
+      : 'Tap the button below to select a company.');
+    setInfo('');
+    return;
+  }
+  const name = names[0];
+  const c = companyRow(name) || {};
+  const holdings = companyFields(name);
+
+  // Grafen: hele den årlige historikken, egenandelsjustert. Andelen slås opp
+  // per år, så oppkjøp og salg vises som hopp — samme logikk som
+  // reservevisningen i denne modusen.
+  const ids = [...new Set([
+    ...allLicRecords.filter(r => r.cmpLongName === name).map(r => r.fldNpdidField),
+    ...Object.entries(TRIAL_PROD_OWNERSHIP)
+      .filter(([, o]) => (o[name] || 0) > 0).map(([id]) => +id),
+  ])];
+  const perField = ids.map(id => ({id, ...annualProduction(id)})).filter(s => s.annual.length);
+  const seen = perField.flatMap(s => s.annual.map(a => a.prfYear));
+  const years = [];
+  if (seen.length) {
+    for (let y = Math.min(...seen); y <= Math.max(...seen); y++) years.push(y);
+  }
+  const lastYear = years[years.length - 1];
+  const partialSrc = perField.find(s => s.isPartial && s.lastYear === lastYear);
+  const labels = years.map(y => (partialSrc && y === lastYear)
+    ? `${y} (${partialSrc.partialNote})` : String(y));
+
+  const oil = [], gas = [];
+  years.forEach(y => {
+    const at = new Date(Date.UTC(y, 6, 1));   // midt i året
+    let o = 0, g = 0;
+    perField.forEach(s => {
+      const a = s.annual.find(x => x.prfYear === y);
+      if (!a) return;
+      const share = getShare(s.id, at, name) / 100;
+      if (!share) return;
+      const d = s.daysOf(a);
+      g += gasBoed(a.prfPrdGasNetBillSm3 || 0, d) * share;
+      o += oilBoed(a.prfPrdOilNetMillSm3 || 0, a.prfPrdGasNetBillSm3 || 0,
+                   a.prfPrdOeNetMillSm3 || 0, d) * share;
+    });
+    oil.push(+o.toFixed(0)); gas.push(+g.toFixed(0));
+  });
+
+  const roles = [
+    [c.licenceOper, 'Licence operator'], [c.licensee, 'Licensee'],
+    [c.baaOper, 'BAA operator'], [c.baaPartner, 'BAA partner'],
+    [c.tufOper, 'Transport operator'], [c.tufPartner, 'Transport partner'],
+    [c.facilityOper, 'Installation operator'],
+  ].filter(([on]) => on).map(([, label]) => label);
+
+  setChartTitle(name, [c.group && c.group !== name ? c.group : '',
+                       c.activeNcs ? 'Active on the NCS' : 'No current activity',
+                       `${holdings.length} ${holdings.length === 1 ? 'field' : 'fields'}`]
+    .filter(Boolean).join(' · '));
+  setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual production, equity-adjusted, Oil and Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day${
+    partialSrc ? ` &nbsp;|&nbsp; <strong>${lastYear}:</strong> ${partialSrc.partialNote} only, averaged over those months` : ''
+  } &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+
+  if (hasAnyValue(oil) || hasAnyValue(gas)) {
+    renderChart(labels,
+      [{label:'Oil', data:oil, backgroundColor:OIL_COLOR, borderWidth:0, stack:'s'},
+       {label:'Gas', data:gas, backgroundColor:GAS_COLOR, borderWidth:0, stack:'s'}],
+      [{label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}],
+      'boe/day', {xTitle:'Year'});
+  } else {
+    setChartNone();
+  }
+
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+  const remOe = companyEquityRemaining(holdings);
+  licenceRows = buildLicenceRows(name);
+  licenceSort = {key: 'name', dir: 1};
+
+  setProfile(`
+    <div class="pf-card">
+      <h3>Key facts</h3>
+      <div class="pf-facts">
+        ${fact('Group', c.group && c.group !== name ? c.group : '')}
+        ${fact('Organisation number', c.orgNumber)}
+        ${fact('Registered in', c.nation === 'NO' ? 'Norway' : c.nation)}
+        ${fact('Fields held', holdings.length || '')}
+        ${fact('Production licences', licenceRows.length || '')}
+        ${fact('Roles', roles.join(', '))}
+      </div>
+    </div>
+    ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
+    ${(() => { const o = companyOperatorships(name); return o ? `<div class="pf-card"><h3>Operatorships</h3>${o}</div>` : ''; })()}
+    ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
+    ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
+               return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
+    ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
+      <div id="licenceBox">${licenceTableHtml(licenceRows)}</div></div>` : ''}
+  `);
+}
+
 // ── COMPANIES: RESERVES ──────────────────────────────────────────────────────
 // Kun gjenstående reserver, splittet i væsker og gass. Produsert volum er
 // utledet av feltets totale historikk og lar seg ikke meningsfullt fordeles
@@ -3541,7 +3935,7 @@ function renderReserveTableByHub(series, companies, year) {
 // reservetabellen. Reserver og ressurser er ikke samme type tall — det ene
 // har produksjonsvedtak, det andre ikke — så de holdes i hver sin tabell med
 // en eksplisitt oppsummering mellom.
-function companyDiscoveryTable(companies, reservesOe) {
+function companyDiscoveryTable(companies, reservesOe, opts = {}) {
   if (!allDiscoveries.length) return '';
   const want = new Set(companies);
   const groups = [];
@@ -3552,6 +3946,7 @@ function companyDiscoveryTable(companies, reservesOe) {
     if (!share) return;
     const f = share / 100;
     groups.push({name: d.name, share: {pct: share, exact: true},
+                 ...(opts.link ? {discoveryId: d.id} : {}),
                  liq: v.liq*BBL_PER_SM3*f, gas: v.gas*BBL_PER_SM3*f, oe: v.oe*BBL_PER_SM3*f});
   });
   if (!groups.length) return '';

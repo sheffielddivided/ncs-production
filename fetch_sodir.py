@@ -39,6 +39,8 @@ BAA_LIC_LAYER = 3304   # bsns_arr_area_licensee_hst
 STATUS_LAYER  = 7101   # field_activity_status_hst
 DESCR_LAYER   = 7102   # field_description
 FACILITY_LAYER = 6000  # facility
+LICENCE_LAYER = 3000   # licence
+COMPANY_LAYER = 1200   # company
 OUTLINE_SIMPLIFY = 0.001   # grader (~110 m) for Douglas-Peucker
 OUTLINE_DECIMALS = 4
 
@@ -367,6 +369,19 @@ def build_field_profile():
         'fldNpdidField,fldName,fldDiscoveryYear,cmpLongName,fldHcType,fldMainArea,'
         'fldMainSupplyBase,fldCurrentActivitySatus,wlbName',
     )
+    # Feltets utvinningstillatelse eller forretningsavtaleomrade, fra de
+    # gjeldende lisensradene. Brukes til infokolonnen i selskapsprofilens
+    # lisenstabell, som sier hvilket felt en lisens eier. 128 av 142 felt har
+    # gjeldende rader; resten er nedstengte og star uten eier.
+    owners = {}
+    for r in fetch_layer(LIC_LAYER, 'fldNpdidField,fldOwnerKind,fldOwnerName',
+                         'fldLicenseeTo IS NULL'):
+        fid = as_int(r.get('fldNpdidField'))
+        kind = (r.get('fldOwnerKind') or '').strip()
+        name = (r.get('fldOwnerName') or '').strip()
+        if fid is not None and kind and name:
+            owners[fid] = (kind, name)
+
     starts = {}
     for r in fetch_layer(STATUS_LAYER, 'fldNpdidField,fldStatus,fldStatusFromDate',
                          "fldStatus='Producing'"):
@@ -391,10 +406,13 @@ def build_field_profile():
             (r.get('fldCurrentActivitySatus') or '').strip(),
             (r.get('wlbName') or '').strip(),
             starts.get(fid),
+            owners.get(fid, ('', ''))[0],
+            owners.get(fid, ('', ''))[1],
         ])
     out.sort(key=lambda x: x[0])
     return {'columns': ['id', 'discoveryYear', 'operator', 'hc', 'area', 'supplyBase',
-                        'status', 'wellbore', 'productionStart'],
+                        'status', 'wellbore', 'productionStart',
+                        'ownerKind', 'owner'],
             'rows': out}
 
 
@@ -517,6 +535,68 @@ def build_facilities():
             'rows': out}
 
 
+# Utvinningstillatelser til selskapsprofilens lisenstabell. Bare de aktive:
+# de 540 aktive lisensene er nayaktig de som har gjeldende rettighetshavere i
+# lag 3007, sa de inaktive 1 273 ville aldri blitt vist. cmpLongName er
+# lisensens operator.
+def build_licences():
+    rows = fetch_layer(
+        LICENCE_LAYER,
+        'prlNpdidLicence,prlName,prlMainArea,prlPhaseCurrent,prlDateGranted,'
+        'prlDateValidTo,cmpLongName',
+        "prlActive='Y'",
+    )
+    out = []
+    for r in rows:
+        pid = as_int(r.get('prlNpdidLicence'))
+        name = (r.get('prlName') or '').strip()
+        if pid is None or not name:
+            continue
+        out.append([
+            pid, name,
+            (r.get('prlMainArea') or '').strip(),
+            (r.get('prlPhaseCurrent') or '').strip(),
+            as_int(r.get('prlDateGranted')),
+            as_int(r.get('prlDateValidTo')),
+            (r.get('cmpLongName') or '').strip(),
+        ])
+    out.sort(key=lambda x: x[1])
+    return {'columns': ['id', 'name', 'area', 'phase', 'granted', 'validTo', 'operator'],
+            'rows': out}
+
+
+# Selskapsfakta til selskapsprofilen. Hele laget hentes - a filtrere til de
+# selskapene appen kjenner ville koblet denne byggeren til lisensiarlaget uten
+# a spare mer enn 16 KB gzip.
+#
+# Rolleflaggene er Sodirs egne Y/N-kolonner, og lagres som 0/1.
+def build_companies():
+    flags = ['cmpActiveOnNcsCurrent', 'cmpLicenceOperCurrent',
+             'cmpLicenceLicenseeCurrent', 'cmpBsnsArrAreaOperCurrent',
+             'cmpBsnsArrAreaPartnerCurrent', 'cmpTufOperCurrent',
+             'cmpTufPartnerCurrent', 'cmpFacilityFixedOperator']
+    rows = fetch_layer(COMPANY_LAYER,
+                       'cmpNpdidCompany,cmpLongName,cmpGroup,cmpOrgNumberBrReg,'
+                       'cmpNationCode,' + ','.join(flags))
+    out = []
+    for r in rows:
+        cid = as_int(r.get('cmpNpdidCompany'))
+        name = (r.get('cmpLongName') or '').strip()
+        if cid is None or not name:
+            continue
+        out.append([
+            cid, name,
+            (r.get('cmpGroup') or '').strip(),
+            (r.get('cmpOrgNumberBrReg') or '').strip(),
+            (r.get('cmpNationCode') or '').strip(),
+        ] + [1 if (r.get(f) or '').strip().upper() == 'Y' else 0 for f in flags])
+    out.sort(key=lambda x: x[1])
+    return {'columns': ['id', 'name', 'group', 'orgNumber', 'nation',
+                        'activeNcs', 'licenceOper', 'licensee', 'baaOper',
+                        'baaPartner', 'tufOper', 'tufPartner', 'facilityOper'],
+            'rows': out}
+
+
 # Feltomriss til profilkartet. Hentes i WGS84 og forenkles kraftig: kartet er
 # en miniatyr, og rastallene fra Sodir er langt mer detaljerte enn nodvendig
 # (92 000 punkter mot 10 000 etter forenkling).
@@ -616,6 +696,8 @@ def main():
         ('field_descriptions.json', 'feltbeskrivelser', build_field_descriptions),
         ('field_outlines.json', 'feltomriss', build_field_outlines),
         ('facilities.json', 'innretninger', build_facilities),
+        ('licences.json', 'utvinningstillatelser', build_licences),
+        ('companies.json', 'selskaper', build_companies),
     ]
 
     changed = False

@@ -26,6 +26,8 @@ statiske JSON-filer i dette repoet.
 | `data/field_descriptions.json` | Sodirs feltbeskrivelser (lag 7102) |
 | `data/field_outlines.json` | Forenklede feltomriss til profilkartet |
 | `data/facilities.json` | Innretninger per felt (lag 6000) — til hubprofilen |
+| `data/licences.json` | Aktive utvinningstillatelser (lag 3000) |
+| `data/companies.json` | Selskapsfakta (lag 1200) — konsern, orgnr., roller |
 | `data/coastline.json` | Kystlinje til profilkartet — Natural Earth, bygget én gang |
 | `make_coastline.py` | Engangsscript som bygger `data/coastline.json` |
 | `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
