@@ -89,8 +89,13 @@
     .pf-fact span{display:block;font-size:0.64rem;color:var(--muted);text-transform:uppercase;
       letter-spacing:0.04em;}
     .pf-fact strong{font-size:0.82rem;color:#1a2332;font-weight:600;}
-    .pf-map{width:100%;height:230px;display:block;border-radius:8px;background:#eef3f8;}
+    .pf-map{width:100%;aspect-ratio:560/230;display:block;border-radius:8px;background:#eef3f8;}
     .pf-map-note{font-size:0.64rem;color:var(--muted);margin-top:6px;}
+    /* Kartetiketter. Hvit kontur rundt teksten, slik at navnet er lesbart
+       uansett hva det ligger oppå. */
+    .pf-lbl{font-size:9px;text-anchor:middle;fill:#44505f;paint-order:stroke;
+      stroke:#fff;stroke-width:2.5px;stroke-linejoin:round;pointer-events:none;}
+    .pf-lbl-own{fill:#1a2332;font-weight:700;}
     .pf-own{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
     .pf-pie{width:150px;height:150px;flex:0 0 150px;}
     .pf-own-list{flex:1 1 220px;display:flex;flex-direction:column;gap:7px;min-width:0;}
@@ -112,7 +117,6 @@
     @media (min-width: 900px) {
       .profile-wrap{column-count:2;column-gap:10px;}
       .pf-card{break-inside:avoid;margin-bottom:10px;}
-      .pf-map{height:250px;}
     }
 
     .res-sum{background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);
@@ -2235,13 +2239,14 @@ const mmboe = v => (v * BBL_PER_SM3).toLocaleString('en', {minimumFractionDigits
 // over kystlinjen i den rekkefølgen de står, hvert med {rings, fill, stroke,
 // minPx}. Ringer utenfor utsnittet filtreres bort her, så kallerne kan sende
 // inn alt de har.
-function outlineMap(own, opts = {}) {
+function outlineMap(ownItems, opts = {}) {
   const W = 560, H = 230, MIN_SPAN = 1.6;   // grader bredde
   // Hvor mye luft rundt forekomsten. Standard 3 passer for én forekomst eller
   // en samlet hub. En selskapsportefølje kan spenne over hele sokkelen, og da
   // blir 3 så mye at feltene blir usynlige prikker — derfor kan kallerne
   // stramme inn.
   const PAD = opts.pad || 3;
+  const own = ownItems.flatMap(it => it.rings);
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   own.forEach(r => r.forEach(([x, y]) => {
     x0 = Math.min(x0, x); x1 = Math.max(x1, x);
@@ -2290,60 +2295,130 @@ function outlineMap(own, opts = {}) {
   const land = ((bundle.coastline && bundle.coastline.rings) || []).filter(visible);
 
   const back = (opts.layers || []).map(L => {
-    const rings = (L.rings || []).filter(visible);
+    const rings = (L.items || []).flatMap(it => it.rings).filter(visible);
     if (!rings.length) return '';
     return `<path d="${path(rings, L.minPx || 2)}" fill="${L.fill}" stroke="${L.stroke}" stroke-width="0.6"/>`;
   }).join('');
 
-  // opts.points merker innretninger: {lon, lat, name, dim}. Navnene settes
-  // som <title>, ikke som tekst — Ekofisk-huben har 50 anlegg over vann, og
-  // etiketter ved siden av hvert ville dekket kartet. Tabellen under har
-  // navnene. Punkter som faller på samme piksel tegnes bare én gang.
-  const drawn = [];
-  const marks = (opts.points || [])
-    .filter(p => p.lon > west - padX && p.lon < west + spanX + padX &&
-                 p.lat > south - padY && p.lat < south + spanY + padY)
-    .map(p => {
-      const sx = px(p.lon), sy = py(p.lat);
-      if (drawn.some(([ax, ay]) => Math.abs(ax - sx) < 3 && Math.abs(ay - sy) < 3)) return '';
-      drawn.push([sx, sy]);
-      const fill = p.dim ? 'rgba(90,100,112,0.45)' : 'var(--navy)';
-      return `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${p.dim ? 2.4 : 3.4}"` +
-             ` fill="${fill}" stroke="#fff" stroke-width="${p.dim ? 0.8 : 1.1}">` +
-             `<title>${esc(p.name)}</title></circle>`;
+  // ── Etiketter ─────────────────────────────────────────────────────────────
+  // Navn på de største omrissene i bildet, uthevede først. Alle ville blitt
+  // uleselig: medianen er sju nabofelt i utsnittet og Ekofisk-området har 29.
+  // Plasseringen er grådig — først til mølla — med en enkel kollisjonstest,
+  // så etikettene aldri legger seg oppå hverandre.
+  const cand = [];
+  const collect = (items, isOwn) => (items || []).forEach(it => {
+    if (!it.name) return;
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9, seen = false;
+    it.rings.forEach(r => {
+      if (!visible(r)) return;
+      seen = true;
+      for (const [x, y] of r) {
+        const sx = px(x), sy = py(y);
+        bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx);
+        by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
+      }
+    });
+    if (!seen) return;
+    cand.push({name: it.name, own: isOwn ? 1 : 0, x: (bx0 + bx1) / 2, y: (by0 + by1) / 2,
+               size: Math.max(bx1 - bx0, by1 - by0)});
+  });
+  collect(ownItems, true);
+  (opts.layers || []).forEach(L => { if (L.label !== false) collect(L.items, false); });
+
+  const placed = [];
+  const labels = cand
+    .filter(c => c.own || c.size >= 5)        // for små til å peke på noe
+    .sort((a, b) => (b.own - a.own) || (b.size - a.size))
+    .map(c => {
+      if (placed.length >= (opts.labelMax || 7)) return '';
+      // Feltnavn er store bokstaver, som er brede. 5,8 px per tegn er målt
+      // mot 9 px-fonten; et for lavt anslag gjør at navn i kanten skjæres.
+      const w = Math.max(24, c.name.length * 5.8), h = 11;
+      const r = c.size / 2;
+      // Fire plasseringer i prioritert rekkefølge. Uten alternativene mister
+      // tette områder nettopp de navnene som betyr mest — Ekofisk-huben
+      // klarte ikke å få plass til «EKOFISK» selv.
+      const spots = [[c.x, c.y - r - 3], [c.x, c.y + r + 9],
+                     [c.x + r + w / 2 + 3, c.y + 3], [c.x - r - w / 2 - 3, c.y + 3]];
+      for (const [sx, sy] of spots) {
+        // Avrund før kollisjonstesten, ikke etter: ellers kan to bokser som
+        // så vidt gikk klar av hverandre overlappe i den tegnede utgaven.
+        const x = Math.round(Math.min(Math.max(sx, w / 2 + 2), W - w / 2 - 2));
+        const y = Math.round(Math.min(Math.max(sy, 11), H - 3));
+        const box = [x - w / 2, y - h, x + w / 2, y + 2];
+        if (placed.some(p => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1])) continue;
+        placed.push(box);
+        return `<text class="pf-lbl${c.own ? ' pf-lbl-own' : ''}" x="${x}" y="${y}">${esc(c.name)}</text>`;
+      }
+      return '';
     }).join('');
 
+  // «meet» framfor «slice»: kortbredden varierer fra 406 px på mobil til
+  // 1100 px i full bredde, og med «slice» beskjæres utsnittet i den retningen
+  // kortet er trangest — vannrett i to spalter, loddrett i full bredde. Da
+  // forsvinner både omriss og etiketter i kanten. Med «meet» vises hele
+  // utsnittet alltid, og den smale stripen som blir til overs har samme farge
+  // som havet.
   return `
-    <svg class="pf-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid ${opts.fit ? 'meet' : 'slice'}"
+    <svg class="pf-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"
          role="img" aria-label="${esc(opts.label || 'Map')}">
       <rect width="${W}" height="${H}" fill="#eef3f8"/>
       ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
       ${back}
-      <path d="${path(own, 1, true)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>${marks}
+      <path d="${path(own, 1, true)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>
+      ${labels}
     </svg>
     <div class="pf-map-note">${opts.note || ''}</div>`;
 }
 
-// Alle ringer i et omrisssett unntatt ett. outlineMap klipper selv til
-// utsnittet, så her sendes hele settet videre.
-function otherOutlines(set, skipId) {
-  const out = [];
-  Object.entries(set || {}).forEach(([k, rings]) => {
-    if (+k === skipId) return;
-    rings.forEach(r => out.push(r));
-  });
+// Et omrisssett som navngitte oppføringer, slik at kartet kan sette etikett
+// på dem. pick velger ut hvilke id-er som skal med; outlineMap klipper selv
+// til utsnittet, så her sendes alt det øvrige videre.
+function outlineItems(set, nameOf, pick) {
+  return Object.entries(set || {})
+    .filter(([k]) => !pick || pick(+k))
+    .map(([k, rings]) => ({name: nameOf(+k), rings}));
+}
+
+const fieldNameOf = id => allFields.find(f => f.id === id)?.name || String(id);
+
+// Funnavn for kartet. Bygges én gang per kall fra hele funnlisten, ikke bare
+// de 89 med ressursanslag — omrissene dekker litt andre funn enn listen.
+function discoveryNames() {
+  const b = bundle.discoveries;
+  if (!b) return {};
+  const iN = b.columns.indexOf('name');
+  const out = {};
+  b.rows.forEach(r => { out[r[0]] = r[iN]; });
   return out;
+}
+
+// Alle funnomriss som kartlag. Funnene tegnes i blekgrønt mot feltenes grå,
+// slik at de to er til å skille fra hverandre.
+function discoveryLayer(skipId) {
+  const set = (bundle.discovery_outlines && bundle.discovery_outlines.discoveries) || {};
+  const names = discoveryNames();
+  return {items: outlineItems(set, id => names[id] || String(id),
+                              skipId == null ? null : id => id !== skipId),
+          fill: '#cfe7db', stroke: '#a6cab8'};
+}
+
+function fieldLayer(skip) {
+  const set = (bundle.field_outlines && bundle.field_outlines.fields) || {};
+  return {items: outlineItems(set, fieldNameOf, id => !skip || !skip.has(id)),
+          fill: '#cbd6e2', stroke: '#b2bfcd'};
 }
 
 function profileMap(id) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   const own = outlines && outlines[id];
   if (!own) return '';
-  return outlineMap(own, {
+  return outlineMap([{name: fieldNameOf(id), rings: own}], {
     label: 'Map of the field',
     fill: OIL_COLOR, stroke: '#8e0a48',
-    layers: [{rings: otherOutlines(outlines, id), fill:'#cbd6e2', stroke:'#b2bfcd'}],
-    note: 'Coastline: Natural Earth · field outlines: Sodir, simplified to ~110 m',
+    layers: [fieldLayer(new Set([id])), discoveryLayer()],
+    note: 'Fields in grey, discoveries in pale green, the subject in colour. '
+        + 'Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
   });
 }
 
@@ -2632,29 +2707,18 @@ function hubFacilityTable(facs, fieldName) {
       installations. Source: Sodir layer 6000.</div>`;
 }
 
-function hubMap(ids, facs) {
+function hubMap(ids) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   if (!outlines) return '';
-  const own = [];
-  ids.forEach(id => (outlines[id] || []).forEach(r => own.push(r)));
-  if (!own.length) return '';
   const member = new Set(ids);
-  const others = [];
-  Object.entries(outlines).forEach(([k, rings]) => {
-    if (member.has(+k)) return;
-    rings.forEach(r => others.push(r));
-  });
-  const points = facs
-    .filter(f => f.lon !== null && f.lat !== null)
-    .map(f => ({lon: f.lon, lat: f.lat, name: f.name, dim: isGone(f)}));
-  return outlineMap(own, {
+  const ownItems = outlineItems(outlines, fieldNameOf, id => member.has(id));
+  if (!ownItems.length) return '';
+  return outlineMap(ownItems, {
     label: 'Map of the hub',
     fill: OIL_COLOR, stroke: '#8e0a48',
-    layers: [{rings: others, fill:'#cbd6e2', stroke:'#b2bfcd'}],
-    points,
-    note: 'Member fields in colour, neighbouring fields in grey. Dots are installations — '
-        + 'dimmed ones are no longer in place; hover for the name. Coastline: Natural Earth · '
-        + 'field outlines: Sodir, simplified to ~110 m',
+    layers: [fieldLayer(member), discoveryLayer()],
+    note: 'Member fields in colour, other fields in grey, discoveries in pale green. '
+        + 'Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
   });
 }
 
@@ -2867,7 +2931,7 @@ function drawHubProfile() {
         ${fact('Hub assignment', auto ? `${auto} of ${ids.length} machine-suggested` : 'Confirmed')}
       </div>
     </div>
-    ${(() => { const m = hubMap(ids, facs); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
+    ${(() => { const m = hubMap(ids); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card"><h3>Fields</h3>${t}</div>` : ''; })()}
     ${(() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${(() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })()}
@@ -3208,15 +3272,12 @@ function discoveryMap(id) {
   const own = outlines && outlines[id];
   if (!own) return '';
   const fields = (bundle.field_outlines && bundle.field_outlines.fields) || {};
-  return outlineMap(own, {
+  return outlineMap([{name: discoveryNames()[id] || String(id), rings: own}], {
     label: 'Map of the discovery',
     fill: REMAINING_COLOR, stroke: '#00714a',
-    layers: [
-      {rings: otherOutlines(fields, null),   fill:'#cbd6e2', stroke:'#b2bfcd'},
-      {rings: otherOutlines(outlines, id),   fill:'#cfe7db', stroke:'#a6cab8'},
-    ],
-    note: 'Green: this discovery · pale green: other discoveries with a resource estimate · '
-        + 'grey: fields. Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
+    layers: [fieldLayer(), discoveryLayer(id)],
+    note: 'Green: this discovery · pale green: other discoveries · grey: fields. '
+        + 'Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
   });
 }
 
@@ -3417,26 +3478,16 @@ function companyEquityRemaining(holdings) {
 function companyMap(holdings) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   if (!outlines) return '';
-  const own = [];
-  holdings.forEach(h => (outlines[h.id] || []).forEach(r => own.push(r)));
-  if (!own.length) return '';
   const member = new Set(holdings.map(h => h.id));
-  const others = [];
-  Object.entries(outlines).forEach(([k, rings]) => {
-    if (member.has(+k)) return;
-    rings.forEach(r => others.push(r));
-  });
-  return outlineMap(own, {
+  const ownItems = outlineItems(outlines, fieldNameOf, id => member.has(id));
+  if (!ownItems.length) return '';
+  return outlineMap(ownItems, {
     label: 'Map of the fields held',
     fill: OIL_COLOR, stroke: '#8e0a48', pad: 1.25,
-    // «slice» fyller kortet, men beskjærer loddrett når kortet er bredere enn
-    // utsnittet — på en bred skjerm forsvinner nesten halve høyden. For ett
-    // felt eller én hub ligger innholdet midt i og merkes ikke, men en
-    // portefølje strekker seg utover og ville mistet felt i kanten.
-    fit: true,
-    layers: [{rings: others, fill:'#cbd6e2', stroke:'#b2bfcd'}],
-    note: 'Fields the company holds an interest in, in colour; other fields in grey. '
-        + 'Coastline: Natural Earth · field outlines: Sodir, simplified to ~110 m',
+    layers: [fieldLayer(member), discoveryLayer()],
+    note: 'Fields the company holds an interest in, in colour; other fields in grey, '
+        + 'discoveries in pale green. Coastline: Natural Earth · outlines: Sodir, '
+        + 'simplified to ~110 m',
   });
 }
 
