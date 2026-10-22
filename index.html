@@ -2325,7 +2325,13 @@ function outlineMap(ownItems, opts = {}) {
   collect(ownItems, true);
   (opts.layers || []).forEach(L => { if (L.label !== false) collect(L.items, false); });
 
-  const placed = [];
+  // Oversiktskartet legger beslag på sitt hjørne, så ingen etikett havner
+  // under det.
+  const inset = opts.inset === false ? '' : insetSvg(W, H, west, south, spanX, spanY);
+  const ib = insetBox();
+  const placed = inset
+    ? [[W - ib.iw - INSET_PAD - 2, H - ib.ih - INSET_PAD - 2, W, H]]
+    : [];
   const labels = cand
     .filter(c => c.own || c.size >= 5)        // for små til å peke på noe
     .sort((a, b) => (b.own - a.own) || (b.size - a.size))
@@ -2366,9 +2372,77 @@ function outlineMap(ownItems, opts = {}) {
       ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
       ${back}
       <path d="${path(own, 1, true)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>
-      ${labels}
+      ${labels}${inset}
     </svg>
     <div class="pf-map-note">${opts.note || ''}</div>`;
+}
+
+// ── Oversiktskart ────────────────────────────────────────────────────────────
+// Hovedkartet er et 1,6°-utsnitt av åpent hav for de fleste feltene — 133 av
+// 141 har ikke kystlinje i bildet i det hele tatt. Etikettene sier hva som
+// ligger rundt, men ikke hvor på sokkelen man er. Det gjør dette: et lite
+// kart over hele sokkelen med et rektangel der hovedkartet står.
+//
+// Rammen dekker alle omrissene (lon 1,5–24,5, lat 56,2–73,5) med god margin,
+// og strekker seg vest til Skottland: Norge alene plasserer et barentsfelt
+// greit, men et nordsjøfelt gir mer mening med begge sider av havet i bildet.
+const INSET_BOX = [-6, 55, 31, 74.5];      // vest, sør, øst, nord
+const INSET_H = 86, INSET_PAD = 7;
+
+function insetBox() {
+  const [w0, s0, e0, n0] = INSET_BOX;
+  const kx = Math.cos(((s0 + n0) / 2) * Math.PI / 180);
+  const iw = Math.round(INSET_H * ((e0 - w0) * kx) / (n0 - s0));
+  return {w0, s0, e0, n0, iw, ih: INSET_H};
+}
+
+// west/south/spanX/spanY er hovedkartets vindu, i grader.
+function insetSvg(W, H, west, south, spanX, spanY) {
+  const coast = (bundle.coastline && bundle.coastline.rings) || [];
+  if (!coast.length) return '';
+  const {w0, s0, e0, n0, iw, ih} = insetBox();
+  const px = x => ((x - w0) / (e0 - w0)) * iw;
+  const py = y => ih - ((y - s0) / (n0 - s0)) * ih;
+
+  // Grovere enn hovedkartet: på 60 px bredde er alt under ~3 px usynlig.
+  const land = coast.map(r => {
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const [x, y] of r) {
+      const sx = px(x), sy = py(y);
+      bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx);
+      by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
+    }
+    if (bx1 - bx0 < 5 && by1 - by0 < 5) return '';
+    let d = '', lx = NaN, ly = NaN, n = 0;
+    for (const [x, y] of r) {
+      const sx = px(x), sy = py(y);
+      if (n && Math.abs(sx - lx) < 3 && Math.abs(sy - ly) < 3) continue;
+      d += (n ? 'L' : 'M') + sx.toFixed(0) + ' ' + sy.toFixed(0);
+      lx = sx; ly = sy; n++;
+    }
+    return n >= 3 ? d + 'Z' : '';
+  }).join('');
+
+  // Vinduet. Et 1,6°-utsnitt blir under 3 px her, så rektangelet får en
+  // minstestørrelse — ellers ville markøren vært usynlig nettopp der den
+  // trengs mest. Motsatt vei kan en selskapsportefølje spenne over mer enn
+  // oversiktskartet viser; da klippes rektangelet til rammen.
+  const MIN = 8;
+  const ax = px(west), bx = px(west + spanX);
+  const ay = py(south + spanY), by = py(south);
+  const cxp = (ax + bx) / 2, cyp = (ay + by) / 2;
+  const rw = Math.min(Math.max(bx - ax, MIN), iw - 2);
+  const rh = Math.min(Math.max(by - ay, MIN), ih - 2);
+  const rx = Math.min(Math.max(cxp - rw / 2, 1), iw - rw - 1);
+  const ry = Math.min(Math.max(cyp - rh / 2, 1), ih - rh - 1);
+
+  return `<svg class="pf-inset" x="${W - iw - INSET_PAD}" y="${H - ih - INSET_PAD}"` +
+    ` width="${iw}" height="${ih}" viewBox="0 0 ${iw} ${ih}">` +
+    `<rect width="${iw}" height="${ih}" fill="#f7fafc" stroke="#c3ccd5" stroke-width="1"/>` +
+    (land ? `<path d="${land}" fill="#e2ddd4" stroke="none"/>` : '') +
+    `<rect x="${rx.toFixed(0)}" y="${ry.toFixed(0)}" width="${rw.toFixed(0)}"` +
+    ` height="${rh.toFixed(0)}" fill="rgba(206,15,105,0.25)" stroke="${OIL_COLOR}"` +
+    ` stroke-width="1.2"/></svg>`;
 }
 
 // Et omrisssett som navngitte oppføringer, slik at kartet kan sette etikett
