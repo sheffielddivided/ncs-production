@@ -1857,13 +1857,27 @@ bare letebrønner. Sluttdato rapporteres med etterslep (statusen er
 `ONLINE/OPERATIONAL` fra første dag), så frontenden (`loadRigWells`) tolker:
 uten sluttdato og startet de siste 60 dagene = «mulig pågående» (grønn,
 stiplet); uten sluttdato og eldre = tegnet med typisk lengde på 21 dager
-(stripet). Grenene av samme brønn på samme rigg slås sammen bare når
-oppholdet mellom dem er høyst 30 dager. Overlappende streker på samme rigg
-legges i opptil tre baner. Faste plattformer (`wlbDrillingFacilityFixedOrMove
-= FIXED`) er skjult som standard og slås på med en bryter. Tilstanden ligger i
-hashen som `xd=0` (uten utviklingsbrønner) og `xf=1` (med faste plattformer).
-Utviklingsbrønnene har en enkel detaljvisning (`openDevWell`) uten kart og
-eierskap.
+(stripet). Faste plattformer (`wlbDrillingFacilityFixedOrMove = FIXED`) er
+skjult som standard og slås på med en bryter. Tilstanden ligger i hashen som
+`xd=0` (uten utviklingsbrønner) og `xf=1` (med faste plattformer).
+
+**Overlappsregelen:** en rigg bor bare én brønn om gangen, men Sodirs startdato
+er ofte en forboring — riggen går videre og kommer tilbake for å fullføre.
+Sluttdatoen er derfor master: `adjustRigOverlaps` sorterer brønnene på samme
+rigg etter slutt og flytter en start som ligger før forrige brønns slutt fram
+til den. På dagens data berører det 77 av 214 aktiviteter, med 102 dager i
+snitt. Regelen gjelder både lete- og utviklingsbrønner og kjøres på det fulle
+settet *før* filtrene, så en brønn som filtreres bort ikke gir feil starter på
+resten. Brønner uten rapportert sluttdato har bare et anslag og beholder sin
+egen start, og planlagte brønner justeres ikke. Detaljvisningen viser både
+Sodirs start og den viste starten.
+
+**Aktiviteter per felt:** `mergeDevBlocks` slår etterfølgende utviklingsbrønner
+på samme felt og rigg sammen til én strek, med feltnavnet som tekst, når
+oppholdet er høyst 30 dager. En «mulig pågående» brønn slås ikke sammen med
+andre, ellers ville hele blokken fått den stiplede grønne stilen. Klikk åpner
+`openDevWell` med en tabell over brønnbanene. Overlapp som gjenstår, mellom
+brønner med anslått slutt og planlagte brønner, legges i opptil tre baner.
 
 **Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
 `https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek
