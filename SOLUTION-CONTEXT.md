@@ -1848,6 +1848,23 @@ sluttdato den siste. Detaljvisningen har en tabell over grenene. Riggfanen
 bruker brønnbanene, ikke gruppene, siden et sidesteg kan bores av en annen
 rigg enn hovedhullet.
 
+**Utviklingsbrønner i riggoversikten:** `data/rig_wells.json` (bygget av
+`build_rig_wells()`) har produksjons- og injeksjonsbrønner fra de siste to årene,
+bare med det riggtidslinjen trenger. Jordprøver og observasjonsbrønner er
+utelatt. Sodir har *ingen planlagt startdato* for utviklingsbrønner, så de
+dukker opp først når boringen har startet, og «Next planned» gjelder fortsatt
+bare letebrønner. Sluttdato rapporteres med etterslep (statusen er
+`ONLINE/OPERATIONAL` fra første dag), så frontenden (`loadRigWells`) tolker:
+uten sluttdato og startet de siste 60 dagene = «mulig pågående» (grønn,
+stiplet); uten sluttdato og eldre = tegnet med typisk lengde på 21 dager
+(stripet). Grenene av samme brønn på samme rigg slås sammen bare når
+oppholdet mellom dem er høyst 30 dager. Overlappende streker på samme rigg
+legges i opptil tre baner. Faste plattformer (`wlbDrillingFacilityFixedOrMove
+= FIXED`) er skjult som standard og slås på med en bryter. Tilstanden ligger i
+hashen som `xd=0` (uten utviklingsbrønner) og `xf=1` (med faste plattformer).
+Utviklingsbrønnene har en enkel detaljvisning (`openDevWell`) uten kart og
+eierskap.
+
 **Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
 `https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek
 for mellomrom i navnet. Kontrollert mot alle 142 felt: 80 har bilde. Det finnes

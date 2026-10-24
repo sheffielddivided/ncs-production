@@ -27,6 +27,7 @@ statiske JSON-filer i dette repoet.
 | `data/field_outlines.json` | Forenklede feltomriss til profilkartet |
 | `data/facilities.json` | Innretninger per felt (lag 6000) — til hubprofilen |
 | `data/exploration_wells.json` | Letebrønner (lag 5000) — planlagte, pågående og avsluttede, med eierskap per spud-dato. Lastes først når Exploration åpnes |
+| `data/rig_wells.json` | Utviklingsbrønner (lag 5000, siste to år) til riggoversikten i Exploration |
 | `data/licences.json` | Aktive utvinningstillatelser (lag 3000) |
 | `data/companies.json` | Selskapsfakta (lag 1200) — konsern, orgnr., roller |
 | `data/coastline.json` | Kystlinje til profilkartet — Natural Earth, bygget én gang |
