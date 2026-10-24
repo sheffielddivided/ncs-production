@@ -4824,6 +4824,7 @@ const EXPL_TABS = [
 ];
 let explSubView = 'wells';
 let explWells = [], explOwners = [], explCompanies = [];
+let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
                              purpose:'all', from:String(currentYear - 2), q:''});
@@ -4865,6 +4866,66 @@ function explDiscoveryLabel(s) {
   return s.replace(/^\d+\/\d+-\d+(?:\s[A-Z]{1,2})?\s+/, '').trim() || s;
 }
 
+// Sodir regner hver gren av en brønn — sidesteg og re-entries, «S», «A», «R2» —
+// som en egen brønnbane. De grupperes her på brønnnavnet (wlbWell), så listen,
+// kartet og detaljvisningen viser én brønn med grenene som underelementer.
+// Brønnen får id-en til den eldste grenen, og explById slår opp fra
+// hvilken som helst grens id, så eldre lenker (xw=) fortsatt treffer.
+//
+// Aggregeringen: bestemte felt arves fra den eldste grenen, mens status,
+// datoer og resultat summeres opp over alle grenene.
+const EX_RANK = {oilgas: 5, oil: 4, gas: 3, shows: 2, other: 1, dry: 0};
+
+function explGroup(bores) {
+  const byWell = {};
+  bores.forEach(w => { const k = w.well || w.name; (byWell[k] = byWell[k] || []).push(w); });
+  explById = {};
+  return Object.values(byWell).map(list => {
+    list.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)
+                     || a.name.length - b.name.length || (a.name < b.name ? -1 : 1));
+    const main = list[0];
+    const g = {...main, branches: list};
+    list.forEach(b => { explById[b.id] = g; });
+
+    const done = list.filter(b => b.state === 'completed');
+    g.state = list.some(b => b.state === 'drilling') ? 'drilling'
+            : list.every(b => b.state === 'planned') ? 'planned' : 'completed';
+    if (g.state === 'planned') {
+      g.planned = list.map(b => b.planned).sort()[0];
+      g.overdue = list.every(b => b.overdue);
+      g.entry = '';
+    } else {
+      g.entry = list.map(b => b.entry).filter(Boolean).sort()[0] || main.entry;
+    }
+    g.start = g.state === 'planned' ? g.planned : g.entry;
+    g.end = g.state === 'completed' ? done.map(b => b.end).sort().pop() : '';
+
+    // Beste resultat blant de avsluttede grenene.
+    const best = done.slice().sort((a, b) => (EX_RANK[b.resKey] ?? -1) - (EX_RANK[a.resKey] ?? -1))[0];
+    g.resKey = best ? best.resKey : '';
+    g.content = best ? best.content : main.content;
+    if (best) { g.hcFormation = best.hcFormation || main.hcFormation; g.hcAge = best.hcAge || main.hcAge; }
+
+    // Funnet: grenen som er funnbrønn først, ellers en hvilken som helst som hører til et funn.
+    const dw = list.find(b => b.discoveryWell && b.discovery) || list.find(b => b.discovery);
+    if (dw) { g.discovery = dw.discovery; g.discoveryId = dw.discoveryId; }
+    g.found = list.some(b => b.found);
+    const label = dw ? explDiscoveryLabel(dw.discovery) : '';
+    g.title = label || g.well || main.name;
+    g.pressUrl = (dw && dw.pressUrl) || list.map(b => b.pressUrl).find(Boolean) || '';
+    g.td = Math.max(0, ...list.map(b => b.td || 0)) || null;
+    g.days = list.reduce((t, b) => t + (b.days || 0), 0) || null;
+
+    g.rigs = [...new Set(list.map(b => b.rig).filter(Boolean))];
+    g.rig = g.rigs[0] || '';
+    const n = list.length;
+    g.sub = [g.title !== (g.well || main.name) ? (g.well || main.name) : '',
+             n > 1 ? `${n} wellbores` : ''].filter(Boolean).join(' · ');
+    g.hay = list.map(b => b.hay).join('|');
+    return g;
+  });
+}
+
 function loadExploration() {
   if (explLoaded) return Promise.resolve();
   if (explLoading) return explLoading;
@@ -4872,7 +4933,7 @@ function loadExploration() {
     if (b) {
       explOwners = b.owners || [];
       const today = new Date().toISOString().slice(0, 10);
-      explWells = b.rows.map(r => {
+      const bores = b.rows.map(r => {
         const w = {};
         b.columns.forEach((c, i) => { w[c] = r[i]; });
         w.start = w.entry || w.planned;
@@ -4892,6 +4953,7 @@ function loadExploration() {
         w.hay = [w.title, w.name, w.licence, w.operator, w.rig, w.discovery].join('|').toLowerCase();
         return w;
       }).filter(w => w.start);
+      explWells = explGroup(bores);
       const count = {};
       explWells.forEach(w => new Set([w.operator, ...w.partners.map(p => p.name)]).forEach(n => {
         if (n) count[n] = (count[n] || 0) + 1;
@@ -5056,7 +5118,7 @@ function explRenderList() {
       <td class="ex-l">${esc(w.licence) || '—'}</td>
       <td class="ex-l">${esc(tc(w.purpose))}</td>
       <td class="ex-l">${esc(w.operator) || '—'}</td>
-      <td class="ex-l">${esc(w.rig) || '—'}</td>
+      <td class="ex-l"${w.rigs.length > 1 ? ` title="${esc(w.rigs.join(', '))}"` : ''}>${esc(w.rig) || '—'}${w.rigs.length > 1 ? ` <small>+${w.rigs.length - 1} more</small>` : ''}</td>
       <td>${w.state === 'planned' ? `<span class="ex-est"${w.overdue ? ' title="The planned start date has passed"' : ''}>${fmtShort(w.planned)}${w.overdue ? ' ⚠' : ''}</span>` : fmtShort(w.entry)}</td>
       <td>${w.end ? fmtShort(w.end) : '—'}</td>
     </tr>`).join('');
@@ -5140,7 +5202,10 @@ const addDays = (d, n) => new Date(dayMs(d) + n * 864e5).toISOString().slice(0, 
 
 function explRenderRigs() {
   const today = new Date().toISOString().slice(0, 10);
-  const all = explFiltered(true).filter(w => w.rig && !w.overdue);
+  // Riggene arbeider på brønnbaner, ikke brønner: et sidesteg kan bores av en
+  // annen rigg enn hovedhullet. Derfor pakkes gruppene ut igjen her.
+  const all = explFiltered(true).flatMap(g => g.branches.map(b => ({...b, title: g.title})))
+    .filter(w => w.rig && !w.overdue);
   // Vinduet: 15 måneder tilbake, og fram til siste planlagte start med
   // anslått varighet — dog minst seks og høyst atten måneder.
   const t0 = addDays(today, -456);
@@ -5237,6 +5302,9 @@ function explSummaryText(w) {
                   w.days ? `${w.days} days of drilling` : ''].filter(Boolean);
     if (dims.length) bits.push(`It reached ${dims.join(', ')}.`);
   }
+  if (w.branches.length > 1) {
+    bits.push(`The well has ${w.branches.length} wellbores (${w.branches.map(b => b.name).join(', ')}), listed below.`);
+  }
   return bits.join(' ');
 }
 
@@ -5256,7 +5324,7 @@ function explDetailMap(w) {
 }
 
 function openWell(id, quiet) {
-  const w = explWells.find(x => x.id === id);
+  const w = explById[id];
   if (!w) return;
   explF.open = id;
   if (!quiet) syncUrl();
@@ -5292,10 +5360,18 @@ function openWell(id, quiet) {
     </div>
     ${(() => { const m = explDetailMap(w); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     <div class="pf-card"><h3>Ownership</h3>${own}</div>
+    ${w.branches.length > 1 ? `<div class="pf-card"><h3>Wellbores</h3><div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Wellbore</th><th class="ex-l">Purpose</th><th class="ex-l">Result</th><th class="ex-l">Rig</th><th>Start</th><th>End</th><th>TD</th></tr></thead><tbody>
+      ${w.branches.map(b => `<tr><td class="ex-l"><a href="https://factpages.sodir.no/wellbore/pageview/exploration/all/${b.id}" target="_blank" rel="noopener">${esc(b.name)} ↗</a></td>
+        <td class="ex-l">${esc(tc(b.purpose))}</td>
+        <td class="ex-l">${b.state === 'completed' ? explResultCell(b) : STATE_LABEL[b.state]}</td>
+        <td class="ex-l">${esc(b.rig) || '—'}</td><td>${fmtShort(b.start)}</td><td>${b.end ? fmtShort(b.end) : '—'}</td>
+        <td>${b.td ? Math.round(b.td).toLocaleString('en') + ' m' : '—'}</td></tr>`).join('')}
+      </tbody></table></div></div>` : ''}
     <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
-      ${fact('Wellbore', w.name)}${fact('Purpose', tc(w.purpose))}${fact('Status', STATE_LABEL[w.state])}
+      ${fact('Well', w.well || w.name)}${fact('Wellbores', w.branches.length > 1 ? w.branches.length : '')}${fact('Purpose', tc(w.purpose))}${fact('Status', STATE_LABEL[w.state])}
       ${fact('Result', w.resKey ? tc(w.content) : '')}${fact('Operator', w.operator)}${fact('Licence', w.licence)}
-      ${fact('Rig', w.rig)}${fact('Rig type', tc(w.rigType))}
+      ${fact(w.rigs.length > 1 ? 'Rigs' : 'Rig', w.rigs.join(', '))}${fact('Rig type', tc(w.rigType))}
       ${fact(w.state === 'planned' ? 'Planned start' : 'Started', fmtShort(w.start))}${fact('Completed', w.end ? fmtShort(w.end) : '')}
       ${fact('Drilling days', w.days)}${fact('Water depth', num(w.waterDepth, 'm'))}${fact('Total depth', num(w.td, 'm'))}
       ${fact('Formation at TD', tc(w.formationAtTd))}${fact('Age at TD', tc(w.ageAtTd))}

@@ -687,7 +687,7 @@ def _clean(v):
 def build_exploration_wells():
     rows = fetch_layer(
         WELL_LAYER,
-        'wlbNpdidWellbore,wlbWellboreName,wlbProductionLicence,wlbPurpose,wlbPurposePlanned,'
+        'wlbNpdidWellbore,wlbWellboreName,wlbWell,wlbProductionLicence,wlbPurpose,wlbPurposePlanned,'
         'wlbStatus,wlbContent,wlbDrillingOperator,wlbDrillingFacility,wlbFacilityTypeDrilling,'
         'wlbEntryDate,wlbCompletionDate,wlbEntryDatePlanned,wlbDiscovery,wlbDiscoveryWellbore,'
         'dscNpdidDiscovery,wlbField,wlbNsDecDeg,wlbEwDecDeg,wlbMainArea,wlbWaterDepth,'
@@ -737,7 +737,7 @@ def build_exploration_wells():
         entry = r.get('wlbEntryDate')
         lat, lon = r.get('wlbNsDecDeg'), r.get('wlbEwDecDeg')
         out.append([
-            wid, name, lic,
+            wid, name, lic, _clean(r.get('wlbWell')),
             _clean(r.get('wlbPurpose')) or _clean(r.get('wlbPurposePlanned')),
             _clean(r.get('wlbStatus')), _clean(r.get('wlbContent')),
             _clean(r.get('wlbDrillingOperator')),
@@ -757,7 +757,7 @@ def build_exploration_wells():
             owners_at(lic, entry),
         ])
     out.sort(key=lambda x: x[0])
-    return {'columns': ['id', 'name', 'licence', 'purpose', 'status', 'content', 'operator',
+    return {'columns': ['id', 'name', 'licence', 'well', 'purpose', 'status', 'content', 'operator',
                         'rig', 'rigType', 'entry', 'completion', 'planned',
                         'discoveryId', 'discovery', 'discoveryWell', 'field', 'lat', 'lon',
                         'area', 'waterDepth', 'td', 'days', 'formationAtTd', 'ageAtTd',
