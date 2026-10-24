@@ -78,6 +78,65 @@
        både reserve- og produksjonstabellene. */
     .res-table-wrap{margin:0 12px 10px;overflow-x:auto;}
     .res-table-wrap:empty{display:none;}
+
+    /* ── Exploration ── */
+    #explBox{display:none;}
+    body.expl #explBox{display:block;}
+    body.expl .chart-wrap, body.expl #chartTable, body.expl .profile-wrap, body.expl .info-box,
+    body.expl .select-fab, body.expl #downloadBtn{display:none !important;}
+    .expl-wrap{margin:10px 12px;}
+    .ex-bar{display:flex;flex-wrap:wrap;gap:6px;background:var(--card);border-radius:12px;
+      box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:10px;margin-bottom:10px;align-items:center;}
+    .ex-in{padding:6px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;
+      min-width:130px;flex:1 1 140px;outline:none;}
+    .ex-in:focus{border-color:var(--blue);}
+    .ex-sum{font-size:0.76rem;color:var(--muted);padding:0 2px 8px;}
+    .ex-sum strong{color:#1a2332;}
+    .ex-note{font-size:0.66rem;color:var(--muted);margin-top:8px;line-height:1.5;}
+    .ex-wrap{margin:0;}
+    .ex-table th{cursor:pointer;user-select:none;}
+    .ex-table th.sorted{color:var(--blue);}
+    .ex-table th.ex-l,.ex-table td.ex-l{text-align:left;}
+    .ex-table td.ex-l{white-space:normal;}
+    .ex-table td.ex-name{white-space:normal;min-width:150px;text-align:left;}
+    .ex-table td small{display:block;color:var(--muted);font-size:0.66rem;font-weight:400;}
+    .ex-row{cursor:pointer;}
+    .ex-row:hover,.ex-row:focus{background:#faf0f5;outline:none;}
+    .ex-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;flex-shrink:0;}
+    .ex-none{color:var(--muted);}
+    .ex-est{color:var(--muted);font-style:italic;}
+    .ex-chip{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:0.6rem;
+      text-transform:uppercase;letter-spacing:0.04em;font-weight:700;vertical-align:1px;}
+    .ex-chip.ex-planned{background:#eef0f3;color:#44505f;border:1px solid #d5dbe2;}
+    .ex-chip.ex-drilling{background:#d9f5ea;color:#00714a;border:1px solid #9be0c3;}
+    .ex-more{margin:10px 0 0;padding:6px 14px;}
+    .ex-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:0.68rem;color:#44505f;}
+    .ex-leg{display:inline-flex;align-items:center;}
+    .ex-leg .ex-dot{margin-right:5px;}
+    .ex-map{width:100%;height:auto;display:block;border-radius:8px;background:#eef3f8;}
+    .ex-scroll{overflow-x:auto;}
+    .ex-gantt{min-width:760px;width:100%;height:auto;display:block;}
+    .ex-ax{font-size:10px;fill:#828282;}
+    .ex-rig{font-size:11px;font-weight:600;fill:#1a2332;}
+    .ex-bar-t{font-size:10px;pointer-events:none;}
+    .ex-table td a{color:var(--blue);font-weight:600;text-decoration:none;}
+    .wd-overlay{position:fixed;inset:0;background:rgba(26,16,24,0.5);z-index:300;display:none;
+      overflow-y:auto;overscroll-behavior:contain;}
+    .wd-overlay.open{display:block;}
+    .wd-panel{max-width:820px;margin:14px auto;background:var(--bg);border-radius:14px;padding:12px 12px 2px;}
+    .wd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+    .wd-head h2{font-size:1.15rem;color:var(--navy);line-height:1.2;}
+    .wd-sub{font-size:0.74rem;color:var(--muted);margin-top:3px;}
+    .wd-status{display:flex;align-items:center;font-size:0.85rem;margin-bottom:6px;}
+    .wd-status .ex-dot{width:12px;height:12px;}
+    .wd-lead{font-size:0.8rem;line-height:1.55;color:#2f2f2f;margin-bottom:10px;}
+    .ex-btns{display:flex;flex-wrap:wrap;gap:8px;}
+    .ex-btn{padding:7px 13px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:0.76rem;
+      font-weight:600;color:#1a2332;text-decoration:none;cursor:pointer;font-family:inherit;}
+    .ex-btn:hover{border-color:var(--blue);}
+    .ex-btn-main{background:var(--blue);border-color:var(--blue);color:#fff;}
+    @media (max-width:600px){ .wd-panel{margin:0;border-radius:0;min-height:100%;} }
+    @media (min-width: 1148px) { .expl-wrap{max-width:1100px;margin-left:auto;margin-right:auto;} }
     /* ── Profile ── */
     .profile-wrap{margin:0 12px 10px;}
     .profile-wrap:empty{display:none;}
@@ -283,8 +342,9 @@
     <div class="mode-switcher">
       <button class="mode-btn" id="modeBtnHubs" onclick="switchMode('hubs')">Hubs</button>
       <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
-      <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
+      <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
+      <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
     </div>
   </div>
   <div class="ctrl-row" id="periodRow">
@@ -313,6 +373,15 @@
       <span class="water-label">Show produced water</span>
     </div>
   </div>
+</div>
+
+<div class="expl-wrap" id="explBox">
+  <div id="explBar"></div>
+  <div id="explBody"></div>
+</div>
+
+<div class="wd-overlay" id="wdOverlay" onclick="if(event.target===this)closeWell()">
+  <div class="wd-panel" id="wdBody"></div>
 </div>
 
 <div class="chart-wrap">
@@ -1108,13 +1177,15 @@ const COMPANY_TABS = [
 
 function renderViewTabs() {
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
-             : topMode === 'discoveries' ? DISCOVERY_TABS : COMPANY_TABS;
+             : topMode === 'discoveries' ? DISCOVERY_TABS
+             : topMode === 'exploration' ? EXPL_TABS : COMPANY_TABS;
   const cur  = currentSubView();
+  document.body.classList.toggle('expl', topMode === 'exploration');
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
-  const showWaterRow = topMode !== 'companies' && cur === 'oilgas';
+  const showWaterRow = topMode !== 'companies' && topMode !== 'exploration' && cur === 'oilgas';
   document.getElementById('settingsBtn').style.display = topMode === 'hubs' ? '' : 'none';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
   // Reservevisningen har ingen tidsakse — ett estimat per felt — så periode og
@@ -1126,6 +1197,7 @@ function setSubView(v) {
   if (topMode === 'fields') fieldSubView = v;
   else if (topMode === 'hubs') hubSubView = v;
   else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
+  else if (topMode === 'exploration') explSubView = v;
   else { companySubView = v; syncCompanySelection(); }
   renderViewTabs();
   updateFab();
@@ -1185,10 +1257,8 @@ function setPeriod(p) {
 function switchMode(m) {
   if (topMode === m) return;
   topMode = m;
-  document.getElementById('modeBtnHubs').classList.toggle('active',      m === 'hubs');
-  document.getElementById('modeBtnFields').classList.toggle('active',     m === 'fields');
-  document.getElementById('modeBtnDiscoveries').classList.toggle('active', m === 'discoveries');
-  document.getElementById('modeBtnCompanies').classList.toggle('active',  m === 'companies');
+  syncModeButtons();
+  if (sheetOpen) closeSheet();
   if (m === 'discoveries') syncDiscoverySelection(true);
   if (m === 'companies') syncCompanySelection();
   renderViewTabs();
@@ -1198,6 +1268,7 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
+  if (topMode === 'exploration') return;   // filtrene ligger i selve visningen
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
               : topMode === 'discoveries' ? selectedDiscoveryIds.size
@@ -1570,10 +1641,10 @@ function resetView() {
   period = 'monthly';
   showWater = false;
 
-  document.getElementById('modeBtnHubs').classList.remove('active');
-  document.getElementById('modeBtnFields').classList.remove('active');
-  document.getElementById('modeBtnDiscoveries').classList.remove('active');
-  document.getElementById('modeBtnCompanies').classList.add('active');
+  syncModeButtons();
+  explF = {...explDefaults(), open: null};
+  explSubView = 'wells';
+  if (document.getElementById('wdOverlay').classList.contains('open')) closeWell();
   document.getElementById('btnMonthly').classList.add('active');
   document.getElementById('btnQuarterly').classList.remove('active');
   document.getElementById('btnAnnual').classList.remove('active');
@@ -1623,6 +1694,7 @@ function currentSubView() {
   return topMode === 'fields' ? fieldSubView
        : topMode === 'hubs'   ? hubSubView
        : topMode === 'discoveries' ? discoverySubView
+       : topMode === 'exploration' ? explSubView
        : companySubView;
 }
 
@@ -1638,6 +1710,14 @@ function stateToHash() {
   if (topMode === 'fields')    q.set('f', [...selectedFieldIds].join(','));
   else if (topMode === 'hubs') q.set('h', [...selectedHubNames].join(SEP));
   else if (topMode === 'discoveries') q.set('d', [...selectedDiscoveryIds].join(','));
+  else if (topMode === 'exploration') {
+    // Bare avvik fra standardfiltrene skrives, så lenken holdes kort.
+    const dflt = explDefaults();
+    [['company','xc'],['role','xr'],['status','xs'],['result','xz'],['purpose','xp'],['from','xy'],['q','xq']]
+      .forEach(([k, p]) => { if (explF[k] !== dflt[k]) q.set(p, explF[k]); });
+    if (explF.from === '' && dflt.from !== '') q.set('xy', 'all');
+    if (explF.open) q.set('xw', explF.open);
+  }
   else                         q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && topMode !== 'companies' && currentSubView() === 'oilgas') q.set('w', '1');
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
@@ -1658,22 +1738,35 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['fields','hubs','discoveries','companies'].includes(m)) {
+  if (['fields','hubs','discoveries','companies','exploration'].includes(m)) {
     topMode = m;
-    document.getElementById('modeBtnHubs').classList.toggle('active',      m === 'hubs');
-    document.getElementById('modeBtnFields').classList.toggle('active',    m === 'fields');
-    document.getElementById('modeBtnDiscoveries').classList.toggle('active', m === 'discoveries');
-    document.getElementById('modeBtnCompanies').classList.toggle('active', m === 'companies');
+    syncModeButtons();
   }
 
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
-             : topMode === 'discoveries' ? DISCOVERY_TABS : COMPANY_TABS;
+             : topMode === 'discoveries' ? DISCOVERY_TABS
+             : topMode === 'exploration' ? EXPL_TABS : COMPANY_TABS;
   const v = q.get('v');
   if (tabs.some(t => t.id === v)) {
     if (topMode === 'fields') fieldSubView = v;
     else if (topMode === 'hubs') hubSubView = v;
     else if (topMode === 'discoveries') discoverySubView = v;
+    else if (topMode === 'exploration') explSubView = v;
     else companySubView = v;
+  }
+
+  if (topMode === 'exploration') {
+    explF = {...explDefaults(), open: null};
+    const g = k => q.get(k);
+    if (g('xc')) explF.company = g('xc');
+    if (['any','operator'].includes(g('xr'))) explF.role = g('xr');
+    if (['planned','drilling','completed','active'].includes(g('xs'))) explF.status = g('xs');
+    if (['hc','oil','gas','oilgas','shows','dry'].includes(g('xz'))) explF.result = g('xz');
+    if (['WILDCAT','APPRAISAL'].includes(g('xp'))) explF.purpose = g('xp');
+    if (g('xy') === 'all') explF.from = '';
+    else if (/^\d{4}$/.test(g('xy') || '')) explF.from = g('xy');
+    if (g('xq')) explF.q = g('xq');
+    if (+g('xw') > 0) explF.open = +g('xw');
   }
 
   const pr = q.get('p');
@@ -1740,6 +1833,7 @@ async function refresh() {
   if (topMode === 'fields') await refreshFields();
   else if (topMode === 'hubs') await refreshHubs();
   else if (topMode === 'discoveries') await refreshDiscoveries();
+  else if (topMode === 'exploration') await refreshExploration();
   else await refreshCompanies();
 }
 
@@ -2033,7 +2127,7 @@ let fieldReservesLoaded = false;
 
 // Visninger uten tidsakse: periode- og årsvelgeren gjelder ikke for dem.
 function isReservesView() {
-  return topMode === 'discoveries'
+  return topMode === 'discoveries' || topMode === 'exploration'
       || (topMode === 'fields'    && fieldSubView   === 'profile')
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
@@ -2327,11 +2421,27 @@ function outlineMap(ownItems, opts = {}) {
       }
     });
     if (!seen) return;
+    // En brønn er et punkt uten utstrekning. Etiketten får et tenkt omriss
+    // på markørens størrelse, så den havner utenfor den.
     cand.push({name: it.name, own: isOwn ? 1 : 0, x: (bx0 + bx1) / 2, y: (by0 + by1) / 2,
-               size: Math.max(bx1 - bx0, by1 - by0)});
+               size: isOwn && opts.ownWell ? 14 : Math.max(bx1 - bx0, by1 - by0)});
   });
   collect(ownItems, true);
   (opts.layers || []).forEach(L => { if (L.label !== false) collect(L.items, false); });
+
+  // Brønnmarkører (Exploration-detaljen): de andre brønnene som små prikker,
+  // og brønnen selv som en stor markør oppå.
+  const wellDot = (w, own) => {
+    const x = px(w.lon), y = py(w.lat);
+    if (x < -6 || x > W + 6 || y < -6 || y > H + 6) return '';
+    const st = explDotStyle(w);
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${own ? 6 : 3}" fill="${st.fill}"` +
+      ` stroke="${own ? '#1a2332' : st.stroke}" stroke-width="${own ? 2 : st.sw * 0.7}"` +
+      (own ? '' : ` onclick="openWell(${w.id})" style="cursor:pointer"`) +
+      `><title>${esc(w.title)}</title></circle>`;
+  };
+  const wellDots = (opts.wells || []).map(w => wellDot(w, false)).join('') +
+                   (opts.ownWell ? wellDot(opts.ownWell, true) : '');
 
   // Oversiktskartet legger beslag på sitt hjørne, så ingen etikett havner
   // under det.
@@ -2380,6 +2490,7 @@ function outlineMap(ownItems, opts = {}) {
       ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
       ${back}
       <path d="${path(own, 1, true)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>
+      ${wellDots}
       ${labels}${inset}
     </svg>
     <div class="pf-map-note">${opts.note || ''}</div>`;
@@ -3436,10 +3547,7 @@ function openHubProfile(name) {
   topMode = 'hubs';
   hubSubView = 'profile';
   selectedHubNames = new Set([name]);
-  document.getElementById('modeBtnFields').classList.remove('active');
-  document.getElementById('modeBtnDiscoveries').classList.remove('active');
-  document.getElementById('modeBtnCompanies').classList.remove('active');
-  document.getElementById('modeBtnHubs').classList.add('active');
+  syncModeButtons();
   renderViewTabs();
   updateFab();
   if (sheetOpen) renderHubList();
@@ -3452,10 +3560,7 @@ function openFieldProfile(id) {
   topMode = 'fields';
   fieldSubView = 'profile';
   selectedFieldIds = new Set([id]);
-  document.getElementById('modeBtnHubs').classList.remove('active');
-  document.getElementById('modeBtnDiscoveries').classList.remove('active');
-  document.getElementById('modeBtnCompanies').classList.remove('active');
-  document.getElementById('modeBtnFields').classList.add('active');
+  syncModeButtons();
   renderViewTabs();
   updateFab();
   if (sheetOpen) renderFieldList();
@@ -3525,6 +3630,7 @@ function drawDiscoveryProfile() {
     ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
       descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
   `);
+  explLinkCard('discovery', d.id);
 }
 
 // ── COMPANIES: PROFILE ───────────────────────────────────────────────────────
@@ -3873,6 +3979,7 @@ function drawCompanyProfile() {
     ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
       <div id="licenceBox">${licenceTableHtml(licenceRows)}</div></div>` : ''}
   `);
+  explLinkCard('company', name);
 }
 
 // ── COMPANIES: RESERVES ──────────────────────────────────────────────────────
@@ -4683,6 +4790,578 @@ async function saveHubs() {
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
+// ── EXPLORATION ──────────────────────────────────────────────────────────────
+// Letebrønner fra Sodirs brønnlag (data/exploration_wells.json): planlagte,
+// pågående og avsluttede. Visningen er ikke diagrambasert som de andre
+// modusene — den har en filtrerbar liste, et kart og en riggoversikt, og en
+// detaljvisning som åpnes fra hver brønn. Filene lastes først når modusen
+// åpnes, siden de er de største i repoet og de fleste aldri trenger dem.
+//
+// Filtrene ligger i selve visningen i stedet for i utvalgsarket, fordi de er
+// flere enn ett og skal være synlige samtidig.
+const EXPL_TABS = [
+  {id:'wells', label:'Wells'},
+  {id:'map',   label:'Map'},
+  {id:'rigs',  label:'Rigs'},
+];
+let explSubView = 'wells';
+let explWells = [], explOwners = [], explCompanies = [];
+let explLoaded = false, explLoading = null;
+const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
+                             purpose:'all', from:String(currentYear - 2), q:''});
+let explF = {...explDefaults(), open:null};
+let explSort = {key:'start', dir:-1};
+let explLimit = 100;
+
+// Resultatkategorier. Fargene gjenbrukes av kartet, listen og riggtidslinjen.
+const EX_RES = {
+  oil:    {label:'Oil',     color:'#ce0f69'},
+  oilgas: {label:'Oil/gas', color:'#7d2248'},
+  gas:    {label:'Gas',     color:'#f68d2e'},
+  shows:  {label:'Shows',   color:'#e8c942'},
+  dry:    {label:'Dry',     color:'#9aa5b1'},
+  other:  {label:'Other',   color:'#c9d1da'},
+};
+const EX_ACTIVE = '#00b373';
+
+function explResultKey(content) {
+  if (!content) return '';
+  if (/SHOWS/.test(content)) return 'shows';
+  if (content === 'DRY') return 'dry';
+  if (content === 'OIL') return 'oil';
+  if (content === 'GAS' || content === 'GAS/CONDENSATE') return 'gas';
+  if (content === 'OIL/GAS' || content === 'OIL/GAS/CONDENSATE') return 'oilgas';
+  return 'other';
+}
+
+// «SPRINGAR FM» -> «Springar Fm». Sodir leverer store bokstaver.
+const tc = s => String(s || '').toLowerCase().replace(/(^|[\s/(-])([a-zæøå])/g, (m, a, b) => a + b.toUpperCase());
+
+// Funnnavnet uten brønnbetegnelsen: «35/8-8 S (Camilla Nord)» -> «Camilla Nord»,
+// «16/4-6 S Solveig» -> «Solveig». Funn uten eget navn heter det samme som
+// brønnen, og beholdes slik.
+function explDiscoveryLabel(s) {
+  if (!s) return '';
+  const p = s.match(/\(([^)]+)\)\s*$/);
+  if (p) return p[1].trim();
+  return s.replace(/^\d+\/\d+-\d+(?:\s[A-Z]{1,2})?\s+/, '').trim() || s;
+}
+
+function loadExploration() {
+  if (explLoaded) return Promise.resolve();
+  if (explLoading) return explLoading;
+  explLoading = Promise.all([fetchBundle('exploration_wells'), loadDiscoveries().catch(() => {})]).then(([b]) => {
+    if (b) {
+      explOwners = b.owners || [];
+      const today = new Date().toISOString().slice(0, 10);
+      explWells = b.rows.map(r => {
+        const w = {};
+        b.columns.forEach((c, i) => { w[c] = r[i]; });
+        w.start = w.entry || w.planned;
+        w.end = w.completion;
+        w.state = !w.entry || w.entry > today ? 'planned'
+                : !w.completion || w.completion > today ? 'drilling' : 'completed';
+        w.partners = w.owners == null ? [] : explOwners[w.owners].map(([name, share]) => ({name, share}));
+        // Planlagt start som alt er passert: Sodirs dato er ikke oppdatert.
+        w.overdue = w.state === 'planned' && w.planned < today;
+        w.resKey = w.state === 'completed' ? explResultKey(w.content) : '';
+        const label = explDiscoveryLabel(w.discovery);
+        w.found = !!(w.discoveryWell && label);
+        w.title = w.found ? label : w.name;
+        w.sub = w.found ? w.name : (label ? `${w.name} · ${label}` : '');
+        w.hay = [w.title, w.name, w.licence, w.operator, w.rig, w.discovery].join('|').toLowerCase();
+        return w;
+      }).filter(w => w.start);
+      const count = {};
+      explWells.forEach(w => new Set([w.operator, ...w.partners.map(p => p.name)]).forEach(n => {
+        if (n) count[n] = (count[n] || 0) + 1;
+      }));
+      explCompanies = Object.entries(count).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(e => e[0]);
+    }
+    explLoaded = true;
+  });
+  return explLoading;
+}
+
+function explCompanyMatch(w, name, role) {
+  const n = name.toLowerCase();
+  if (w.operator.toLowerCase().includes(n)) return true;
+  return role !== 'operator' && w.partners.some(p => p.name.toLowerCase().includes(n));
+}
+
+function explFiltered(ignoreView) {
+  const f = explF, q = f.q.trim().toLowerCase();
+  return explWells.filter(w => {
+    if (f.company && !explCompanyMatch(w, f.company.trim(), f.role)) return false;
+    if (f.purpose !== 'all' && w.purpose !== f.purpose) return false;
+    if (q && !w.hay.includes(q)) return false;
+    if (ignoreView) return true;
+    if (f.status === 'active' ? w.state === 'completed' : f.status !== 'all' && w.state !== f.status) return false;
+    if (f.result === 'hc' ? !['oil', 'gas', 'oilgas'].includes(w.resKey)
+        : f.result !== 'all' && w.resKey !== f.result) return false;
+    if (f.from && w.state === 'completed' && w.start.slice(0, 4) < f.from) return false;
+    return true;
+  });
+}
+
+const fmtShort = d => {
+  if (!d) return '—';
+  const [y, m, dd] = d.split('-');
+  return `${+dd} ${MONTH_ABBR[+m - 1]} ${y}`;
+};
+const STATE_LABEL = {planned: 'Planned', drilling: 'Drilling', completed: 'Completed'};
+
+function explResultCell(w) {
+  if (!w.resKey) return '<span class="ex-none">—</span>';
+  const r = EX_RES[w.resKey];
+  return `<span class="ex-dot" style="background:${r.color}"></span>${esc(tc(w.content))}`;
+}
+
+// ── Filterlinje ──────────────────────────────────────────────────────────────
+function explSet(key, val, rebuildBar) {
+  explF[key] = val;
+  explLimit = 100;
+  syncUrl();
+  if (rebuildBar) explRenderBar();
+  explRenderBody();
+}
+
+function explRenderBar() {
+  const f = explF, wells = explSubView === 'wells', map = explSubView === 'map';
+  const opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
+  const years = [''].concat(Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i)));
+  document.getElementById('explBar').innerHTML = `
+    <div class="ex-bar">
+      <input class="ex-in" type="search" list="exCompanyList" placeholder="Company…" value="${esc(f.company)}"
+             oninput="explSet('company', this.value)" aria-label="Filter by company"/>
+      <datalist id="exCompanyList">${explCompanies.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <select class="year-select" onchange="explSet('role', this.value)" aria-label="Company role">
+        ${opt('any', f.role, 'Partner or operator')}${opt('operator', f.role, 'Operator only')}
+      </select>
+      <input class="ex-in ex-q" type="search" placeholder="Search name, licence, rig…" value="${esc(f.q)}"
+             oninput="explSet('q', this.value)" aria-label="Search"/>
+      <select class="year-select" onchange="explSet('purpose', this.value)" aria-label="Purpose">
+        ${opt('all', f.purpose, 'All purposes')}${opt('WILDCAT', f.purpose, 'Wildcat')}${opt('APPRAISAL', f.purpose, 'Appraisal')}
+      </select>
+      ${explSubView !== 'rigs' ? `
+      <select class="year-select" onchange="explSet('status', this.value)" aria-label="Status">
+        ${opt('all', f.status, 'All statuses')}${opt('active', f.status, 'Planned + drilling')}
+        ${opt('planned', f.status, 'Planned')}${opt('drilling', f.status, 'Drilling')}${opt('completed', f.status, 'Completed')}
+      </select>
+      <select class="year-select" onchange="explSet('result', this.value)" aria-label="Result">
+        ${opt('all', f.result, 'All results')}${opt('hc', f.result, 'Discoveries')}${opt('oil', f.result, 'Oil')}
+        ${opt('gas', f.result, 'Gas')}${opt('oilgas', f.result, 'Oil/gas')}${opt('shows', f.result, 'Shows')}${opt('dry', f.result, 'Dry')}
+      </select>
+      <select class="year-select" onchange="explSet('from', this.value)" aria-label="From year">
+        ${years.map(y => opt(y, f.from, y ? `From ${y}` : 'All years')).join('')}
+      </select>` : ''}
+      <button class="grp-btn" onclick="explReset()">Reset</button>
+    </div>`;
+}
+
+function explReset() {
+  explF = {...explDefaults(), open: null};
+  explLimit = 100;
+  syncUrl();
+  explRenderBar();
+  explRenderBody();
+}
+
+// ── Hovedvisning ─────────────────────────────────────────────────────────────
+async function refreshExploration() {
+  const box = document.getElementById('explBody');
+  if (!explLoaded) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+  setInfo('');
+  await loadExploration();
+  if (!explWells.length) {
+    document.getElementById('explBar').innerHTML = '';
+    box.innerHTML = '<div class="status">No exploration well data available.</div>';
+    return;
+  }
+  explRenderBar();
+  explRenderBody();
+  if (explF.open) openWell(explF.open, true);
+}
+
+function explRenderBody() {
+  if (explSubView === 'map') return explRenderMap();
+  if (explSubView === 'rigs') return explRenderRigs();
+  explRenderList();
+}
+
+function explSortVal(w, key) {
+  switch (key) {
+    case 'name': return w.title.toLowerCase();
+    case 'result': return w.resKey ? w.content : '~';
+    case 'licence': return w.licence;
+    case 'purpose': return w.purpose;
+    case 'operator': return w.operator.toLowerCase();
+    case 'rig': return w.rig.toLowerCase();
+    case 'end': return w.end || (w.state === 'completed' ? '' : '9999');
+    default: return w.start;
+  }
+}
+
+function explSortBy(key) {
+  explSort = explSort.key === key ? {key, dir: -explSort.dir} : {key, dir: key === 'start' || key === 'end' ? -1 : 1};
+  explRenderList();
+}
+
+function explSummary(list) {
+  const n = k => list.filter(w => w.state === k).length;
+  const done = list.filter(w => w.state === 'completed');
+  const hc = done.filter(w => ['oil', 'gas', 'oilgas'].includes(w.resKey)).length;
+  const dry = done.filter(w => w.resKey === 'dry').length;
+  const part = (v, t) => v ? `<strong>${v}</strong> ${t}` : '';
+  return [part(list.length, list.length === 1 ? 'well' : 'wells'), part(n('planned'), 'planned'),
+          part(n('drilling'), 'drilling'), part(hc, 'with hydrocarbons'), part(dry, 'dry')]
+    .filter(Boolean).join(' · ');
+}
+
+function explRenderList() {
+  const list = explFiltered();
+  const {key, dir} = explSort;
+  list.sort((a, b) => {
+    const x = explSortVal(a, key), y = explSortVal(b, key);
+    return (x < y ? -1 : x > y ? 1 : 0) * dir || (a.start < b.start ? 1 : -1);
+  });
+  const th = (k, label, cls) => `<th class="${cls || ''}${explSort.key === k ? ' sorted' : ''}" onclick="explSortBy('${k}')">${label}${
+    explSort.key === k ? (explSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const rows = list.slice(0, explLimit).map(w => `
+    <tr class="ex-row" tabindex="0" onclick="openWell(${w.id})" onkeydown="if(event.key==='Enter')openWell(${w.id})">
+      <td class="ex-name"><strong>${esc(w.title)}</strong>${w.state !== 'completed'
+        ? `<span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}
+        ${w.sub ? `<small>${esc(w.sub)}</small>` : ''}</td>
+      <td class="ex-l">${explResultCell(w)}</td>
+      <td class="ex-l">${esc(w.licence) || '—'}</td>
+      <td class="ex-l">${esc(tc(w.purpose))}</td>
+      <td class="ex-l">${esc(w.operator) || '—'}</td>
+      <td class="ex-l">${esc(w.rig) || '—'}</td>
+      <td>${w.state === 'planned' ? `<span class="ex-est"${w.overdue ? ' title="The planned start date has passed"' : ''}>${fmtShort(w.planned)}${w.overdue ? ' ⚠' : ''}</span>` : fmtShort(w.entry)}</td>
+      <td>${w.end ? fmtShort(w.end) : '—'}</td>
+    </tr>`).join('');
+  const more = list.length > explLimit
+    ? `<button class="grp-btn ex-more" onclick="explLimit+=200;explRenderList()">Show more (${list.length - explLimit} remaining)</button>` : '';
+  document.getElementById('explBody').innerHTML = `
+    <div class="ex-sum">${explSummary(list) || 'No wells match the filters'}</div>
+    ${list.length ? `<div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      ${th('name', 'Well / discovery', 'ex-l')}${th('result', 'Result', 'ex-l')}${th('licence', 'Licence', 'ex-l')}
+      ${th('purpose', 'Purpose', 'ex-l')}${th('operator', 'Operator', 'ex-l')}${th('rig', 'Rig', 'ex-l')}
+      ${th('start', 'Start')}${th('end', 'End')}</tr></thead><tbody>${rows}</tbody></table></div>${more}` : ''}
+    <div class="ex-note">Planned start dates are Sodir's estimates and may slip (⚠ = date already passed). Where a well made a discovery, the
+      discovery name is shown with the wellbore name below. Source: Sodir wellbore data (NLOD 2.0).</div>`;
+}
+
+// ── Kart ─────────────────────────────────────────────────────────────────────
+function explDotStyle(w) {
+  if (w.state === 'planned') return {fill: '#fff', stroke: '#1a2332', sw: 1.6};
+  if (w.state === 'drilling') return {fill: EX_ACTIVE, stroke: '#0a6b47', sw: 2};
+  return {fill: (EX_RES[w.resKey] || EX_RES.other).color, stroke: '#fff', sw: 0.8};
+}
+
+function explLegend() {
+  const item = (c, t, ring) => `<span class="ex-leg"><span class="ex-dot" style="background:${ring ? '#fff' : c};${
+    ring ? `border:1.6px solid ${c};` : ''}"></span>${t}</span>`;
+  return `<div class="ex-legend">${['oil', 'oilgas', 'gas', 'shows', 'dry'].map(k => item(EX_RES[k].color, EX_RES[k].label)).join('')}
+    ${item(EX_ACTIVE, 'Drilling')}${item('#1a2332', 'Planned', true)}</div>`;
+}
+
+function explRenderMap() {
+  const list = explFiltered().filter(w => w.lat != null && w.lon != null);
+  const W = 900, H = 560;
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  list.forEach(w => { x0 = Math.min(x0, w.lon); x1 = Math.max(x1, w.lon); y0 = Math.min(y0, w.lat); y1 = Math.max(y1, w.lat); });
+  if (!list.length) { [x0, y0, x1, y1] = INSET_BOX; }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, kx = Math.cos(cy * Math.PI / 180);
+  let spanX = Math.max((x1 - x0) * 1.12, 5), spanY = spanX * kx * H / W;
+  if ((y1 - y0) * 1.12 > spanY) { spanY = (y1 - y0) * 1.12; spanX = spanY / kx * W / H; }
+  const west = cx - spanX / 2, south = cy - spanY / 2;
+  const px = x => ((x - west) / spanX) * W, py = y => H - ((y - south) / spanY) * H;
+  const vis = r => r.some(([x, y]) => x > west - spanX * .1 && x < west + spanX * 1.1 && y > south - spanY * .1 && y < south + spanY * 1.1);
+  const path = (rings, minPx, minSize) => rings.filter(vis).map(r => {
+    let d = '', lx = NaN, ly = NaN, n = 0, bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+    for (const [x, y] of r) {
+      const sx = px(x), sy = py(y);
+      bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx); by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
+      if (n && Math.abs(sx - lx) < minPx && Math.abs(sy - ly) < minPx) continue;
+      d += (n ? 'L' : 'M') + sx.toFixed(1) + ' ' + sy.toFixed(1); lx = sx; ly = sy; n++;
+    }
+    return n >= 3 && (bx1 - bx0 >= minSize || by1 - by0 >= minSize) ? d + 'Z' : '';
+  }).join('');
+  const coast = (bundle.coastline && bundle.coastline.rings) || [];
+  const fields = Object.values((bundle.field_outlines && bundle.field_outlines.fields) || {}).flat();
+  // Hydrokarbonbrønner tegnes sist, så de ikke dekkes av de tørre.
+  const order = {dry: 0, other: 0, shows: 1, planned: 2};
+  const dots = list.slice().sort((a, b) => (order[a.resKey || a.state] ?? 3) - (order[b.resKey || b.state] ?? 3))
+    .map(w => {
+      const s = explDotStyle(w);
+      return `<circle cx="${px(w.lon).toFixed(1)}" cy="${py(w.lat).toFixed(1)}" r="${w.state === 'completed' ? 3.4 : 4.6}"
+        fill="${s.fill}" stroke="${s.stroke}" stroke-width="${s.sw}" onclick="openWell(${w.id})" style="cursor:pointer">
+        <title>${esc(w.title)} · ${esc(w.state === 'completed' ? tc(w.content) || 'Completed' : STATE_LABEL[w.state])}</title></circle>`;
+    }).join('');
+  document.getElementById('explBody').innerHTML = `
+    <div class="ex-sum">${explSummary(list)}</div>
+    <div class="pf-card ex-mapcard">
+      <svg class="ex-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Map of exploration wells">
+        <rect width="${W}" height="${H}" fill="#eef3f8"/>
+        <path d="${path(coast, 2, 4)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>
+        <path d="${path(fields, 2, 3)}" fill="#cbd6e2" stroke="#b2bfcd" stroke-width="0.5" opacity="0.8"/>
+        ${dots}
+      </svg>
+      ${explLegend()}
+      <div class="pf-map-note">The map zooms to the wells matching the filters. Click a well for details.
+        Coastline: Natural Earth · fields in grey: Sodir</div>
+    </div>`;
+}
+
+// ── Rigger ───────────────────────────────────────────────────────────────────
+const dayMs = d => Date.parse(d + 'T00:00:00Z');
+const addDays = (d, n) => new Date(dayMs(d) + n * 864e5).toISOString().slice(0, 10);
+
+function explRenderRigs() {
+  const today = new Date().toISOString().slice(0, 10);
+  const all = explFiltered(true).filter(w => w.rig && !w.overdue);
+  // Vinduet: 15 måneder tilbake, og fram til siste planlagte start med
+  // anslått varighet — dog minst seks og høyst atten måneder.
+  const t0 = addDays(today, -456);
+  const latestPlan = all.filter(w => w.state === 'planned').map(w => w.planned).sort().pop();
+  const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
+  const endOf = w => w.end || (w.state === 'planned' ? addDays(w.planned, 60) : today);
+  const inWin = all.filter(w => w.start <= t1 && endOf(w) >= t0);
+  const byRig = {};
+  inWin.forEach(w => (byRig[w.rig] = byRig[w.rig] || []).push(w));
+  const rigs = Object.entries(byRig).map(([name, ws]) => {
+    ws.sort((a, b) => (a.start < b.start ? -1 : 1));
+    const now = ws.find(w => w.state === 'drilling');
+    const next = ws.find(w => w.state === 'planned');
+    const last = ws.filter(w => w.state === 'completed').pop();
+    return {name, ws, now, next, last, type: ws[0].rigType};
+  }).sort((a, b) => (!!b.now - !!a.now) || (!!b.next - !!a.next) || a.name.localeCompare(b.name));
+
+  if (!rigs.length) {
+    document.getElementById('explBody').innerHTML = '<div class="ex-sum">No rig activity matches the filters</div>';
+    return;
+  }
+  const LW = 150, W = 1000, RH = 26, TOP = 24, H = TOP + rigs.length * RH + 6;
+  const X = d => LW + (dayMs(d) - dayMs(t0)) / (dayMs(t1) - dayMs(t0)) * (W - LW - 8);
+  const clampX = d => Math.min(Math.max(X(d), LW), W - 8);
+  let axis = '';
+  for (let d = new Date(dayMs(t0)), first = true; d <= new Date(dayMs(t1)); d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)), first = false) {
+    const iso = d.toISOString().slice(0, 10), x = clampX(iso);
+    const label = d.getUTCMonth() % 3 === 0 ? `${MONTH_ABBR[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}` : '';
+    axis += `<line x1="${x}" x2="${x}" y1="${TOP - 4}" y2="${H}" stroke="${d.getUTCMonth() === 0 ? '#c3ccd5' : '#e6ebf0'}"/>`
+          + (label ? `<text x="${x + 3}" y="${TOP - 9}" class="ex-ax">${label}</text>` : '');
+  }
+  const bars = rigs.map((r, i) => {
+    const y = TOP + i * RH;
+    const row = r.ws.map(w => {
+      const a = clampX(w.start), b = Math.max(clampX(endOf(w)), a + 3);
+      const planned = w.state === 'planned';
+      const fill = planned ? '#fff' : w.state === 'drilling' ? EX_ACTIVE : (EX_RES[w.resKey] || EX_RES.other).color;
+      const room = Math.floor((b - a) / 5.6);
+      const txt = room >= 5 ? w.title.slice(0, room - 1) + (w.title.length > room - 1 ? '…' : '') : '';
+      const dark = ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling';
+      return `<g onclick="openWell(${w.id})" style="cursor:pointer">
+        <rect x="${a.toFixed(1)}" y="${y + 3}" width="${(b - a).toFixed(1)}" height="${RH - 8}" rx="3" fill="${fill}"
+          stroke="${planned ? '#1a2332' : 'none'}" stroke-dasharray="${planned ? '4 2' : ''}"/>
+        ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + RH / 2 + 3}" class="ex-bar-t" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
+        <title>${esc(w.title)} (${esc(w.name)}) · ${esc(w.operator)} · ${fmtShort(w.start)}${w.end ? ' – ' + fmtShort(w.end) : ''}</title></g>`;
+    }).join('');
+    return `<text x="4" y="${y + RH / 2 + 3}" class="ex-rig">${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${row}`;
+  }).join('');
+  const tx = clampX(today);
+  const table = rigs.map(r => {
+    const cell = (w, d) => w ? `<a href="#" onclick="openWell(${w.id});return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}</small>` : '—';
+    return `<tr><td class="ex-l"><strong>${esc(r.name)}</strong><small>${esc(tc(r.type))}</small></td>
+      <td class="ex-l">${cell(r.now, 'since ' + (r.now ? fmtShort(r.now.entry) : ''))}</td>
+      <td class="ex-l">${cell(r.next, r.next ? fmtShort(r.next.planned) : '')}</td>
+      <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) : '')}</td></tr>`;
+  }).join('');
+  document.getElementById('explBody').innerHTML = `
+    <div class="ex-sum"><strong>${rigs.length}</strong> rigs · <strong>${rigs.filter(r => r.now).length}</strong> drilling now
+      · <strong>${rigs.filter(r => r.next).length}</strong> with a planned well</div>
+    <div class="pf-card"><h3>Rig schedule</h3>
+      <div class="ex-scroll"><svg class="ex-gantt" viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Rig schedule">
+        ${axis}${bars}
+        <line x1="${tx}" x2="${tx}" y1="${TOP - 4}" y2="${H}" stroke="${OIL_COLOR}" stroke-width="1.4" stroke-dasharray="3 2"/>
+      </svg></div>
+      ${explLegend()}
+      <div class="pf-map-note">Dashed bars are planned wells, drawn with a 60-day placeholder length. The red line is today.
+        Only exploration and appraisal wells are included, so a rig may be busy with other work between bars.</div>
+    </div>
+    <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Rig</th><th class="ex-l">Drilling now</th><th class="ex-l">Next planned</th><th class="ex-l">Last completed</th>
+      </tr></thead><tbody>${table}</tbody></table></div>`;
+}
+
+// ── Detaljvisning ────────────────────────────────────────────────────────────
+function explSummaryText(w) {
+  const kind = w.purpose === 'APPRAISAL' ? 'appraisal' : 'exploration';
+  const bits = [];
+  const withRig = w.rig ? ` with ${w.rig}` : '';
+  if (w.state === 'planned') {
+    bits.push(`Planned ${kind} well for ${w.operator || 'an unnamed operator'}${withRig}, with spud estimated ${fmtShort(w.planned)}.${w.overdue ? ' That date has passed without Sodir recording a spud, so the plan may have been postponed.' : ''}`);
+  } else if (w.state === 'drilling') {
+    bits.push(`${tc(kind)} well being drilled by ${w.operator || 'an unnamed operator'}${withRig} since ${fmtShort(w.entry)}.`);
+  } else {
+    bits.push(`${tc(kind)} well drilled by ${w.operator || 'an unnamed operator'}${withRig}, ${fmtShort(w.entry)} – ${fmtShort(w.end)}.`);
+    const r = w.resKey;
+    if (r === 'dry') bits.push('The well was dry.');
+    else if (r === 'shows') bits.push(`The well proved ${w.content.toLowerCase()}, but not a commercial find.`);
+    else if (['oil', 'gas', 'oilgas'].includes(r)) {
+      bits.push(`The well proved ${w.content.toLowerCase()}${w.found ? ` and is the discovery well for ${w.title}` : w.discovery ? ` in the ${explDiscoveryLabel(w.discovery)} discovery` : ''}.`);
+      if (w.hcFormation) bits.push(`Hydrocarbons were found in the ${tc(w.hcFormation)}${w.hcAge ? ` (${tc(w.hcAge)})` : ''}.`);
+    }
+    const dims = [w.td ? `total depth ${Math.round(w.td).toLocaleString('en')} m` : '',
+                  w.waterDepth ? `${Math.round(w.waterDepth).toLocaleString('en')} m of water` : '',
+                  w.days ? `${w.days} days of drilling` : ''].filter(Boolean);
+    if (dims.length) bits.push(`It reached ${dims.join(', ')}.`);
+  }
+  return bits.join(' ');
+}
+
+function explDetailMap(w) {
+  if (w.lat == null) return '';
+  const near = explWells.filter(o => o.id !== w.id && o.lat != null &&
+    Math.abs(o.lon - w.lon) < 3 && Math.abs(o.lat - w.lat) < 1.4);
+  const ring = [[w.lon - 0.0004, w.lat - 0.0002], [w.lon + 0.0004, w.lat - 0.0002], [w.lon, w.lat + 0.0004]];
+  return outlineMap([{name: w.title, rings: [ring]}], {
+    label: 'Map of the well location',
+    fill: OIL_COLOR, stroke: '#8e0a48',
+    layers: [fieldLayer(), discoveryLayer()],
+    wells: near, ownWell: w,
+    note: 'Large marker: this well · small dots: other exploration wells · grey: fields · pale green: discoveries. '
+        + 'Coastline: Natural Earth · outlines: Sodir',
+  });
+}
+
+function openWell(id, quiet) {
+  const w = explWells.find(x => x.id === id);
+  if (!w) return;
+  explF.open = id;
+  if (!quiet) syncUrl();
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+  const num = (n, u) => n ? Math.round(n).toLocaleString('en') + ' ' + u : '';
+  const s = explDotStyle(w);
+  const known = new Set(allDiscoveries.map(d => d.id));
+  const sameLic = w.licence ? explWells.filter(o => o.licence === w.licence && o.id !== w.id)
+                                       .sort((a, b) => (a.start < b.start ? 1 : -1)) : [];
+  const refDate = w.entry ? fmtShort(w.entry) : 'today';
+  const own = w.partners.length
+    ? ownershipPie(w.partners, w.operator, `Ownership split between ${w.partners.length} licensees`)
+      + `<div class="pf-map-note">Interests in licence ${esc(w.licence)} as of ${w.entry ? 'the spud date, ' + refDate : 'today'}.</div>`
+    : `<div class="pf-map-note">No licence interests found for ${w.licence ? 'licence ' + esc(w.licence) : 'this well'} — the licence may have been relinquished or merged.</div>`;
+  const links = [
+    w.pressUrl ? `<a class="ex-btn ex-btn-main" href="${esc(w.pressUrl)}" target="_blank" rel="noopener">Press release at Sodir ↗</a>` : '',
+    `<a class="ex-btn" href="https://factpages.sodir.no/wellbore/pageview/exploration/all/${w.id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>`,
+    w.discoveryId && known.has(w.discoveryId) ? `<button class="ex-btn" onclick="explOpenDiscovery(${w.discoveryId})">Discovery profile →</button>` : '',
+    w.operator && allCompanies.includes(w.operator) ? `<button class="ex-btn" onclick="explOpenCompany(${esc(JSON.stringify(w.operator))})">Operator profile →</button>` : '',
+  ].join('');
+  document.getElementById('wdBody').innerHTML = `
+    <div class="wd-head">
+      <div><h2>${esc(w.title)}</h2>
+        <div class="wd-sub">${w.sub ? esc(w.sub) + ' · ' : ''}${esc(tc(w.purpose))} · ${esc(w.licence ? 'Licence ' + w.licence : 'No licence')}</div></div>
+      <button class="settings-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="pf-card">
+      <div class="wd-status"><span class="ex-dot" style="background:${s.fill};border:${s.sw}px solid ${s.stroke}"></span>
+        <strong>${w.state === 'completed' ? esc(tc(w.content) || 'Completed') : STATE_LABEL[w.state]}</strong></div>
+      <p class="wd-lead">${esc(explSummaryText(w))}</p>
+      <div class="ex-btns">${links}</div>
+      ${w.pressUrl ? `<div class="pf-map-note">Sodir does not allow its pages to be embedded, so the press release opens on sodir.no.</div>` : ''}
+    </div>
+    ${(() => { const m = explDetailMap(w); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
+    <div class="pf-card"><h3>Ownership</h3>${own}</div>
+    <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
+      ${fact('Wellbore', w.name)}${fact('Purpose', tc(w.purpose))}${fact('Status', STATE_LABEL[w.state])}
+      ${fact('Result', w.resKey ? tc(w.content) : '')}${fact('Operator', w.operator)}${fact('Licence', w.licence)}
+      ${fact('Rig', w.rig)}${fact('Rig type', tc(w.rigType))}
+      ${fact(w.state === 'planned' ? 'Planned start' : 'Started', fmtShort(w.start))}${fact('Completed', w.end ? fmtShort(w.end) : '')}
+      ${fact('Drilling days', w.days)}${fact('Water depth', num(w.waterDepth, 'm'))}${fact('Total depth', num(w.td, 'm'))}
+      ${fact('Formation at TD', tc(w.formationAtTd))}${fact('Age at TD', tc(w.ageAtTd))}
+      ${fact('HC formation', tc(w.hcFormation))}${fact('HC age', tc(w.hcAge))}
+      ${fact('Main area', tc(w.area))}${fact('Part of field', tc(w.field))}${fact('Discovery', w.discovery)}
+      ${fact('Drill permit', w.permit)}
+    </div></div>
+    ${sameLic.length ? `<div class="pf-card"><h3>Other wells in licence ${esc(w.licence)}</h3>
+      <table class="res-table ex-table"><tbody>${sameLic.slice(0, 8).map(o => `
+        <tr class="ex-row" onclick="openWell(${o.id})"><td class="ex-name"><strong>${esc(o.title)}</strong>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</td>
+        <td class="ex-l">${explResultCell(o) !== '<span class="ex-none">—</span>' ? explResultCell(o) : STATE_LABEL[o.state]}</td>
+        <td>${fmtShort(o.start)}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+  document.getElementById('wdOverlay').classList.add('open');
+  document.getElementById('wdOverlay').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeWell() {
+  explF.open = null;
+  document.getElementById('wdOverlay').classList.remove('open');
+  if (!sheetOpen) document.body.style.overflow = '';
+  syncUrl();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && explF.open) closeWell(); });
+
+// ── Hopp til/fra andre moduser ───────────────────────────────────────────────
+function syncModeButtons() {
+  ['hubs', 'fields', 'companies', 'discoveries', 'exploration'].forEach(m =>
+    document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
+}
+
+function explOpenDiscovery(id) { closeWell(); topMode = 'discoveries'; syncModeButtons(); openDiscoveryProfile(id); }
+function explOpenCompany(name) {
+  closeWell();
+  topMode = 'companies';
+  companySubView = 'profile';
+  selectedCompanyNames = new Set([name]);
+  syncModeButtons(); renderViewTabs(); updateFab(); refresh(); scrollToTop();
+}
+
+// Fra funn- og selskapsprofilene til brønnene deres.
+function openExplorationWell(id) {
+  topMode = 'exploration';
+  explF.open = id;
+  syncModeButtons(); renderViewTabs(); updateFab(); refresh(); scrollToTop();
+}
+function openExplorationFor(company) {
+  explF = {...explDefaults(), company, from: '', open: null};
+  explLimit = 100;
+  explSubView = 'wells';
+  topMode = 'exploration';
+  syncModeButtons(); renderViewTabs(); updateFab(); refresh(); scrollToTop();
+}
+
+// Kort nederst i funn- og selskapsprofilene. Brønndataene lastes først her, så
+// kortet legges til etterpå, og bare hvis profilen fortsatt er den som vises.
+function explLinkCard(kind, key) {
+  loadExploration().then(() => {
+    if (!explWells.length) return;
+    const same = kind === 'discovery'
+      ? discoveryProfileMode() && selectedDiscoveryIds.has(key)
+      : companyProfileMode() && selectedCompanyNames.has(key);
+    if (!same) return;
+    let list = kind === 'discovery'
+      ? explWells.filter(w => w.discoveryId === key).sort((a, b) => (a.start < b.start ? -1 : 1))
+      : explWells.filter(w => explCompanyMatch(w, key, 'any')).sort((a, b) => (a.start < b.start ? 1 : -1));
+    if (!list.length) return;
+    const total = list.length;
+    list = list.slice(0, 8);
+    const old = document.getElementById('explLinkCard');
+    if (old) old.remove();
+    document.getElementById('profileBox').insertAdjacentHTML('beforeend', `
+      <div class="pf-card pf-wide" id="explLinkCard"><h3>Exploration wells</h3>
+        <table class="res-table ex-table"><tbody>${list.map(w => `
+          <tr class="ex-row" onclick="openExplorationWell(${w.id})"><td class="ex-name"><strong>${esc(w.title)}</strong>
+            ${w.state !== 'completed' ? `<span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}
+            ${w.sub ? `<small>${esc(w.sub)}</small>` : ''}</td>
+          <td class="ex-l">${explResultCell(w)}</td>
+          <td class="ex-l">${esc(w.rig) || '—'}</td><td>${fmtShort(w.start)}</td></tr>`).join('')}</tbody></table>
+        ${kind === 'company' ? `<button class="grp-btn ex-more" onclick="openExplorationFor(${esc(JSON.stringify(key))})">
+          Show all ${total} wells in Exploration →</button>` : ''}
+      </div>`);
+  });
+}
+
+
 async function init() {
   renderViewTabs();
   updateFab();
