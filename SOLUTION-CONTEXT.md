@@ -1832,8 +1832,15 @@ og brønnene peker på dem med indeks. Kobling skjer på `wlbProductionLicence`
 
 **Funnnavn:** `wlbDiscovery` har formatene «35/8-8 S (Camilla Nord)» og
 «16/4-6 S Solveig». `explDiscoveryLabel` henter navnet ut. Funnnavnet erstatter
-brønnnavnet bare for selve funnbrønnen (`wlbDiscoveryWellbore = YES`);
-avgrensningsbrønner beholder sitt navn, med funnet som undertekst.
+brønnnavnet for alle brønner som hører til et funn, også avgrensningsbrønner;
+brønnnavnet står som undertekst. Bare i sammendragsteksten skilles selve
+funnbrønnen (`wlbDiscoveryWellbore = YES`) fra de øvrige.
+
+**Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
+`https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek
+for mellomrom i navnet. Kontrollert mot alle 142 felt: 80 har bilde. Det finnes
+ingen liste over hvilke, så kortet fjernes via `onerror` når bildet mangler.
+Bildene er ~1,5 MB og lastes lazy, direkte fra Sodir.
 
 **Pressemelding:** `wlbPressReleaseUrl` peker til sodir.no, som ligger bak
 Cloudflare (403 mot skripter), mangler CORS og sender `X-Frame-Options:

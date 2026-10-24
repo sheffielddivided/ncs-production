@@ -149,6 +149,7 @@
       letter-spacing:0.04em;}
     .pf-fact strong{font-size:0.82rem;color:#1a2332;font-weight:600;}
     .pf-map{width:100%;aspect-ratio:560/230;display:block;border-radius:8px;background:#eef3f8;}
+    .pf-photo img{width:100%;max-height:340px;min-height:120px;object-fit:cover;display:block;border-radius:8px;background:#eef3f8;}
     .pf-map-note{font-size:0.64rem;color:var(--muted);margin-top:6px;}
     /* Kartetiketter. Hvit kontur rundt teksten, slik at navnet er lesbart
        uansett hva det ligger oppå. */
@@ -2778,6 +2779,18 @@ function annualProduction(id) {
           lastYear: annual.length ? annual[annual.length-1].prfYear : null};
 }
 
+// Sodirs feltbilde. Filnavnet er NPDID, understrek og feltnavnet med
+// understrek for mellomrom: 43534_Embla.jpg, 21675433_Edvard_Grieg.jpg.
+// Bare rundt 80 av 142 felt har bilde, og det finnes ingen liste å slå opp i,
+// så kortet legges inn og fjernes igjen hvis bildet ikke lastes. Bildene er
+// store (~1,5 MB), derfor lazy loading — og de hentes direkte fra Sodir, ikke
+// fra repoet.
+function fieldPhoto(id, name) {
+  const url = `https://factpages.sodir.no/pbl/field_jpgs/${id}_${encodeURIComponent(name.replace(/ /g, '_'))}.jpg`;
+  return `<div class="pf-card pf-photo"><img src="${esc(url)}" alt="${esc(name)}" loading="lazy"
+    onerror="this.closest('.pf-photo').remove()"><div class="pf-map-note">Photo: Sodir FactPages</div></div>`;
+}
+
 function drawFieldProfile() {
   const ids = [...selectedFieldIds];
   if (ids.length !== 1) {
@@ -2832,6 +2845,7 @@ function drawFieldProfile() {
         ${fact('Hub', hub && hub !== name ? hub : '')}
       </div>
     </div>
+    ${fieldPhoto(id, name)}
     ${profileMap(id) ? `<div class="pf-card"><h3>Location</h3>${profileMap(id)}</div>` : ''}
     ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${(() => { const o = profileOwnership(id, p.operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
@@ -4867,8 +4881,10 @@ function loadExploration() {
         w.resKey = w.state === 'completed' ? explResultKey(w.content) : '';
         const label = explDiscoveryLabel(w.discovery);
         w.found = !!(w.discoveryWell && label);
-        w.title = w.found ? label : w.name;
-        w.sub = w.found ? w.name : (label ? `${w.name} · ${label}` : '');
+        // Alle brønner som hører til et funn — også avgrensningsbrønnene —
+        // vises under funnnavnet, med brønnnavnet som undertekst.
+        w.title = label || w.name;
+        w.sub = label ? w.name : '';
         w.hay = [w.title, w.name, w.licence, w.operator, w.rig, w.discovery].join('|').toLowerCase();
         return w;
       }).filter(w => w.start);
