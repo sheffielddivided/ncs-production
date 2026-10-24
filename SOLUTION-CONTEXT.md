@@ -416,7 +416,7 @@ forekomster; brukes for RC 2, 3, 4, 5 og 7. **A = «Additional»**, tiltak for
 økt utvinning. RC6 publiseres uten anslag, noe som forklarer hvorfor ingen av
 de 185 «Production is unlikely»-funnene har rader her.
 
-Frontenden bruker **kun 4F, 5F og 7F** (`CONTINGENT_RC`, `index.html:1397`).
+Frontenden bruker **kun 4F, 5F og 7F** (`CONTINGENT_RC`, `index.html:1398`).
 De øvrige fem radene i datasettet er klasse `0` (3 stk, produserte volumer i
 nedstengte funn), `0+1` (1) og `2F` (1) — produserte eller besluttede volumer
 som ikke hører hjemme i en ressursportefølje.
@@ -706,15 +706,15 @@ dager i perioden:
 - Kvartalsvis: sum av dagene i kvartalets tre måneder (`index.html:642-645`)
 
 Faller en rad bort, brukes **30 dager** som nøddivisor
-(`index.html:1936`, `1370`, `1374`, `1378`, `1405`). Verdien er vilkårlig, men
+(`index.html:1939`, `1370`, `1374`, `1378`, `1405`). Verdien er vilkårlig, men
 treffer bare rader som uansett er tomme.
 
 ### Avrunding
 
 - Innsamling: 6 desimaler (`fetch_sodir.py:128`)
-- Enkeltfelt-visning: 1 desimal (`.toFixed(1)`, `index.html:1937-1939`)
+- Enkeltfelt-visning: 1 desimal (`.toFixed(1)`, `index.html:1940-1942`)
 - Alle andre visninger: 0 desimaler (`.toFixed(0)`)
-- Tooltip: `Math.round` (`index.html:4646`)
+- Tooltip: `Math.round` (`index.html:4651`)
 
 Merk at `.toFixed()` gir **streng**, som umiddelbart konverteres tilbake med
 unær `+`. Avrundingen er altså destruktiv og skjer *før* summering i Excel-eksporten.
@@ -836,9 +836,9 @@ Asymmetrien er tilsiktet, men udokumentert i koden.
 
 ### 8.5 Trimming av ledende nullperioder
 
-`trimLeadingZeros` (`index.html:4280-4288`) fjerner perioder fra starten der
+`trimLeadingZeros` (`index.html:4285-4293`) fjerner perioder fra starten der
 *alle* dataserier er 0 eller mangler. Kalles fra `renderChart`
-(`index.html:4682`). Formålet er at grafen skal begynne der produksjonen faktisk
+(`index.html:4687`). Formålet er at grafen skal begynne der produksjonen faktisk
 startet. Nullperioder *inne i* eller på slutten av serien beholdes.
 
 ### 8.6 Håndtering av manglende verdier
@@ -850,7 +850,7 @@ startet. Nullperioder *inne i* eller på slutten av serien beholdes.
 - Frontend: `|| 0` overalt ved uthenting av måleverdier
 - Serier som er null hele veien skjules fra grafen via `hasAnyValue`
   (`index.html:770`, brukt `1407`, `1556`, `1662`, `1709`)
-- Felt uten navn vises som `Field <id>` (`index.html:3485`)
+- Felt uten navn vises som `Field <id>` (`index.html:3490`)
 
 ### 8.7 Sortering og standardvalg
 
@@ -858,11 +858,11 @@ startet. Nullperioder *inne i* eller på slutten av serien beholdes.
   reserver, deretter alfabetisk (`index.html:1040-1049`). Kun 22 av 263 selskaper
   har reserver, så resten faller til alfabetisk.
 - **Feltliste:** felt der Aker BP er lisensiær sorteres øverst ved oppstart
-  (`index.html:4670-4681`).
+  (`index.html:4675-4686`).
 - **Standardvalg ved oppstart:** modus = `companies`, `Aker BP ASA`
-  forhåndsvalgt (`index.html:4683`), `JOHAN SVERDRUP` forhåndsvalgt i feltlisten
+  forhåndsvalgt (`index.html:4688`), `JOHAN SVERDRUP` forhåndsvalgt i feltlisten
   (`index.html:832-833`), og i hub-listen den første huben hvis navn starter med
-  `alvheim` (`index.html:819-823`, kalt fra `index.html:4664`). Hub-defaulten
+  `alvheim` (`index.html:819-823`, kalt fra `index.html:4669`). Hub-defaulten
   slås opp på prefiks fordi hub-navn er fritekst og kan endres i
   settings-visningen; finnes ingen treff, står Hubs-viewet tomt.
 
@@ -871,12 +871,12 @@ selskap. Ved sammenslåing bør det parametriseres.
 
 ### 8.8 Reserver — utledet produksjon og videreføring av estimater
 
-Reserves-visningen (`index.html:2128-3046`) er den eneste visningen som ikke
+Reserves-visningen (`index.html:2131-3051`) er den eneste visningen som ikke
 bygger på produksjonstidsserien. To utledninger er verdt å kjenne:
 
 **Produsert volum finnes ikke i kilden.** Sodir oppgir opprinnelig utvinnbart og
 gjenstående, aldri produsert. Visningen regner `produsert = utvinnbart −
-gjenstående`, klemt til minst null (`index.html:2151`). Søylehøyden blir dermed
+gjenstående`, klemt til minst null (`index.html:2154`). Søylehøyden blir dermed
 opprinnelig utvinnbart det året, og splitten viser uttømmingen.
 
 Dette er *ikke* det samme som akkumulert produksjon fra lag 7300, men ligger
@@ -886,7 +886,7 @@ mill Sm³ o.e., mot 221,93 summert fra månedsradene i `production.json` t.o.m.
 
 **Sodir revurderer ikke alle felt hvert år.** Mangler et felt en årgang,
 videreføres feltets forrige estimat i stedet for å telles som null
-(`index.html:2078-2126`). Uten dette ville summen over flere felt falle og
+(`index.html:2081-2129`). Uten dette ville summen over flere felt falle og
 sprette tilbake i vilkårlige år uten at noe faktisk hadde endret seg. Før
 feltets *første* estimat bidrar det ikke, slik at nye felt kommer inn på det
 året de ble estimert. Infoboksen sier fra når videreføring er i bruk.
@@ -902,15 +902,15 @@ inneholder hopp som ikke lar seg forklare av produksjon alene.
 
 **Enhet.** Visningen er den eneste i løsningen som ikke er i boe/dag. Den viser
 **millioner fat o.e.**, altså mill Sm³ o.e. × 6,29 uten dagnormalisering
-(`index.html:2150-2151`).
+(`index.html:2153-2154`).
 
 ### 8.9 Årsvelgerens oppførsel ved periodebytte
 
-`setPeriod` (`index.html:1152-1177`) overstyrer brukerens årsvalg:
+`setPeriod` (`index.html:1153-1178`) overstyrer brukerens årsvalg:
 
 - **Til årlig:** setter `yearFrom = 1970`, tømmer cache, henter, og «snapper»
   deretter til første år med faktisk produksjon via `firstYearInCache`
-  (`index.html:1130-1150`), som kun ser på årsrader med `oe > 0`.
+  (`index.html:1131-1151`), som kun ser på årsrader med `oe > 0`.
 - **Til månedlig/kvartalsvis:** setter `yearFrom = currentYear - 1`.
 
 Begge veier nullstiller altså et årsintervall brukeren måtte ha satt selv.
@@ -960,7 +960,7 @@ nåtall er de samme som før.
 | Årsintervall | `#yearFrom` / `#yearTo` (`:263-265`) | 1970–inneværende år, **synkende** (`:506`); standard `[år−1, år]` (`:513-514`) |
 | Periode | `#btnMonthly/Quarterly/Annual` (`:268-270`) | **Monthly** standard |
 | Undervisning | `#viewTabs` (`:275`) | Avhenger av modus, se under |
-| Produsert vann | `#waterToggle` (`:280`) | Kun synlig for Fields + Oil & Gas (`:1084-1086`) |
+| Produsert vann | `#waterToggle` (`:280`) | Kun synlig for Oil & Gas utenom Companies (`:1112-1114`) |
 | Valg | `#selectFab` → bottom sheet (`:323`, `:350-364`) | Søk, «Select all», «Clear all» |
 | Eksport | `#downloadBtn` (`:311`) | Excel (.xlsx) |
 | Nullstill | `.topbar-title` (`:240`) | Sidetittelen er en knapp — `resetView` setter alt tilbake |
@@ -989,7 +989,7 @@ tapt mot dem — en mediaspørring gir ikke høyere spesifisitet.
 ### Nullstilling
 
 Sidetittelen øverst er en `<button>` som kaller `resetView`
-(`index.html:1559-1602`). Den setter modus, faner, periode, årsintervall,
+(`index.html:1560-1603`). Den setter modus, faner, periode, årsintervall,
 vann-bryteren, hub-grupperingen og alle fire utvalgene tilbake til nøyaktig
 den tilstanden en ren sidelasting uten hash gir — inkludert
 standardvalgene `Aker BP ASA`, `JOHAN SVERDRUP`, Alvheim-huben og alle funn.
@@ -1004,7 +1004,7 @@ også fra adressefeltet.
 
 Hele visningstilstanden ligger i **hash-delen** av adressen, og adressefeltet
 oppdateres fortløpende med `history.replaceState` (`syncUrl`,
-`index.html:1620-1622`, kalt fra `refresh`, `setWater` og
+`index.html:1621-1623`, kalt fra `refresh`, `setWater` og
 `setHubReserveGrouping`). Hash er valgt fordi GitHub Pages serverer samme fil
 uansett sti, og fordi hash aldri sendes til serveren. `replaceState` framfor
 `pushState` gjør at hver justering ikke fyller nettleserhistorikken.
@@ -1022,13 +1022,13 @@ uansett sti, og fordi hash aldri sendes til serveren. `replaceState` framfor
 | `p`, `y` | periode og årsintervall — utelates i reservevisningene, som ikke har tidsakse |
 | `f` | felt-ID-er, kommaseparert |
 | `d` | funn-ID-er, kommaseparert |
-| `h`, `c` | hub- og selskapsnavn, skilt med `~` (`SEP`, `index.html:1591`) |
+| `h`, `c` | hub- og selskapsnavn, skilt med `~` (`SEP`, `index.html:1592`) |
 | `w` | produsert vann på |
 | `g` | `company` når hub-reservetabellen er selskapsgruppert |
 
 Felt lagres som **ID**, men huber og selskaper som **navn**. Hub-navn er
 fritekst og kan endres i settings-visningen; da faller oppføringen bort ved
-åpning i stedet for å peke på feil hub. `applyHash` (`index.html:1649-1712`)
+åpning i stedet for å peke på feil hub. `applyHash` (`index.html:1650-1713`)
 validerer alt mot det som faktisk finnes og ignorerer resten, så en gammel
 lenke åpner det den fortsatt kan i stedet for å feile. Verifisert for ukjent
 modus, ukjent fane, ukjent felt-ID, omdøpt hub og årstall utenfor
@@ -1039,34 +1039,46 @@ standardvalgene satt, og overstyrer dem. Finnes ingen hash, returnerer den
 `false` og standardvalgene står.
 
 Rundturen er stabil: åpnes en lenke og tegnes visningen, er `stateToHash`
-(`:1623-1641`) identisk med hashen som ble åpnet.
+(`:1624-1642`) identisk med hashen som ble åpnet.
 
-`copyViewLink` (`:1714-1729`) legger lenken på utklippstavlen. Utklippstavlen
+`copyViewLink` (`:1715-1730`) legger lenken på utklippstavlen. Utklippstavlen
 krever sikker kontekst og kan avvises; da vises lenken i knappen i stedet,
 slik at den kan merkes manuelt.
 
-### De atten visningene
+### De nitten visningene
 
 | Modus | Fane | Funksjon | Hva som tegnes |
 |---|---|---|---|
 | Hubs | Oil & Gas | `drawFieldsOilGas({ids, scope})` | Stablet Oil/Gas summert over hubens medlemsfelt, brutto |
 | Hubs | OE per field | `drawFieldsOePerField({ids, scope})` | Én serie per medlemsfelt i huben |
-| Hubs | Reserves | `drawFieldsReserves({ids, scope})` (`:2128`) | Reserver over tid, summert over hubens medlemsfelt. Tabell under: per felt og partner |
-| Hubs | Profile | `drawHubProfile` | Faktaark for **én** hub: årlig produksjon per medlemsfelt i grafen, og under den nøkkeltall, kart med innretninger, feltliste, volumer, selskapsandeler, innretningstabell og transportbeskrivelsene |
-| Fields | Oil & Gas | `drawFieldsOilGas` (`:1944`) | Stablet Oil/Gas (+Water). Ett felt: 1 desimal. Flere felt: **summert**, 0 desimaler |
-| Fields | OE per field | `drawFieldsOePerField` (`:1980`) | Én serie per felt, brutto o.e. |
-| Fields | OE per company | `drawFieldsOePerCompany` (`:3049`) | Én serie per selskap, **equity-justert** |
-| Fields | Reserves | `drawFieldsReserves` (`:2128`) | Stablet gjenstående/produsert per år, **mill fat o.e.** Tabell under: per partner |
-| Discoveries | Resources | `drawDiscoveriesPerDiscovery` (`:3935`) | Betingede ressurser per funn, stablet Liquids/Gas. Tabell under: per funn og partner |
-| Discoveries | Per company | `drawDiscoveriesPerCompany` (`:3969`) | Samme volumer fordelt på lisensandel, én søyle per selskap. Tabell under: per selskap og funn |
-| Discoveries | Maturity | `drawDiscoveriesMaturity` (`:4022`) | Per selskap, stablet på ressursklasse 4F/5F/7F |
-| Discoveries | Profile | `drawDiscoveryProfile` (`:3451-3502`) | Faktaark for **ett** funn: nøkkeltall, kart, volumer per ressursklasse, eierskap og Sodirs beskrivelse. Eneste visning **uten graf** |
-| Fields | Profile | `drawFieldProfile` (`:2662-2722`) | Faktaark for **ett** felt: årlig produksjon i grafen, og under den nøkkeltall, kart, volumer, eierskap og Sodirs beskrivelse |
-| Companies | Oil & Gas | `drawCompaniesOilGas` (`:3380`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
-| Companies | OE per field | `drawCompaniesOePerField` (`:3497`) | Én serie per felt, equity-justert |
-| Companies | OE per hub | `drawCompaniesOePerHub` (`:3885`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
-| Companies | Reserves | `drawCompaniesReserves` (`:4042`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert. Tabell under: per hub og felt |
-| Companies | Profile | `drawCompanyProfile` | Faktaark for **ett** selskap: årlig egenandelsjustert produksjon i grafen, og under den nøkkeltall, kart, operatørskap, portefølje, ressurser og en sorterbar lisenstabell |
+| Hubs | OE per company | `drawFieldsOePerCompany({ids, scope})` | Én serie per selskap over hubens medlemsfelt, **equity-justert** |
+
+| Hubs | Reserves | `drawFieldsReserves({ids, scope})` (`:2131`) | Reserver over tid, summert over hubens medlemsfelt. Tabell under: per felt og partner |
+| Hubs | Profile | `drawHubProfile` | Faktaark for **én** hub: årlig produksjon per medlemsfelt i grafen, og under den nøkkeltall, kart, feltliste, volumer, selskapsandeler, innretningstabell og transportbeskrivelsene |
+| Fields | Oil & Gas | `drawFieldsOilGas` (`:1947`) | Stablet Oil/Gas (+Water). Ett felt: 1 desimal. Flere felt: **summert**, 0 desimaler |
+| Fields | OE per field | `drawFieldsOePerField` (`:1983`) | Én serie per felt, brutto o.e. |
+| Fields | OE per company | `drawFieldsOePerCompany({ids, scope})` | Én serie per selskap, **equity-justert** |
+| Fields | Reserves | `drawFieldsReserves` (`:2131`) | Stablet gjenstående/produsert per år, **mill fat o.e.** Tabell under: per partner |
+| Discoveries | Resources | `drawDiscoveriesPerDiscovery` (`:3940`) | Betingede ressurser per funn, stablet Liquids/Gas. Tabell under: per funn og partner |
+| Discoveries | Per company | `drawDiscoveriesPerCompany` (`:3974`) | Samme volumer fordelt på lisensandel, én søyle per selskap. Tabell under: per selskap og funn |
+| Discoveries | Maturity | `drawDiscoveriesMaturity` (`:4027`) | Per selskap, stablet på ressursklasse 4F/5F/7F |
+| Discoveries | Profile | `drawDiscoveryProfile` (`:3456-3507`) | Faktaark for **ett** funn: nøkkeltall, kart, volumer per ressursklasse, eierskap og Sodirs beskrivelse. Eneste visning **uten graf** |
+| Fields | Profile | `drawFieldProfile` (`:2665-2725`) | Faktaark for **ett** felt: årlig produksjon i grafen, og under den nøkkeltall, kart, volumer, eierskap og Sodirs beskrivelse |
+| Companies | Oil & Gas | `drawCompaniesOilGas` (`:3385`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
+| Companies | OE per field | `drawCompaniesOePerField` (`:3502`) | Én serie per felt, equity-justert |
+| Companies | OE per hub | `drawCompaniesOePerHub` (`:3890`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
+| Companies | Reserves | `drawCompaniesReserves` (`:4047`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert. Tabell under: per hub og felt |
+| Companies | Profile | `drawCompanyProfile` | Faktaark for **ett** selskap: årlig egenandelsjustert produksjon per hub i grafen, og under den nøkkeltall, kart, portefølje gruppert per hub, ressurser og en sorterbar lisenstabell |
+
+**Fire av hub-visningene er feltvisninger med hubens medlemsfelt.**
+`drawFieldsOilGas`, `drawFieldsOePerField`, `drawFieldsOePerCompany` og
+`drawFieldsReserves` tar `{ids, scope}`: `ids` overstyrer feltutvalget og
+`scope` gir tittel og infoboks hubens navn i stedet for feltlisten. Tallene er
+dermed per definisjon de samme som i feltmodus med de samme feltene valgt —
+kontrollert for alle 45 hubene i både årlig og månedlig oppløsning.
+
+«OE per company» krever eierandelene, så `refreshHubs` laster dem for den
+fanen akkurat som `refreshFields` gjør i feltmodus.
 
 Merk at Companies-modus **ikke** har en «OE per company»-fane — det er
 selskapene man allerede har valgt.
@@ -1092,7 +1104,7 @@ inn i fjor har ikke produsert feltets historie. Gjenstående er derimot en
 beholdning, og kan andelsberegnes.
 
 Eierandelen slås opp per **31. desember i årgangen**, fordi reserveestimatet
-gjelder per årsslutt (`index.html:4245`). Et selskap bidrar dermed kun i de
+gjelder per årsslutt (`index.html:4250`). Et selskap bidrar dermed kun i de
 årene det faktisk var lisensiær, og oppkjøp vises som hopp i serien. Verifisert
 eksempel: Aker BPs andel i Johan Sverdrup går fra 11,5733 til 31,5733 med
 virkning 2023-01-01 i lag 7108, og selskapets gjenstående reserver hopper
@@ -1101,20 +1113,20 @@ tilsvarende fra 778,5 til 1 764,4 mill fat o.e. mellom årgang 2022 og 2023.
 Alle tre reservevisningene har en tabell under grafen. Alle viser **kun siste
 årgang** og **kun gjenstående** reserver, delt i Liquids / Gas / Total OE, med
 grupper og rader sortert synkende etter total OE. De deler byggeren
-`reserveTableHtml` (`index.html:4033-4073`):
+`reserveTableHtml` (`index.html:4038-4078`):
 
 | Visning | Gruppe / rad | Eierandel | Funksjon |
 |---|---|---|---|
-| Companies | hub / felt | ja | `renderReserveTableByHub` (`:4077-4117`) |
-| Hubs | felt / partner **eller** selskap / felt | ja | `renderReserveTableByFieldPartner` (`:4183-4242`) |
+| Companies | hub / felt | ja | `renderReserveTableByHub` (`:4082-4122`) |
+| Hubs | felt / partner **eller** selskap / felt | ja | `renderReserveTableByFieldPartner` (`:4188-4247`) |
 
 Hubs-tabellen kan grupperes to veier, med en vekslerad over tabellen
-(`hubGroupingToggle`, `index.html:4526-4532`). Valget ligger i
-`hubReserveGrouping` (`:4517`) og huskes gjennom en ny `refresh`, men ikke
+(`hubGroupingToggle`, `index.html:4531-4537`). Valget ligger i
+`hubReserveGrouping` (`:4522`) og huskes gjennom en ny `refresh`, men ikke
 over en sidelasting — det er et lesevalg, ikke en innstilling. Veksleren
 tegner tabellen om alene fra `lastHubReserve` (`setHubReserveGrouping`,
-`:4520-4524`); grafen røres ikke. Tømmes tabellen, nullstilles også
-`lastHubReserve` (`index.html:1848`), slik at en forsvunnet veksler ikke kan
+`:4525-4529`); grafen røres ikke. Tømmes tabellen, nullstilles også
+`lastHubReserve` (`index.html:1850`), slik at en forsvunnet veksler ikke kan
 tegne om et gammelt datasett.
 
 **Andelen betyr forskjellige ting på de to nivåene i selskapsgrupperingen.**
@@ -1127,7 +1139,7 @@ lisensandelene summerer til 100 % innenfor hvert felt.
 Eksempel, Alvheim hub årgang 2025: Aker BP står på 77,36 % av huben, satt
 sammen av 80,00 % i Alvheim, 61,19 % i Tyrving, 80,00 % i Bøyla, 100,00 % i
 Volund, 75,76 % i Vilje og 65,00 % i Skogul.
-| Fields | partner (flat) | ja | `renderReserveTableByPartner` (`:4251-4276`) |
+| Fields | partner (flat) | ja | `renderReserveTableByPartner` (`:4256-4281`) |
 
 Alle tre har en **Share**-kolonne (`opts.shareHead`). Andelen settes kun på
 radene der den er definert, og står tom ellers — blant annet på totalraden.
@@ -1138,7 +1150,7 @@ lisensandel i det feltet. På **hubraden** er den deres beregnede andel av hele
 huben: equity-justert OE delt på hubens brutto gjenstående reserver, der
 nevneren summerer over **alle** medlemsfelt — også de selskapene ikke er inne
 i. Det er dét som gjør tallet til en eierandel i huben, og ikke et snitt av
-lisensandelene (`index.html:4455-4464`).
+lisensandelene (`index.html:4460-4469`).
 
 Eksempel, Aker BP: Yggdrasil-huben står på 64,87 %, satt sammen av 87,70 % i
 Hugin, 50,00 % i Munin og 47,70 % i Fulla. Med Equinor i tillegg stiger
@@ -1148,7 +1160,7 @@ I Fields-tabellen er partnerne summert over flere felt, og eierandelen er
 feltspesifikk. Er andelen den samme i alle feltene partneren bidrar i —
 typisk når bare ett felt er valgt — vises den eksakt. Ellers vises et snitt
 vektet med partnerens egen gjenstående OE per felt, merket med `~`
-(`index.html:4607-4632`). Eksempel, Johan Sverdrup + Troll: Aker BP står
+(`index.html:4612-4637`). Eksempel, Johan Sverdrup + Troll: Aker BP står
 umerket på 31,57 % fordi selskapet bare er inne i Johan Sverdrup, mens
 Equinor står `~34,50 %` som vektet snitt av 42,63 % i Johan Sverdrup og 30,55 % i Troll.
 
@@ -1157,10 +1169,10 @@ dekomponerer **brutto** feltreserver på lisensiærene, siden de grafene er
 brutto. En gruppe hvis eneste underrad gjentar gruppenavnet får ingen
 underrad.
 
-`fieldPartners` (`index.html:4005-4021`) slår opp lisensiærene per 31.12 i
+`fieldPartners` (`index.html:4010-4026`) slår opp lisensiærene per 31.12 i
 årgangen, med samme datologikk som `getShare` — inkludert at to-datoen dekker
 hele den siste dagen. Summerer ikke andelene til 100 %, legges resten på en
-rad merket `Unallocated (cross-border share)` (`index.html:4380`), slik at
+rad merket `Unallocated (cross-border share)` (`index.html:4385`), slik at
 gruppesummen fortsatt stemmer med grafen.
 
 > Med dagens data utløses den raden aldri: alle 107 felt med gjenstående
@@ -1170,12 +1182,12 @@ gruppesummen fortsatt stemmer med grafen.
 > korreksjon. Merk at dette gjelder lag **7108**; andelene i lag **7114** er
 > en annen sak, se advarselen i §5.
 
-`renderChart` nullstiller beholderen ved hver tegning (`index.html:4653`);
+`renderChart` nullstiller beholderen ved hver tegning (`index.html:4658`);
 `showSpinner` og `setChartEmpty` tømmer den også.
 
 ### Funntabellen under companies/reserves
 
-`companyDiscoveryTable` (`index.html:4123-4152`) legger en **andre** tabell
+`companyDiscoveryTable` (`index.html:4128-4157`) legger en **andre** tabell
 under reservetabellen i Companies/Reserves, med de valgte selskapenes
 betingede ressurser per funn. Mellom tabellene står en oppsummering:
 
@@ -1234,11 +1246,11 @@ stedene som tabellen (`renderChart`, `showSpinner`, `setChartEmpty`).
 
 | Del | Kilde | Funksjon |
 |---|---|---|
-| Nøkkeltall | `data/field_profile.json` | `profileRow` (`:2200-2212`) |
-| Kart | `data/field_outlines.json` + `data/coastline.json` | `profileMap` (`:2486-2497`), via `outlineMap` (`:2242-2378`) |
-| Volumer | `data/reserves_field.json` | `profileVolumes` (`:2563-2568`) |
-| Eierskap | lag 7108 via `fieldPartners` | `profileOwnership` (`:2620-2625`), via `ownershipPie` (`:2573-2618`) |
-| Beskrivelse | `data/field_descriptions.json` | `fieldDescriptions` (`:2214-2225`) |
+| Nøkkeltall | `data/field_profile.json` | `profileRow` (`:2203-2215`) |
+| Kart | `data/field_outlines.json` + `data/coastline.json` | `profileMap` (`:2489-2500`), via `outlineMap` (`:2245-2381`) |
+| Volumer | `data/reserves_field.json` | `profileVolumes` (`:2566-2571`) |
+| Eierskap | lag 7108 via `fieldPartners` | `profileOwnership` (`:2623-2628`), via `ownershipPie` (`:2576-2621`) |
+| Beskrivelse | `data/field_descriptions.json` | `fieldDescriptions` (`:2217-2228`) |
 
 **Produksjonsstart** finnes ikke i feltlaget. Den utledes av fra-datoen til
 den første `Producing`-raden i lag 7101 (`fetch_sodir.py:363-399`).
@@ -1442,11 +1454,11 @@ oppgir hvor mange av medlemskapene som fortsatt står som maskinelt foreslått
 
 ### Discoveries
 
-Funnvisningene bygger på `loadDiscoveries` (`index.html:1427-1507`), som slår
+Funnvisningene bygger på `loadDiscoveries` (`index.html:1428-1508`), som slår
 sammen de tre nye datasettene til `allDiscoveries` (kun funn med ikke-null
 betingede ressurser, sortert synkende), `discoveryRes` (volumer totalt og per
 ressursklasse) og `licenceOwners` (eier → partnere). `discoveryPartners`
-(`:1552-1554`) slår opp partnerne via `ownerKind|owner`.
+(`:1553-1555`) slår opp partnerne via `ownerKind|owner`.
 
 Alle fire fanene er **tverrsnitt uten tidsakse** — lag 7008 har bare én årgang
 — så periode- og årsvelgeren skjules i hele modusen (`isReservesView` dekker
@@ -1485,13 +1497,13 @@ ID-er som ikke lenger har anslag faller bort før reglene kjører.
 etter at `updateFab` allerede har kjørt én gang, og uten kallet sto knappen på
 «0 selected» mens tabellen viste alle 89.
 
-`discoveryByCompany` (`:3209-3234`) deles av fanene «Per company» og
+`discoveryByCompany` (`:3214-3239`) deles av fanene «Per company» og
 «Maturity», og legger andelen som ikke er dekket av kjente partnere på
 `Unallocated`, slik at totalen stemmer med fanen «Resources».
 
 #### Fanen Profile
 
-`drawDiscoveryProfile` (`:3451-3502`) er funnets faktaark, bygget som
+`drawDiscoveryProfile` (`:3456-3507`) er funnets faktaark, bygget som
 feltprofilen og med samme kortoppsett og tospaltede flyt. Den krever
 **nøyaktig ett** valgt funn, og `syncDiscoverySelection` sørger for at det
 alltid er det — se utvalgsreglene over. Meldingen om for mange valgte er
@@ -1500,7 +1512,7 @@ derfor en sikring som i praksis ikke vises.
 **Visningen har ingen graf.** Et funn har ingen produksjonshistorikk, og en
 søyle per ressursklasse ga ingen innsikt volumtabellen ikke gir bedre — 7 av
 de 89 funnene har mer enn én klasse, resten bare én. `setChartNone`
-(`:1879-1885`) tømmer grafområdet uten å røre tittelen, rydder bort tabellen
+(`:1881-1887`) tømmer grafområdet uten å røre tittelen, rydder bort tabellen
 fra forrige fane og slår av Excel-knappen, siden det ikke finnes noe datasett
 å eksportere. Kortet øverst blir dermed en ren overskrift med funnets navn,
 operatør, havområde og status. Ressursklassene står i infoboksen nederst.
@@ -1508,10 +1520,10 @@ operatør, havområde og status. Ressursklassene står i infoboksen nederst.
 | Del | Kilde | Funksjon |
 |---|---|---|
 | Nøkkeltall | `data/discoveries.json` | direkte fra `allDiscoveries` |
-| Kart | `data/discovery_outlines.json` + `field_outlines` + `coastline` | `discoveryMap` (`:3344-3356`) |
-| Volumer | `data/discovery_resources.json` via `discoveryRes` | `discoveryVolumes` (`:3358-3395`) |
-| Eierskap | `data/licence_licensees.json` via `discoveryPartners` | `discoveryOwnership` (`:3402-3415`) |
-| Beskrivelse | `data/discovery_descriptions.json` | `discoveryDescriptions` (`:3333-3339`) |
+| Kart | `data/discovery_outlines.json` + `field_outlines` + `coastline` | `discoveryMap` (`:3349-3361`) |
+| Volumer | `data/discovery_resources.json` via `discoveryRes` | `discoveryVolumes` (`:3363-3400`) |
+| Eierskap | `data/licence_licensees.json` via `discoveryPartners` | `discoveryOwnership` (`:3407-3420`) |
+| Beskrivelse | `data/discovery_descriptions.json` | `discoveryDescriptions` (`:3338-3344`) |
 
 **Nøkkeltallene** kom til ved å utvide `discoveries.json` med fire kolonner fra
 lag 7000: `operator` (`cmpLongName`), `wellbore` (`wlbName`, funnbrønnen),
@@ -1564,7 +1576,7 @@ De øvrige kallerne — hub- og feltreservene, og funntabellen under
 companies/reserves — sender den ikke, og får ren tekst som før. «Maturity»
 har ingen funnrader i det hele tatt.
 
-`openDiscoveryProfile` (`:3441-3449`) setter utvalget til det ene funnet,
+`openDiscoveryProfile` (`:3446-3454`) setter utvalget til det ene funnet,
 bytter fane, tegner om og ruller til topps. Uten rullingen blir man stående
 midt i en tabell som er byttet ut under føttene. Adressen oppdateres av
 `refresh` → `syncUrl`, så en profil man har hoppet til kan deles videre.
@@ -1576,12 +1588,12 @@ gikk samme vei.
 
 Reserves-visningen skiller seg ut: X-aksen er reserveestimatets årgang, ikke
 periodevelgeren, og Y-aksen er mill fat o.e. i stedet for boe/dag. Periode- og
-årsvelgeren skjules derfor mens den er aktiv (`index.html:1090`, via
-`isReservesView()` `:2013-2019`). Den er også den eneste visningen som ikke
-venter på produksjonsdata (`index.html:1738-1744`, `:1758-1763`, `:1814-1819`).
+årsvelgeren skjules derfor mens den er aktiv (`index.html:1091`, via
+`isReservesView()` `:2016-2022`). Den er også den eneste visningen som ikke
+venter på produksjonsdata (`index.html:1739-1745`, `:1759-1764`, `:1816-1821`).
 
 Alle grafer er stablede søylediagram (`stack:'s'`) med delt Y-akse i boe/dag,
-felles tooltip med totalsum (`index.html:4638-4662`). Fargepaletten har 10
+felles tooltip med totalsum (`index.html:4643-4667`). Fargepaletten har 10
 farger og resirkuleres med modulo (`index.html:436-448`).
 
 Under grafen viser `#infoBox` en tekstlinje som eksplisitt oppgir serier, enhet
@@ -1706,7 +1718,7 @@ GET data/hubs.json
 Alle hentes parallelt med `cache:'no-cache'` (revalidering mot ETag).
 **Etter dette gjør ingen brukerhandling noe nettverkskall** — all filtrering,
 periodebytte og selskapsvalg skjer i minnet. `prefetchAllFields` avbryter
-umiddelbart når bundelen finnes (`index.html:4704`).
+umiddelbart når bundelen finnes (`index.html:4709`).
 
 **Fallback (datafiler mangler):** appen kaller Sodir-APIet direkte:
 
@@ -1715,9 +1727,9 @@ umiddelbart når bundelen finnes (`index.html:4704`).
 | Feltliste | 1 kall mot lag 7100 (`:817-819`) |
 | Selskapsliste | 1 `returnCountOnly` + N parallelle sider mot 7108 (`:967-981`) |
 | Reserver | `queryAllParallel` mot 7114 (`:1023-1026`) |
-| Reserver per felt | 1 kall mot lag 7113 (`index.html:2136`) |
+| Reserver per felt | 1 kall mot lag 7113 (`index.html:2139`) |
 | Produksjon | Batcher à 50 felt-ID-er med `IN (...)` mot 7300 (`:867-887`) |
-| Bakgrunn | Etter 2 s: batcher à 30 for alle felt (`:4659`, `:4681`) |
+| Bakgrunn | Etter 2 s: batcher à 30 for alle felt (`:4664`, `:4686`) |
 
 Fallbacken har egen sesjonscache i `sessionStorage` med versjonerte nøkler
 (`index.html:522-523`), og faller tilbake til en `Map` i minnet hvis
@@ -1762,18 +1774,18 @@ laste siden på nytt.
 
 ### Excel-eksport
 
-`downloadExcel` (`index.html:4349-4402`) genererer i nettleseren en `.xlsx` med
+`downloadExcel` (`index.html:4354-4407`) genererer i nettleseren en `.xlsx` med
 to ark: **Info** (genereringstidspunkt, periodetype, årsintervall,
 databeskrivelse, kildehenvisning) og **Data** (én kolonne per serie, sebrastriper).
 Filnavn: `NCS_Production_<Periode>_<fra>-<til>.xlsx`.
 
 Reserves-visningen eksporterer annerledes, siden periodetype og årsintervall
 ikke gjelder der. `renderChart` tar `opts.xTitle`, som lagres i `lastXTitle`
-(`index.html:4684`); er den satt, heter fila `NCS_Reserves.xlsx`,
+(`index.html:4689`); er den satt, heter fila `NCS_Reserves.xlsx`,
 Info-arket utelater periodetype og årsintervall, og første kolonne får
-overskriften `Year` i stedet for `Period` (`index.html:4740-4743`,
-`:4754-4757`, `:4766`). `opts.allTicks` styrer i tillegg at hver etikett vises
-på x-aksen (`index.html:4713`).
+overskriften `Year` i stedet for `Period` (`index.html:4745-4748`,
+`:4759-4762`, `:4771`). `opts.allTicks` styrer i tillegg at hver etikett vises
+på x-aksen (`index.html:4718`).
 
 Eksporten hadde en forskyvningsfeil som er rettet — se §11.0.
 
@@ -1808,7 +1820,7 @@ Målt 2026-09-14 på committet innhold.
 | `coastline.json` | 50,3 KB | 17,8 KB |
 | `meta.json` | 0,1 KB | 0,1 KB |
 | **Sum `data/`** | **3 058,1 KB** | **748,9 KB** |
-| `index.html` | 234,7 KB | 71,7 KB |
+| `index.html` | 235,1 KB | 71,8 KB |
 
 GitHub Pages komprimerer tekst automatisk, så reell overføring ved førstegangs
 last er ca. **750 KB** for data pluss selve HTML-fila.
@@ -1947,9 +1959,9 @@ det **43 andre** funn-carriers som ikke har fått samme behandling — to av dem
 faktisk produksjon (`25288497` = 7220/11-1 Alta, `44576` = 33/9-6 DELTA). De
 dukker opp som `Field <id>` uten eierandeler.
 
-Spesialtilfellet er spredt over elleve steder: `:735-742`, `:744-747`, `:752-753`, `:824-828`, `:909-910`, `:1110-1112`,
-`:1804-1810`, `:4603-4605`, og i hvert av de fem `relevantIds`-uttrykkene
-(`:3380-3382`, `:3474-3476`, `:3862-3864`, `:4046-4048`).
+Spesialtilfellet er spredt over elleve steder: `:735-742`, `:744-747`, `:752-753`, `:824-828`, `:909-910`, `:1111-1113`,
+`:1806-1812`, `:4608-4610`, og i hvert av de fem `relevantIds`-uttrykkene
+(`:3385-3387`, `:3479-3481`, `:3867-3869`, `:4051-4053`).
 
 ### 11.4 Selskaper kobles på navnestreng
 
@@ -1988,13 +2000,13 @@ Annen død kode (`labelValue`, ubrukt `showSpinner`-parameter, ubrukt variabel i
 Hele cache-laget (`index.html:520-556`, `:851-857`, `:900`, `:958-963`, `:986`)
 kjører aldri så lenge `data/`-filene finnes, fordi bundle-stien returnerer tidlig
 (`index.html:841-846`, `:948-956`). `sessionClearProd()` kalles fortsatt ved
-årsbytte (`:543`) og periodebytte (`:1173`, `:1185`), men er en no-op for
+årsbytte (`:543`) og periodebytte (`:1174`, `:1186`), men er en no-op for
 korrektheten. Koden er ikke feil — bare uvirksom.
 
 ### 11.10 Årsvelgeren overstyres ved periodebytte
 
 Se §8.8. Bytter brukeren periode, mistes et manuelt satt `yearFrom`.
-`setPeriod` tømmer i tillegg hele `fieldProdCache` (`:1139`, `:1151`) — harmløst
+`setPeriod` tømmer i tillegg hele `fieldProdCache` (`:1140`, `:1152`) — harmløst
 når bundelen finnes, men en full refetch i fallback-modus.
 
 ### 11.11 Inneværende måned vises ufullstendig
@@ -2056,7 +2068,7 @@ NLOD tillater fri bruk, viderebruk og kommersiell utnyttelse, mot at kilden
 navngis. Lisensen gir ingen garanti for at dataene er korrekte eller komplette.
 
 > **USIKKER:** Koden oppgir konsekvent «NLOD 2.0» (`fetch_sodir.py:49`,
-> `index.html:4617`). FactPages' egen forsidetekst nevner NLOD uten
+> `index.html:4622`). FactPages' egen forsidetekst nevner NLOD uten
 > versjonsnummer. NLOD 2.0 er gjeldende versjon, så påstanden er etter alt å
 > dømme riktig, men jeg fant ingen eksplisitt versjonsangivelse hos Sodir som
 > bekrefter det. Bør sjekkes mot Sodirs vilkårsside før publisering.
@@ -2071,7 +2083,7 @@ navngis. Lisensen gir ingen garanti for at dataene er korrekte eller komplette.
 
    Datoen fylles inn fra `data/meta.json` (`index.html:410-412`).
 
-2. **I Excel-eksporten**, på Info-arket (`index.html:4617`):
+2. **I Excel-eksporten**, på Info-arket (`index.html:4622`):
    > Norwegian Offshore Directorate (Sodir) FactPages – https://factpages.sodir.no – License: NLOD 2.0
 
 3. **I datafilene**, i `meta.json` (`fetch_sodir.py:49`):
