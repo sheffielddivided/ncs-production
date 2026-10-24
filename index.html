@@ -206,6 +206,11 @@
     .res-table tr.hub-row{background:var(--light);font-weight:700;color:#1a2332;}
     .res-table tr.hub-row td{border-top:1px solid var(--border);}
     .res-table tr.field-row td:first-child{padding-left:20px;color:var(--muted);}
+    .res-table tr.collapsible{cursor:pointer;user-select:none;}
+    .res-table tr.collapsible:hover,.res-table tr.collapsible:focus{background:#f0c3d8;outline:none;}
+    .res-table tr.grp-child[hidden]{display:none;}
+    .grp-chev{display:inline-block;width:14px;color:var(--blue);}
+    .grp-count{display:inline-block;margin-left:4px;padding:0 6px;border-radius:9px;background:#fff;font-size:0.62rem;font-weight:600;color:var(--muted);}
     .res-table tr.total-row{background:#e8eef5;font-weight:700;color:var(--navy);}
     .res-table tr.total-row td{border-top:2px solid var(--border);}
     /* Funnavn som lenker til profilen. Arver radens farge og vekt, slik at
@@ -3432,8 +3437,8 @@ function drawDiscoveriesPerCompany() {
     'million boe', {xTitle:'Company', allTicks:true});
 
   setChartTable(reserveTableHtml(groups, 'Company / discovery',
-    'Contingent resources per company and discovery · million boe · share is the licence interest in that discovery',
-    {shareHead:'Share'}));
+    'Contingent resources per company and discovery · million boe · share is the licence interest in that discovery · click a company to show its discoveries',
+    {shareHead:'Share', collapsible:true}));
 }
 
 function drawDiscoveriesMaturity() {
@@ -4199,6 +4204,27 @@ const UNALLOCATED = 'Unallocated (cross-border share)';
 // der den er definert — partnerrader — og står tom ellers, siden et felt
 // eller en hub ikke har noen eierandel. Er share.exact false, er verdien et
 // snitt av ulike andeler og merkes med «~».
+// Åpne grupper i den kollapsbare tabellen (Discoveries / Per company), på
+// gruppenavn. Tom = alt kollapset, som er utgangspunktet.
+const discOpen = new Set();
+
+function setDiscGroup(row, open) {
+  const key = row.dataset.g;
+  if (open) discOpen.add(key); else discOpen.delete(key);
+  row.setAttribute('aria-expanded', open);
+  row.querySelector('.grp-chev').textContent = open ? '▾' : '▸';
+  // Barna er radene mellom denne gruppen og neste.
+  for (let r = row.nextElementSibling; r && !r.classList.contains('hub-row'); r = r.nextElementSibling) {
+    r.hidden = !open;
+  }
+}
+
+function toggleDiscGroup(row) { setDiscGroup(row, row.getAttribute('aria-expanded') !== 'true'); }
+
+function toggleAllDiscGroups(open) {
+  document.querySelectorAll('#chartTable tr.collapsible').forEach(r => setDiscGroup(r, open));
+}
+
 function reserveTableHtml(groups, headLabel, caption, opts = {}) {
   groups = groups.filter(g => g.oe > 0).sort((a, b) => b.oe - a.oe);
   if (!groups.length) return '';
@@ -4223,16 +4249,28 @@ function reserveTableHtml(groups, headLabel, caption, opts = {}) {
   const body = groups.map(g => {
     const kids = (g.children || []).filter(c => c.oe > 0);
     const single = kids.length === 1 && kids[0].name === g.name;
+    // Kollapsbar: barna skjules til man klikker på gruppen. Tilstanden ligger i
+    // discOpen, så den overlever at tabellen tegnes på nytt ved utvalgsendring.
+    const fold = opts.collapsible && !single && kids.length > 0;
+    const open = fold && discOpen.has(g.name);
     const rows = single ? '' : kids
       .sort((a, b) => b.oe - a.oe)
-      .map(c => `<tr class="field-row"><td>${nm(c)}</td>${sh(c)}<td>${n(c.liq)}</td><td>${n(c.gas)}</td><td>${n(c.oe)}</td></tr>`)
+      .map(c => `<tr class="field-row${fold ? ' grp-child' : ''}"${fold && !open ? ' hidden' : ''}><td>${nm(c)}</td>${sh(c)}<td>${n(c.liq)}</td><td>${n(c.gas)}</td><td>${n(c.oe)}</td></tr>`)
       .join('');
-    return `<tr class="hub-row"><td>${nm(g)}</td>${sh(g)}<td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>${rows}`;
+    const head = fold
+      ? `<tr class="hub-row collapsible" tabindex="0" role="button" aria-expanded="${open}" data-g="${esc(g.name)}"
+           onclick="toggleDiscGroup(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDiscGroup(this)}">
+           <td><span class="grp-chev">${open ? '▾' : '▸'}</span>${nm(g)} <span class="grp-count">${kids.length}</span></td>`
+      : `<tr class="hub-row"><td>${nm(g)}</td>`;
+    return `${head}${sh(g)}<td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>${rows}`;
   }).join('');
+  const foldBar = opts.collapsible
+    ? `<div class="grp-row"><button class="grp-btn" onclick="toggleAllDiscGroups(true)">Expand all</button>
+         <button class="grp-btn" onclick="toggleAllDiscGroups(false)">Collapse all</button></div>` : '';
 
   const shHead = opts.shareHead ? `<th>${opts.shareHead}</th>` : '';
   const shFoot = opts.shareHead ? '<td></td>' : '';
-  return `
+  return `${foldBar}
     <table class="res-table">
       <caption>${caption}</caption>
       <thead><tr><th>${headLabel}</th>${shHead}<th>Liquids</th><th>Gas</th><th>Total OE</th></tr></thead>

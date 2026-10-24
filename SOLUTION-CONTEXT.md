@@ -1908,6 +1908,14 @@ brønnmarkører. Funn- og selskapsprofilene får et kort med brønnene sine
 Tilstanden ligger i hashen: `xc` selskap, `xr` rolle, `xs` status, `xz`
 resultat, `xp` formål, `xy` fra-år (`all` for alle), `xq` søk, `xw` åpen brønn.
 
+**Kollapsbar tabell i Discoveries / Per company:** `reserveTableHtml` tar
+`opts.collapsible`. Hvert selskap er en rad med pil og antall funn, og funnradene
+under er skjult til man klikker på selskapet (eller trykker Enter/mellomrom).
+«Expand all» og «Collapse all» står over tabellen. Åpne selskaper huskes på
+navn i `discOpen`, så de forblir åpne når tabellen tegnes på nytt ved
+utvalgsendring; utgangspunktet er alt kollapset. De andre tabellene som deler
+funksjonen er uendret.
+
 ## 10. Datavolum
 
 Målt 2026-09-14 på committet innhold.
