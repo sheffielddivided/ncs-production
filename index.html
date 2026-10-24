@@ -147,6 +147,11 @@
     .row-link{color:inherit;font:inherit;text-decoration:underline;
       text-decoration-color:var(--blue);text-underline-offset:2px;cursor:pointer;}
     .row-link:hover,.row-link:focus-visible{color:var(--blue);}
+    /* Liten knapp inne i en tabellrad, til hopp videre til en profil. */
+    .row-btn{margin-left:8px;padding:1px 8px;border:1px solid var(--border);
+      border-radius:9px;background:#fff;font-size:0.62rem;font-weight:600;
+      color:var(--muted);cursor:pointer;vertical-align:1px;font-family:inherit;}
+    .row-btn:hover,.row-btn:focus-visible{border-color:#eeabcb;color:var(--blue);}
     /* Innretninger som ikke står der lenger tones ned, men blir med i
        tabellen — historikken er halve poenget med en hub. */
     .res-table tr.fac-gone td{color:var(--muted);opacity:0.72;}
@@ -3426,6 +3431,22 @@ function scrollToTop() {
   try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) { window.scrollTo(0, 0); }
 }
 
+// Fra hubnavnet i «OE per hub»-tabellen til hubens egen profil.
+function openHubProfile(name) {
+  topMode = 'hubs';
+  hubSubView = 'profile';
+  selectedHubNames = new Set([name]);
+  document.getElementById('modeBtnFields').classList.remove('active');
+  document.getElementById('modeBtnDiscoveries').classList.remove('active');
+  document.getElementById('modeBtnCompanies').classList.remove('active');
+  document.getElementById('modeBtnHubs').classList.add('active');
+  renderViewTabs();
+  updateFab();
+  if (sheetOpen) renderHubList();
+  refresh();
+  scrollToTop();
+}
+
 // Fra feltnavnet i hubprofilens feltliste til feltets egen profil.
 function openFieldProfile(id) {
   topMode = 'fields';
@@ -3953,12 +3974,20 @@ function periodTableHtml(groups, periods, headLabel, caption, decimals = 0) {
   const totals = periods.map((_, i) => groups.reduce((t, g) => t + g.vals[i], 0));
   const cells = vals => vals.map(v => `<td>${n(v)}</td>`).join('');
 
+  // Hubnavn er fritekst — de kan endres i settings-visningen — så de må
+  // escapes både som JS-streng og som HTML-attributt før de havner i onclick.
+  const jsStr = v => "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  const btn = g => g.hub
+    ? ` <button class="row-btn" onclick="openHubProfile(${esc(jsStr(g.hub))})"` +
+      ` title="Open the profile for ${esc(g.hub)}">Profile</button>`
+    : '';
+
   const body = groups.map(g => {
     const kids = (g.children || []);
     const single = kids.length === 1 && kids[0].name === g.name;
     const rows = single ? '' : kids
-      .map(c => `<tr class="field-row"><td>${c.name}</td>${cells(c.vals)}</tr>`).join('');
-    return `<tr class="hub-row"><td>${g.name}</td>${cells(g.vals)}</tr>${rows}`;
+      .map(c => `<tr class="field-row"><td>${esc(c.name)}</td>${cells(c.vals)}</tr>`).join('');
+    return `<tr class="hub-row"><td>${esc(g.name)}${btn(g)}</td>${cells(g.vals)}</tr>${rows}`;
   }).join('');
 
   return `
@@ -3984,7 +4013,11 @@ function renderHubPeriodTable(series, companies, qMap, periods) {
       vals: periods.map(lbl => equityOe([id], lbl, qMap, companies)),
     })).filter(c => c.vals.some(v => v > 0))
        .sort((a, b) => b.vals[last] - a.vals[last]);
-    return {name: s.hub, vals, children};
+    // Knappen settes bare når huben faktisk finnes å navigere til.
+    // Gruppenavnet faller tilbake på `Field <id>` for felt som ikke er i
+    // feltlisten, og et slikt navn er ingen hub.
+    const real = allHubs.some(h => h.name === s.hub);
+    return {name: s.hub, hub: real ? s.hub : null, vals, children};
   }).filter(g => g.vals.some(v => v > 0))
     .sort((a, b) => b.vals[last] - a.vals[last]);
 
