@@ -4965,7 +4965,7 @@ function loadExploration() {
       explWells.forEach(w => new Set([w.operator, ...w.partners.map(p => p.name)]).forEach(n => {
         if (n) count[n] = (count[n] || 0) + 1;
       }));
-      explCompanies = Object.entries(count).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(e => e[0]);
+      explCompanies = Object.keys(count);   // rekkefølgen settes ved tegning, se explRenderBar
     }
     explLoaded = true;
   });
@@ -5023,7 +5023,7 @@ function explRenderBar() {
     <div class="ex-bar">
       <input class="ex-in" type="search" list="exCompanyList" placeholder="Company…" value="${esc(f.company)}"
              oninput="explSet('company', this.value)" aria-label="Filter by company"/>
-      <datalist id="exCompanyList">${explCompanies.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <datalist id="exCompanyList">${sortCompanies(explCompanies).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       <select class="year-select" onchange="explSet('role', this.value)" aria-label="Company role">
         ${opt('any', f.role, 'Partner or operator')}${opt('operator', f.role, 'Operator only')}
       </select>
@@ -5221,20 +5221,28 @@ const addDays = (d, n) => new Date(dayMs(d) + n * 864e5).toISOString().slice(0, 
 //  · uten sluttdato og startet de siste 60 dagene: «mulig pågående»
 //  · uten sluttdato og eldre: tegnet med typisk lengde (21 dager), stripet
 //
-// OVERLAPP. En rigg bor bare én brønn om gangen, men Sodirs startdato er ofte
-// tidspunktet for en forboring: riggen går videre til andre oppgaver og kommer
-// tilbake for å fullføre. Sluttdatoen er derfor master, og en startdato som
-// ligger før forrige brønns slutt på samme rigg flyttes fram til den
-// (adjustRigOverlaps). Brønner uten rapportert sluttdato har bare et anslag og
-// beholder sin egen start; de påvirker ikke de andre.
-//
-// Etterfølgende utviklingsbrønner på samme felt og rigg vises som én
-// sammenhengende aktivitet (mergeDevBlocks), merket med feltnavnet.
+// KAMPANJER OG OVERLAPP. En rigg bor bare én brønn om gangen, men Sodirs
+// startdato er ofte en forboring: riggen går videre til andre oppgaver og
+// kommer tilbake for å fullføre. Og mange brønner mangler sluttdato helt.
+// planRigBars løser det i tre trinn, per rigg:
+//  1. Utviklingsbrønner på samme felt, med høyst DEV_MERGE_GAP dagers opphold,
+//     er én kampanje — også når den har brønner uten sluttdato eller en som
+//     bores nå. Kampanjen er det som vises, med feltnavnet.
+//  2. Sluttdatoen er master. Letebrønner og kampanjer med rapportert slutt
+//     legges i rekkefølge etter slutt, og en start som ligger inne i en annen
+//     aktivitet flyttes til den slutter. En kampanje som fortsetter etter en
+//     letebrønn i samme område starter dermed der letebrønnen sluttet.
+//  3. En kampanje der ingen brønn har rapportert slutt er en forboring. Den
+//     starter etter aktiviteten den ligger inne i, og slutter der neste
+//     aktivitet på riggen starter — høyst DEV_GAP_CAP dager, og uten neste
+//     aktivitet DEV_TYPICAL_DAYS dager.
+// Resultatet har ingen overlapp.
 let rigDev = [], rigDevLoaded = false, rigDevLoading = null;
 let devBlockById = {};   // brønn-id -> blokken (aktiviteten) den inngår i
 const DEV_COLOR = '#4993b4';
 const DEV_TYPICAL_DAYS = 21;
-const DEV_MERGE_GAP = 30;   // dager mellom brønner som fortsatt regnes som sammenhengende
+const DEV_MERGE_GAP = 30;   // dager mellom brønner som fortsatt regnes som samme kampanje
+const DEV_GAP_CAP = 60;     // lengste en forboring uten rapportert slutt strekkes, til neste aktivitet
 
 function loadRigWells() {
   if (rigDevLoaded) return Promise.resolve();
@@ -5270,47 +5278,93 @@ function rigDevPasses(w) {
   return (f.fixed || !w.fixed) && (!c || w.operator.toLowerCase().includes(c)) && (!q || w.hay.includes(q));
 }
 
-// Sluttdatoen er master: sorter på slutt, og flytt en start som ligger før
-// forrige brønns slutt fram til den. Ingen start flyttes forbi egen slutt,
-// siden forrige slutt aldri er senere enn denne.
-function adjustRigOverlaps(items) {
-  const done = items.filter(w => w.state !== 'planned' && !w.noEnd)
+const isoMin = (a, b) => (a < b ? a : b);
+const isoMax = (a, b) => (a > b ? a : b);
+
+// list: alle aktiviteter på én rigg (lete- og utviklingsbrønnbaner, planlagte
+// inkludert). Returnerer strekene som skal tegnes: letebrønnene med justert
+// start, utviklingskampanjer og de planlagte, uendret.
+function planRigBars(list, today) {
+  const planned = list.filter(w => w.state === 'planned');
+  const expl = list.filter(w => w.kind === 'expl' && w.state !== 'planned').map(w => ({...w, start0: w.start}));
+
+  // 1. Kampanjer: samme felt, med kjede av høyst DEV_MERGE_GAP dager. En brønn
+  // uten felt står alene. Løpende slutt i kjeden er rapportert slutt, ellers
+  // brønnens egen start.
+  const camps = [], open = {};
+  list.filter(w => w.kind === 'dev').sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).forEach(w => {
+    const key = w.field || '~' + (w.well || w.name);
+    let c = open[key];
+    if (!c || w.start > addDays(c.runEnd, DEV_MERGE_GAP)) {
+      c = open[key] = {kind: 'dev', field: w.field, title: w.title, rig: w.rig, rigType: w.rigType, items: [], runEnd: w.start};
+      camps.push(c);
+    }
+    c.items.push(w);
+    c.runEnd = isoMax(c.runEnd, w.completion || (w.maybe ? today : w.start));
+  });
+  camps.forEach(c => {
+    c.id = c.items[0].id;
+    c.start = c.items[0].start;
+    c.hasEnd = c.items.some(i => i.completion || i.maybe);
+    c.maybe = c.items.some(i => i.maybe);
+    c.tailStart = c.maybe ? c.items.filter(i => i.maybe).map(i => i.start).sort()[0] : '';
+    c.end = c.items.map(i => i.end).sort().pop();
+    c.noEnd = !c.hasEnd;
+    c.state = c.maybe ? 'drilling' : 'completed';
+    c.operator = [...new Set(c.items.map(i => i.operator).filter(Boolean))].join(', ');
+    c.show = c.items.some(i => i.show);
+    c.start0 = c.start;
+    c.items.forEach(i => { devBlockById[i.id] = c; });
+  });
+
+  // 2. Sluttdatoen er master for alt med rapportert slutt.
+  const anchored = expl.concat(camps.filter(c => c.hasEnd))
     .sort((a, b) => (a.end < b.end ? -1 : a.end > b.end ? 1 : a.start < b.start ? -1 : 1));
   let prev = '';
-  done.forEach(w => {
-    if (prev && w.start < prev) w.start = prev > w.end ? w.end : prev;
+  anchored.forEach(w => {
+    if (prev && w.start < prev) w.start = isoMin(prev, w.end);
     if (w.end > prev) prev = w.end;
+    if (w.kind === 'dev' && w.maybe) w.tailStart = isoMax(w.tailStart, w.start);
   });
-}
 
-// Etterfølgende utviklingsbrønner på samme felt, med høyst DEV_MERGE_GAP dagers
-// opphold, blir én blokk. Resten av elementene går gjennom uendret.
-function mergeDevBlocks(items) {
-  const out = [];
-  items.slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).forEach(w => {
-    const last = out[out.length - 1];
-    if (w.kind === 'dev' && last && last.kind === 'dev' && last.field && last.field === w.field
-        && !w.maybe && !last.items.some(i => i.maybe)   // «mulig pågående» står alene
-        && addDays(last.end, DEV_MERGE_GAP) >= w.start) {
-      last.items.push(w);
-      if (w.end > last.end) last.end = w.end;
-    } else if (w.kind === 'dev') {
-      out.push({kind: 'dev', id: w.id, title: w.title, field: w.field, rig: w.rig, rigType: w.rigType,
-                start: w.start, end: w.end, items: [w]});
+  // 3. Forboringer uten rapportert slutt, i startrekkefølge.
+  const placed = anchored.map(w => [w.start, w.end]);
+  const starts = () => placed.map(x => x[0]).concat(planned.map(w => w.start));
+  camps.filter(c => !c.hasEnd).sort((a, b) => (a.start < b.start ? -1 : 1)).forEach(c => {
+    let s = c.start;
+    for (let moved = true; moved;) {
+      moved = false;
+      for (const [a, b] of placed) if (a <= s && s < b) { s = b; moved = true; }
+    }
+    const next = starts().filter(x => x >= s).sort()[0];
+    let e = next ? isoMin(next, addDays(s, DEV_GAP_CAP)) : addDays(s, DEV_TYPICAL_DAYS);
+    if (e > today) e = today;
+    if (e < s) e = s;
+    c.start = s; c.end = e;
+    placed.push([s, e]);
+  });
+  camps.forEach(c => { c.shifted = c.start > c.start0; });
+
+  // 4. Kampanjer på samme felt som nå ligger rett etter hverandre, for
+  // eksempel en forboring og kampanjen den hørte til, er én aktivitet.
+  const fin = [];
+  camps.slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).forEach(c => {
+    const last = fin[fin.length - 1];
+    if (last && last.field && last.field === c.field && addDays(last.end, DEV_MERGE_GAP) >= c.start) {
+      last.items.push(...c.items);
+      last.end = isoMax(last.end, c.end);
+      if (c.maybe) { last.tailStart = last.maybe ? last.tailStart : c.tailStart; last.maybe = true; last.state = 'drilling'; }
+      last.noEnd = last.noEnd && c.noEnd;
+      last.shifted = last.shifted || c.shifted;
+      last.start0 = isoMin(last.start0, c.start0);
+      last.show = last.show || c.show;
+      last.operator = [...new Set(last.items.map(i => i.operator).filter(Boolean))].join(', ');
+      last.items.forEach(i => { devBlockById[i.id] = last; });
     } else {
-      out.push(w);
+      fin.push(c);
     }
   });
-  out.forEach(b => {
-    if (b.kind !== 'dev') return;
-    b.maybe = b.items.some(i => i.maybe);
-    b.noEnd = b.items.every(i => i.noEnd);
-    b.state = b.maybe ? 'drilling' : 'completed';
-    b.shifted = b.items.some(i => i.start > i.entry);
-    b.operator = [...new Set(b.items.map(i => i.operator).filter(Boolean))].join(', ');
-    b.items.forEach(i => { devBlockById[i.id] = b; });
-  });
-  return out;
+  return expl.concat(fin, planned);
 }
 
 function openDevWell(id) {
@@ -5342,17 +5396,18 @@ function openDevWell(id) {
     <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
       ${fact('Field', tc(g.field))}${fact('Operator', g.operator)}${fact('Rig', g.rig)}${fact('Rig type', tc(g.rigType))}
       ${fact('Rig kind', g.items[0].fixed ? 'Fixed platform' : 'Mobile')}${fact('Shown from', fmtShort(g.start))}
-      ${fact('Shown to', g.maybe ? 'ongoing?' : fmtShort(g.end))}${fact('Wellbores', n)}
+      ${fact('Shown to', g.maybe ? 'ongoing?' : fmtShort(g.end))}${fact('Sodir first start', fmtShort(g.start0))}${fact('Wellbores', n)}
     </div></div>
     <div class="pf-card"><h3>Wellbores</h3><div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
-      <th class="ex-l">Wellbore</th><th>Sodir start</th><th>Shown from</th><th>End</th></tr></thead><tbody>
+      <th class="ex-l">Wellbore</th><th>Sodir start</th><th>Sodir end</th></tr></thead><tbody>
       ${g.items.map(b => `<tr><td class="ex-l"><a href="https://factpages.sodir.no/wellbore/pageview/development/all/${b.id}" target="_blank" rel="noopener">${esc(b.name)} ↗</a></td>
-        <td>${fmtShort(b.entry)}</td><td${b.start > b.entry ? ' class="ex-adj"' : ''}>${fmtShort(b.start)}</td>
-        <td>${b.completion ? fmtShort(b.completion) : 'not reported'}</td></tr>`).join('')}
+        <td>${fmtShort(b.entry)}</td><td>${b.completion ? fmtShort(b.completion) : 'not reported'}</td></tr>`).join('')}
       </tbody></table></div>
-      <div class="pf-map-note">A rig drills one well at a time, so the end date is treated as correct and a start date before the
-        previous well's end on the same rig is moved up to it. This matters most for pre-drilled wells, where Sodir's start
-        date is when the rig first spudded the well, before it moved on to other work and returned to complete it.</div>
+      <div class="pf-map-note">The bar above is one campaign on ${esc(tc(g.field) || 'this field')}: development wells on the same field and rig
+        with less than ${DEV_MERGE_GAP} days between them. A rig drills one well at a time, so end dates are treated as correct and the
+        campaign starts when the rig finished whatever it was doing before — Sodir's start date is often a pre-drill, after
+        which the rig moved on and returned.${g.noEnd ? ` No well in the campaign has a reported end, so it is drawn until the
+        rig's next activity starts (at most ${DEV_GAP_CAP} days).` : ''}</div>
     </div>
     <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
   document.getElementById('wdOverlay').classList.add('open');
@@ -5372,26 +5427,21 @@ function explRenderRigs() {
   // starter bare fordi en annen brønn er filtrert bort.
   const passes = new Set(explFiltered(true));
   const byRigAll = {};
-  const push = w => { w.show = w.show !== false; (byRigAll[w.rig] = byRigAll[w.rig] || []).push(w); };
+  const push = w => { (byRigAll[w.rig] = byRigAll[w.rig] || []).push(w); };
   explWells.forEach(g => g.branches.forEach(b => {
     if (!b.rig || b.overdue) return;
-    push({...b, title: g.title, show: passes.has(g), end: endOf(b), shownEnd: b.end});
+    push({...b, kind: 'expl', title: g.title, show: passes.has(g), end: endOf(b), shownEnd: b.end});
   }));
   rigDev.forEach(d => push({...d, show: rigDevPasses(d)}));
 
   const t0 = addDays(today, -456);
-  let latestPlan = '';
-  const rigs = [];
-  Object.entries(byRigAll).forEach(([name, list]) => {
-    adjustRigOverlaps(list);
-    const shown = list.filter(w => w.show);
-    shown.filter(w => w.state === 'planned').forEach(w => { if (w.planned > latestPlan) latestPlan = w.planned; });
-    rigs.push({name, shown});
-  });
-  const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
   devBlockById = {};
-  const out = rigs.map(r => {
-    const ws = mergeDevBlocks(r.shown).filter(w => w.start <= t1 && endOf(w) >= t0);
+  let latestPlan = '';
+  const planned = Object.entries(byRigAll).map(([name, list]) => ({name, bars: planRigBars(list, today).filter(w => w.show)}));
+  planned.forEach(r => r.bars.filter(w => w.state === 'planned').forEach(w => { if (w.planned > latestPlan) latestPlan = w.planned; }));
+  const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
+  const out = planned.map(r => {
+    const ws = r.bars.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).filter(w => w.start <= t1 && endOf(w) >= t0);
     const now = ws.filter(w => w.state === 'drilling').pop();
     const next = ws.find(w => w.state === 'planned');
     const last = ws.filter(w => w.state === 'completed').pop();
@@ -5444,12 +5494,21 @@ function explRenderRigs() {
       const txt = room >= 5 ? w.title.slice(0, room - 1) + (w.title.length > room - 1 ? '…' : '') : '';
       const dark = isDev || ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling';
       const note = (isDev && w.items.length > 1 ? ` · ${w.items.length} wellbores` : '')
-        + (w.noEnd ? ' (completion date not reported; length estimated)' : w.maybe ? ' (possibly still drilling)' : '')
+        + (w.noEnd ? ' (no completion date reported; drawn until the rig\'s next activity)' : w.maybe ? ' (possibly still drilling)' : '')
         + (isDev && w.shifted ? ' (start adjusted to avoid overlap)' : '');
       const to = isDev ? (w.maybe || w.noEnd ? '' : ' – ' + fmtShort(w.end)) : (w.shownEnd ? ' – ' + fmtShort(w.shownEnd) : '');
+      // En kampanje der siste brønn trolig bores nå: blå til den brønnen starter, så grønn stiplet.
+      const ry = y + 3 + (multi ? w.lane * 13 : 0), rh = multi ? 11 : RH - 8;
+      const tail = isDev && w.maybe && w.tailStart ? clampX(w.tailStart) : null;
+      const split = tail !== null && tail > a + 2;
+      const rects = split
+        ? `<rect x="${a.toFixed(1)}" y="${ry}" width="${(tail - a).toFixed(1)}" height="${rh}" rx="3" fill="${DEV_COLOR}"/>
+           <rect x="${tail.toFixed(1)}" y="${ry}" width="${Math.max(b - tail, 3).toFixed(1)}" height="${rh}" rx="3" fill="${EX_ACTIVE}"
+             fill-opacity="0.7" stroke="#0a6b47" stroke-dasharray="4 2"/>`
+        : `<rect x="${a.toFixed(1)}" y="${ry}" width="${(b - a).toFixed(1)}" height="${rh}" rx="3" fill="${fill}"
+             fill-opacity="${opacity}" stroke="${stroke}" stroke-dasharray="${dash}"/>`;
       return `<g onclick="${exOpen(w)}" style="cursor:pointer">
-        <rect x="${a.toFixed(1)}" y="${y + 3 + (multi ? w.lane * 13 : 0)}" width="${(b - a).toFixed(1)}" height="${multi ? 11 : RH - 8}" rx="3" fill="${fill}"
-          fill-opacity="${opacity}" stroke="${stroke}" stroke-dasharray="${dash}"/>
+        ${rects}
         ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + (multi ? 12 + w.lane * 13 : RH / 2 + 3)}" class="ex-bar-t" style="${multi ? 'font-size:8px' : ''}" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
         <title>${esc(w.title)}${isDev ? ' (development)' : ` (${esc(w.name)})`} · ${esc(w.operator)} · ${fmtShort(w.start)}${to}${note}</title></g>`;
     }).join('');
@@ -5475,12 +5534,13 @@ function explRenderRigs() {
         <line x1="${tx}" x2="${tx}" y1="${TOP - 4}" y2="${H}" stroke="${OIL_COLOR}" stroke-width="1.4" stroke-dasharray="3 2"/>
       </svg></div>
       ${explLegend(nDev ? [[DEV_COLOR, 'Development (by field)'], ['url(#exHatch)', 'Development, end not reported']] : [])}
-      <div class="pf-map-note">A rig drills one well at a time, so end dates are treated as correct and a start date earlier than the
-        previous well's end is moved up to it — Sodir's start is often a pre-drill, after which the rig moved on and returned.
-        Successive development wells on the same field and rig are shown as one bar named after the field.
-        Dashed white bars are planned exploration wells (60-day placeholder). The red line is today. Sodir has no planned dates for
-        development wells, so those appear only once drilling has started. Striped bars have no completion date and are drawn at a typical
-        ${DEV_TYPICAL_DAYS} days; a dashed green bar started in the last 60 days and is probably still being drilled.</div>
+      <div class="pf-map-note">A rig drills one well at a time, so there are no overlaps: end dates are treated as correct, and an activity
+        whose start lies inside another is moved to where that one ended — Sodir's start is often a pre-drill, after which the rig
+        moved on and returned. Development wells on the same field and rig, less than ${DEV_MERGE_GAP} days apart, are one campaign,
+        drawn as one bar named after the field. Striped bars are campaigns where no well has a reported completion date; they run
+        until the rig's next activity starts (at most ${DEV_GAP_CAP} days). The green dashed part is a well started in the last
+        60 days, probably still being drilled. Dashed white bars are planned exploration wells (60-day placeholder). The red line is today.
+        Sodir has no planned dates for development wells, so those appear only once drilling has started.</div>
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Rig</th><th class="ex-l">Drilling now</th><th class="ex-l">Next planned</th><th class="ex-l">Last completed</th>
@@ -5716,6 +5776,8 @@ async function init() {
     allCompanies = sortCompanies(allCompanies);
     filteredCompanies = allCompanies;
     if (sheetOpen && topMode === 'companies') renderCompanyList();
+    // Exploration bruker samme rekkefølge, og kan være åpnet før reservene kom.
+    if (topMode === 'exploration' && explLoaded && explWells.length) explRenderBar();
   });
 
   // ── Phase 4: Background prefetch all fields quietly ──
