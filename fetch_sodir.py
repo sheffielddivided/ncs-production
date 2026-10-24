@@ -765,6 +765,43 @@ def build_exploration_wells():
             'rows': out, 'owners': owners}
 
 
+# Utviklingsbronner til riggoversikten i Exploration. Bare det riggene
+# trenger: hvem boret hva, hvor og nar. Fra de to siste arene — eldre bronner
+# er utenfor tidslinjen og ville bare gjort fila stor.
+#
+# Utviklingsbronner har ingen planlagt startdato i Sodirs data, sa her finnes
+# bare fortid og nåtid. Sluttdato rapporteres med etterslep: statusen er
+# 'ONLINE/OPERATIONAL' fra dag én, og wlbCompletionDate fylles inn senere.
+# Fila skiller derfor ikke ut «bores nå»; det avgjør frontenden.
+# Jordprover (SOIL DRILLING) og observasjonsbronner er utelatt.
+def build_rig_wells():
+    year = datetime.now(timezone.utc).year
+    rows = fetch_layer(
+        WELL_LAYER,
+        'wlbNpdidWellbore,wlbWellboreName,wlbWell,wlbField,wlbPurpose,wlbDrillingOperator,'
+        'wlbDrillingFacility,wlbFacilityTypeDrilling,wlbDrillingFacilityFixedOrMove,'
+        'wlbEntryDate,wlbCompletionDate,wlbProductionLicence',
+        f"wlbPurpose IN ('PRODUCTION','INJECTION') AND wlbEntryYear >= {year - 2}",
+    )
+    out = []
+    for r in rows:
+        wid, name = as_int(r.get('wlbNpdidWellbore')), _clean(r.get('wlbWellboreName'))
+        rig, entry = _clean(r.get('wlbDrillingFacility')), r.get('wlbEntryDate')
+        if wid is None or not name or not rig or entry is None:
+            continue
+        out.append([
+            wid, name, _clean(r.get('wlbWell')), _clean(r.get('wlbField')),
+            _clean(r.get('wlbPurpose')), _clean(r.get('wlbDrillingOperator')),
+            rig, _clean(r.get('wlbFacilityTypeDrilling')),
+            1 if _clean(r.get('wlbDrillingFacilityFixedOrMove')) == 'FIXED' else 0,
+            _day(entry), _day(r.get('wlbCompletionDate')), _clean(r.get('wlbProductionLicence')),
+        ])
+    out.sort(key=lambda x: x[0])
+    return {'columns': ['id', 'name', 'well', 'field', 'purpose', 'operator', 'rig', 'rigType',
+                        'fixed', 'entry', 'completion', 'licence'],
+            'rows': out}
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     """Skriv fila kun hvis innholdet faktisk er endret. Returnerer True ved endring."""
@@ -805,6 +842,7 @@ def main():
         ('licences.json', 'utvinningstillatelser', build_licences),
         ('companies.json', 'selskaper', build_companies),
         ('exploration_wells.json', 'letebronner', build_exploration_wells),
+        ('rig_wells.json', 'utviklingsbronner til riggoversikt', build_rig_wells),
     ]
 
     changed = False

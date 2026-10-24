@@ -114,6 +114,7 @@
     .ex-leg{display:inline-flex;align-items:center;}
     .ex-leg .ex-dot{margin-right:5px;}
     .ex-map{width:100%;height:auto;display:block;border-radius:8px;background:#eef3f8;}
+    .ex-chk{display:inline-flex;align-items:center;gap:5px;font-size:0.78rem;color:#44505f;cursor:pointer;}
     .ex-scroll{overflow-x:auto;}
     .ex-gantt{min-width:760px;width:100%;height:auto;display:block;}
     .ex-ax{font-size:10px;fill:#828282;}
@@ -1721,6 +1722,8 @@ function stateToHash() {
     [['company','xc'],['role','xr'],['status','xs'],['result','xz'],['purpose','xp'],['from','xy'],['q','xq']]
       .forEach(([k, p]) => { if (explF[k] !== dflt[k]) q.set(p, explF[k]); });
     if (explF.from === '' && dflt.from !== '') q.set('xy', 'all');
+    if (!explF.dev) q.set('xd', '0');
+    if (explF.fixed) q.set('xf', '1');
     if (explF.open) q.set('xw', explF.open);
   }
   else                         q.set('c', [...selectedCompanyNames].join(SEP));
@@ -1771,6 +1774,8 @@ function applyHash() {
     if (g('xy') === 'all') explF.from = '';
     else if (/^\d{4}$/.test(g('xy') || '')) explF.from = g('xy');
     if (g('xq')) explF.q = g('xq');
+    if (g('xd') === '0') explF.dev = false;
+    if (g('xf') === '1') explF.fixed = true;
     if (+g('xw') > 0) explF.open = +g('xw');
   }
 
@@ -4827,7 +4832,8 @@ let explWells = [], explOwners = [], explCompanies = [];
 let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
-                             purpose:'all', from:String(currentYear - 2), q:''});
+                             purpose:'all', from:String(currentYear - 2), q:'',
+                             dev:true, fixed:false});   // dev/fixed: bare riggfanen
 let explF = {...explDefaults(), open:null};
 let explSort = {key:'start', dir:-1};
 let explLimit = 100;
@@ -5037,6 +5043,9 @@ function explRenderBar() {
       <select class="year-select" onchange="explSet('from', this.value)" aria-label="From year">
         ${years.map(y => opt(y, f.from, y ? `From ${y}` : 'All years')).join('')}
       </select>` : ''}
+      ${explSubView === 'rigs' ? `
+      <label class="ex-chk"><input type="checkbox" ${f.dev ? 'checked' : ''} onchange="explSet('dev', this.checked, true)"> Development wells</label>
+      <label class="ex-chk"><input type="checkbox" ${f.fixed ? 'checked' : ''} ${f.dev ? '' : 'disabled'} onchange="explSet('fixed', this.checked)"> Fixed platforms</label>` : ''}
       <button class="grp-btn" onclick="explReset()">Reset</button>
     </div>`;
 }
@@ -5055,6 +5064,7 @@ async function refreshExploration() {
   if (!explLoaded) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
   setInfo('');
   await loadExploration();
+  if (explSubView === 'rigs') await loadRigWells();
   if (!explWells.length) {
     document.getElementById('explBar').innerHTML = '';
     box.innerHTML = '<div class="status">No exploration well data available.</div>';
@@ -5141,11 +5151,11 @@ function explDotStyle(w) {
   return {fill: (EX_RES[w.resKey] || EX_RES.other).color, stroke: '#fff', sw: 0.8};
 }
 
-function explLegend() {
-  const item = (c, t, ring) => `<span class="ex-leg"><span class="ex-dot" style="background:${ring ? '#fff' : c};${
+function explLegend(extra = []) {
+  const item = (c, t, ring) => `<span class="ex-leg"><span class="ex-dot" style="background:${ring ? '#fff' : c.startsWith('url(') ? DEV_COLOR + ';background-image:repeating-linear-gradient(45deg,#86b9d1 0 3px,transparent 3px 6px)' : c};${
     ring ? `border:1.6px solid ${c};` : ''}"></span>${t}</span>`;
   return `<div class="ex-legend">${['oil', 'oilgas', 'gas', 'shows', 'dry'].map(k => item(EX_RES[k].color, EX_RES[k].label)).join('')}
-    ${item(EX_ACTIVE, 'Drilling')}${item('#1a2332', 'Planned', true)}</div>`;
+    ${item(EX_ACTIVE, 'Drilling')}${item('#1a2332', 'Planned', true)}${extra.map(([c, t]) => item(c, t)).join('')}</div>`;
 }
 
 function explRenderMap() {
@@ -5200,16 +5210,141 @@ function explRenderMap() {
 const dayMs = d => Date.parse(d + 'T00:00:00Z');
 const addDays = (d, n) => new Date(dayMs(d) + n * 864e5).toISOString().slice(0, 10);
 
+// ── Utviklingsbrønner på riggene ─────────────────────────────────────────────
+// data/rig_wells.json: produksjons- og injeksjonsbrønner fra de siste to
+// årene, bare det riggtidslinjen trenger. Sodir har ingen planlagt startdato
+// for utviklingsbrønner, så her finnes bare fortid og nåtid.
+//
+// Sluttdato rapporteres med etterslep — statusen er «ONLINE/OPERATIONAL» fra
+// første dag og skiller ikke en brønn som bores fra en som er ferdig. Derfor:
+//  · uten sluttdato og startet de siste 60 dagene: «mulig pågående»
+//  · uten sluttdato og eldre: tegnet med typisk lengde (21 dager), stripet
+// Grenene av samme brønn på samme rigg slås sammen til én strek når de ligger
+// tett i tid.
+let rigDev = [], rigDevLoaded = false, rigDevLoading = null;
+const DEV_COLOR = '#4993b4';
+const DEV_TYPICAL_DAYS = 21;
+
+function loadRigWells() {
+  if (rigDevLoaded) return Promise.resolve();
+  if (rigDevLoading) return rigDevLoading;
+  rigDevLoading = fetchBundle('rig_wells').then(b => {
+    if (b) {
+      const today = new Date().toISOString().slice(0, 10);
+      const recent = addDays(today, -60);
+      const byKey = {};
+      b.rows.forEach(r => {
+        const w = {};
+        b.columns.forEach((c, i) => { w[c] = r[i]; });
+        const k = w.rig + '|' + (w.well || w.name);
+        (byKey[k] = byKey[k] || []).push(w);
+      });
+      // Samme brønn på samme rigg kan være boret i flere omganger over år.
+      // Grenene slås sammen bare når de ligger tett i tid (høyst 30 dagers
+      // opphold); ellers ville én strek dekket hele perioden, inkludert tiden
+      // riggen faktisk var på andre brønner.
+      const GAP = 30;
+      const endGuess = w => w.completion || addDays(w.entry, DEV_TYPICAL_DAYS);
+      const clusters = [];
+      Object.values(byKey).forEach(list => {
+        list.sort((a, c) => (a.entry < c.entry ? -1 : 1));
+        let cur = null, curEnd = '';
+        list.forEach(w => {
+          if (cur && w.entry <= addDays(curEnd, GAP)) {
+            cur.push(w);
+            if (endGuess(w) > curEnd) curEnd = endGuess(w);
+          } else {
+            cur = [w]; curEnd = endGuess(w); clusters.push(cur);
+          }
+        });
+      });
+      rigDev = clusters.map(list => {
+        const m = list[0];
+        const open = list.filter(w => !w.completion);
+        const possiblyOngoing = open.some(w => w.entry >= recent);
+        const estimated = !possiblyOngoing && open.length > 0;
+        const end = possiblyOngoing ? '' : list.map(w => {
+          const e = endGuess(w);
+          return e > today ? today : e;
+        }).sort().pop();
+        const g = {
+          kind: 'dev', id: m.id, branches: list, well: m.well || m.name, title: m.well || m.name,
+          field: m.field, purpose: m.purpose, operator: m.operator, rig: m.rig, rigType: m.rigType,
+          fixed: !!m.fixed, licence: m.licence, start: m.entry, end,
+          state: possiblyOngoing ? 'drilling' : 'completed', maybe: possiblyOngoing, noEnd: estimated,
+        };
+        g.hay = [g.title, g.field, g.operator, g.rig, g.licence].join('|').toLowerCase();
+        return g;
+      });
+    }
+    rigDevLoaded = true;
+  });
+  return rigDevLoading;
+}
+
+function rigDevFiltered() {
+  const f = explF, q = f.q.trim().toLowerCase(), c = f.company.trim().toLowerCase();
+  if (!f.dev || f.purpose !== 'all') return [];
+  return rigDev.filter(g => (f.fixed || !g.fixed)
+    && (!c || g.operator.toLowerCase().includes(c)) && (!q || g.hay.includes(q)));
+}
+
+function openDevWell(id) {
+  const g = rigDev.find(x => x.id === id);
+  if (!g) return;
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+  const withRig = `${g.rig}${g.rigType ? ' (' + tc(g.rigType) + ')' : ''}`;
+  const when = g.maybe ? `since ${fmtShort(g.start)}, probably still being drilled`
+    : g.noEnd ? `from ${fmtShort(g.start)}, completion date not reported`
+    : `${fmtShort(g.start)} – ${fmtShort(g.end)}`;
+  const fld = allFields.find(f => f.name === g.field);
+  document.getElementById('wdBody').innerHTML = `
+    <div class="wd-head">
+      <div><h2>${esc(g.title)}</h2>
+        <div class="wd-sub">Development well${g.field ? ' · ' + esc(tc(g.field)) : ''} · ${esc(tc(g.purpose))}${
+          g.licence ? ' · Licence ' + esc(g.licence) : ''}</div></div>
+      <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="pf-card">
+      <p class="wd-lead">${esc(`${tc(g.purpose)} well${g.field ? ' in the ' + tc(g.field) + ' field' : ''}, drilled by ${
+        g.operator || 'an unnamed operator'} with ${withRig}, ${when}.`)}${g.noEnd || g.maybe
+        ? ' Sodir reports completion dates with a delay, so the end of the bar on the rig schedule is an estimate.' : ''}</p>
+      <div class="ex-btns">
+        <a class="ex-btn" href="https://factpages.sodir.no/wellbore/pageview/development/all/${g.id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>
+        ${fld ? `<button class="ex-btn" onclick="closeWell();openFieldProfile(${fld.id})">Field profile →</button>` : ''}
+      </div>
+    </div>
+    <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
+      ${fact('Well', g.well)}${fact('Field', tc(g.field))}${fact('Purpose', tc(g.purpose))}${fact('Operator', g.operator)}
+      ${fact('Licence', g.licence)}${fact('Rig', g.rig)}${fact('Rig type', tc(g.rigType))}
+      ${fact('Rig kind', g.fixed ? 'Fixed platform' : 'Mobile')}${fact('Started', fmtShort(g.start))}
+      ${fact('Completed', g.maybe || g.noEnd ? 'not reported' : fmtShort(g.end))}
+    </div></div>
+    ${g.branches.length > 1 ? `<div class="pf-card"><h3>Wellbores</h3><div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Wellbore</th><th>Start</th><th>End</th></tr></thead><tbody>
+      ${g.branches.map(b => `<tr><td class="ex-l"><a href="https://factpages.sodir.no/wellbore/pageview/development/all/${b.id}" target="_blank" rel="noopener">${esc(b.name)} ↗</a></td>
+        <td>${fmtShort(b.entry)}</td><td>${b.completion ? fmtShort(b.completion) : 'not reported'}</td></tr>`).join('')}
+      </tbody></table></div></div>` : ''}
+    <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
+  document.getElementById('wdOverlay').classList.add('open');
+  document.getElementById('wdOverlay').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
+const exOpen = w => w.kind === 'dev' ? `openDevWell(${w.id})` : `openWell(${w.id})`;
+
 function explRenderRigs() {
   const today = new Date().toISOString().slice(0, 10);
   // Riggene arbeider på brønnbaner, ikke brønner: et sidesteg kan bores av en
   // annen rigg enn hovedhullet. Derfor pakkes gruppene ut igjen her.
-  const all = explFiltered(true).flatMap(g => g.branches.map(b => ({...b, title: g.title})))
+  const expl = explFiltered(true).flatMap(g => g.branches.map(b => ({...b, title: g.title})))
     .filter(w => w.rig && !w.overdue);
+  const dev = rigDevFiltered();
+  const all = expl.concat(dev);
   // Vinduet: 15 måneder tilbake, og fram til siste planlagte start med
   // anslått varighet — dog minst seks og høyst atten måneder.
   const t0 = addDays(today, -456);
-  const latestPlan = all.filter(w => w.state === 'planned').map(w => w.planned).sort().pop();
+  const latestPlan = expl.filter(w => w.state === 'planned').map(w => w.planned).sort().pop();
   const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
   const endOf = w => w.end || (w.state === 'planned' ? addDays(w.planned, 60) : today);
   const inWin = all.filter(w => w.start <= t1 && endOf(w) >= t0);
@@ -5217,7 +5352,7 @@ function explRenderRigs() {
   inWin.forEach(w => (byRig[w.rig] = byRig[w.rig] || []).push(w));
   const rigs = Object.entries(byRig).map(([name, ws]) => {
     ws.sort((a, b) => (a.start < b.start ? -1 : 1));
-    const now = ws.find(w => w.state === 'drilling');
+    const now = ws.filter(w => w.state === 'drilling').pop();
     const next = ws.find(w => w.state === 'planned');
     const last = ws.filter(w => w.state === 'completed').pop();
     return {name, ws, now, next, last, type: ws[0].rigType};
@@ -5227,52 +5362,78 @@ function explRenderRigs() {
     document.getElementById('explBody').innerHTML = '<div class="ex-sum">No rig activity matches the filters</div>';
     return;
   }
-  const LW = 150, W = 1000, RH = 26, TOP = 24, H = TOP + rigs.length * RH + 6;
+  // Streker som overlapper på samme rigg legges i egne baner (høyst tre), slik
+  // at de ikke skjuler hverandre. En rigg med én bane får full radhøyde.
+  rigs.forEach(r => {
+    const ends = [];
+    r.ws.forEach(w => {
+      let l = ends.findIndex(e => e <= w.start);
+      if (l < 0) { l = Math.min(ends.length, 2); if (l === ends.length) ends.push(''); }
+      ends[l] = endOf(w) > (ends[l] || '') ? endOf(w) : ends[l];
+      w.lane = l;
+    });
+    r.lanes = ends.length;
+    r.h = r.lanes === 1 ? 26 : r.lanes * 13 + 6;
+  });
+  let acc = 24;
+  rigs.forEach(r => { r.y = acc; acc += r.h; });
+  const LW = 150, W = 1000, TOP = 24, H = acc + 6;
   const X = d => LW + (dayMs(d) - dayMs(t0)) / (dayMs(t1) - dayMs(t0)) * (W - LW - 8);
   const clampX = d => Math.min(Math.max(X(d), LW), W - 8);
   let axis = '';
-  for (let d = new Date(dayMs(t0)), first = true; d <= new Date(dayMs(t1)); d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)), first = false) {
+  for (let d = new Date(dayMs(t0)); d <= new Date(dayMs(t1)); d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) {
     const iso = d.toISOString().slice(0, 10), x = clampX(iso);
     const label = d.getUTCMonth() % 3 === 0 ? `${MONTH_ABBR[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}` : '';
     axis += `<line x1="${x}" x2="${x}" y1="${TOP - 4}" y2="${H}" stroke="${d.getUTCMonth() === 0 ? '#c3ccd5' : '#e6ebf0'}"/>`
           + (label ? `<text x="${x + 3}" y="${TOP - 9}" class="ex-ax">${label}</text>` : '');
   }
-  const bars = rigs.map((r, i) => {
-    const y = TOP + i * RH;
+  const bars = rigs.map(r => {
+    const y = r.y, RH = r.h, multi = r.lanes > 1;
     const row = r.ws.map(w => {
       const a = clampX(w.start), b = Math.max(clampX(endOf(w)), a + 3);
-      const planned = w.state === 'planned';
-      const fill = planned ? '#fff' : w.state === 'drilling' ? EX_ACTIVE : (EX_RES[w.resKey] || EX_RES.other).color;
+      const planned = w.state === 'planned', isDev = w.kind === 'dev';
+      let fill = planned ? '#fff' : w.state === 'drilling' ? EX_ACTIVE : (EX_RES[w.resKey] || EX_RES.other).color;
+      let stroke = planned ? '#1a2332' : 'none', dash = planned ? '4 2' : '', opacity = 1;
+      if (isDev) {
+        fill = w.noEnd ? 'url(#exHatch)' : w.maybe ? EX_ACTIVE : DEV_COLOR;
+        if (w.maybe) { stroke = '#0a6b47'; dash = '4 2'; opacity = 0.7; }
+      }
       const room = Math.floor((b - a) / 5.6);
       const txt = room >= 5 ? w.title.slice(0, room - 1) + (w.title.length > room - 1 ? '…' : '') : '';
-      const dark = ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling';
-      return `<g onclick="openWell(${w.id})" style="cursor:pointer">
-        <rect x="${a.toFixed(1)}" y="${y + 3}" width="${(b - a).toFixed(1)}" height="${RH - 8}" rx="3" fill="${fill}"
-          stroke="${planned ? '#1a2332' : 'none'}" stroke-dasharray="${planned ? '4 2' : ''}"/>
-        ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + RH / 2 + 3}" class="ex-bar-t" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
-        <title>${esc(w.title)} (${esc(w.name)}) · ${esc(w.operator)} · ${fmtShort(w.start)}${w.end ? ' – ' + fmtShort(w.end) : ''}</title></g>`;
+      const dark = isDev || ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling';
+      const note = w.noEnd ? ' (completion date not reported; length estimated)' : w.maybe ? ' (possibly still drilling)' : '';
+      return `<g onclick="${exOpen(w)}" style="cursor:pointer">
+        <rect x="${a.toFixed(1)}" y="${y + 3 + (multi ? w.lane * 13 : 0)}" width="${(b - a).toFixed(1)}" height="${multi ? 11 : RH - 8}" rx="3" fill="${fill}"
+          fill-opacity="${opacity}" stroke="${stroke}" stroke-dasharray="${dash}"/>
+        ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + (multi ? 12 + w.lane * 13 : RH / 2 + 3)}" class="ex-bar-t" style="${multi ? 'font-size:8px' : ''}" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
+        <title>${esc(w.title)}${isDev ? ' (development)' : ` (${esc(w.name)})`} · ${esc(w.operator)} · ${fmtShort(w.start)}${w.end && !w.noEnd ? ' – ' + fmtShort(w.end) : ''}${note}</title></g>`;
     }).join('');
-    return `<text x="4" y="${y + RH / 2 + 3}" class="ex-rig">${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${row}`;
+    return `<text x="4" y="${y + (multi ? 12 : RH / 2 + 3)}" class="ex-rig">${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${row}`;
   }).join('');
   const tx = clampX(today);
   const table = rigs.map(r => {
-    const cell = (w, d) => w ? `<a href="#" onclick="openWell(${w.id});return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}</small>` : '—';
+    const cell = (w, d) => w ? `<a href="#" onclick="${exOpen(w)};return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}${w.kind === 'dev' ? ' · development' : ''}</small>` : '—';
     return `<tr><td class="ex-l"><strong>${esc(r.name)}</strong><small>${esc(tc(r.type))}</small></td>
-      <td class="ex-l">${cell(r.now, 'since ' + (r.now ? fmtShort(r.now.entry) : ''))}</td>
+      <td class="ex-l">${cell(r.now, r.now ? 'since ' + fmtShort(r.now.kind === 'dev' ? r.now.start : r.now.entry) + (r.now.maybe ? ' (probably)' : '') : '')}</td>
       <td class="ex-l">${cell(r.next, r.next ? fmtShort(r.next.planned) : '')}</td>
-      <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) : '')}</td></tr>`;
+      <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) + (r.last.noEnd ? ' (est.)' : '') : '')}</td></tr>`;
   }).join('');
+  const nDev = inWin.filter(w => w.kind === 'dev').length;
   document.getElementById('explBody').innerHTML = `
     <div class="ex-sum"><strong>${rigs.length}</strong> rigs · <strong>${rigs.filter(r => r.now).length}</strong> drilling now
-      · <strong>${rigs.filter(r => r.next).length}</strong> with a planned well</div>
+      · <strong>${rigs.filter(r => r.next).length}</strong> with a planned well${nDev ? ` · <strong>${nDev}</strong> development wells` : ''}</div>
     <div class="pf-card"><h3>Rig schedule</h3>
       <div class="ex-scroll"><svg class="ex-gantt" viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Rig schedule">
+        <defs><pattern id="exHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="6" height="6" fill="${DEV_COLOR}"/><rect width="3" height="6" fill="#86b9d1"/></pattern></defs>
         ${axis}${bars}
         <line x1="${tx}" x2="${tx}" y1="${TOP - 4}" y2="${H}" stroke="${OIL_COLOR}" stroke-width="1.4" stroke-dasharray="3 2"/>
       </svg></div>
-      ${explLegend()}
-      <div class="pf-map-note">Dashed bars are planned wells, drawn with a 60-day placeholder length. The red line is today.
-        Only exploration and appraisal wells are included, so a rig may be busy with other work between bars.</div>
+      ${explLegend(nDev ? [[DEV_COLOR, 'Development'], ['url(#exHatch)', 'Development, end not reported']] : [])}
+      <div class="pf-map-note">Dashed white bars are planned exploration wells, drawn with a 60-day placeholder length. The red line is today.
+        Sodir has no planned dates for development wells, so those appear only once drilling has started. Striped bars have no
+        completion date in Sodir's data and are drawn at a typical ${DEV_TYPICAL_DAYS} days; a dashed green bar started in the last 60 days
+        and is probably still being drilled. A rig may be busy with other work between bars.</div>
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Rig</th><th class="ex-l">Drilling now</th><th class="ex-l">Next planned</th><th class="ex-l">Last completed</th>
