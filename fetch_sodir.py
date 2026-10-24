@@ -41,6 +41,7 @@ DESCR_LAYER   = 7102   # field_description
 FACILITY_LAYER = 6000  # facility
 LICENCE_LAYER = 3000   # licence
 COMPANY_LAYER = 1200   # company
+WELL_LAYER    = 5000   # wellbore
 OUTLINE_SIMPLIFY = 0.001   # grader (~110 m) for Douglas-Peucker
 OUTLINE_DECIMALS = 4
 
@@ -659,6 +660,111 @@ def build_discovery_outlines():
     return {'discoveries': dict(sorted(out.items(), key=lambda x: int(x[0])))}
 
 
+# Letebronner: ferdige, pagaende og planlagte, fra brønnlaget (5000).
+#
+# Planlagte bronner star i samme lag, men uten status og uten wlbEntryDate —
+# bare wlbEntryDatePlanned er satt. Bronner Sodir har oppgitt at ikke skal
+# bores ('WILL NEVER BE DRILLED') droppes.
+#
+# Eierskap: lisensnummeret pa bronnen kobles mot lag 3007 (lisensiaer med
+# gyldighetsdatoer), og andelene fastsettes per dato bronnen ble startet — ikke
+# per i dag, for lisenser overdras. Bronner som ikke er startet far dagens
+# eiere. Hver unike eierliste lagres én gang i 'owners', og bronnen peker pa
+# den med indeks, sa fila holder seg liten.
+EXPL_PURPOSES = "'WILDCAT','APPRAISAL'"
+
+
+def _day(ms):
+    if ms is None:
+        return ''
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime('%Y-%m-%d')
+
+
+def _clean(v):
+    return (v or '').strip()
+
+
+def build_exploration_wells():
+    rows = fetch_layer(
+        WELL_LAYER,
+        'wlbNpdidWellbore,wlbWellboreName,wlbProductionLicence,wlbPurpose,wlbPurposePlanned,'
+        'wlbStatus,wlbContent,wlbDrillingOperator,wlbDrillingFacility,wlbFacilityTypeDrilling,'
+        'wlbEntryDate,wlbCompletionDate,wlbEntryDatePlanned,wlbDiscovery,wlbDiscoveryWellbore,'
+        'dscNpdidDiscovery,wlbField,wlbNsDecDeg,wlbEwDecDeg,wlbMainArea,wlbWaterDepth,'
+        'wlbTotalDepth,wlbDrillingDays,wlbFormationAtTd,wlbAgeAtTd,wlbFormationWithHc1,'
+        'wlbAgeWithHc1,wlbPressReleaseUrl,wlbDrillPermit',
+        f"(wlbPurpose IN ({EXPL_PURPOSES}) OR wlbPurposePlanned IN ({EXPL_PURPOSES}))"
+        " AND (wlbStatus IS NULL OR wlbStatus <> 'WILL NEVER BE DRILLED')",
+    )
+
+    lic_rows = fetch_layer(
+        PRL_LIC_LAYER,
+        'prlName,cmpLongName,prlLicenseeInterest,prlLicenseeDateValidFrom,prlLicenseeDateValidTo',
+    )
+    by_lic = {}
+    for r in lic_rows:
+        name, cmp_name = _clean(r.get('prlName')), _clean(r.get('cmpLongName'))
+        share = num(r.get('prlLicenseeInterest'))
+        if not name or not cmp_name or share <= 0:
+            continue
+        by_lic.setdefault(name, []).append(
+            (cmp_name, share, r.get('prlLicenseeDateValidFrom'), r.get('prlLicenseeDateValidTo')))
+
+    owners, owner_idx = [], {}
+    now_ms = int(time.time() * 1000)
+
+    def owners_at(licence, at_ms):
+        ref = at_ms if at_ms is not None else now_ms
+        parts = {}
+        for cmp_name, share, frm, to in by_lic.get(licence, []):
+            if (frm is None or frm <= ref) and (to is None or to > ref):
+                parts[cmp_name] = parts.get(cmp_name, 0) + share
+        if not parts:
+            return None
+        key = tuple(sorted(parts.items(), key=lambda kv: (-kv[1], kv[0])))
+        if key not in owner_idx:
+            owner_idx[key] = len(owners)
+            owners.append([[n, round(v, 4)] for n, v in key])
+        return owner_idx[key]
+
+    out = []
+    for r in rows:
+        wid = as_int(r.get('wlbNpdidWellbore'))
+        name = _clean(r.get('wlbWellboreName'))
+        if wid is None or not name:
+            continue
+        lic = _clean(r.get('wlbProductionLicence'))
+        entry = r.get('wlbEntryDate')
+        lat, lon = r.get('wlbNsDecDeg'), r.get('wlbEwDecDeg')
+        out.append([
+            wid, name, lic,
+            _clean(r.get('wlbPurpose')) or _clean(r.get('wlbPurposePlanned')),
+            _clean(r.get('wlbStatus')), _clean(r.get('wlbContent')),
+            _clean(r.get('wlbDrillingOperator')),
+            _clean(r.get('wlbDrillingFacility')), _clean(r.get('wlbFacilityTypeDrilling')),
+            _day(entry), _day(r.get('wlbCompletionDate')), _day(r.get('wlbEntryDatePlanned')),
+            as_int(r.get('dscNpdidDiscovery')), _clean(r.get('wlbDiscovery')),
+            1 if _clean(r.get('wlbDiscoveryWellbore')) == 'YES' else 0,
+            _clean(r.get('wlbField')),
+            round(lat, 5) if lat is not None else None,
+            round(lon, 5) if lon is not None else None,
+            _clean(r.get('wlbMainArea')),
+            num(r.get('wlbWaterDepth')) or None, num(r.get('wlbTotalDepth')) or None,
+            as_int(r.get('wlbDrillingDays')),
+            _clean(r.get('wlbFormationAtTd')), _clean(r.get('wlbAgeAtTd')),
+            _clean(r.get('wlbFormationWithHc1')), _clean(r.get('wlbAgeWithHc1')),
+            _clean(r.get('wlbPressReleaseUrl')), _clean(r.get('wlbDrillPermit')),
+            owners_at(lic, entry),
+        ])
+    out.sort(key=lambda x: x[0])
+    return {'columns': ['id', 'name', 'licence', 'purpose', 'status', 'content', 'operator',
+                        'rig', 'rigType', 'entry', 'completion', 'planned',
+                        'discoveryId', 'discovery', 'discoveryWell', 'field', 'lat', 'lon',
+                        'area', 'waterDepth', 'td', 'days', 'formationAtTd', 'ageAtTd',
+                        'hcFormation', 'hcAge', 'pressUrl', 'permit', 'owners'],
+            'rows': out, 'owners': owners}
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     """Skriv fila kun hvis innholdet faktisk er endret. Returnerer True ved endring."""
@@ -698,6 +804,7 @@ def main():
         ('facilities.json', 'innretninger', build_facilities),
         ('licences.json', 'utvinningstillatelser', build_licences),
         ('companies.json', 'selskaper', build_companies),
+        ('exploration_wells.json', 'letebronner', build_exploration_wells),
     ]
 
     changed = False
