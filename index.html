@@ -126,6 +126,10 @@
     .wd-panel{max-width:820px;margin:14px auto;background:var(--bg);border-radius:14px;padding:12px 12px 2px;}
     .wd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
     .wd-head h2{font-size:1.15rem;color:var(--navy);line-height:1.2;}
+    .wd-close{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:#fff;
+      color:#1a2332;font-size:1rem;line-height:1;cursor:pointer;font-family:inherit;}
+    .wd-close:hover{border-color:var(--blue);color:var(--blue);}
+    .wd-foot{display:flex;justify-content:center;padding:4px 0 12px;}
     .wd-sub{font-size:0.74rem;color:var(--muted);margin-top:3px;}
     .wd-status{display:flex;align-items:center;font-size:0.85rem;margin-bottom:6px;}
     .wd-status .ex-dot{width:12px;height:12px;}
@@ -5277,7 +5281,7 @@ function openWell(id, quiet) {
     <div class="wd-head">
       <div><h2>${esc(w.title)}</h2>
         <div class="wd-sub">${w.sub ? esc(w.sub) + ' · ' : ''}${esc(tc(w.purpose))} · ${esc(w.licence ? 'Licence ' + w.licence : 'No licence')}</div></div>
-      <button class="settings-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
+      <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
     </div>
     <div class="pf-card">
       <div class="wd-status"><span class="ex-dot" style="background:${s.fill};border:${s.sw}px solid ${s.stroke}"></span>
@@ -5303,7 +5307,8 @@ function openWell(id, quiet) {
       <table class="res-table ex-table"><tbody>${sameLic.slice(0, 8).map(o => `
         <tr class="ex-row" onclick="openWell(${o.id})"><td class="ex-name"><strong>${esc(o.title)}</strong>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</td>
         <td class="ex-l">${explResultCell(o) !== '<span class="ex-none">—</span>' ? explResultCell(o) : STATE_LABEL[o.state]}</td>
-        <td>${fmtShort(o.start)}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+        <td>${fmtShort(o.start)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
   document.getElementById('wdOverlay').classList.add('open');
   document.getElementById('wdOverlay').scrollTop = 0;
   document.body.style.overflow = 'hidden';
