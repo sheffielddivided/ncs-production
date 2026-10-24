@@ -1836,6 +1836,18 @@ brønnnavnet for alle brønner som hører til et funn, også avgrensningsbrønne
 brønnnavnet står som undertekst. Bare i sammendragsteksten skilles selve
 funnbrønnen (`wlbDiscoveryWellbore = YES`) fra de øvrige.
 
+**Grener grupperes til én brønn:** Sodir regner sidesteg og re-entries («S»,
+«A», «R2») som egne brønnbaner. `explGroup` grupperer dem på `wlbWell` (kolonnen
+`well`), og resten av visningen jobber med disse gruppene: 2176 brønnbaner blir
+1779 brønner. Gruppen har id-en til den eldste grenen, og `explById` slår opp
+fra hvilken som helst grens id, så lenker med `xw=` til en side­gren fortsatt
+virker. Status er *drilling* hvis en gren bores, *planned* hvis alle er
+planlagt, ellers *completed*. Resultatet er det beste blant de avsluttede
+grenene (oil/gas > oil > gas > shows > dry), startdato er den eldste og
+sluttdato den siste. Detaljvisningen har en tabell over grenene. Riggfanen
+bruker brønnbanene, ikke gruppene, siden et sidesteg kan bores av en annen
+rigg enn hovedhullet.
+
 **Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
 `https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek
 for mellomrom i navnet. Kontrollert mot alle 142 felt: 80 har bilde. Det finnes
