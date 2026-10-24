@@ -1081,9 +1081,10 @@ const FIELD_TABS   = [
   {id:'profile',        label:'Profile'},
 ];
 const HUB_TABS     = [
-  {id:'oilgas',        label:'Oil & Gas'},
-  {id:'oe_per_field',  label:'OE per field'},
-  {id:'reserves',      label:'Reserves'},
+  {id:'oilgas',         label:'Oil & Gas'},
+  {id:'oe_per_field',   label:'OE per field'},
+  {id:'oe_per_company', label:'OE per company'},
+  {id:'reserves',       label:'Reserves'},
   {id:'profile',       label:'Profile'},
 ];
 const DISCOVERY_TABS = [
@@ -1774,6 +1775,7 @@ async function refreshHubs() {
     return;
   }
   await loadProdForFields(ids);
+  if (hubSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
 }
 
@@ -1897,6 +1899,7 @@ function drawChart() {
     const names = [...selectedHubNames];
     const opts = {ids: hubFieldIds(names), scope: hubScope(names)};
     if (hubSubView === 'oilgas') drawFieldsOilGas(opts);
+    else if (hubSubView === 'oe_per_company') drawFieldsOePerCompany(opts);
     else if (hubSubView === 'reserves') drawFieldsReserves(opts);
     else if (hubSubView === 'profile')  drawHubProfile();
     else drawFieldsOePerField(opts);
@@ -3016,8 +3019,9 @@ function drawHubProfile() {
 }
 
 // ── FIELDS: OE PER COMPANY ───────────────────────────────────────────────────
-function drawFieldsOePerCompany() {
-  const ids = [...selectedFieldIds];
+function drawFieldsOePerCompany(opts = {}) {
+  const ids = opts.ids || [...selectedFieldIds];
+  const scope = opts.scope;
   const labels = unionLabels(ids);
   if (!labels.length) { setChartEmpty('No data for selected period.'); return; }
   const qMap = period === 'quarterly' ? buildQuarterMap(ids) : null;
@@ -3039,8 +3043,9 @@ function drawFieldsOePerCompany() {
   });
 
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-  setChartTitle(`${fnames} · OE per company`, `Equity-adjusted · boe/day`);
-  setInfo(`<strong>Fields:</strong> ${fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
+  setChartTitle(scope ? `${scope.label} · OE per company` : `${fnames} · OE per company`,
+                `Equity-adjusted · boe/day`);
+  setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
 }
 
