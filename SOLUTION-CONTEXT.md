@@ -1861,23 +1861,34 @@ stiplet); uten sluttdato og eldre = tegnet med typisk lengde på 21 dager
 skjult som standard og slås på med en bryter. Tilstanden ligger i hashen som
 `xd=0` (uten utviklingsbrønner) og `xf=1` (med faste plattformer).
 
-**Overlappsregelen:** en rigg bor bare én brønn om gangen, men Sodirs startdato
-er ofte en forboring — riggen går videre og kommer tilbake for å fullføre.
-Sluttdatoen er derfor master: `adjustRigOverlaps` sorterer brønnene på samme
-rigg etter slutt og flytter en start som ligger før forrige brønns slutt fram
-til den. På dagens data berører det 77 av 214 aktiviteter, med 102 dager i
-snitt. Regelen gjelder både lete- og utviklingsbrønner og kjøres på det fulle
-settet *før* filtrene, så en brønn som filtreres bort ikke gir feil starter på
-resten. Brønner uten rapportert sluttdato har bare et anslag og beholder sin
-egen start, og planlagte brønner justeres ikke. Detaljvisningen viser både
-Sodirs start og den viste starten.
+**Kampanjer og overlappsregelen (`planRigBars`):** en rigg bor bare én brønn om
+gangen, men Sodirs startdato er ofte en forboring — riggen går videre og kommer
+tilbake for å fullføre — og mange brønner mangler sluttdato. Tidslinjen skal
+ikke ha overlapp, og regelen er per rigg:
 
-**Aktiviteter per felt:** `mergeDevBlocks` slår etterfølgende utviklingsbrønner
-på samme felt og rigg sammen til én strek, med feltnavnet som tekst, når
-oppholdet er høyst 30 dager. En «mulig pågående» brønn slås ikke sammen med
-andre, ellers ville hele blokken fått den stiplede grønne stilen. Klikk åpner
-`openDevWell` med en tabell over brønnbanene. Overlapp som gjenstår, mellom
-brønner med anslått slutt og planlagte brønner, legges i opptil tre baner.
+1. **Kampanje:** utviklingsbrønner på samme felt, med høyst 30 dager mellom
+   dem, er én kampanje, også når den har brønner uten sluttdato eller en som
+   bores nå. En kampanje vises som én strek med feltnavnet. En brønn uten felt
+   står alene. Har kampanjen en «mulig pågående» brønn, tegnes den blå fram til
+   den brønnen starter og grønn stiplet derfra.
+2. **Sluttdatoen er master:** letebrønner og kampanjer med rapportert slutt
+   sorteres på slutt, og en start som ligger før forrige slutt flyttes til den.
+   En kampanje som fortsetter etter en letebrønn i samme område starter
+   dermed der letebrønnen sluttet (Munin etter 30/11-16 på Deepsea Stavanger).
+3. **Forboring uten rapportert slutt:** en kampanje der ingen brønn har
+   sluttdato starter etter aktiviteten den ligger inne i, og slutter der
+   neste aktivitet på riggen starter, høyst 60 dager. Uten neste aktivitet
+   er lengden 21 dager, men aldri forbi i dag. Den tegnes stripet.
+4. **Etterbehandling:** kampanjer på samme felt som nå ligger rett etter
+   hverandre (høyst 30 dager) slås sammen, for eksempel en forboring og
+   kampanjen den hørte til (Irpa på Transocean Norge).
+
+Regelen kjøres på det fulle settet *før* filtrene, så en brønn som filtreres
+bort ikke gir feil starter på resten, og planlagte brønner justeres ikke.
+Resultatet er kontrollert uten overlapp på alle rigger (2267 streker).
+Detaljvisningen viser kampanjens brønnbaner med Sodirs egne datoer. Det som
+gjenstår av overlapp i tegningen er bare klipping mot venstre kant av
+vinduet.
 
 **Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
 `https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek
