@@ -4965,7 +4965,7 @@ function loadExploration() {
       explWells.forEach(w => new Set([w.operator, ...w.partners.map(p => p.name)]).forEach(n => {
         if (n) count[n] = (count[n] || 0) + 1;
       }));
-      explCompanies = Object.entries(count).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(e => e[0]);
+      explCompanies = Object.keys(count);   // rekkefølgen settes ved tegning, se explRenderBar
     }
     explLoaded = true;
   });
@@ -5023,7 +5023,7 @@ function explRenderBar() {
     <div class="ex-bar">
       <input class="ex-in" type="search" list="exCompanyList" placeholder="Company…" value="${esc(f.company)}"
              oninput="explSet('company', this.value)" aria-label="Filter by company"/>
-      <datalist id="exCompanyList">${explCompanies.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <datalist id="exCompanyList">${sortCompanies(explCompanies).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       <select class="year-select" onchange="explSet('role', this.value)" aria-label="Company role">
         ${opt('any', f.role, 'Partner or operator')}${opt('operator', f.role, 'Operator only')}
       </select>
@@ -5776,6 +5776,8 @@ async function init() {
     allCompanies = sortCompanies(allCompanies);
     filteredCompanies = allCompanies;
     if (sheetOpen && topMode === 'companies') renderCompanyList();
+    // Exploration bruker samme rekkefølge, og kan være åpnet før reservene kom.
+    if (topMode === 'exploration' && explLoaded && explWells.length) explRenderBar();
   });
 
   // ── Phase 4: Background prefetch all fields quietly ──
