@@ -1804,6 +1804,49 @@ Eksporten hadde en forskyvningsfeil som er rettet — se §11.0.
 
 ---
 
+## 9b. Exploration (letebrønner)
+
+Femte hovedkategori, `topMode === 'exploration'`. Skiller seg fra de andre
+modusene: ingen diagram, ingen utvalgsark, og filtrene ligger i selve
+visningen (`#explBar`). Tre faner: **Wells** (liste), **Map** (oversiktskart
+som zoomer til filtrert utvalg) og **Rigs** (tidslinje og tabell per rigg).
+Et klikk på en brønn åpner en detaljvisning (`#wdOverlay`) med kart, eierskap,
+nøkkeldata og lenke til pressemelding.
+
+**Data:** `data/exploration_wells.json`, bygget av `build_exploration_wells()`
+i `fetch_sodir.py` fra brønnlaget (5000). Bare formål WILDCAT og APPRAISAL;
+'WILL NEVER BE DRILLED' droppes. Filen lastes lazily (`loadExploration`).
+
+**Status utledes av datoer, ikke av `wlbStatus`:** planlagte brønner har
+`wlbStatus = NULL`, ingen `wlbEntryDate` og kun `wlbEntryDatePlanned`.
+Ingen startdato eller startdato i fremtiden gir *planned*; startet uten
+sluttdato gir *drilling*; ellers *completed*. En planlagt dato som er passert
+markeres med ⚠ og holdes utenfor riggtidslinjen — Sodir oppdaterer den ikke
+når en brønn utsettes.
+
+**Eierskap** fastsettes per spud-dato fra lag 3007 (lisensiærer med
+`ValidFrom`/`ValidTo`), ikke fra dagens lisensiærer, for lisenser overdras.
+Ikke-startede brønner får dagens eiere. Unike eierlister ligger i `owners`,
+og brønnene peker på dem med indeks. Kobling skjer på `wlbProductionLicence`
+(lisens ved brønnhodet). Selskapsfilteret treffer operatør og/eller partnere.
+
+**Funnnavn:** `wlbDiscovery` har formatene «35/8-8 S (Camilla Nord)» og
+«16/4-6 S Solveig». `explDiscoveryLabel` henter navnet ut. Funnnavnet erstatter
+brønnnavnet bare for selve funnbrønnen (`wlbDiscoveryWellbore = YES`);
+avgrensningsbrønner beholder sitt navn, med funnet som undertekst.
+
+**Pressemelding:** `wlbPressReleaseUrl` peker til sodir.no, som ligger bak
+Cloudflare (403 mot skripter), mangler CORS og sender `X-Frame-Options:
+SAMEORIGIN`. Den kan derfor verken hentes inn i datafilene eller vises i en
+iframe, og detaljvisningen viser en lenke pluss en tekst generert fra Sodirs
+strukturerte felt (`explSummaryText`).
+
+**Kryssbruk:** `outlineMap` tar `opts.wells` og `opts.ownWell` for
+brønnmarkører. Funn- og selskapsprofilene får et kort med brønnene sine
+(`explLinkCard`), og detaljvisningen lenker til funnprofilen og operatøren.
+Tilstanden ligger i hashen: `xc` selskap, `xr` rolle, `xs` status, `xz`
+resultat, `xp` formål, `xy` fra-år (`all` for alle), `xq` søk, `xw` åpen brønn.
+
 ## 10. Datavolum
 
 Målt 2026-09-14 på committet innhold.
