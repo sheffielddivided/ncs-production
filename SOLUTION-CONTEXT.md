@@ -2001,9 +2001,39 @@ innretning/felt (2,5 km), ellers posisjonen. Tilstanden i Fleet (`rigState`) er
 «on location» (opphold på felt eller brønn), «under way» (over 1,5 knop), «at quay»,
 «at sea» og «no recent AIS» (siste melding over tre dager gammel).
 
-*Mulig videre arbeid (fase 3):* bruke oppholdene som fasit for riggtidslinjen
-(når forlot riggen feltet?) i stedet for 21-/60-dagersreglene, og et ankomstsignal
-for planlagte brønner (riggen ligger ved den planlagte posisjonen).
+**AIS som fasit for riggtidslinjen (`aisPlace`, `planRigBars`):** der riggen har
+AIS-opphold avgjør oppholdet når en aktivitet startet og sluttet; reglene i
+avsnittet over gjelder bare det som ikke lar seg koble til et opphold. Bar med
+en tynn mørk linje øverst er AIS-målt.
+
+- *Kobling:* en letebrønn kobles til oppholdet som har brønn-id-en sin i `wells`
+  og overlapper i tid (± 5 dager). En utviklingskampanje kobles til opphold på
+  feltet med samme navn (normalisert, innen ± 30 dager av kampanjen). Passer
+  ikke navnet (Irpa ved Dvalin, Alve ved Norne) tas oppholdet på et felt eller
+  en brønn som overlapper mest i tid, minst tre dager. På dagens data koblet 48 av
+  50 kampanjer på navn og alle 40 letebrønnene på brønn-id.
+- *Fordeling:* oppholdet gir ytre grenser, og Sodir bestemmer rekkefølgen
+  inni det (sluttdato sorterer). Første aktivitet starter når riggen kom, siste
+  varer til den dro (eller til nå), og de i mellom slutter på sin rapporterte
+  sluttdato, begrenset til oppholdet. Ukjent slutt deler resten likt. Første
+  opphold i datavinduet kan starte opptil 21 dager før vinduet, ved Sodirs start,
+  siden vi ikke vet når riggen kom.
+- *Kampanjer:* et opphold på kampanjens felt uten egne brønner (riggen flyttet
+  mellom malene) får nærmeste opphold sine brønner. Etterfølgende AIS-biter på
+  samme felt slås sammen når det er under 20 dager mellom dem og ingen
+  letebrønn, havneanløp eller annet opphold ligger imellom.
+- *Bare AIS:* opphold ingen aktivitet forklarer vises som bleke bar (havn fra ett
+  døgn, ellers fra tre dager), i hullene mellom de andre. De skjules når et
+  filter (selskap, søk, formål) er satt, og kan slås av med «Port calls & other
+  stays» (`xo=0`). Klikk på en slik bar åpner riggprofilen og hopper til oppholdet.
+- *Prioritet:* AIS-målt går foran regelbasert, regelbasert foran bare AIS. Den
+  som taper trimmes, og en aktivitet som havner helt inni en AIS-bar skjules
+  (tallet står under grafen). Resultatet er kontrollert uten overlapp på alle rigger.
+- *Fallback:* rigger uten AIS, og tid før AIS-vinduet (fra 1. juli 2025), bruker
+  de gamle reglene (kampanje, sluttdato er master, forboring til neste aktivitet).
+
+*Mulig videre arbeid:* ankomstsignal for planlagte brønner (riggen ligger ved den
+planlagte posisjonen), og å vise Sodirs egne datoer ved siden av de AIS-målte.
 
 **Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
 `https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek
