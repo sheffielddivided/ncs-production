@@ -32,6 +32,9 @@ statiske JSON-filer i dette repoet.
 | `data/rig_ais.json` | Kobling riggnavn (Sodir) til MMSI/IMO — redigeres for hånd |
 | `data/rig_tracks.json` | Veipunkter og opphold per rigg, til riggprofilen med avspilling |
 | `data/rig_now.json` | Dagens posisjon, status og AIS-destinasjon per rigg, til flåtekartet |
+| `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
+| `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |
+| `data/rig_health.json` | Driftsrapport fra AIS-steget: rigger uten kobling, rigger som bores uten signal, mistenkelige MMSI og om kilden feiler |
 | `data/rig_log.json` | Arbeidsfil for fetch_rigs.py: tynnede posisjoner utover det sporene dekker |
 | `data/licences.json` | Aktive utvinningstillatelser (lag 3000) |
 | `data/licence_outlines.json` | Forenklede lisensomriss til Licences-kartene. Lastes først når Licences åpnes |

@@ -1,5 +1,5 @@
 {
-  "note": "Kobling fra riggnavn i Sodir-dataene (felt 'rig') til AIS. mmsi kan være flere, hvis riggen har byttet. alias peker til en annen oppføring (omdøpt rigg). Rediger for hånd; fetch_rigs.py endrer ikke denne fila.",
+  "note": "Kobling fra riggnavn i Sodir-dataene (felt 'rig') til AIS. mmsi kan være flere, hvis riggen har byttet. alias peker til en annen oppføring (omdøpt rigg). Rediger for hånd; fetch_rigs.py endrer ikke denne fila. excluded: navn som ikke skal ha AIS-kobling, så driftsrapporten ikke varsler om dem.",
   "rigs": {
     "ASKELADDEN": {"mmsi": [257452000], "imo": 9698147, "ais": "ASKELADDEN"},
     "ASKEPOTT": {"mmsi": [257459000], "imo": 9698159, "ais": "ASKEPOTT"},
@@ -24,5 +24,6 @@
     "TRANSOCEAN ENCOURAGE": {"mmsi": [258627000], "imo": 8772075, "ais": "TRANSOCEAN ENCOURAGE"},
     "TRANSOCEAN NORGE": {"mmsi": [538007928], "imo": 9659309, "ais": "TRANSOCEAN NORGE"},
     "TRANSOCEAN SPITSBERGEN": {"mmsi": [538004905], "imo": 8768517, "ais": "TRANSOCEAN SPITSBERG"}
-  }
+  },
+  "excluded": {"VISUND": "Fast produksjonsplattform (halvt nedsenkbar), ikke en flyttbar borerigg"}
 }

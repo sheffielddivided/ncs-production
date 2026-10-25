@@ -19,6 +19,7 @@ Kilder, alle åpne uten innlogging:
 rig_log.json er arbeidsfila: tynnede posisjoner utover det sporene dekker.
 """
 
+import collections
 import json
 import math
 import os
@@ -27,6 +28,8 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import requests
+
+import changes
 
 API = 'https://kystdatahuset.kystverket.no/ws/api'
 OUT_DIR = 'data'
@@ -50,6 +53,9 @@ T0 = datetime(1970, 1, 1)
 # riggen selv lå på Gullfaks Sør).
 AREA = (-6.0, 54.0, 36.0, 76.0)    # lon_vest, lat_sør, lon_øst, lat_nord
 MAX_KNOTS = 35                     # raskere enn dette mellom to punkter er et hopp, ikke en reise
+
+
+DROPPED = collections.Counter()    # fjernede posisjoner per MMSI, til driftsrapporten
 
 
 class Busy(Exception):
@@ -188,6 +194,8 @@ def add_rows(log, rows):
     for r in rows:
         if in_area(r[2], r[3]):
             by.setdefault(r[0], []).append([minutes(parse_iso(r[1])), r[2], r[3]])
+        else:
+            DROPPED[str(r[0])] += 1
     for mmsi, pts in by.items():
         pts.sort()
         have = log.setdefault(str(mmsi), [])
@@ -405,7 +413,7 @@ def name_stay(stay, facs, wells, ports):
         return ['field', fac['field'] or fac['name'], fac['name'], wid]
     if near_wells:
         return ['well', near_wells[0][1]['name'], '', wid]
-    return ['sea', f"{lat:.2f}°N {lon:.2f}°E", '', []]
+    return ['sea', f"{lat:.2f}°N {abs(lon):.2f}°{'E' if lon >= 0 else 'W'}", '', []]
 
 
 # ── HOVEDLØP ─────────────────────────────────────────────────────────────────
@@ -430,26 +438,124 @@ def write_json(name, payload):
     print(f"  + {name} skrevet ({len(text) / 1024:.0f} KB)")
 
 
+# ── DRIFTSRAPPORT ────────────────────────────────────────────────────────────
+FIXED_TYPES = ('JACKET', 'CONDEEP', 'TLP', 'SPAR', 'MONOTOWER')
+DROPPED_WARN = 20          # så mange fjernede posisjoner tyder på delt eller feilregistrert MMSI
+NO_SIGNAL_DAYS = 3         # en rigg som bores uten AIS-signal så lenge, varsles
+
+
+def sodir_rig_activity():
+    """Rigger i Sodir-dataene med aktivitet siden vinduets start: om de er faste
+    plattformer, og hva Sodir sier at de gjør nå (siste letebrønn eller en
+    utviklingsbrønn startet de siste to månedene uten sluttdato)."""
+    since = WINDOW_START.strftime('%Y-%m-%d')
+    now = datetime.utcnow()
+    recent_expl = (now - timedelta(days=120)).strftime('%Y-%m-%d')
+    recent_dev = (now - timedelta(days=60)).strftime('%Y-%m-%d')
+    act = {}
+
+    def put(name, fixed, doing):
+        a = act.setdefault(name, {'fixed': True, 'now': None})
+        a['fixed'] = a['fixed'] and fixed
+        if doing and not a['now']:
+            a['now'] = doing
+
+    ex = load_json('exploration_wells.json', None)
+    if ex:
+        cols = ex['columns']
+        for r in ex['rows']:
+            w = dict(zip(cols, r))
+            if w['rig'] and w['entry'] and w['entry'] >= since:
+                put(w['rig'], any(k in w['rigType'] for k in FIXED_TYPES),
+                    f"letebrønn {w['name']}" if not w['completion'] and w['entry'] >= recent_expl else None)
+    dv = load_json('rig_wells.json', None)
+    if dv:
+        cols = dv['columns']
+        for r in dv['rows']:
+            w = dict(zip(cols, r))
+            if w['rig'] and w['entry'] and w['entry'] >= since:
+                put(w['rig'], bool(w['fixed']),
+                    f"utviklingsbrønn {w['name']}" if not w['completion'] and w['entry'] >= recent_dev else None)
+    return act
+
+
+def health_report(cfg, excluded, primary, now_out, rigs_out, seen, dropped, source_ok, health):
+    """Samle det som bør følges opp: rigger uten AIS-kobling, rigger som bores uten
+    signal, mistenkelig mange fjernede posisjoner og en kilde som er nede."""
+    now_m = minutes(datetime.utcnow())
+    if source_ok:
+        health['fails'], health['lastOk'] = 0, datetime.utcnow().strftime('%Y-%m-%d')
+    else:
+        health['fails'] = health.get('fails', 0) + 1
+    act = sodir_rig_activity()
+    unmapped = sorted(n for n, a in act.items() if not a['fixed'] and n not in cfg and n not in excluded)
+    no_signal = []
+    for name, a in sorted(act.items()):
+        if not a['now'] or name not in cfg:
+            continue
+        key = cfg[name].get('alias', name)
+        cur = now_out.get(key) or {}
+        if cur.get('t') and now_m - cur['t'] <= NO_SIGNAL_DAYS * 1440:
+            continue
+        wp = (rigs_out.get(key) or {}).get('wp') or []
+        last = max([seen.get(str(m), 0) for m in primary.get(key, {}).get('mmsi', [])] + [wp[-1][0] if wp else 0]) or None
+        no_signal.append({'rig': name, 'lastSeen': last, 'doing': a['now']})
+    noisy = {n: c for n, c in sorted(dropped.items()) if c >= DROPPED_WARN}
+
+    issues = []
+    if health['fails'] >= 3:
+        issues.append(f"AIS-kilden har feilet {health['fails']} kjøringer på rad (sist OK {health.get('lastOk') or 'aldri'})")
+    elif not source_ok:
+        issues.append("AIS-kilden svarte ikke som den skulle i denne kjøringen")
+    for n in unmapped:
+        issues.append(f"{n} har aktivitet i Sodir-dataene, men mangler kobling i data/rig_ais.json (legg den til, eller under «excluded»)")
+    for x in no_signal:
+        seen_txt = datetime.utcfromtimestamp(x['lastSeen'] * 60).strftime('%Y-%m-%d') if x['lastSeen'] else 'aldri'
+        issues.append(f"{x['rig']} bores ifølge Sodir ({x['doing']}), men har ikke AIS-signal siden {seen_txt}")
+    for n, c in noisy.items():
+        issues.append(f"{n}: {c} posisjoner fjernet (utenfor området eller hopp), kan være en delt eller feilregistrert MMSI")
+
+    report = {'asOf': now_m, 'unmapped': unmapped, 'noSignal': no_signal, 'dropped': noisy,
+              'fails': health['fails'], 'lastOk': health.get('lastOk', '')}
+    for msg in issues:
+        print(f"::warning title=AIS::{msg}")
+    summary = os.environ.get('GITHUB_STEP_SUMMARY')
+    lines = ['## AIS-helse', '',
+             f"Kilde: {'OK' if source_ok else 'feilet'} · {len(rigs_out)} rigger med spor · {len(now_out)} med posisjon nå", '']
+    lines += [f"- ⚠️ {m}" for m in issues] or ['Ingen avvik.']
+    if summary:
+        with open(summary, 'a', encoding='utf-8') as fh:
+            fh.write('\n'.join(lines) + '\n')
+    else:
+        print('\n'.join(lines))
+    return report
+
+
 def main():
     deadline = time.time() + MAX_SECONDS
-    cfg = load_json('rig_ais.json', {'rigs': {}})['rigs']
+    raw_cfg = load_json('rig_ais.json', {'rigs': {}})
+    cfg, excluded = raw_cfg['rigs'], raw_cfg.get('excluded', {})
+    old_tracks = load_json('rig_tracks.json', {'rigs': {}})['rigs']
     primary = {n: v for n, v in cfg.items() if 'mmsi' in v}
     log = load_json('rig_log.json', {'pts': {}, 'seen': {}})
     pts_log, seen = log['pts'], log['seen']
     fetched = log.setdefault('fetched', {})
+    health = log.setdefault('health', {'fails': 0, 'lastOk': ''})
     # Siste innhentede tidspunkt per MMSI, så posisjoner vi fjerner fra loggen ikke
     # henter samme dager på nytt. Eldre loggfiler hadde ikke feltet.
     for k, v in pts_log.items():
         if v:
             fetched.setdefault(k, v[-1][0])
+        DROPPED[k] += sum(1 for q in v if not in_area(q[1], q[2]))
         pts_log[k] = [q for q in v if in_area(q[1], q[2])]
 
     print("Henter dagens posisjoner...")
+    realtime_ok, tracks_failed, dropped_by_rig = True, 0, {}
     try:
         feats = call('GET', '/ais/realtime/geojson')['features']
     except Busy as exc:
         print(f"  ! sanntidsdata utilgjengelig: {exc}", file=sys.stderr)
-        feats = []
+        feats, realtime_ok = [], False
     now_by_mmsi = {}
     wanted = {m for v in primary.values() for m in v['mmsi']}
     for f in feats:
@@ -479,6 +585,7 @@ def main():
         except Busy as exc:
             print(f"  ! spor utilgjengelig: {exc}", file=sys.stderr)
             tpts, track_end = [], None
+            tracks_failed += 1
         track_end_m = minutes(track_end) if track_end else minutes(WINDOW_START)
 
         # Posisjoner utover sporene. Eldre enn sporene trengs ikke lenger.
@@ -501,6 +608,7 @@ def main():
 
         raw = sorted({p[0]: p for p in tpts + [q for k in ks for q in pts_log.get(k, [])]}.values())
         points, breaks = sanitize(raw)
+        dropped_by_rig[name] = len(raw) - len(points) + sum(DROPPED[k] for k in ks)
         if len(points) < len(raw):
             print(f"  {len(raw) - len(points)} posisjoner fjernet (utenfor området eller hopp)")
         seen_until = max([seen.get(k, 0) for k in ks] + [0]) or None
@@ -519,7 +627,7 @@ def main():
                              'place': last_stay[4:7] if last_stay else None,
                              'since': last_stay[0] if last_stay else None}
         print(f"  {len(points)} punkter -> {len(built['wp'])} veipunkter, {len(stays)} opphold")
-        write_json('rig_log.json', {'pts': pts_log, 'seen': seen, 'fetched': fetched})   # arbeidet skal ikke gå tapt ved feil
+        write_json('rig_log.json', {'pts': pts_log, 'seen': seen, 'fetched': fetched, 'health': health})   # arbeidet skal ikke gå tapt ved feil
 
     for name, v in cfg.items():
         if 'alias' in v and v['alias'] in rigs_out:
@@ -527,7 +635,18 @@ def main():
             if v['alias'] in now_out:
                 now_out[name] = {'alias': v['alias']}
 
-    write_json('rig_log.json', {'pts': pts_log, 'seen': seen, 'fetched': fetched})
+    # Endringslogg: nye opphold siden forrige kjøring (første gang: siste 30 dager).
+    try:
+        first = not any(e['t'] == 'rig' for e in changes.load())
+        since = minutes(datetime.utcnow() - timedelta(days=changes.BACKFILL_DAYS)) if first else None
+        changes.merge(changes.rig_events(old_tracks, rigs_out, since))
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ! endringsloggen for rigger feilet: {exc}", file=sys.stderr)
+
+    source_ok = realtime_ok and tracks_failed <= max(1, len(primary) // 4)
+    report = health_report(cfg, excluded, primary, now_out, rigs_out, seen, dropped_by_rig, source_ok, health)
+    write_json('rig_health.json', report)
+    write_json('rig_log.json', {'pts': pts_log, 'seen': seen, 'fetched': fetched, 'health': health})
     write_json('rig_tracks.json', {
         'columns': {'wp': ['t', 'lon', 'lat'],
                     'stays': ['from', 'to', 'lon', 'lat', 'kind', 'label', 'detail', 'wells'],

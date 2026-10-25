@@ -168,7 +168,9 @@
     .ex-leg{display:inline-flex;align-items:center;}
     .ex-leg .ex-dot{margin-right:5px;}
     .ex-map{width:100%;height:auto;display:block;border-radius:8px;background:#eef3f8;}
-    .ex-table td.ex-adj{color:var(--blue);font-weight:600;}
+    .ex-table td.ex-adj,.ex-adj{color:var(--blue);font-weight:600;}
+    .ex-disc summary{cursor:pointer;font-size:0.78rem;line-height:1.5;}
+    .ex-disc[open] summary{margin-bottom:8px;}
     .ex-chk{display:inline-flex;align-items:center;gap:5px;font-size:0.78rem;color:#44505f;cursor:pointer;}
     .ex-rig-link{cursor:pointer;} .ex-rig-link:hover{fill:var(--blue);text-decoration:underline;}
     .rig-link{color:var(--blue);font-weight:700;text-decoration:none;} .rig-link:hover{text-decoration:underline;}
@@ -187,6 +189,19 @@
     .rg-st-sub{color:var(--muted);font-weight:400;}
     .rg-st-when{text-align:right;color:#44505f;font-variant-numeric:tabular-nums;white-space:nowrap;}
     .rg-st-dur{display:block;font-size:0.66rem;color:var(--muted);}
+    .ex-health ul{margin:0;padding-left:18px;font-size:0.76rem;line-height:1.55;}
+    .nw-day{font-size:0.7rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.04em;margin:12px 0 4px;}
+    .nw-day:first-child{margin-top:0;}
+    .nw-row{display:grid;grid-template-columns:86px 1fr;gap:0 10px;align-items:baseline;padding:6px 4px;border-bottom:1px solid #eef0f3;font-size:0.78rem;}
+    .nw-click{cursor:pointer;} .nw-click:hover{background:#faf0f5;}
+    .nw-t{display:inline-block;text-align:center;padding:1px 6px;border-radius:9px;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+      background:#eef0f3;color:#44505f;border:1px solid #d5dbe2;}
+    .nw-discovery{background:#fbe0ee;color:#8e0a48;border-color:#eeabcb;}
+    .nw-spud{background:#d9f5ea;color:#00714a;border-color:#9be0c3;}
+    .nw-postponed{background:#fdeedd;color:#9a5a00;border-color:#f3cf9f;}
+    .nw-cancelled{background:#f3e8e8;color:#8a3030;border-color:#e2c4c4;}
+    .nw-rig{background:#dbe7f1;color:#2f5f82;border-color:#b8c4d2;}
+    .nw-from{color:var(--muted);}
     .ex-scroll{overflow-x:auto;}
     .ex-gantt{min-width:760px;width:100%;height:auto;display:block;}
     .ex-ax{font-size:10px;fill:#828282;}
@@ -5009,6 +5024,7 @@ const EXPL_TABS = [
   {id:'map',   label:'Map'},
   {id:'rigs',  label:'Rigs'},
   {id:'fleet', label:'Fleet'},
+  {id:'news',  label:'News'},
 ];
 let explSubView = 'wells';
 let explWells = [], explOwners = [], explCompanies = [];
@@ -5215,10 +5231,10 @@ function explRenderBar() {
       </select>
       <input class="ex-in ex-q" type="search" placeholder="Search name, licence, rig…" value="${esc(f.q)}"
              oninput="explSet('q', this.value)" aria-label="Search"/>
-      <select class="year-select" onchange="explSet('purpose', this.value)" aria-label="Purpose">
+      ${explSubView === 'news' ? '' : `<select class="year-select" onchange="explSet('purpose', this.value)" aria-label="Purpose">
         ${opt('all', f.purpose, 'All purposes')}${opt('WILDCAT', f.purpose, 'Wildcat')}${opt('APPRAISAL', f.purpose, 'Appraisal')}
-      </select>
-      ${explSubView !== 'rigs' ? `
+      </select>`}
+      ${explSubView !== 'rigs' && explSubView !== 'news' ? `
       <select class="year-select" onchange="explSet('status', this.value)" aria-label="Status">
         ${opt('all', f.status, 'All statuses')}${opt('active', f.status, 'Planned + drilling')}
         ${opt('planned', f.status, 'Planned')}${opt('drilling', f.status, 'Drilling')}${opt('completed', f.status, 'Completed')}
@@ -5269,6 +5285,7 @@ function explRenderBody() {
   if (explSubView === 'map') return explRenderMap();
   if (explSubView === 'rigs') return explRenderRigs();
   if (explSubView === 'fleet') return explRenderFleet();
+  if (explSubView === 'news') return explRenderNews();
   explRenderList();
 }
 
@@ -5510,6 +5527,8 @@ function planRigBars(list, today, rigName) {
   // 2. AIS som fasit. Det som lar seg koble til et opphold får oppholdets
   // tider; resten faller tilbake på reglene under.
   const ais = rigName ? aisPlace(rigName, expl, camps, today) : null;
+  const disc = [];     // avvik mellom Sodir og AIS, til oversikten under riggtabellen
+  if (ais) ais.unmatched.forEach(u => disc.push(u));
   const explLeft = ais ? ais.explLeft : expl;
   const campsLeft = ais ? ais.campsLeft : camps;
   const aisBars = ais ? ais.bars : [];
@@ -5562,6 +5581,7 @@ function planRigBars(list, today, rigName) {
       last.noEnd = last.noEnd && c.noEnd;
       last.shifted = last.shifted || c.shifted;
       last.start0 = isoMin(last.start0, c.start0);
+      if (c.sodirStart) { last.sodirStart = isoMin(last.sodirStart || c.sodirStart, c.sodirStart); last.sodirEnd = isoMax(last.sodirEnd || c.sodirEnd, c.sodirEnd); }
       last.show = last.show || c.show;
       if (c.aisStay && last.aisStay) last.aisStay = {label: last.aisStay.label, from: isoMin(last.aisStay.from, c.aisStay.from), to: isoMax(last.aisStay.to, c.aisStay.to)};
       last.operator = [...new Set(last.items.map(i => i.operator).filter(Boolean))].join(', ');
@@ -5574,6 +5594,14 @@ function planRigBars(list, today, rigName) {
   // 6. Prioritet: AIS-målte bar går foran regelbaserte, og regelbaserte foran
   // «bare AIS». Den som taper trimmes mot den som vinner, så ingenting overlapper.
   let hidden = 0;
+  // Bare det en AIS-målt bar har trimmet bort teller som konflikt med AIS. Det de
+  // vanlige reglene gjør seg imellom (gammel historikk uten AIS) er ikke et avvik.
+  const hide = b => {
+    if (!b.yieldedToAis) return;
+    hidden++;
+    if (b.kind !== 'ais') disc.push({t: 'hidden', rig: rigName, title: b.title, kind: b.kind, id: b.id, show: b.show,
+      sodir: [b.sodirStart || b.start0 || b.start, b.sodirEnd || b.end]});
+  };
   const bars = explLeft.concat(fin.filter(c => !c.ais), fin.filter(c => c.ais), aisBars.filter(b => b.kind === 'expl'));
   const sorted = bars.slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : (b.ais ? 1 : 0) - (a.ais ? 1 : 0)));
   const out = [];
@@ -5581,11 +5609,20 @@ function planRigBars(list, today, rigName) {
     for (;;) {
       const last = out[out.length - 1];
       if (!last || b.start >= last.end) break;
-      if (!b.ais) { b.start = isoMin(last.end, b.end); break; }          // regelbasert viker
-      if (!last.ais) { last.end = b.start; if (last.end <= last.start) { out.pop(); hidden++; continue; } }
+      if (!b.ais) { b.start = isoMin(last.end, b.end); if (last.ais) b.yieldedToAis = true; break; }   // regelbasert viker
+      if (!last.ais) { last.end = b.start; last.yieldedToAis = true; if (last.end <= last.start) { hide(out.pop()); continue; } }
       break;
     }
-    if (b.ais ? b.end >= b.start : b.end > b.start) out.push(b); else hidden++;
+    if (b.ais ? b.end >= b.start : b.end > b.start) out.push(b); else hide(b);
+  });
+  // Hvor mye AIS flytter på Sodirs datoer, for hver AIS-målt bar.
+  const dayDiff = (a, b) => Math.round((dayMs(a) - dayMs(b)) / 864e5);
+  out.forEach(b => {
+    if (!b.ais || b.kind === 'ais' || !b.sodirStart) return;
+    const ongoing = b.state === 'drilling' || b.maybe;
+    disc.push({t: 'shifted', rig: rigName, title: b.title, kind: b.kind, id: b.id, show: b.show,
+      sodir: [b.sodirStart, b.sodirEnd], ais: [b.start, b.end], ds: dayDiff(b.start, b.sodirStart),
+      de: ongoing ? null : dayDiff(b.end, b.sodirEnd), place: b.aisStay ? b.aisStay.label : ''});
   });
   // «Bare AIS»: opphold ingen brønn forklarer, i hullene mellom de andre.
   const extra = [];
@@ -5601,8 +5638,27 @@ function planRigBars(list, today, rigName) {
       }
     });
   }
+  // Planlagte brønner der datoen er passert står fortsatt som planlagte hos Sodir,
+  // men uten en brukbar dato. De tegnes fra det tidligste riggen kan være ledig
+  // (etter siste aktivitet, aldri før i dag), i rekkefølge etter Sodirs gamle dato,
+  // og kortes inn mot en senere planlagt brønn med gyldig dato så de ikke overlapper.
+  const late = planned.filter(w => w.overdue).sort((a, b) => (a.planned < b.planned ? -1 : 1));
+  if (late.length) {
+    const fixed = planned.filter(w => !w.overdue).sort((a, b) => (a.start < b.start ? -1 : 1));
+    let cur = out.concat(extra).reduce((m, b) => isoMax(m, b.end), today);
+    late.forEach(w => {
+      for (let f; (f = fixed.find(x => x.end > cur && x.start < addDays(cur, 7)));) cur = f.end;
+      const nextFixed = fixed.filter(x => x.start > cur).map(x => x.start).sort()[0];
+      let end = addDays(cur, 60);
+      if (nextFixed && end > nextFixed) end = nextFixed;
+      w.sodirPlanned = w.planned;
+      w.start = cur; w.end = end;
+      cur = end;
+    });
+  }
   const res = out.concat(extra, planned);
   res.hidden = hidden;
+  res.disc = disc;
   return res;
 }
 
@@ -5623,7 +5679,7 @@ function aisPlace(rigName, expl, camps, today) {
   const overlap = (a1, a2, b1, b2) => (dayMs(isoMin(a2, b2)) - dayMs(isoMax(a1, b1))) / 864e5;
   const TOL = 5;                       // dagers slingringsmonn mellom Sodirs datoer og oppholdet
   const isSite = st => st.kind === 'field' || st.kind === 'well';
-  const explLeft = [], campsLeft = [];
+  const explLeft = [], campsLeft = [], unmatched = [];
   // Omdøpte rigger (alias) deler oppholdene med hovedoppføringen, som alene viser «bare AIS».
   const isPrimary = !(rigAis.tracks.rigs[rigName] && rigAis.tracks.rigs[rigName].alias);
 
@@ -5636,7 +5692,12 @@ function aisPlace(rigName, expl, camps, today) {
       const o = overlap(w.start0, w.end, st.from, st.to);
       if (o > bo) { best = st; bo = o; }
     });
-    if (!best) { explLeft.push(w); return; }
+    if (!best) {
+      explLeft.push(w);
+      unmatched.push({t: 'unmatched', rig: rigName, title: w.title, kind: 'expl', id: w.id, show: w.show, sodir: [w.start0, w.end],
+        why: 'AIS has no stay at the well position in these dates'});
+      return;
+    }
     best.acts.push({kind: 'expl', src: w, known: w.state === 'completed', end0: w.end, s0: w.start0});
   });
 
@@ -5654,7 +5715,12 @@ function aisPlace(rigName, expl, camps, today) {
         .filter(x => x.o >= 3).sort((a, b) => b.o - a.o);
       if (cand.length) matched = [cand[0].st];
     }
-    if (!matched.length) { campsLeft.push(c); return; }
+    if (!matched.length) {
+      campsLeft.push(c);
+      unmatched.push({t: 'unmatched', rig: rigName, title: c.title, kind: 'dev', id: c.id, show: c.show, sodir: [c0, c1],
+        why: 'AIS has no stay on this field in these dates'});
+      return;
+    }
     const groups = matched.map(() => []);
     c.items.forEach(it => {
       const i0 = it.entry, i1 = it.completion || it.entry;
@@ -5729,7 +5795,7 @@ function aisPlace(rigName, expl, camps, today) {
       cur = bar.end;
     });
   });
-  return {explLeft, campsLeft, bars, only};
+  return {explLeft, campsLeft, bars, only, unmatched};
 }
 
 function openDevWell(id) {
@@ -5796,7 +5862,7 @@ function explRenderRigs() {
   const byRigAll = {};
   const push = w => { (byRigAll[w.rig] = byRigAll[w.rig] || []).push(w); };
   explWells.forEach(g => g.branches.forEach(b => {
-    if (!b.rig || b.overdue) return;
+    if (!b.rig) return;   // utsatte planlagte brønner tas med; planRigBars plasserer dem
     push({...b, kind: 'expl', title: g.title, show: passes.has(g), end: endOf(b), shownEnd: b.end});
   }));
   rigDev.forEach(d => push({...d, show: rigDevPasses(d)}));
@@ -5806,15 +5872,17 @@ function explRenderRigs() {
   let latestPlan = '';
   const filtersActive = !!(explF.company.trim() || explF.q.trim() || explF.purpose !== 'all');
   let hiddenTotal = 0, aisBarsTotal = 0, ruleBarsTotal = 0;
+  const discAll = [];
   const planned = Object.entries(byRigAll).map(([name, list]) => {
     const res = planRigBars(list, today, name);
     hiddenTotal += res.hidden || 0;
+    (res.disc || []).forEach(d => { if (d.show !== false) discAll.push(d); });
     // «Bare AIS»-opphold vises ikke når et filter er satt: de hører ikke til noe selskap.
     const bars = res.filter(w => w.show && (w.kind !== 'ais' || !filtersActive));
     bars.forEach(w => { if (w.kind !== 'ais' && w.state !== 'planned') { if (w.ais) aisBarsTotal++; else ruleBarsTotal++; } });
     return {name, bars};
   });
-  planned.forEach(r => r.bars.filter(w => w.state === 'planned').forEach(w => { if (w.planned > latestPlan) latestPlan = w.planned; }));
+  planned.forEach(r => r.bars.filter(w => w.state === 'planned').forEach(w => { if (w.start > latestPlan) latestPlan = w.start; }));
   const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
   const out = planned.map(r => {
     const ws = r.bars.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).filter(w => w.start <= t1 && endOf(w) >= t0);
@@ -5861,7 +5929,7 @@ function explRenderRigs() {
       const a = clampX(w.start), b = Math.max(clampX(endOf(w)), a + 3);
       const planned = w.state === 'planned', isDev = w.kind === 'dev';
       let fill = planned ? '#fff' : w.state === 'drilling' ? EX_ACTIVE : (EX_RES[w.resKey] || EX_RES.other).color;
-      let stroke = planned ? '#1a2332' : 'none', dash = planned ? '4 2' : '', opacity = 1;
+      let stroke = planned ? (w.overdue ? '#d68a00' : '#1a2332') : 'none', dash = planned ? '4 2' : '', opacity = 1;
       if (isDev) {
         fill = w.noEnd ? 'url(#exHatch)' : w.maybe ? EX_ACTIVE : DEV_COLOR;
         if (w.maybe) { stroke = '#0a6b47'; dash = '4 2'; opacity = 0.7; }
@@ -5869,11 +5937,13 @@ function explRenderRigs() {
       const isAisOnly = w.kind === 'ais';
       if (isAisOnly) { fill = w.cat === 'port' ? '#dbe7f1' : '#ece7ee'; stroke = '#b8c4d2'; }
       const room = Math.floor((b - a) / 5.6);
-      const txt = room >= 5 ? w.title.slice(0, room - 1) + (w.title.length > room - 1 ? '…' : '') : '';
+      const label = (w.overdue ? '⚠ ' : '') + w.title;
+      const txt = room >= 5 ? label.slice(0, room - 1) + (label.length > room - 1 ? '…' : '') : '';
       const dark = !isAisOnly && (isDev || ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling');
       const note = (isDev && w.items.length > 1 ? ` · ${w.items.length} wellbores` : '')
         + (w.noEnd ? ' (no completion date reported; drawn until the rig\'s next activity)' : w.maybe ? ' (possibly still drilling)' : '')
         + (isDev && w.shifted ? ' (start adjusted to avoid overlap)' : '')
+        + (w.overdue ? ` · Sodir still lists this as planned, but its planned start (${fmtShort(w.sodirPlanned)}) has passed; drawn from the earliest the rig is free` : '')
         + (w.ais && w.aisStay ? ` · AIS: on ${w.aisStay.label} ${fmtShort(w.aisStay.from)} – ${fmtShort(w.aisStay.to)}` : '');
       const to = isAisOnly ? ' – ' + fmtShort(w.end) : w.ais ? ' – ' + fmtShort(w.end)
         : isDev ? (w.maybe || w.noEnd ? '' : ' – ' + fmtShort(w.end)) : (w.shownEnd ? ' – ' + fmtShort(w.shownEnd) : '');
@@ -5900,7 +5970,7 @@ function explRenderRigs() {
     const cell = (w, d) => w ? `<a href="#" onclick="${exOpen(w)};return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}${w.kind === 'dev' ? ' · development' : ''}</small>` : '—';
     return `<tr><td class="ex-l"><strong>${rigLink(r.name)}</strong><small>${esc(tc(r.type))}</small></td>
       <td class="ex-l">${cell(r.now, r.now ? 'since ' + fmtShort(r.now.start) + (r.now.maybe ? ' (probably)' : '') : '')}</td>
-      <td class="ex-l">${cell(r.next, r.next ? fmtShort(r.next.planned) : '')}</td>
+      <td class="ex-l">${cell(r.next, r.next ? (r.next.overdue ? 'planned ' + fmtShort(r.next.sodirPlanned) + ' ⚠' : fmtShort(r.next.planned)) : '')}</td>
       <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) + (r.last.noEnd ? ' (est.)' : '') : '')}</td></tr>`;
   }).join('');
   const nDev = inWin.filter(w => w.kind === 'dev').reduce((t, b) => t + b.items.length, 0);
@@ -5921,7 +5991,8 @@ function explRenderRigs() {
         the rig's AIS track: the bar runs from when the rig arrived at the location until it left, and Sodir's dates only decide the
         order of activities within one stay (${aisBarsTotal} bars verified, ${ruleBarsTotal} still placed by the rules below
         because no matching stay was found${hiddenTotal ? `; ${hiddenTotal} activities are hidden because AIS places the rig elsewhere at those dates` : ''}).
-        Pale bars are port calls and stays no well explains. Click one to replay it. Where AIS is missing, the rules apply:
+        Pale bars are port calls and stays no well explains. A dashed amber bar with ⚠ is a well Sodir still lists as planned
+        although its start date has passed; it is drawn from the earliest the rig is free, so its timing is a placeholder. Click one to replay it. Where AIS is missing, the rules apply:
         a rig drills one well at a time, so there are no overlaps: end dates are treated as correct, and an activity
         whose start lies inside another is moved to where that one ended — Sodir's start is often a pre-drill, after which the rig
         moved on and returned. Development wells on the same field and rig, less than ${DEV_MERGE_GAP} days apart, are one campaign,
@@ -5932,7 +6003,40 @@ function explRenderRigs() {
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Rig</th><th class="ex-l">Drilling now</th><th class="ex-l">Next planned</th><th class="ex-l">Last completed</th>
-      </tr></thead><tbody>${table}</tbody></table></div>`;
+      </tr></thead><tbody>${table}</tbody></table></div>
+    ${explDiscHtml(discAll)}`;
+}
+
+// Sodir mot AIS: hvor mye AIS flytter på Sodirs datoer, hva som er skjult fordi
+// AIS plasserer riggen et annet sted, og hva som ikke lot seg koble til noe opphold.
+// Det fanger feilregistrerte datoer og huller i AIS-dekningen.
+function explDiscHtml(list) {
+  if (!list.length) return '';
+  const shifted = list.filter(d => d.t === 'shifted');
+  const hid = list.filter(d => d.t === 'hidden'), un = list.filter(d => d.t === 'unmatched');
+  const big = shifted.filter(d => Math.max(Math.abs(d.ds), Math.abs(d.de == null ? 0 : d.de)) >= 7);
+  const sorted = shifted.map(d => d.ds).sort((a, b) => a - b);
+  const median = sorted.length ? sorted[sorted.length >> 1] : 0;
+  const delta = v => v == null ? '—' : `<span class="${Math.abs(v) >= 7 ? 'ex-adj' : ''}">${v > 0 ? '+' : ''}${v} d</span>`;
+  const rng = a => a ? `${fmtShort(a[0])} – ${a[1] ? fmtShort(a[1]) : '…'}` : '—';
+  const open = d => d.kind === 'dev' ? `openDevWell(${d.id})` : `openWell(${d.id})`;
+  const rank = d => d.t === 'shifted' ? Math.max(Math.abs(d.ds), Math.abs(d.de || 0)) : 1e6;   // konflikter øverst
+  const rows = list.slice().sort((a, b) => rank(b) - rank(a)).slice(0, 80).map(d => `
+    <tr><td class="ex-l">${esc(d.rig)}</td>
+      <td class="ex-l"><a href="#" onclick="${open(d)};return false">${esc(d.title)}</a></td>
+      <td class="ex-l">${rng(d.sodir)}</td><td class="ex-l">${d.t === 'shifted' ? rng(d.ais) : '—'}</td>
+      <td>${d.t === 'shifted' ? delta(d.ds) : ''}</td><td>${d.t === 'shifted' ? delta(d.de) : ''}</td>
+      <td class="ex-l">${d.t === 'shifted' ? esc(tc(d.place)) : d.t === 'hidden' ? 'Hidden: AIS places the rig elsewhere' : esc(d.why)}</td></tr>`).join('');
+  return `<details class="pf-card ex-disc"><summary><strong>Sodir vs AIS</strong> · ${shifted.length} verified bars,
+      median start shift ${median > 0 ? '+' : ''}${median} d, ${big.length} differ by a week or more${
+      hid.length ? `, <span class="ex-adj">${hid.length} conflict with AIS</span>` : ''}${
+      un.length ? `, ${un.length} have no matching stay` : ''}</summary>
+    <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Rig</th><th class="ex-l">Activity</th><th class="ex-l">Sodir</th><th class="ex-l">AIS</th>
+      <th>Δ start</th><th>Δ end</th><th class="ex-l">Note</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="pf-map-note">Δ is AIS minus Sodir, in days. Conflicts are Sodir activities that fall inside a period AIS places the rig
+      elsewhere, so they are not drawn. Activities without a matching stay may mean AIS has a gap there, the rig is not mapped correctly in
+      data/rig_ais.json, or Sodir's dates or position are wrong. The list shows the 80 largest.</div></details>`;
 }
 
 // ── Detaljvisning ────────────────────────────────────────────────────────────
@@ -6070,8 +6174,8 @@ let rigAis = null, rigAisLoading = null;
 function loadRigAis() {
   if (rigAis) return Promise.resolve();
   if (rigAisLoading) return rigAisLoading;
-  rigAisLoading = Promise.all([fetchBundle('rig_tracks'), fetchBundle('rig_now')]).then(([tracks, now]) => {
-    rigAis = {tracks: tracks || {rigs: {}}, now: now || {rigs: {}, asOf: 0}};
+  rigAisLoading = Promise.all([fetchBundle('rig_tracks'), fetchBundle('rig_now'), fetchBundle('rig_health')]).then(([tracks, now, health]) => {
+    rigAis = {tracks: tracks || {rigs: {}}, now: now || {rigs: {}, asOf: 0}, health};
   });
   return rigAisLoading;
 }
@@ -6222,7 +6326,97 @@ async function explRenderFleet() {
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Rig</th><th class="ex-l">State</th><th class="ex-l">Place</th><th>Since</th>
-      <th class="ex-l">AIS destination</th><th>Speed</th><th>Last signal</th></tr></thead><tbody>${table}</tbody></table></div>`;
+      <th class="ex-l">AIS destination</th><th>Speed</th><th>Last signal</th></tr></thead><tbody>${table}</tbody></table></div>
+    ${rigHealthHtml(rigAis.health)}`;
+}
+
+// Driftsrapporten fra fetch_rigs.py: det som bør følges opp i AIS-dataene.
+function rigHealthHtml(h) {
+  if (!h) return '';
+  const items = [];
+  if (h.fails >= 1) items.push(`The AIS source failed in the last ${h.fails} data run${h.fails > 1 ? 's' : ''}${h.lastOk ? ` (last OK ${esc(h.lastOk)})` : ''}; positions may be stale.`);
+  (h.unmapped || []).forEach(n => items.push(`<strong>${esc(n)}</strong> has activity in the Sodir data but no AIS mapping in data/rig_ais.json.`));
+  (h.noSignal || []).forEach(x => items.push(`<strong>${esc(x.rig)}</strong> is drilling according to Sodir (${esc(x.doing)}) but has had no AIS signal${
+    x.lastSeen ? ' since ' + fmtMin(x.lastSeen) : ''}.`));
+  Object.entries(h.dropped || {}).forEach(([n, c]) => items.push(`<strong>${esc(n)}</strong>: ${c} positions were discarded as outside Norwegian waters or implausible jumps — the MMSI may be shared or misregistered.`));
+  if (!items.length) return '';
+  return `<div class="pf-card ex-health"><h3>AIS data health · ${fmtMin(h.asOf)}</h3>
+    <ul>${items.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
+}
+
+// ── News: hva som er nytt siden sist ─────────────────────────────────────────
+// data/changes.json skrives av den daglige jobben: nye planlagte brønner,
+// starter, avslutninger og funn, utsettelser og avlysninger, og rigger som har
+// kommet til et nytt sted. Teksten settes sammen her, så navn og tittel følger
+// resten av visningen (funnnavn i stedet for brønnnavn).
+let changesData = null, changesLoading = null;
+let newsType = 'all', newsShown = 40;
+
+function loadChanges() {
+  if (changesData) return Promise.resolve();
+  if (changesLoading) return changesLoading;
+  changesLoading = fetchBundle('changes').then(c => { changesData = (c && c.events) || []; });
+  return changesLoading;
+}
+
+const NEWS_TYPES = {
+  discovery: {label: 'Discovery', group: 'discoveries'}, spud: {label: 'Spud', group: 'wells'},
+  done: {label: 'Completed', group: 'wells'}, plan: {label: 'Planned', group: 'wells'},
+  postponed: {label: 'Postponed', group: 'wells'}, cancelled: {label: 'Removed', group: 'wells'},
+  rig: {label: 'Rig', group: 'rigs'},
+};
+
+function newsLine(e) {
+  const g = e.w != null ? explById[e.w] : null;
+  const title = g ? g.title : (e.t === 'discovery' && e.dn ? explDiscoveryLabel(e.dn) : e.n);
+  const op = e.op || (g && g.operator) || '';
+  const rig = e.rig || (g && g.rig) || '';
+  const bit = (...x) => x.filter(Boolean).map(esc).join(' · ');
+  switch (e.t) {
+    case 'plan': return `<strong>${esc(title)}</strong> planned${g ? ' · ' + esc(tc(g.purpose)) : ''} · ${bit(op, rig && 'rig ' + rig, e.planned && 'spud est. ' + fmtShort(e.planned))}`;
+    case 'spud': return `<strong>${esc(title)}</strong> spudded · ${bit(op, rig)}`;
+    case 'done': return `<strong>${esc(title)}</strong> completed · ${bit(e.c ? tc(e.c) : 'no result recorded', op)}`;
+    case 'discovery': return `<strong>${esc(explDiscoveryLabel(e.dn) || title)}</strong> discovery · ${bit(tc(e.c), op, rig)}`;
+    case 'postponed': return `<strong>${esc(title)}</strong> postponed · spud ${esc(fmtShort(e.frm))} → ${esc(fmtShort(e.to))}`;
+    case 'cancelled': return `<strong>${esc(title)}</strong> is no longer in Sodir's plans`;
+    case 'rig': return `<strong>${esc(e.r)}</strong> ${e.k === 'port' ? 'arrived in' : 'moved to'} ${esc(stayName(e.k, e.p))}${
+      e.pp && e.pp !== e.p ? ` <span class="nw-from">from ${esc(stayName(e.pk, e.pp))}</span>` : ''}`;
+  }
+  return esc(e.n || e.id);
+}
+
+async function explRenderNews() {
+  const box = document.getElementById('explBody');
+  if (!changesData) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+  await Promise.all([loadExploration(), loadChanges(), loadRigAis()]);
+  if (explSubView !== 'news') return;
+  const f = explF, c = f.company.trim().toLowerCase(), q = f.q.trim().toLowerCase();
+  const list = changesData.filter(e => {
+    if (newsType !== 'all' && NEWS_TYPES[e.t].group !== newsType) return false;
+    if (c) {
+      const g = e.w != null ? explById[e.w] : null;
+      if (e.t === 'rig') return false;                       // rigger har ikke selskap
+      if (g ? !explCompanyMatch(g, f.company.trim(), f.role) : !(e.op || '').toLowerCase().includes(c)) return false;
+    }
+    return !q || (e.n + ' ' + (e.dn || '') + ' ' + (e.r || '') + ' ' + (e.p || '') + ' ' + (e.op || '') + ' ' + (e.rig || '')).toLowerCase().includes(q);
+  });
+  const chip = (t, label) => `<button class="grp-btn${newsType === t ? ' active' : ''}" onclick="newsType='${t}';newsShown=40;explRenderNews()">${label}</button>`;
+  const shown = list.slice(0, newsShown);
+  let day = '', html = '';
+  shown.forEach(e => {
+    if (e.d !== day) { day = e.d; html += `<div class="nw-day">${fmtShort(day)}</div>`; }
+    const click = e.t === 'rig' ? `openRigProfile(${esc(JSON.stringify(e.r))}, false, ${e.f})`
+                : e.w != null && explById[e.w] ? `openWell(${e.w})` : '';
+    html += `<div class="nw-row${click ? ' nw-click' : ''}"${click ? ` onclick="${click}"` : ''}>
+      <span class="nw-t nw-${e.t}">${NEWS_TYPES[e.t].label}</span><span class="nw-txt">${newsLine(e)}</span></div>`;
+  });
+  box.innerHTML = `
+    <div class="ex-sum"><strong>${list.length}</strong> changes${changesData.length ? ` since ${fmtShort(changesData[changesData.length - 1].d)}` : ''}</div>
+    <div class="grp-row">${chip('all', 'All')}${chip('discoveries', 'Discoveries')}${chip('wells', 'Wells')}${chip('rigs', 'Rigs')}</div>
+    <div class="pf-card">${html || '<div class="pf-map-note">Nothing new matches the filters yet. The log is filled by the daily data run.</div>'}
+      ${list.length > newsShown ? `<button class="grp-btn ex-more" onclick="newsShown+=60;explRenderNews()">Show more (${list.length - newsShown} older)</button>` : ''}
+      <div class="pf-map-note">Detected by comparing each daily data run with the previous one; the first entries are dated from the wells' own start
+        and completion dates. Rig moves come from AIS stays.</div></div>`;
 }
 
 // ── Riggprofil med avspilling ────────────────────────────────────────────────
