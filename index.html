@@ -73,6 +73,7 @@
     .legend-row{display:flex;gap:8px 14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
     .legend-item{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--muted);}
     .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+    .legend-item .row-btn{margin-left:0;}
 
     /* Tabellen under grafen. .res-* er generisk tabellstil — den brukes av
        både reserve- og produksjonstabellene. */
@@ -2400,6 +2401,17 @@ function drawFieldsReserves(opts = {}) {
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+// Et navn som en JS-streng, til bruk i et onclick-attributt. Hub- og
+// selskapsnavn er fritekst fra Sodir eller fra settings-visningen, så de må
+// escapes både for JS (her) og for HTML (esc) før de havner i markup.
+const jsStr = v => "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+
+// Knapp som hopper videre til et selskaps profil. Brukes i fargeforklaringen
+// under «OE per company», der hver serie er et selskap.
+const profileBtn = (name, fn) =>
+  ` <button class="row-btn" onclick="${fn}(${esc(jsStr(name))})"` +
+  ` title="Open the profile for ${esc(name)}">Profile</button>`;
+
 function profileRow(id) {
   const b = bundle.field_profile;
   if (!b) return null;
@@ -3279,7 +3291,7 @@ function drawFieldsOePerCompany(opts = {}) {
     });
     if (!hasAnyValue(d)) return;
     datasets.push({label:cmp,data:d,backgroundColor:color,borderWidth:0,stack:'s'});
-    legend.push({label:cmp,color});
+    legend.push({label:cmp, color, company:cmp});
   });
 
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
@@ -3664,6 +3676,23 @@ function discoveryOwnership(d) {
 // under føttene.
 function scrollToTop() {
   try { window.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) { window.scrollTo(0, 0); }
+}
+
+// Fra selskapsnavnet i fargeforklaringen under «OE per company» til
+// selskapets egen profil.
+function openCompanyProfile(name) {
+  topMode = 'companies';
+  companySubView = 'profile';
+  selectedCompanyNames = new Set([name]);
+  document.getElementById('modeBtnHubs').classList.remove('active');
+  document.getElementById('modeBtnFields').classList.remove('active');
+  document.getElementById('modeBtnDiscoveries').classList.remove('active');
+  document.getElementById('modeBtnCompanies').classList.add('active');
+  renderViewTabs();
+  updateFab();
+  if (sheetOpen) renderCompanyList();
+  refresh();
+  scrollToTop();
 }
 
 // Fra hubnavnet i «OE per hub»-tabellen til hubens egen profil.
@@ -4205,9 +4234,6 @@ function periodTableHtml(groups, periods, headLabel, caption, decimals = 0) {
   const totals = periods.map((_, i) => groups.reduce((t, g) => t + g.vals[i], 0));
   const cells = vals => vals.map(v => `<td>${n(v)}</td>`).join('');
 
-  // Hubnavn er fritekst — de kan endres i settings-visningen — så de må
-  // escapes både som JS-streng og som HTML-attributt før de havner i onclick.
-  const jsStr = v => "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
   const btn = g => g.hub
     ? ` <button class="row-btn" onclick="openHubProfile(${esc(jsStr(g.hub))})"` +
       ` title="Open the profile for ${esc(g.hub)}">Profile</button>`
@@ -4609,7 +4635,8 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l=>`
       <div class="legend-item">
-        <div class="legend-dot" style="background:${l.color}"></div>${l.label}
+        <div class="legend-dot" style="background:${l.color}"></div>${esc(l.label)}${
+          l.company ? profileBtn(l.company, 'openCompanyProfile') : ''}
       </div>`).join('')}
     </div>`;
   if (chartInstance) chartInstance.destroy();
