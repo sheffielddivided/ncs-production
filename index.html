@@ -1252,16 +1252,16 @@ function sortCompanies(names) {
 
 // ── VIEW TABS ────────────────────────────────────────────────────────────────
 const FIELD_TABS   = [
+  {id:'oe_per_field',   label:'Prod per field'},
+  {id:'oe_per_company', label:'Prod per company'},
   {id:'oilgas',         label:'Oil & Gas'},
-  {id:'oe_per_field',   label:'OE per field'},
-  {id:'oe_per_company', label:'OE per company'},
   {id:'reserves',       label:'Reserves'},
   {id:'profile',        label:'Profile'},
 ];
 const HUB_TABS     = [
+  {id:'oe_per_field',   label:'Prod per field'},
+  {id:'oe_per_company', label:'Prod per company'},
   {id:'oilgas',         label:'Oil & Gas'},
-  {id:'oe_per_field',   label:'OE per field'},
-  {id:'oe_per_company', label:'OE per company'},
   {id:'reserves',       label:'Reserves'},
   {id:'profile',       label:'Profile'},
 ];
@@ -1272,9 +1272,9 @@ const DISCOVERY_TABS = [
   {id:'profile',       label:'Profile'},
 ];
 const COMPANY_TABS = [
+  {id:'oe_per_hub',    label:'Prod per hub'},
+  {id:'oe_per_field',  label:'Prod per field'},
   {id:'oilgas',        label:'Oil & Gas'},
-  {id:'oe_per_field',  label:'OE per field'},
-  {id:'oe_per_hub',    label:'OE per hub'},
   {id:'reserves',      label:'Reserves'},
   {id:'profile',       label:'Profile'},
 ];
@@ -1301,8 +1301,8 @@ function renderViewTabs() {
 }
 
 function setSubView(v) {
-  if (topMode === 'fields') fieldSubView = v;
-  else if (topMode === 'hubs') hubSubView = v;
+  if (topMode === 'fields') { fieldSubView = v; syncFieldSelection(); }
+  else if (topMode === 'hubs') { hubSubView = v; syncHubSelection(); }
   else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
   else if (topMode === 'exploration') explSubView = v;
   else if (topMode === 'licences') licSubView = v;
@@ -1369,6 +1369,8 @@ function switchMode(m) {
   if (sheetOpen) closeSheet();
   if (m === 'discoveries') syncDiscoverySelection(true);
   if (m === 'companies') syncCompanySelection();
+  if (m === 'fields') syncFieldSelection();
+  if (m === 'hubs') syncHubSelection();
   renderViewTabs();
   updateFab();
   refresh();
@@ -1388,11 +1390,12 @@ function updateFab() {
               : topMode === 'discoveries' ? 'discoveries' : 'companies';
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
-  const onePick = discoveryProfileMode() || companyProfileMode();
+  const onePick = discoveryProfileMode() || companyProfileMode()
+               || fieldProfileMode() || hubProfileMode();
   document.getElementById('sheetTitle').textContent =
     onePick ? `Select a ${noun}` : `Select ${nounP}`;
   // «Select all» og «Clear all» gir ingen mening i profilvisningene, der bare
-  // ett funn eller selskap kan velges.
+  // ett felt, én hub, ett funn eller ett selskap kan velges.
   document.getElementById('sheetActions').style.display = onePick ? 'none' : '';
 }
 
@@ -1466,11 +1469,13 @@ function renderHubList() {
   const el = document.getElementById('checkList');
   if (!filteredHubs.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
+  const single = hubProfileMode();
   filteredHubs.forEach(h => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedHubNames.has(h.name) ? ' checked' : '');
     const cb = document.createElement('input');
-    cb.type = 'checkbox';
+    cb.type = single ? 'radio' : 'checkbox';
+    if (single) cb.name = 'hubPick';
     cb.checked = selectedHubNames.has(h.name);
     cb.addEventListener('change', () => toggleHub(h.name, item, cb));
     item.appendChild(cb);
@@ -1487,6 +1492,14 @@ function renderHubList() {
 }
 
 function toggleHub(name, item, cb) {
+  // Hubprofilen viser én hub om gangen, så listen blir en radioknapp.
+  if (hubProfileMode()) {
+    selectedHubNames = new Set([name]);
+    renderHubList();
+    updateFab();
+    refresh();
+    return;
+  }
   if (selectedHubNames.has(name)) selectedHubNames.delete(name);
   else selectedHubNames.add(name);
   cb.checked = selectedHubNames.has(name);
@@ -1499,11 +1512,13 @@ function renderFieldList() {
   const el = document.getElementById('checkList');
   if (!filteredFields.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
+  const single = fieldProfileMode();
   filteredFields.forEach(f => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedFieldIds.has(f.id) ? ' checked' : '');
     const cb = document.createElement('input');
-    cb.type = 'checkbox';
+    cb.type = single ? 'radio' : 'checkbox';
+    if (single) cb.name = 'fieldPick';
     cb.checked = selectedFieldIds.has(f.id);
     cb.addEventListener('change', () => toggleField(f.id, item, cb));
     item.appendChild(cb);
@@ -1539,6 +1554,14 @@ function renderCompanyList() {
 }
 
 function toggleField(id, item, cb) {
+  // Feltprofilen viser ett felt om gangen, så listen blir en radioknapp.
+  if (fieldProfileMode()) {
+    selectedFieldIds = new Set([id]);
+    renderFieldList();
+    updateFab();
+    refresh();
+    return;
+  }
   if (selectedFieldIds.has(id)) { selectedFieldIds.delete(id); delete fieldProdCache[id]; }
   else selectedFieldIds.add(id);
   cb.checked = selectedFieldIds.has(id);
@@ -1699,6 +1722,30 @@ function companyProfileMode() {
   return topMode === 'companies' && companySubView === 'profile';
 }
 
+function fieldProfileMode() {
+  return topMode === 'fields' && fieldSubView === 'profile';
+}
+
+function hubProfileMode() {
+  return topMode === 'hubs' && hubSubView === 'profile';
+}
+
+// Felt- og hubprofilen viser én forekomst om gangen. Er flere valgt ved
+// overgangen til profilen, beholdes den første i listens rekkefølge.
+function syncFieldSelection() {
+  if (!fieldProfileMode() || selectedFieldIds.size <= 1) return;
+  const pick = allFields.find(f => selectedFieldIds.has(f.id))?.id
+            ?? [...selectedFieldIds][0];
+  selectedFieldIds = new Set([pick]);
+}
+
+function syncHubSelection() {
+  if (!hubProfileMode() || selectedHubNames.size <= 1) return;
+  const pick = allHubs.find(h => selectedHubNames.has(h.name))?.name
+            ?? [...selectedHubNames][0];
+  selectedHubNames = new Set([pick]);
+}
+
 // Profilen viser ett selskap om gangen. Er flere valgt, beholdes det første —
 // selskapslisten er sortert med Aker BP øverst og deretter synkende reserver,
 // så det er det største av de valgte.
@@ -1830,6 +1877,7 @@ function stateToHash() {
     if (!explF.dev) q.set('xd', '0');
     if (!explF.aisOnly) q.set('xo', '0');
     if (explF.fixed) q.set('xf', '1');
+    if (explF.modu) q.set('xm', '1');
     if (explF.open) q.set('xw', explF.open);
     if (explF.rig) q.set('xg', explF.rig);
   }
@@ -1879,7 +1927,7 @@ function applyHash() {
   if (topMode === 'licences') {
     licF = {...licDefaults()};
     LIC_PARAMS.forEach(([k, p]) => { if (q.has(p)) licF[k] = q.get(p); });
-    if (!['count','net'].includes(licF.metric)) licF.metric = 'count';
+    if (!['count','net','gross'].includes(licF.metric)) licF.metric = 'count';
     if (!['all','operator'].includes(licF.role)) licF.role = 'all';
     if (!['count','pct'].includes(licF.ovm)) licF.ovm = 'count';
     if (!['any','buy','sell'].includes(licF.txRole)) licF.txRole = 'any';
@@ -1902,6 +1950,7 @@ function applyHash() {
     if (g('xd') === '0') explF.dev = false;
     if (g('xo') === '0') explF.aisOnly = false;
     if (g('xf') === '1') explF.fixed = true;
+    if (g('xm') === '1') explF.modu = true;
     if (+g('xw') > 0) explF.open = +g('xw');
     if (g('xg')) explF.rig = g('xg');
   }
@@ -2250,7 +2299,7 @@ function drawFieldsOePerField(opts = {}) {
     legend.push({label:fname,color});
   });
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-  setChartTitle(scope ? `${scope.label} · OE per field` : `Net production · OE per field`, `${fnames} · boe/day`);
+  setChartTitle(scope ? `${scope.label} · Prod per field` : `Net production · Prod per field`, `${fnames} · boe/day`);
   setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? scope.label : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   renderChart(labels, datasets, legend, 'boe/day');
 }
@@ -3331,7 +3380,7 @@ function drawFieldsOePerCompany(opts = {}) {
   });
 
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
-  setChartTitle(scope ? `${scope.label} · OE per company` : `${fnames} · OE per company`,
+  setChartTitle(scope ? `${scope.label} · Prod per company` : `${fnames} · OE per company`,
                 `Equity-adjusted · boe/day`);
   setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
@@ -3438,7 +3487,7 @@ function drawCompaniesOePerField() {
   });
 
   const cmpStr = companies.join(', ');
-  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · OE per field`, `Equity-adjusted · boe/day`);
+  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Prod per field`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
 }
@@ -3480,7 +3529,7 @@ function drawCompaniesOePerHub() {
   });
 
   const cmpStr = companies.join(', ');
-  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · OE per hub`, `Equity-adjusted · boe/day`);
+  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Prod per hub`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per hub &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
   // lastLabels er trimmet av renderChart, så tabellen viser nøyaktig de
@@ -4395,12 +4444,16 @@ function reserveTableHtml(groups, headLabel, caption, opts = {}) {
   const tot = groups.reduce((t, g) => ({liq:t.liq+g.liq, gas:t.gas+g.gas, oe:t.oe+g.oe}),
                             {liq:0, gas:0, oe:0});
 
-  // Rader som bærer en discoveryId blir lenker til funnprofilen. Funnvisningen
-  // setter den på gruppene i «Resources» og på barna i «Per company»; de andre
-  // kallerne sender den ikke, og får ren tekst.
-  const nm = r => r.discoveryId
-    ? `<a class="row-link" href="#" title="Open the profile for ${esc(r.name)}"` +
-      ` onclick="openDiscoveryProfile(${r.discoveryId});return false;">${esc(r.name)}</a>`
+  // Rader som bærer en discoveryId, fieldId eller company blir lenker til
+  // profilen for funnet, feltet eller selskapet. Funnvisningen setter
+  // discoveryId; reservetabellene for huber og felt setter fieldId og company.
+  // Rader uten noen av dem får ren tekst.
+  const link = (r, call) =>
+    `<a class="row-link" href="#" title="Open the profile for ${esc(r.name)}"` +
+    ` onclick="event.stopPropagation();${call};return false;">${esc(r.name)}</a>`;
+  const nm = r => r.discoveryId ? link(r, `openDiscoveryProfile(${r.discoveryId})`)
+    : r.fieldId ? link(r, `openFieldProfile(${r.fieldId})`)
+    : r.company ? link(r, `openCompanyProfile(${esc(jsStr(r.company))})`)
     : esc(r.name);
 
   const body = groups.map(g => {
@@ -4560,7 +4613,7 @@ function renderReserveTableByFieldPartner(series, year) {
     const rest = 1 - partners.reduce((t, pt) => t + pt.share/100, 0);
     if (rest > 0.0005) parts.push({name: UNALLOCATED, pct: rest*100});
     fields.push({
-      name: allFields.find(f => f.id === s.id)?.name || String(s.id),
+      id: s.id, name: allFields.find(f => f.id === s.id)?.name || String(s.id),
       cur, full, parts,
     });
   });
@@ -4579,9 +4632,10 @@ function renderReserveTableByFieldPartner(series, year) {
       const v = remainingSplit(f.cur, pt.pct/100);
       if (v.oe <= 0) return;
       const g = byCmp[pt.name] = byCmp[pt.name] ||
-        {name: pt.name, liq:0, gas:0, oe:0, children:[]};
+        {name: pt.name, ...(pt.name !== UNALLOCATED ? {company: pt.name} : {}),
+         liq:0, gas:0, oe:0, children:[]};
       g.liq += v.liq; g.gas += v.gas; g.oe += v.oe;
-      g.children.push({name: f.name, share: {pct: pt.pct, exact: true}, ...v});
+      g.children.push({name: f.name, fieldId: f.id, share: {pct: pt.pct, exact: true}, ...v});
     }));
     const groups = Object.values(byCmp).map(g => ({
       ...g, share: {pct: hubOe > 0 ? g.oe / hubOe * 100 : 0, exact: true},
@@ -4592,9 +4646,10 @@ function renderReserveTableByFieldPartner(series, year) {
       {shareHead: 'Share'});
   } else {
     const groups = fields.map(f => ({
-      name: f.name, ...f.full,
+      name: f.name, fieldId: f.id, ...f.full,
       children: f.parts.map(pt => ({
-        name: pt.name, share: {pct: pt.pct, exact: true}, ...remainingSplit(f.cur, pt.pct/100),
+        name: pt.name, ...(pt.name !== UNALLOCATED ? {company: pt.name} : {}),
+        share: {pct: pt.pct, exact: true}, ...remainingSplit(f.cur, pt.pct/100),
       })),
     }));
     html = reserveTableHtml(groups, 'Field / partner',
@@ -4631,7 +4686,8 @@ function renderReserveTableByPartner(series, year) {
     if (rest > 0.0005) add(UNALLOCATED, rest*100, remainingSplit(cur, rest));
   });
   const groups = Object.values(byPartner).map(g => ({
-    name: g.name, liq: g.liq, gas: g.gas, oe: g.oe,
+    name: g.name, ...(g.name !== UNALLOCATED ? {company: g.name} : {}),
+    liq: g.liq, gas: g.gas, oe: g.oe,
     share: g.oe > 0 ? {pct: g._wsum / g.oe, exact: g._pcts.size === 1} : null,
   }));
   setChartTable(reserveTableHtml(groups, 'Partner',
@@ -5032,7 +5088,7 @@ let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
                              purpose:'all', from:String(currentYear - 2), q:'',
-                             dev:true, fixed:false, aisOnly:true});   // dev/fixed/aisOnly: bare riggfanen
+                             dev:true, fixed:false, aisOnly:true, modu:false});   // dev/fixed/aisOnly/modu: bare riggfanen
 let explF = {...explDefaults(), open:null};
 let explSort = {key:'start', dir:-1};
 let explLimit = 100;
@@ -5248,7 +5304,8 @@ function explRenderBar() {
       </select>` : ''}
       ${explSubView === 'rigs' ? `
       <label class="ex-chk"><input type="checkbox" ${f.dev ? 'checked' : ''} onchange="explSet('dev', this.checked, true)"> Development wells</label>
-      <label class="ex-chk"><input type="checkbox" ${f.fixed ? 'checked' : ''} ${f.dev ? '' : 'disabled'} onchange="explSet('fixed', this.checked)"> Fixed platforms</label>
+      <label class="ex-chk"><input type="checkbox" ${f.modu ? 'checked' : ''} onchange="explSet('modu', this.checked, true)"> MODUs only</label>
+      <label class="ex-chk"><input type="checkbox" ${f.fixed ? 'checked' : ''} ${f.dev && !f.modu ? '' : 'disabled'} onchange="explSet('fixed', this.checked)"> Fixed platforms</label>
       <label class="ex-chk"><input type="checkbox" ${f.aisOnly ? 'checked' : ''} onchange="explSet('aisOnly', this.checked)"> Port calls &amp; other stays</label>` : ''}
       <button class="grp-btn" onclick="explReset()">Reset</button>`}
     </div>`;
@@ -5477,6 +5534,21 @@ function loadRigWells() {
     rigDevLoaded = true;
   });
   return rigDevLoading;
+}
+
+// Rigger som ikke er mobile borerigger (MODU-er): plattformenes egne
+// boreanlegg. Letebrønnene har bare rigType, så en rigg regnes som fast når
+// typen er en plattformtype (jacket, condeep, TLP …), eller når Sodir har
+// merket den FIXED på en utviklingsbrønn — det fanger flytere som Visund og
+// Snorre B, der typen alene ser ut som en vanlig halvt nedsenkbar rigg.
+const MODU_TYPE = /^(SEMISUB|JACK-UP|VESSEL|DRILLSHIP)/;
+function fixedRigNames() {
+  const out = new Set(rigDev.filter(w => w.fixed).map(w => w.rig));
+  rigDev.forEach(w => { if (w.rigType && !MODU_TYPE.test(w.rigType)) out.add(w.rig); });
+  explWells.forEach(g => g.branches.forEach(b => {
+    if (b.rig && b.rigType && !MODU_TYPE.test(b.rigType)) out.add(b.rig);
+  }));
+  return out;
 }
 
 function rigDevPasses(w) {
@@ -5866,6 +5938,11 @@ function explRenderRigs() {
     push({...b, kind: 'expl', title: g.title, show: passes.has(g), end: endOf(b), shownEnd: b.end});
   }));
   rigDev.forEach(d => push({...d, show: rigDevPasses(d)}));
+  // «MODUs only» tar bort plattformriggene helt, også når de borer letebrønner.
+  if (explF.modu) {
+    const fixed = fixedRigNames();
+    Object.keys(byRigAll).forEach(name => { if (fixed.has(name)) delete byRigAll[name]; });
+  }
 
   const t0 = addDays(today, -456);
   devBlockById = {};
@@ -6897,7 +6974,7 @@ function licRenderBar() {
   if (licSubView !== 'overview') { document.getElementById('licBar').innerHTML = ''; return; }
   document.getElementById('licBar').innerHTML = `
     <div class="ex-bar">
-      <div class="pill-group">${pill('metric', 'count', 'Licences')}${pill('metric', 'net', 'Net area')}</div>
+      <div class="pill-group">${pill('metric', 'count', 'Licences')}${pill('metric', 'net', 'Net area')}${pill('metric', 'gross', 'Gross area')}</div>
       <div class="pill-group">${pill('role', 'all', 'All interests')}${pill('role', 'operator', 'Operatorships')}</div>
     </div>`;
 }
@@ -6956,27 +7033,27 @@ async function licRenderBody() {
 
 // ── Oversikt ─────────────────────────────────────────────────────────────────
 // Verdien en stolpe viser, per område. «Operatorships» teller bare lisenser
-// selskapet leder; «net» er areal × andel.
+// selskapet leder; «net» er areal × andel, «gross» hele lisensarealet.
 function licCell(c, seaKey) {
   const t = seaKey ? licStats[c].sea[seaKey] : licStats[c];
   const op = licF.role === 'operator';
-  return licF.metric === 'net'
-    ? (op ? licOperNet(c, seaKey) : t.net)
-    : (op ? t.op : t.count);
+  return licF.metric === 'net'   ? (op ? licOperArea(c, seaKey, true)  : t.net)
+       : licF.metric === 'gross' ? (op ? licOperArea(c, seaKey, false) : t.gross)
+       : (op ? t.op : t.count);
 }
-function licOperNet(c, seaKey) {
+function licOperArea(c, seaKey, net) {
   return licByCo[c].reduce((s, {lic, share}) =>
-    s + (lic.operator === c && (!seaKey || lic.sea === seaKey) ? lic.km2 * share / 100 : 0), 0);
+    s + (lic.operator === c && (!seaKey || lic.sea === seaKey) ? lic.km2 * (net ? share / 100 : 1) : 0), 0);
 }
 
 function licRenderOverview() {
-  const f = licF, net = f.metric === 'net';
-  const unit = net ? 'km² net' : (f.role === 'operator' ? 'operated licences' : 'licences');
+  const f = licF, area = f.metric === 'net' || f.metric === 'gross';
+  const unit = area ? `km² ${f.metric}` : (f.role === 'operator' ? 'operated licences' : 'licences');
   const rows = licCos.map(c => ({c, total: LIC_SEAS.reduce((s, z) => s + licCell(c, z.key), 0)}))
     .filter(r => r.total > 0).sort((a, b) => b.total - a.total);
   const shown = rows.slice(0, f.all ? rows.length : f.top);
   const max = shown[0] ? shown[0].total : 1;
-  const fmt = v => net ? licKm(v) : String(v);
+  const fmt = v => area ? licKm(v) : String(v);
   const bars = shown.map(({c, total}) => `
     <div class="lc-row" onclick="licOpenCompany(${esc(JSON.stringify(c))})" role="link" tabindex="0"
          onkeydown="if(event.key==='Enter')licOpenCompany(${esc(JSON.stringify(c))})">
@@ -7011,7 +7088,7 @@ function licRenderOverview() {
     <div class="ex-sum"><strong>${licList.length}</strong> active production licences ·
       <strong>${licCos.length}</strong> companies · <strong>${licKm(tot.gross)}</strong> km² licensed</div>
     <div class="pf-card">
-      <h3>Companies ranked by ${net ? 'net area' : f.role === 'operator' ? 'operatorships' : 'active licences'}</h3>
+      <h3>Companies ranked by ${area ? f.metric + ' area' : f.role === 'operator' ? 'operatorships' : 'active licences'}</h3>
       ${bars || '<div class="ex-sum">No companies.</div>'}
       <div class="ex-legend">${legend}
         <span class="ex-leg">Showing ${shown.length} of ${rows.length}
@@ -7501,12 +7578,21 @@ function licSelectRound(key) { licF.round = key; licF.rowsAll = false; syncUrl()
 function licRoundDetail(rd) {
   // Første eierperiode er tildelingen; senere rader er overdragelser.
   const awarded = {};
-  const bump = (name, k, v) => { const c = awarded[name] = awarded[name] || {n: 0, op: 0, net: 0, now: 0}; c[k] += v; };
+  const bump = (name, k, v) => {
+    const c = awarded[name] = awarded[name] || {n: 0, op: 0, gross: 0, net: 0, now: 0, sea: {}};
+    c[k] += v;
+  };
   rd.lics.forEach(l => {
     const rows = licShares[l.id] || [];
     if (!rows.length) return;
     const first = Math.min(...rows.map(r => r.from));
-    rows.filter(r => r.from === first).forEach(r => { bump(r.co, 'n', 1); bump(r.co, 'net', (l.origKm2 || 0) * (r.share || 0) / 100); });
+    rows.filter(r => r.from === first).forEach(r => {
+      bump(r.co, 'n', 1);
+      bump(r.co, 'gross', l.origKm2 || 0);
+      bump(r.co, 'net', (l.origKm2 || 0) * (r.share || 0) / 100);
+      const sea = awarded[r.co].sea;
+      sea[l.area] = (sea[l.area] || 0) + 1;
+    });
     const ops = (licOper[l.id] || []).slice().sort((a, b) => a.from - b.from);
     if (ops.length) bump(ops[0].co, 'op', 1);
     if (l.active) rows.filter(r => r.to == null).forEach(r => bump(r.co, 'now', 1));
@@ -7554,8 +7640,25 @@ function licRenderRounds() {
     const c = awarded[n], link = licStats[n];
     return `<tr${link ? ` class="ex-row" onclick="licOpenCompany(${esc(JSON.stringify(n))})"` : ''}>
       <td class="ex-name"><strong>${esc(n)}</strong></td><td>${c.n}</td><td>${c.op || '—'}</td>
-      <td>${c.net ? licKm(c.net) : '—'}</td><td>${c.now || '—'}</td></tr>`;
+      <td>${c.gross ? licKm(c.gross) : '—'}</td><td>${c.net ? licKm(c.net) : '—'}</td><td>${c.now || '—'}</td></tr>`;
   };
+  // Tildelinger per selskap som liggende stolper, synkende, delt på havområde
+  // som stolpene i Overview.
+  const coMax = names.length ? awarded[names[0]].n : 1;
+  const coBars = names.map(n => {
+    const c = awarded[n], link = licStats[n];
+    const open = link ? ` onclick="licOpenCompany(${esc(JSON.stringify(n))})" role="link" tabindex="0"
+         onkeydown="if(event.key==='Enter')licOpenCompany(${esc(JSON.stringify(n))})"` : '';
+    return `
+    <div class="lc-row"${open || ' style="cursor:default"'}>
+      <div class="lc-name" title="${esc(n)}">${esc(n)}</div>
+      <div class="lc-track" style="width:${(c.n / coMax * 100).toFixed(1)}%">${LIC_SEAS.map(z => {
+        const v = c.sea[z.key] || 0;
+        return v > 0 ? `<span style="flex:${v};background:${z.color}" title="${esc(n)} · ${z.label}: ${v} licences"></span>` : '';
+      }).join('')}</div>
+      <div class="lc-val">${c.n}</div>
+    </div>`;
+  }).join('');
   const years = rd.first === rd.last || !rd.last ? licDayYear(rd.first) : `${licDayYear(rd.first)}–${licDayYear(rd.last)}`;
   const seaTxt = LIC_SEAS.filter(z => rd.sea[z.key]).map(z => `${rd.sea[z.key]} ${z.label}`).join(', ');
 
@@ -7592,10 +7695,14 @@ function licRenderRounds() {
         <div class="pf-fact"><span>Where</span><strong>${esc(seaTxt || '—')}</strong></div>
       </div></div>
     <div class="pf-card"><h3>Licence map</h3>${map}</div>
+    ${names.length ? `<div class="pf-card"><h3>Licences awarded per company</h3>
+      ${coBars}
+      <div class="ex-legend">${legend}</div>
+      <div class="pf-map-note">Number of the round's licences each company was awarded an interest in, as partner or operator.</div></div>` : ''}
     <div class="pf-card"><h3>Awards per company</h3>
       <div class="pf-scroll"><table class="res-table ex-table"><thead><tr><th class="ex-l">Company</th><th>Licences awarded</th><th>Operator</th>
-        <th>Net area, km²</th><th>Still holds</th></tr></thead><tbody>${names.map(coRow).join('')}</tbody></table></div>
-      <div class="pf-map-note">Counted from the first owners of each licence. Net area is the area as awarded times the company's share.
+        <th>Gross area, km²</th><th>Net area, km²</th><th>Still holds</th></tr></thead><tbody>${names.map(coRow).join('')}</tbody></table></div>
+      <div class="pf-map-note">Counted from the first owners of each licence. Gross area is the full area as awarded of the licences the company got an interest in; net area is that area times the company's share.
         «Still holds» is the number of the round's licences the company has an interest in today.</div></div>
     <div class="pf-card"><h3>Licences</h3>
       <div class="pf-scroll"><table class="res-table ex-table"><thead><tr><th class="ex-l">Licence</th><th class="ex-l">Area</th><th class="ex-l">Granted</th>
