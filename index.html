@@ -5968,7 +5968,7 @@ function explRenderRigs() {
     const last = ws.filter(w => w.state === 'completed' && w.kind !== 'ais').pop();
     return {name: r.name, ws, now, next, last, type: ws.length ? ws[0].rigType : ''};
   }).filter(r => r.ws.length)
-    .sort((a, b) => (!!b.now - !!a.now) || (!!b.next - !!a.next) || a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name, 'nb'));
   const inWin = out.flatMap(r => r.ws);
 
   if (!out.length) {
@@ -6257,6 +6257,39 @@ function loadRigAis() {
   return rigAisLoading;
 }
 
+// data/rig_facts.json: Sodirs innretningsdata for riggene — type, ansvarlig
+// selskap og første dato i drift. Brønndataene kjenner riggene bare ved
+// navn, så oppslaget går på navnet uten hensyn til store og små bokstaver.
+let rigFacts = null, rigFactsLoading = null;
+function loadRigFacts() {
+  if (rigFacts) return Promise.resolve();
+  if (rigFactsLoading) return rigFactsLoading;
+  rigFactsLoading = fetchBundle('rig_facts').then(b => {
+    rigFacts = {};
+    (b ? b.rows : []).forEach(r => {
+      const o = {};
+      b.columns.forEach((c, i) => { o[c] = r[i]; });
+      rigFacts[o.name.toUpperCase()] = o;
+    });
+  });
+  return rigFactsLoading;
+}
+
+function rigFactsCard(name) {
+  const f = rigFacts && rigFacts[String(name).toUpperCase()];
+  if (!f) return `<div class="pf-card"><div class="pf-map-note">No facility record for this rig in Sodir's data.</div></div>`;
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+  return `<div class="pf-card"><h3>Facts</h3>
+    <div class="pf-facts">
+      ${fact('Type', tc(f.kind))}${fact('Kind', f.fixed ? 'Fixed platform' : 'Mobile unit (MODU)')}
+      ${fact(f.fixed ? 'Operator' : 'Responsible company', f.company)}
+      ${fact('In service', f.inService ? fmtShort(f.inService) : '')}
+      ${fact('Phase', f.phase && f.phase !== 'IN SERVICE' ? tc(f.phase) : '')}${fact('Flag', f.nation)}
+    </div>
+    <div class="pf-map-note">Source: Sodir FactPages${f.url ? ` · <a class="row-link" href="${esc(f.url)}" target="_blank" rel="noopener">facility page</a>` : ''}.
+      «In service» is the first date the facility entered the phase IN SERVICE.</div></div>`;
+}
+
 const rigRes = (map, name) => {
   const r = map && map[name];
   return r && r.alias ? map[r.alias] : r;
@@ -6503,7 +6536,7 @@ const RG_SPEEDS = [[1, '1 day / s'], [3, '3 days / s'], [7, '1 week / s'], [30, 
 const RG_PERIODS = [[90, 'Last 3 months'], [180, 'Last 6 months'], [365, 'Last 12 months'], [0, 'All']];
 
 async function openRigProfile(name, quiet, seekMin) {
-  await loadRigAis();
+  await Promise.all([loadRigAis(), loadRigFacts()]);
   await loadExploration();
   const data = rigData(name);
   const body = document.getElementById('wdBody');
@@ -6519,6 +6552,7 @@ async function openRigProfile(name, quiet, seekMin) {
     body.innerHTML = `
       <div class="wd-head"><div><h2>${esc(name)}</h2><div class="wd-sub">Rig</div></div>
         <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button></div>
+      ${rigFactsCard(name)}
       <div class="pf-card"><p class="wd-lead">No AIS history for this rig. It has no matching AIS identity in data/rig_ais.json,
         or it has not been seen in Norwegian waters in the period.</p></div>
       <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
@@ -6591,6 +6625,7 @@ function rigBuild(reset) {
           nowInfo && nowInfo.dest ? ` · AIS destination “${esc(nowInfo.dest)}”` : ''}</div></div>
       <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
     </div>
+    ${rigFactsCard(name)}
     <div class="pf-card">
       <svg id="rgSvg" class="ex-map rg-map" viewBox="0 0 ${RG_W} ${RG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Track of ${esc(name)}">
         ${rigBaseLayers(P)}

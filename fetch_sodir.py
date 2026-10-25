@@ -39,6 +39,7 @@ BAA_LIC_LAYER = 3304   # bsns_arr_area_licensee_hst
 STATUS_LAYER  = 7101   # field_activity_status_hst
 DESCR_LAYER   = 7102   # field_description
 FACILITY_LAYER = 6000  # facility
+FACILITY_PHASE_LAYER = 6002  # facility_phase_hst
 LICENCE_LAYER = 3000   # licence
 COMPANY_LAYER = 1200   # company
 WELL_LAYER    = 5000   # wellbore
@@ -1039,6 +1040,58 @@ def build_rig_wells():
             'rows': out}
 
 
+# Fakta om riggene til riggprofilen i Exploration: type, ansvarlig selskap og
+# når riggen forst ble satt i drift. Alle flyttbare innretninger, pluss de
+# faste som borer bronner. Brønndataene kjenner riggene bare ved navn, så
+# navnet er nokkelen.
+#
+# For flyttbare innretninger er fclStartupDate tom; «In service» hentes derfor
+# fra fasehistorikken (forste periode med fasen IN SERVICE), med
+# fclStartupDate som reserve.
+def build_rig_facts():
+    # Faste innretninger tas med når boring er blant funksjonene, eller når
+    # navnet står som borerigg i brønndataene (de skrives tidligere i samme
+    # kjoring). Det siste fanger plattformer som Eldfisk S, der Sodir ikke
+    # oppgir boring som funksjon. Filteret gjøres her og ikke i spørringen:
+    # Sodirs brannmur avviser «... OR fclFunctions LIKE '%...%'».
+    rig_names = set()
+    for fname, col in (('exploration_wells.json', 'rig'), ('rig_wells.json', 'rig')):
+        try:
+            with open(os.path.join(OUT_DIR, fname), encoding='utf-8') as fh:
+                b = json.load(fh)
+            i = b['columns'].index(col)
+            rig_names |= {r[i].upper() for r in b['rows'] if r[i]}
+        except (OSError, ValueError, KeyError):
+            pass
+    fields = ('fclNpdidFacility,fclName,fclKind,fclFixedOrMoveable,fclPhase,fclFunctions,'
+              'fclCurrentRespCompanyName,fclCurrentOperatorName,fclStartupDate,fclNationName,fclFactPageUrl')
+    rows = fetch_layer(FACILITY_LAYER, fields, "fclFixedOrMoveable='MOVEABLE'")
+    rows += [r for r in fetch_layer(FACILITY_LAYER, fields, "fclFixedOrMoveable='FIXED'")
+             if 'DRILLING' in _clean(r.get('fclFunctions')) or _clean(r.get('fclName')).upper() in rig_names]
+    first_in_service = {}
+    for r in fetch_layer(FACILITY_PHASE_LAYER, 'fclNPDIDFacility,fclPhaseName,fclFromDate'):
+        fid, start = as_int(r.get('fclNPDIDFacility')), r.get('fclFromDate')
+        if fid is None or start is None or _clean(r.get('fclPhaseName')) != 'IN SERVICE':
+            continue
+        if fid not in first_in_service or start < first_in_service[fid]:
+            first_in_service[fid] = start
+    out = []
+    for r in rows:
+        fid, name = as_int(r.get('fclNpdidFacility')), _clean(r.get('fclName'))
+        if fid is None or not name:
+            continue
+        moveable = _clean(r.get('fclFixedOrMoveable')) == 'MOVEABLE'
+        out.append([
+            fid, name, _clean(r.get('fclKind')), 0 if moveable else 1,
+            _clean(r.get('fclCurrentRespCompanyName')) or _clean(r.get('fclCurrentOperatorName')),
+            _day(first_in_service.get(fid, r.get('fclStartupDate'))),
+            _clean(r.get('fclPhase')), _clean(r.get('fclNationName')), _clean(r.get('fclFactPageUrl')),
+        ])
+    out.sort(key=lambda x: x[0])
+    return {'columns': ['id', 'name', 'kind', 'fixed', 'company', 'inService', 'phase', 'nation', 'url'],
+            'rows': out}
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     """Skriv fila kun hvis innholdet faktisk er endret. Returnerer True ved endring."""
@@ -1103,6 +1156,7 @@ def main():
         ('companies.json', 'selskaper', build_companies),
         ('exploration_wells.json', 'letebronner', build_exploration_wells),
         ('rig_wells.json', 'utviklingsbronner til riggoversikt', build_rig_wells),
+        ('rig_facts.json', 'riggfakta', build_rig_facts),
     ]
 
     changed = False
