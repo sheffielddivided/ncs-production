@@ -1959,6 +1959,52 @@ Detaljvisningen viser kampanjens brønnbaner med Sodirs egne datoer. Det som
 gjenstår av overlapp i tegningen er bare klipping mot venstre kant av
 vinduet.
 
+**Riggposisjoner (AIS), `fetch_rigs.py`:** to nye faner i Exploration — *Fleet*
+(kart og tabell over alle rigger nå) og en *riggprofil* som åpnes ved klikk på
+en rigg (Fleet, riggtidslinjen eller riggtabellen). Profilen har kart med spor og
+opphold, avspilling (spill/pause, fire hastigheter, tidsslider, periode) og en
+liste over oppholdene. `xg=<rigg>` i hashen åpner en profil direkte.
+
+*Kilder, alle åpne uten innlogging og med `access-control-allow-origin: *`:*
+Kystdatahuset (`kystdatahuset.kystverket.no/ws/api`, flyttet fra
+`kystdatahuset.no`). `tracks/for-ships/by-mmsi` er rask og kompakt (15-minutters
+segmenter, bare mens skipet beveger seg), men går bare til siste månedlige
+innlasting, i dag flere uker bak. `ais/positions/for-mmsis-time` har alle
+meldinger og går ca. to uker bak, men databasen tåler bare vinduer på inntil ca.
+6 dager og svarer ellers «53300 too many clients» / «connection pool exhausted»;
+manglende dager gir «42P01 relation does not exist». `ais/realtime/geojson` gir
+alle skip nå (4 MB, 5 s) inkludert AIS-destinasjon (skrevet av mannskapet og
+rotete). BarentsWatch-historikken (siste 14 dager) krever registrering og er
+ikke tatt i bruk. Dekningen er norsk økonomisk sone, Svalbard og Jan Mayen.
+
+*Hvorfor statiske filer, ikke oppslag fra nettleseren:* historikken er for treg
+og ustabil til live-bruk, og sporene har hull. Den daglige jobben henter derfor
+og skriver `rig_tracks.json` (veipunkter `[t, lon, lat]`, opphold, hull; tider er
+minutter siden 1970) og `rig_now.json`. Stillestående rigger har få punkter, så
+avspillingen interpolerer lineært mellom veipunktene. `rig_log.json` er
+arbeidsfila med tynnede posisjoner utover det sporene dekker; steget har et
+tidsbudsjett og fortsetter neste kjøring, og feiler det, committes Sodir-dataene
+likevel (`continue-on-error`). Hullet mellom siste innlastede dag og i dag fylles
+av dagens øyeblikksbilde, så en forflytning i det hullet vises som en rett,
+stiplet linje.
+
+*Identifikasjon:* `data/rig_ais.json` kobler Sodirs riggnavn til MMSI/IMO. Navnesøk
+i AIS-registeret ga treff på 22 av 24, men tre ga småbåter (Askeladden, Askepott,
+Linus; riktig skip har lengde > 80 m og IMO ≠ 0), COSLInnovator har to MMSI, og
+Deepsea Bergen og Bollsta er samme skip (`alias`). Fila rettes for hånd.
+
+*Opphold* (`build_rig`): punkter innenfor 1 km av et ankerpunkt i minst 6 timer er et
+opphold; oppholdene på samme sted slås sammen når hullet er under 48 timer;
+bevegelsen mellom dem forenkles (Douglas-Peucker, 0,003°). Stedsnavn: havn
+(innen 3 km, fra Kystdatahusets lokasjonsliste), ellers brønn (1,2 km), ellers
+innretning/felt (2,5 km), ellers posisjonen. Tilstanden i Fleet (`rigState`) er
+«on location» (opphold på felt eller brønn), «under way» (over 1,5 knop), «at quay»,
+«at sea» og «no recent AIS» (siste melding over tre dager gammel).
+
+*Mulig videre arbeid (fase 3):* bruke oppholdene som fasit for riggtidslinjen
+(når forlot riggen feltet?) i stedet for 21-/60-dagersreglene, og et ankomstsignal
+for planlagte brønner (riggen ligger ved den planlagte posisjonen).
+
 **Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
 `https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek
 for mellomrom i navnet. Kontrollert mot alle 142 felt: 80 har bilde. Det finnes

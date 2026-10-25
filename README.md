@@ -28,6 +28,11 @@ statiske JSON-filer i dette repoet.
 | `data/facilities.json` | Innretninger per felt (lag 6000) — til hubprofilen |
 | `data/exploration_wells.json` | Letebrønner (lag 5000) — planlagte, pågående og avsluttede, med eierskap per spud-dato. Lastes først når Exploration åpnes |
 | `data/rig_wells.json` | Utviklingsbrønner (lag 5000, siste to år) til riggoversikten i Exploration |
+| `fetch_rigs.py` | Henter AIS-posisjoner for borerigger fra Kystverkets åpne API og bygger `rig_*.json` |
+| `data/rig_ais.json` | Kobling riggnavn (Sodir) til MMSI/IMO — redigeres for hånd |
+| `data/rig_tracks.json` | Veipunkter og opphold per rigg, til riggprofilen med avspilling |
+| `data/rig_now.json` | Dagens posisjon, status og AIS-destinasjon per rigg, til flåtekartet |
+| `data/rig_log.json` | Arbeidsfil for fetch_rigs.py: tynnede posisjoner utover det sporene dekker |
 | `data/licences.json` | Aktive utvinningstillatelser (lag 3000) |
 | `data/licence_outlines.json` | Forenklede lisensomriss til Licences-kartene. Lastes først når Licences åpnes |
 | `data/licence_baa.json` | Hvilke forretningsavtaleområder (BAA) hver lisens inngår i (lag 3301) |
