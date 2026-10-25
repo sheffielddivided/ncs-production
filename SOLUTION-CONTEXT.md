@@ -505,9 +505,41 @@ lisensens hele `areaKm2`; **netto areal** er den multiplisert med selskapets and
 (lag 3000, kun aktive). `licence_baa.json` er `[lisens, BAA, type]` fra lag 3301
 (gjeldende rader). Et felt eller funn som eies av en BAA knyttes til lisensene i den,
 slik at en lisens i en unit viser feltet unitet driver. Begge filene lastes lazy av
-`loadLicences()`. Modusen har fanene Overview og Company; Transactions, Rounds,
-Overlap og Map kommer senere (Sodir har `licence_transfer_hst` (3003) og
-`licence_area_poly_hst` (3002) til de to siste).
+`loadLicences()`. Modusen har fanene Overview, Company, Transactions, Rounds, Overlap og Map.
+
+### Lisenshistorikk — Transactions, Rounds, Overlap og Map
+
+Fire filer lastes lazy av Licences-fanene. **Alle datoer er dager siden 1970-01-01**
+(heltall); appen regner om med `DAY_MS`. Lisenser identifiseres med NPDID.
+
+| Fil | Innhold |
+|---|---|
+| `licence_all.json` | Kolonnene `id,name,area,round,granted,validTo,active,origKm2,areaKm2,operator` for alle 1 813 lisenser (lag 3000 uten aktiv-filter) |
+| `licence_history.json` | `companies` + `shares` `[lisens,selskapsindeks,fra,til,andel]` (lag 3007, 33 321 rader) + `oper` `[lisens,selskapsindeks,fra,til]` (lag 3008) |
+| `licence_transfers.json` | `rows` `[dag,lisens,selger,kjøper,andel,type]` — selger/kjøper er indeks i `companies` (−1 = mangler), type indeks i `kinds` |
+| `licence_areas.json` | `{lisens-id: [[fra,til,areal km2,ringer]]}` fra lag 3002, forenklet til ~440 m |
+
+**Overdragelser.** Lag 3003 har to rader per overføring (FROM og TO) på samme lisens,
+dato og type. `build_licence_transfers` pares dem, størst mot størst, så appen får én
+rad per overføring. Typene er Sodirs `prlTransferKind`: `TRANSFER`, `SDFI`,
+`WITHDRAWAL FROM THE JOINT VENTURE`, `MERGER/TAKEOVER`, `CHANGE OF COMPANY NAME` og
+`UNKNOWN`. Navnebytter er en selskapsendring og ikke handel, så de er av som standard i
+Transactions. Forretningsavtaleområder (lag 3305) er ikke med.
+
+**Konsern.** Juridiske enheter skifter navn og slås sammen, så Transactions og Map
+følger konsern (`group` i `companies.json`) som standard, med `LIC_GROUP_ALIAS` for
+etterfølgere Sodir har som egne grupper (Statoil → Equinor, Det norske → Aker BP). Det
+gir et riktig bilde av Aker BP før 2016, men gruppene er ikke perfekte; «Legal entities»
+viser rådataene. Overføringer innad i ett konsern er skjult i konsernvisningen.
+
+**Runder.** `prlLicensingActivityName`. «Awarded additionally to round X» regnes med
+i X. `TFO<år>` vises som «APA <år>», tall som «N. round». Eierne ved tildeling er
+eierradene med tidligst fra-dato; operatøren er første rad i `oper`.
+
+**Arealhistorikk.** Arealet for en periode er summen av delpolygonenes areal. Det
+stemmer med `prlCurrentArea` for 527 av 536 aktive; de resterende har overlappende
+polygoner for ulike stratigrafiske nivåer. Tidslinjekartet viser en lisens med den
+arealversjonen som gjaldt på datoen; før første versjon brukes den første.
 
 ### `data/companies.json` — selskapsfakta
 

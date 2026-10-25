@@ -663,6 +663,178 @@ def build_licence_baa():
     return {'columns': ['licence', 'baa', 'kind'], 'rows': [list(x) for x in sorted(out)]}
 
 
+# ── Lisenshistorikk ──────────────────────────────────────────────────────────
+# Til Licences-fanene Transactions, Rounds, Overlap og Map. Alle datoer lagres
+# som dager siden 1970-01-01 (heltall) for a holde filene sma; appen gjor dem om
+# til ms ved innlasting. Lisenser identifiseres med Sodirs NPDID (lag 3000).
+TRANSFER_LAYER = 3003   # licence_transfer_hst
+OPER_LAYER = 3008       # licence_oper_hst
+AREA_HST_LAYER = 3002   # licence_area_poly_hst
+AREA_SIMPLIFY = 0.004   # grader (~440 m)
+
+
+def _d(ms):
+    """ms -> dager siden epoch (heltall), None hvis tom."""
+    return None if ms is None else int(ms // 86400000)
+
+
+# Alle lisenser noensinne (1 813), ogsa de tilbakelevert. Brukes til runder.
+def build_licence_all():
+    rows = fetch_layer(
+        LICENCE_LAYER,
+        'prlNpdidLicence,prlName,prlMainArea,prlLicensingActivityName,prlDateGranted,'
+        'prlDateValidTo,prlActive,prlOriginalArea,prlCurrentArea,cmpLongName')
+    out = []
+    for r in rows:
+        pid = as_int(r.get('prlNpdidLicence'))
+        name = (r.get('prlName') or '').strip()
+        if pid is None or not name:
+            continue
+        out.append([pid, name, (r.get('prlMainArea') or '').strip(),
+                    (r.get('prlLicensingActivityName') or '').strip(),
+                    _d(as_int(r.get('prlDateGranted'))), _d(as_int(r.get('prlDateValidTo'))),
+                    1 if r.get('prlActive') == 'Y' else 0,
+                    num(r.get('prlOriginalArea')), num(r.get('prlCurrentArea')),
+                    (r.get('cmpLongName') or '').strip()])
+    out.sort(key=lambda x: x[0])
+    return {'columns': ['id', 'name', 'area', 'round', 'granted', 'validTo', 'active',
+                        'origKm2', 'areaKm2', 'operator'], 'rows': out}
+
+
+# Eierandeler og operatorer med full historikk (lag 3007 og 3008). Selskapsnavn
+# lagres en gang i 'companies'; radene peker pa dem med indeks.
+def build_licence_history():
+    companies, idx = [], {}
+
+    def ci(name):
+        name = (name or '').strip()
+        if name not in idx:
+            idx[name] = len(companies)
+            companies.append(name)
+        return idx[name]
+
+    shares = []
+    for r in fetch_layer(PRL_LIC_LAYER, 'prlNpdidLicence,cmpLongName,prlLicenseeDateValidFrom,'
+                         'prlLicenseeDateValidTo,prlLicenseeInterest'):
+        pid, frm = as_int(r.get('prlNpdidLicence')), _d(as_int(r.get('prlLicenseeDateValidFrom')))
+        if pid is None or frm is None or not (r.get('cmpLongName') or '').strip():
+            continue
+        shares.append([pid, ci(r.get('cmpLongName')), frm,
+                       _d(as_int(r.get('prlLicenseeDateValidTo'))),
+                       num(r.get('prlLicenseeInterest'))])
+    oper = []
+    for r in fetch_layer(OPER_LAYER, 'prlNpdidLicence,cmpLongName,prlOperDateValidFrom,'
+                         'prlOperDateValidTo'):
+        pid, frm = as_int(r.get('prlNpdidLicence')), _d(as_int(r.get('prlOperDateValidFrom')))
+        if pid is None or frm is None or not (r.get('cmpLongName') or '').strip():
+            continue
+        oper.append([pid, ci(r.get('cmpLongName')), frm, _d(as_int(r.get('prlOperDateValidTo')))])
+    key = lambda x: (x[0], x[2], x[1], x[3] if x[3] is not None else 10**9)
+    shares.sort(key=key)
+    oper.sort(key=key)
+    return {'companies': companies, 'shares': shares, 'oper': oper}
+
+
+# Overdragelser (lag 3003). Hver overdragelse star som to rader — FROM for
+# selgeren og TO for kjoperen — pa samme lisens, dato og type. Radene pares her,
+# storst mot storst, sa appen far en rad per overforing:
+#   [dag, lisens, selger, kjoper, andel %, type]
+# der selger/kjoper er indeks i 'companies', eller -1 nar motparten mangler i
+# kilden. Typene (se 'kinds') er Sodirs prlTransferKind; navnebytter og fusjoner
+# er selskapsendringer og ikke kjop og salg, sa appen skiller dem.
+def build_licence_transfers():
+    rows = fetch_layer(TRANSFER_LAYER,
+                       'prlNpdidLicence,cmpLongName,prlTransferDateValidFrom,'
+                       'prlTransferDirection,prlTransferKind,prlTransferredInterest')
+    companies, kinds, cidx, kidx = [], [], {}, {}
+
+    def ci(name):
+        if name not in cidx:
+            cidx[name] = len(companies)
+            companies.append(name)
+        return cidx[name]
+
+    groups = {}
+    for r in rows:
+        pid, day = as_int(r.get('prlNpdidLicence')), _d(as_int(r.get('prlTransferDateValidFrom')))
+        name = (r.get('cmpLongName') or '').strip()
+        kind = (r.get('prlTransferKind') or '').strip() or 'UNKNOWN'
+        side = (r.get('prlTransferDirection') or '').strip()
+        share = num(r.get('prlTransferredInterest'))
+        if pid is None or day is None or not name or side not in ('FROM', 'TO') or share is None:
+            continue
+        g = groups.setdefault((pid, day, kind), {'FROM': [], 'TO': []})
+        g[side].append([share, name])
+    out = []
+    for (pid, day, kind), g in groups.items():
+        if kind not in kidx:
+            kidx[kind] = len(kinds)
+            kinds.append(kind)
+        sellers = sorted(g['FROM'], key=lambda x: (-x[0], x[1]))
+        buyers = sorted(g['TO'], key=lambda x: (-x[0], x[1]))
+        while sellers or buyers:
+            s = sellers[0] if sellers else None
+            b = buyers[0] if buyers else None
+            amt = min(x[0] for x in (s, b) if x)
+            out.append([day, pid, ci(s[1]) if s else -1, ci(b[1]) if b else -1,
+                        round(amt, 4), kidx[kind]])
+            for x in (s, b):
+                if x:
+                    x[0] = round(x[0] - amt, 6)
+            if s and s[0] <= 1e-6:
+                sellers.pop(0)
+            if b and b[0] <= 1e-6:
+                buyers.pop(0)
+    out.sort(key=lambda x: (x[0], x[1], x[5], x[2], x[3], x[4]))
+    return {'companies': companies, 'kinds': kinds,
+            'columns': ['day', 'licence', 'seller', 'buyer', 'share', 'kind'], 'rows': out}
+
+
+# Lisensenes arealhistorikk med geometri (lag 3002): én post per lisens og
+# gyldighetsperiode — [fra-dag, til-dag eller null, areal km2, ringer]. Arealet
+# er summen av delpolygonenes areal. Det stemmer med lisensens areal i dag for
+# 527 av 536 aktive; de resterende har overlappende polygoner for ulike
+# stratigrafiske nivaer, og summen blir da litt hoyere.
+def build_licence_areas():
+    total = count_rows(AREA_HST_LAYER)
+    print(f"  Lag {AREA_HST_LAYER} (geometri): {total} rader")
+    order = oid_field(AREA_HST_LAYER)
+    feats, offset = [], 0
+    while offset < total:
+        params = {
+            'f': 'json', 'where': '1=1',
+            'outFields': 'prlNpdidLicence,prlAreaPolyDateValidFrom,prlAreaPolyDateValidTo,'
+                         'prlAreaPolyPolyArea',
+            'returnGeometry': 'true', 'outSR': 4326,
+            'resultOffset': offset, 'resultRecordCount': PAGE_SIZE,
+        }
+        if order:
+            params['orderByFields'] = f'{order} ASC'
+        page = _get(f'{BASE}/{AREA_HST_LAYER}/query', params).get('features', [])
+        if not page:
+            break
+        feats.extend(page)
+        offset += len(page)
+    byv = {}
+    for f in feats:
+        a = f.get('attributes') or {}
+        pid, frm = as_int(a.get('prlNpdidLicence')), _d(as_int(a.get('prlAreaPolyDateValidFrom')))
+        if pid is None or frm is None:
+            continue
+        v = byv.setdefault((pid, frm, _d(as_int(a.get('prlAreaPolyDateValidTo')))), [0.0, []])
+        v[0] += num(a.get('prlAreaPolyPolyArea')) or 0
+        for ring in (f.get('geometry') or {}).get('rings', []):
+            sring = _simplify_ring(ring, AREA_SIMPLIFY)
+            if sring:
+                v[1].append([[round(x, 3), round(y, 3)] for x, y in sring])
+    out = {}
+    for (pid, frm, to), (km2, rings) in sorted(
+            byv.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2] if kv[0][2] is not None else 10**9)):
+        if rings:
+            out.setdefault(str(pid), []).append([frm, to, round(km2), rings])
+    return {'licences': out}
+
+
 # Feltomriss til profilkartet. Hentes i WGS84 og forenkles kraftig: kartet er
 # en miniatyr, og rastallene fra Sodir er langt mer detaljerte enn nodvendig
 # (92 000 punkter mot 10 000 etter forenkling).
@@ -907,6 +1079,10 @@ def main():
         ('licences.json', 'utvinningstillatelser', build_licences),
         ('licence_outlines.json', 'lisensomriss', build_licence_outlines),
         ('licence_baa.json', 'lisens-BAA-kobling', build_licence_baa),
+        ('licence_all.json', 'alle lisenser', build_licence_all),
+        ('licence_history.json', 'lisenshistorikk', build_licence_history),
+        ('licence_transfers.json', 'overdragelser', build_licence_transfers),
+        ('licence_areas.json', 'lisensareal over tid', build_licence_areas),
         ('companies.json', 'selskaper', build_companies),
         ('exploration_wells.json', 'letebronner', build_exploration_wells),
         ('rig_wells.json', 'utviklingsbronner til riggoversikt', build_rig_wells),
