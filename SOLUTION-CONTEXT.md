@@ -1924,6 +1924,17 @@ sluttdato den siste. Detaljvisningen har en tabell over grenene. Riggfanen
 bruker brønnbanene, ikke gruppene, siden et sidesteg kan bores av en annen
 rigg enn hovedhullet.
 
+**Riggfakta:** `data/rig_facts.json` (bygget av `build_rig_facts()`) har
+Sodirs innretningsdata for alle flyttbare innretninger og de faste som borer
+(boring blant funksjonene, eller navnet står som rigg i brønndataene): type
+(`fclKind`), fast/flyttbar, ansvarlig selskap (`fclCurrentRespCompanyName`,
+operatøren for faste), fase, flagg og FactPages-lenke. «In service» er første
+`fromDate` med fasen `IN SERVICE` i fasehistorikken (lag 6002), siden
+`fclStartupDate` er tom for flyttbare innretninger. Riggprofilen viser dem i et
+faktakort øverst (`rigFactsCard`), slått opp på riggnavnet uten hensyn til
+store og små bokstaver. To spørringer (MOVEABLE og FIXED) i stedet for én med
+`OR … LIKE '%…%'`, fordi Sodirs brannmur avviser den siste.
+
 **Utviklingsbrønner i riggoversikten:** `data/rig_wells.json` (bygget av
 `build_rig_wells()`) har produksjons- og injeksjonsbrønner fra de siste to årene,
 bare med det riggtidslinjen trenger. Jordprøver og observasjonsbrønner er
