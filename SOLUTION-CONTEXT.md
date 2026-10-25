@@ -494,6 +494,21 @@ forretningsavtaleområdet som eier feltet, fra de gjeldende radene i lag 7108.
 lisensrader. Koblingen **lisens → funn** finnes allerede i
 `discoveries.json` (`ownerKind`/`owner`).
 
+`licences.json` har fire kolonner på slutten som ble lagt til for Licences-modusen:
+`round` (lisensieringsrunde, `prlLicensingActivityName`), `areaKm2` (`prlCurrentArea`,
+dagens areal), `origKm2` (`prlOriginalArea`) og `partitionFrom`. **Brutto areal** er
+lisensens hele `areaKm2`; **netto areal** er den multiplisert med selskapets andel.
+
+### `data/licence_outlines.json` og `data/licence_baa.json` — Licences-modusen
+
+`licence_outlines.json` er `{"licences": {lisensnavn: ringer}}`, forenklet til ~330 m
+(lag 3000, kun aktive). `licence_baa.json` er `[lisens, BAA, type]` fra lag 3301
+(gjeldende rader). Et felt eller funn som eies av en BAA knyttes til lisensene i den,
+slik at en lisens i en unit viser feltet unitet driver. Begge filene lastes lazy av
+`loadLicences()`. Modusen har fanene Overview og Company; Transactions, Rounds,
+Overlap og Map kommer senere (Sodir har `licence_transfer_hst` (3003) og
+`licence_area_poly_hst` (3002) til de to siste).
+
 ### `data/companies.json` — selskapsfakta
 
 ```json
