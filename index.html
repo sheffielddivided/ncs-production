@@ -174,7 +174,8 @@
     .rig-link{color:var(--blue);font-weight:700;text-decoration:none;} .rig-link:hover{text-decoration:underline;}
     .rg-map{cursor:default;background:#eef3f8;}
     .rg-date{fill:#1a2332;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;}
-    .rg-lbl{font-size:9px;}
+    .rg-lbl{font-size:9px;vector-effect:non-scaling-stroke;stroke-width:2.5px;}
+    .rg-date{vector-effect:non-scaling-stroke;}
     .rg-stay-on{stroke:#1a2332;stroke-width:2;fill-opacity:0.9;}
     .rg-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}
     .rg-slider{flex:1 1 180px;min-width:140px;accent-color:var(--blue);}
@@ -5906,7 +5907,8 @@ function rigState(n, asOf) {
   const kind = n.place ? n.place[0] : '';
   return kind === 'port' ? 'quay' : kind === 'field' || kind === 'well' ? 'location' : 'sea';
 }
-const placeText = p => p ? (p[0] === 'port' ? 'Port: ' : '') + tc(p[1]) + (p[2] && p[2] !== p[1] ? ` · ${tc(p[2])}` : '') : '—';
+const stayName = (kind, label) => (kind === 'sea' ? label : tc(label));
+const placeText = p => p ? (p[0] === 'port' ? 'Port: ' : '') + stayName(p[0], p[1]) + (p[2] && p[2] !== p[1] ? ` · ${tc(p[2])}` : '') : '—';
 
 // Felles kartprojeksjon: tar punkter [lon, lat] og gir x/y i et W×H-bilde.
 function rigProject(points, W, H, opts = {}) {
@@ -5944,6 +5946,17 @@ function rigBaseLayers(P) {
 }
 
 // ── Flåtekart ────────────────────────────────────────────────────────────────
+// Område-knapper over flåtekartet. Sokkelen er så lang at Barentshavet trekker
+// hele kartet nordover og presser Nordsjøen sammen; knappene zoomer til ett hav.
+let fleetRegion = 'all';
+const FLEET_REGIONS = [
+  ['all', 'All', () => true],
+  ['north', 'North Sea', n => n.lat < 62.5],
+  ['norwegian', 'Norwegian Sea', n => n.lat >= 62.5 && n.lat < 68],
+  ['barents', 'Barents Sea', n => n.lat >= 68],
+];
+function setFleetRegion(r) { fleetRegion = r; explRenderFleet(); }
+
 async function explRenderFleet() {
   const box = document.getElementById('explBody');
   if (!rigAis) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
@@ -5955,16 +5968,20 @@ async function explRenderFleet() {
     .map(name => ({name, n: {...rigNow(name)}}))
     .filter(r => r.n.lon != null && (!q || r.name.toLowerCase().includes(q)))
     .map(r => ({...r, state: rigState(r.n, asOf)}));
+  const allRows = rows.slice();
+  const regionOf = FLEET_REGIONS.find(r => r[0] === fleetRegion) || FLEET_REGIONS[0];
+  rows.splice(0, rows.length, ...allRows.filter(r => regionOf[2](r.n)));
+  if (!rows.length && fleetRegion !== 'all') { fleetRegion = 'all'; return explRenderFleet(); }
   if (!rows.length) {
     box.innerHTML = '<div class="ex-sum">No AIS positions available. The data is built daily by fetch_rigs.py.</div>';
     return;
   }
   const W = 900, H = 560;
-  const P = rigProject(rows.map(r => [r.n.lon, r.n.lat]), W, H, {pad: 1.2, minSpan: 4});
+  const P = rigProject(rows.map(r => [r.n.lon, r.n.lat]), W, H, {pad: 1.25, minSpan: fleetRegion === 'all' ? 4 : 2.5});
   // Etiketter: først til mølla, med enkel kollisjonstest.
   const placed = [];
   const lbl = rows.slice().sort((a, b) => a.name.localeCompare(b.name)).map(r => {
-    const x = P.px(r.n.lon), y = P.py(r.n.lat), w = r.name.length * 5.6, h = 10;
+    const x = P.px(r.n.lon), y = P.py(r.n.lat), w = r.name.length * 6.6 + 4, h = 13;
     for (const [dx, dy, anchor] of [[9, 3, 'start'], [-9, 3, 'end'], [0, -10, 'middle'], [0, 17, 'middle']]) {
       const bx = anchor === 'start' ? x + dx : anchor === 'end' ? x + dx - w : x - w / 2;
       const box_ = [bx, y + dy - h, bx + w, y + dy + 2];
@@ -5992,9 +6009,11 @@ async function explRenderFleet() {
     `<span class="ex-leg"><span class="ex-dot" style="background:${RIG_STATE[k].color}"></span>${RIG_STATE[k].label} (${count(k)})</span>`).join('');
   box.innerHTML = `
     <div class="ex-sum"><strong>${rows.length}</strong> rigs with AIS · positions as of ${fmtMin(asOf)} · click a rig for its history</div>
+    <div class="grp-row">${FLEET_REGIONS.filter(r => r[0] === 'all' || allRows.some(x => r[2](x.n))).map(r =>
+      `<button class="grp-btn${fleetRegion === r[0] ? ' active' : ''}" onclick="setFleetRegion('${r[0]}')">${r[1]}</button>`).join('')}</div>
     <div class="pf-card ex-mapcard">
       <svg class="ex-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Rig positions">
-        ${rigBaseLayers(P)}${dots}${lbl}
+        ${rigBaseLayers(P)}${lbl}${dots}
       </svg>
       <div class="ex-legend">${legend}</div>
       <div class="pf-map-note">Positions from Kystverket's open AIS data (Kystdatahuset), updated with the daily data run. Fields in grey.
@@ -6075,12 +6094,12 @@ function rigBuild(reset) {
     const r = Math.min(11, 4 + Math.sqrt(Math.max(days, 0)) * 1.1);
     return `<circle class="rg-stay" data-i="${i}" data-r="${r.toFixed(1)}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"
       fill="${kindColor[s[4]] || '#9aa5b1'}" fill-opacity="0.55" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"
-      style="cursor:pointer" onclick="rigSeek(${s[0]}, true)"><title>${esc(tc(s[5]))} · ${fmtMin(s[0])} – ${fmtMin(s[1])}</title></circle>`;
+      style="cursor:pointer" onclick="rigSeek(${s[0]}, true)"><title>${esc(stayName(s[4], s[5]))} · ${fmtMin(s[0])} – ${fmtMin(s[1])}</title></circle>`;
   }).join('');
   // Navn på de lengste oppholdene, uten overlapp.
   const placed = [];
   const labels = rg.stays.map((s, i) => ({s, i})).sort((a, b) => (b.s[1] - b.s[0]) - (a.s[1] - a.s[0])).slice(0, 9).map(({s}) => {
-    const text = tc(s[5]).slice(0, 22), x = P.px(s[2]), y = P.py(s[3]) - 12, w = text.length * 5.6;
+    const text = stayName(s[4], s[5]).slice(0, 22), x = P.px(s[2]), y = P.py(s[3]) - 12, w = text.length * 5.6;
     const bx = [x - w / 2, y - 10, x + w / 2, y + 2];
     if (bx[0] < 0 || bx[2] > RG_W || bx[1] < 0 || placed.some(p => bx[0] < p[2] && bx[2] > p[0] && bx[1] < p[3] && bx[3] > p[1])) return '';
     placed.push(bx);
@@ -6141,7 +6160,7 @@ function rigStaysHtml() {
     const w = wellsOf(s[7]);
     return `<div class="rg-stay-row" data-i="${i}" onclick="rigSeek(${s[0]}, true)">
       <span class="rg-ic rg-ic-${s[4]}">${icon}</span>
-      <div class="rg-st-main"><strong>${esc(tc(s[5]))}</strong>${s[6] && s[6] !== s[5] ? `<span class="rg-st-sub"> · ${esc(tc(s[6]))}</span>` : ''}
+      <div class="rg-st-main"><strong>${esc(stayName(s[4], s[5]))}</strong>${s[6] && s[6] !== s[5] ? `<span class="rg-st-sub"> · ${esc(tc(s[6]))}</span>` : ''}
         ${w.length ? `<span class="rg-st-sub"> · well ${w.map(esc).join(', ')}</span>` : ''}</div>
       <div class="rg-st-when">${fmtMin(s[0])} – ${s[1] >= rg.t1 - 5 ? 'now' : fmtMin(s[1])}<span class="rg-st-dur">${fmtDur(s[1] - s[0])}</span></div></div>`;
   }).join('') || '<div class="pf-map-note">No stays of 6 hours or more in the period.</div>';
