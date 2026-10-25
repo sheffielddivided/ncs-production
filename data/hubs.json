@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-18",
+  "updated": "2026-10-25",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -266,6 +266,10 @@
     "21106284": {
       "hub": "HEIMDAL",
       "auto": true
+    },
+    "21123063": {
+      "hub": "Tieback to UK",
+      "auto": false
     },
     "21350124": {
       "hub": "NORNE",
