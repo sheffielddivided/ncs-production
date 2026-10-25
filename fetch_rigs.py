@@ -43,6 +43,14 @@ MERGE_HOURS = 48         # oppholdene på samme sted slås sammen når hullet er
 
 T0 = datetime(1970, 1, 1)
 
+# Området som er relevant: sokkelen og kysten, fra Nordsjøen i sør til Barentshavet
+# i nord og øst. Posisjoner utenfor regnes som ugyldige. Den samme MMSI-en kan
+# nemlig sendes fra et annet skip eller være feilregistrert (COSLInnovators
+# 565797000 har hundrevis av posisjoner rundt Malaysia og Bengalbukta, mens
+# riggen selv lå på Gullfaks Sør).
+AREA = (-6.0, 54.0, 36.0, 76.0)    # lon_vest, lat_sør, lon_øst, lat_nord
+MAX_KNOTS = 35                     # raskere enn dette mellom to punkter er et hopp, ikke en reise
+
 
 class Busy(Exception):
     pass
@@ -62,6 +70,10 @@ def from_minutes(m):
 
 def parse_iso(s):
     return datetime.fromisoformat(s.replace('Z', '').split('+')[0].split('.')[0])
+
+
+def in_area(lon, lat):
+    return AREA[0] <= lon <= AREA[2] and AREA[1] <= lat <= AREA[3]
 
 
 def km(lon1, lat1, lon2, lat2):
@@ -129,7 +141,7 @@ def thin(rows, last=None):
     return out
 
 
-def gap_fill(mmsis, start, log, deadline):
+def gap_fill(mmsis, start, log, deadline, fetched, key):
     """Hent posisjoner fra start og framover, i biter, til databasen ikke har
     dagen ennå. Returnerer True hvis vi nådde slutten, False hvis vi ble
     stoppet av overbelastning eller tidsbudsjettet."""
@@ -156,6 +168,7 @@ def gap_fill(mmsis, start, log, deadline):
                         'mmsiIds': mmsis, 'start': day.strftime('%Y%m%d%H%M'),
                         'end': nxt.strftime('%Y%m%d%H%M')}, retries=2)['data'] or []
                     add_rows(log, rows)
+                    fetched[key] = minutes(nxt)
                 except NoTable:
                     return True
                 except Busy:
@@ -165,6 +178,7 @@ def gap_fill(mmsis, start, log, deadline):
         except Busy:
             return False
         add_rows(log, data)
+        fetched[key] = minutes(end)
         cur = end
     return True
 
@@ -172,7 +186,8 @@ def gap_fill(mmsis, start, log, deadline):
 def add_rows(log, rows):
     by = {}
     for r in rows:
-        by.setdefault(r[0], []).append([minutes(parse_iso(r[1])), r[2], r[3]])
+        if in_area(r[2], r[3]):
+            by.setdefault(r[0], []).append([minutes(parse_iso(r[1])), r[2], r[3]])
     for mmsi, pts in by.items():
         pts.sort()
         have = log.setdefault(str(mmsi), [])
@@ -181,6 +196,43 @@ def add_rows(log, rows):
         for p in thin([p for p in pts if p[0] not in known], last):
             have.append(p)
         have.sort()
+
+
+def sanitize(points):
+    """Fjern posisjoner utenfor området og enkeltstående hopp.
+
+    Et hopp er et punkt som både fra forrige og til neste gyldige punkt ville
+    krevd mer enn MAX_KNOTS. Endepunktene sjekkes mot sin eneste nabo. Et vedvarende
+    skifte av sted beholdes, for det er en reell flytting. Returnerer punktene som
+    beholdes og «brudd»: par [t1, t2] der noe ble fjernet mellom to beholdte punkter."""
+    pts = sorted(points)
+    valid = [in_area(p[1], p[2]) for p in pts]
+
+    def fast(a, b):
+        hours = max((b[0] - a[0]) / 60, 1 / 60)
+        return km(a[1], a[2], b[1], b[2]) / 1.852 / hours > MAX_KNOTS
+
+    idx = [i for i, v in enumerate(valid) if v]
+    for k, i in enumerate(idx):
+        before = pts[idx[k - 1]] if k > 0 else None
+        after = pts[idx[k + 1]] if k + 1 < len(idx) else None
+        bad_b = before is None or fast(before, pts[i])
+        bad_a = after is None or fast(pts[i], after)
+        # Midt i en serie må begge sider være for raske; i endene er det nok med den ene.
+        if (before is not None and after is not None and bad_b and bad_a) or \
+           (before is None and after is not None and bad_a) or \
+           (after is None and before is not None and bad_b):
+            valid[i] = False
+    kept, breaks, dropped_since = [], [], False
+    for p, v in zip(pts, valid):
+        if v:
+            if kept and dropped_since:
+                breaks.append([kept[-1][0], p[0]])
+            kept.append(p)
+            dropped_since = False
+        else:
+            dropped_since = True
+    return kept, breaks
 
 
 # ── OPPHOLD ──────────────────────────────────────────────────────────────────
@@ -210,7 +262,7 @@ def simplify(pts, tol=0.003):
     return [p for p, k in zip(pts, keep) if k]
 
 
-def build_rig(points, seen_until):
+def build_rig(points, seen_until, breaks=()):
     """Fra tidssorterte punkter til veipunkter, opphold og hull."""
     if not points:
         return None
@@ -218,13 +270,15 @@ def build_rig(points, seen_until):
     if seen_until and seen_until > pts[-1][0]:
         pts.append([seen_until, pts[-1][1], pts[-1][2]])   # riggen står der siste kjente posisjon er
     n = len(pts)
+    at = {p[0]: i for i, p in enumerate(pts)}
+    brk_after = {at[a] for a, b in breaks if a in at}      # brudd mellom punkt i og i + 1
 
     # Opphold: grådig fra hvert punkt, innenfor STAY_KM av ankerpunktet.
     clusters, i = [], 0
     while i < n:
         a = pts[i]
         j = i
-        while j + 1 < n and km(a[1], a[2], pts[j + 1][1], pts[j + 1][2]) <= STAY_KM:
+        while j + 1 < n and j not in brk_after and km(a[1], a[2], pts[j + 1][1], pts[j + 1][2]) <= STAY_KM:
             j += 1
         dur_h = (pts[j][0] - a[0]) / 60
         # Siste gruppe er der riggen er nå, uansett hvor kort tid vi har sett den.
@@ -243,7 +297,8 @@ def build_rig(points, seen_until):
         pa, pb = pts[p[1]], pts[c[0]]
         ca = centroid(pts[p[0]:p[1] + 1])
         cb = centroid(pts[c[0]:c[1] + 1])
-        if km(ca[0], ca[1], cb[0], cb[1]) <= STAY_KM and (pb[0] - pa[0]) / 60 <= MERGE_HOURS:
+        if km(ca[0], ca[1], cb[0], cb[1]) <= STAY_KM and (pb[0] - pa[0]) / 60 <= MERGE_HOURS \
+                and p[1] not in brk_after:
             p[1] = c[1]
         else:
             merged.append(c)
@@ -277,6 +332,11 @@ def build_rig(points, seen_until):
     if prev_end is not None and prev_end < n - 1:
         tail = simplify(pts[prev_end:])[1:]
         wp += [[t, round(lo, 4), round(la, 4)] for t, lo, la in tail]
+    # Brudd (posisjoner utenfor området eller hopp som ble fjernet) er også hull.
+    for a, b in breaks:
+        if [a, b] not in gaps:
+            gaps.append([a, b])
+    gaps.sort()
     # Fjern like tider (to veipunkter på samme minutt).
     out, last_t = [], None
     for w in wp:
@@ -376,6 +436,13 @@ def main():
     primary = {n: v for n, v in cfg.items() if 'mmsi' in v}
     log = load_json('rig_log.json', {'pts': {}, 'seen': {}})
     pts_log, seen = log['pts'], log['seen']
+    fetched = log.setdefault('fetched', {})
+    # Siste innhentede tidspunkt per MMSI, så posisjoner vi fjerner fra loggen ikke
+    # henter samme dager på nytt. Eldre loggfiler hadde ikke feltet.
+    for k, v in pts_log.items():
+        if v:
+            fetched.setdefault(k, v[-1][0])
+        pts_log[k] = [q for q in v if in_area(q[1], q[2])]
 
     print("Henter dagens posisjoner...")
     try:
@@ -391,6 +458,8 @@ def main():
         if p.get('mmsi') not in wanted or not coords:
             continue
         lon, lat = coords[-1]
+        if not in_area(lon, lat):
+            continue
         now_by_mmsi[p['mmsi']] = {
             'lon': round(lon, 5), 'lat': round(lat, 5), 'sog': p.get('speed'), 'cog': p.get('cog'),
             'heading': p.get('true_heading'), 'status': p.get('status'),
@@ -416,8 +485,8 @@ def main():
         ks = [str(m) for m in mmsis]
         for k in ks:
             pts_log[k] = [p for p in pts_log.get(k, []) if p[0] > track_end_m]
-        start_m = max([track_end_m] + [pts_log[k][-1][0] for k in ks if pts_log[k]])
-        done = gap_fill(mmsis, from_minutes(start_m), pts_log, deadline)
+        start_m = max([track_end_m] + [fetched.get(k, 0) for k in ks])
+        done = gap_fill(mmsis, from_minutes(start_m), pts_log, deadline, fetched, ks[0])
         if not done:
             print("  (ikke ferdig, fortsetter neste kjøring)")
 
@@ -430,9 +499,12 @@ def main():
                 pts_log.setdefault(k, []).extend(thin([[cur['t'], cur['lon'], cur['lat']]], last))
             seen[k] = max(seen.get(k, 0), cur['t'])
 
-        points = sorted({p[0]: p for p in tpts + [q for k in ks for q in pts_log.get(k, [])]}.values())
+        raw = sorted({p[0]: p for p in tpts + [q for k in ks for q in pts_log.get(k, [])]}.values())
+        points, breaks = sanitize(raw)
+        if len(points) < len(raw):
+            print(f"  {len(raw) - len(points)} posisjoner fjernet (utenfor området eller hopp)")
         seen_until = max([seen.get(k, 0) for k in ks] + [0]) or None
-        built = build_rig(points, seen_until)
+        built = build_rig(points, seen_until, breaks)
         if not built:
             continue
         stays = []
@@ -447,7 +519,7 @@ def main():
                              'place': last_stay[4:7] if last_stay else None,
                              'since': last_stay[0] if last_stay else None}
         print(f"  {len(points)} punkter -> {len(built['wp'])} veipunkter, {len(stays)} opphold")
-        write_json('rig_log.json', {'pts': pts_log, 'seen': seen})   # arbeidet skal ikke gå tapt ved feil
+        write_json('rig_log.json', {'pts': pts_log, 'seen': seen, 'fetched': fetched})   # arbeidet skal ikke gå tapt ved feil
 
     for name, v in cfg.items():
         if 'alias' in v and v['alias'] in rigs_out:
@@ -455,7 +527,7 @@ def main():
             if v['alias'] in now_out:
                 now_out[name] = {'alias': v['alias']}
 
-    write_json('rig_log.json', {'pts': pts_log, 'seen': seen})
+    write_json('rig_log.json', {'pts': pts_log, 'seen': seen, 'fetched': fetched})
     write_json('rig_tracks.json', {
         'columns': {'wp': ['t', 'lon', 'lat'],
                     'stays': ['from', 'to', 'lon', 'lat', 'kind', 'label', 'detail', 'wells'],
