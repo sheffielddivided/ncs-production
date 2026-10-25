@@ -1096,24 +1096,24 @@ slik at den kan merkes manuelt.
 
 | Modus | Fane | Funksjon | Hva som tegnes |
 |---|---|---|---|
+| Hubs | Prod per field | `drawFieldsOePerField({ids, scope})` | Én serie per medlemsfelt i huben |
+| Hubs | Prod per company | `drawFieldsOePerCompany({ids, scope})` | Én serie per selskap over hubens medlemsfelt, **equity-justert** |
 | Hubs | Oil & Gas | `drawFieldsOilGas({ids, scope})` | Stablet Oil/Gas summert over hubens medlemsfelt, brutto |
-| Hubs | OE per field | `drawFieldsOePerField({ids, scope})` | Én serie per medlemsfelt i huben |
-| Hubs | OE per company | `drawFieldsOePerCompany({ids, scope})` | Én serie per selskap over hubens medlemsfelt, **equity-justert** |
 
 | Hubs | Reserves | `drawFieldsReserves({ids, scope})` (`:2137`) | Reserver over tid, summert over hubens medlemsfelt. Tabell under: per felt og partner |
 | Hubs | Profile | `drawHubProfile` | Faktaark for **én** hub: årlig produksjon per medlemsfelt i grafen, og under den nøkkeltall, kart, feltliste, volumer, selskapsandeler, innretningstabell og transportbeskrivelsene |
+| Fields | Prod per field | `drawFieldsOePerField` (`:1989`) | Én serie per felt, brutto o.e. |
+| Fields | Prod per company | `drawFieldsOePerCompany({ids, scope})` | Én serie per selskap, **equity-justert** |
 | Fields | Oil & Gas | `drawFieldsOilGas` (`:1953`) | Stablet Oil/Gas (+Water). Ett felt: 1 desimal. Flere felt: **summert**, 0 desimaler |
-| Fields | OE per field | `drawFieldsOePerField` (`:1989`) | Én serie per felt, brutto o.e. |
-| Fields | OE per company | `drawFieldsOePerCompany({ids, scope})` | Én serie per selskap, **equity-justert** |
 | Fields | Reserves | `drawFieldsReserves` (`:2137`) | Stablet gjenstående/produsert per år, **mill fat o.e.** Tabell under: per partner |
 | Discoveries | Resources | `drawDiscoveriesPerDiscovery` (`:3990`) | Betingede ressurser per funn, stablet Liquids/Gas. Tabell under: per funn og partner |
 | Discoveries | Per company | `drawDiscoveriesPerCompany` (`:4032`) | Samme volumer fordelt på lisensandel, én søyle per selskap. Tabell under: per selskap og funn |
 | Discoveries | Maturity | `drawDiscoveriesMaturity` (`:4089`) | Per selskap, stablet på ressursklasse 4F/5F/7F |
 | Discoveries | Profile | `drawDiscoveryProfile` (`:3735-3787`) | Faktaark for **ett** funn: nøkkeltall, kart, volumer per ressursklasse, eierskap og Sodirs beskrivelse. Eneste visning **uten graf** |
 | Fields | Profile | `drawFieldProfile` (`:2916-2977`) | Faktaark for **ett** felt: årlig produksjon i grafen, og under den nøkkeltall, kart, volumer, eierskap og Sodirs beskrivelse |
+| Companies | Prod per hub | `drawCompaniesOePerHub` (`:3940`) | Som Prod per field, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
+| Companies | Prod per field | `drawCompaniesOePerField` (`:3535`) | Én serie per felt, equity-justert |
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:3402`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
-| Companies | OE per field | `drawCompaniesOePerField` (`:3535`) | Én serie per felt, equity-justert |
-| Companies | OE per hub | `drawCompaniesOePerHub` (`:3940`) | Som over, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
 | Companies | Reserves | `drawCompaniesReserves` (`:4109`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert. Tabell under: per hub og felt |
 | Companies | Profile | `drawCompanyProfile` | Faktaark for **ett** selskap: årlig egenandelsjustert produksjon per hub i grafen, og under den nøkkeltall, kart, portefølje gruppert per hub, ressurser og en sorterbar lisenstabell |
 
@@ -1290,6 +1290,13 @@ company» ikke har noen tabell å legge en lenke i.
 | Funnvisningenes tabeller | funnnavnet | funnprofilen | `openDiscoveryProfile` |
 | companies/oe per hub, tabellen | knapp på hubraden | hubprofilen | `openHubProfile` |
 | **«OE per company», fargeforklaringen** | **knapp per selskap** | **selskapsprofilen** | `openCompanyProfile` |
+| Reserves-tabellene i Hubs og Fields | felt- og selskapsnavnet | felt- eller selskapsprofilen | `openFieldProfile` / `openCompanyProfile` (via `fieldId`/`company` på radene i `reserveTableHtml`) |
+
+Fanene «OE per …» heter nå «Prod per …» i grensesnittet; id-ene
+(`oe_per_field`, `oe_per_company`, `oe_per_hub`) og dermed delte lenker er
+uendret. Profilfanene i Fields og Hubs er, som i Discoveries og Companies,
+enkeltvalg: listen viser radioknapper, og `syncFieldSelection` /
+`syncHubSelection` snevrer inn til én ved fanebytte.
 
 Den siste gjelder både Fields og Hubs, siden de deler
 `drawFieldsOePerCompany`. Legendens oppføringer bærer en `company`, og
