@@ -5638,6 +5638,24 @@ function planRigBars(list, today, rigName) {
       }
     });
   }
+  // Planlagte brønner der datoen er passert står fortsatt som planlagte hos Sodir,
+  // men uten en brukbar dato. De tegnes fra det tidligste riggen kan være ledig
+  // (etter siste aktivitet, aldri før i dag), i rekkefølge etter Sodirs gamle dato,
+  // og kortes inn mot en senere planlagt brønn med gyldig dato så de ikke overlapper.
+  const late = planned.filter(w => w.overdue).sort((a, b) => (a.planned < b.planned ? -1 : 1));
+  if (late.length) {
+    const fixed = planned.filter(w => !w.overdue).sort((a, b) => (a.start < b.start ? -1 : 1));
+    let cur = out.concat(extra).reduce((m, b) => isoMax(m, b.end), today);
+    late.forEach(w => {
+      for (let f; (f = fixed.find(x => x.end > cur && x.start < addDays(cur, 7)));) cur = f.end;
+      const nextFixed = fixed.filter(x => x.start > cur).map(x => x.start).sort()[0];
+      let end = addDays(cur, 60);
+      if (nextFixed && end > nextFixed) end = nextFixed;
+      w.sodirPlanned = w.planned;
+      w.start = cur; w.end = end;
+      cur = end;
+    });
+  }
   const res = out.concat(extra, planned);
   res.hidden = hidden;
   res.disc = disc;
@@ -5844,7 +5862,7 @@ function explRenderRigs() {
   const byRigAll = {};
   const push = w => { (byRigAll[w.rig] = byRigAll[w.rig] || []).push(w); };
   explWells.forEach(g => g.branches.forEach(b => {
-    if (!b.rig || b.overdue) return;
+    if (!b.rig) return;   // utsatte planlagte brønner tas med; planRigBars plasserer dem
     push({...b, kind: 'expl', title: g.title, show: passes.has(g), end: endOf(b), shownEnd: b.end});
   }));
   rigDev.forEach(d => push({...d, show: rigDevPasses(d)}));
@@ -5864,7 +5882,7 @@ function explRenderRigs() {
     bars.forEach(w => { if (w.kind !== 'ais' && w.state !== 'planned') { if (w.ais) aisBarsTotal++; else ruleBarsTotal++; } });
     return {name, bars};
   });
-  planned.forEach(r => r.bars.filter(w => w.state === 'planned').forEach(w => { if (w.planned > latestPlan) latestPlan = w.planned; }));
+  planned.forEach(r => r.bars.filter(w => w.state === 'planned').forEach(w => { if (w.start > latestPlan) latestPlan = w.start; }));
   const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
   const out = planned.map(r => {
     const ws = r.bars.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).filter(w => w.start <= t1 && endOf(w) >= t0);
@@ -5911,7 +5929,7 @@ function explRenderRigs() {
       const a = clampX(w.start), b = Math.max(clampX(endOf(w)), a + 3);
       const planned = w.state === 'planned', isDev = w.kind === 'dev';
       let fill = planned ? '#fff' : w.state === 'drilling' ? EX_ACTIVE : (EX_RES[w.resKey] || EX_RES.other).color;
-      let stroke = planned ? '#1a2332' : 'none', dash = planned ? '4 2' : '', opacity = 1;
+      let stroke = planned ? (w.overdue ? '#d68a00' : '#1a2332') : 'none', dash = planned ? '4 2' : '', opacity = 1;
       if (isDev) {
         fill = w.noEnd ? 'url(#exHatch)' : w.maybe ? EX_ACTIVE : DEV_COLOR;
         if (w.maybe) { stroke = '#0a6b47'; dash = '4 2'; opacity = 0.7; }
@@ -5919,11 +5937,13 @@ function explRenderRigs() {
       const isAisOnly = w.kind === 'ais';
       if (isAisOnly) { fill = w.cat === 'port' ? '#dbe7f1' : '#ece7ee'; stroke = '#b8c4d2'; }
       const room = Math.floor((b - a) / 5.6);
-      const txt = room >= 5 ? w.title.slice(0, room - 1) + (w.title.length > room - 1 ? '…' : '') : '';
+      const label = (w.overdue ? '⚠ ' : '') + w.title;
+      const txt = room >= 5 ? label.slice(0, room - 1) + (label.length > room - 1 ? '…' : '') : '';
       const dark = !isAisOnly && (isDev || ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling');
       const note = (isDev && w.items.length > 1 ? ` · ${w.items.length} wellbores` : '')
         + (w.noEnd ? ' (no completion date reported; drawn until the rig\'s next activity)' : w.maybe ? ' (possibly still drilling)' : '')
         + (isDev && w.shifted ? ' (start adjusted to avoid overlap)' : '')
+        + (w.overdue ? ` · Sodir still lists this as planned, but its planned start (${fmtShort(w.sodirPlanned)}) has passed; drawn from the earliest the rig is free` : '')
         + (w.ais && w.aisStay ? ` · AIS: on ${w.aisStay.label} ${fmtShort(w.aisStay.from)} – ${fmtShort(w.aisStay.to)}` : '');
       const to = isAisOnly ? ' – ' + fmtShort(w.end) : w.ais ? ' – ' + fmtShort(w.end)
         : isDev ? (w.maybe || w.noEnd ? '' : ' – ' + fmtShort(w.end)) : (w.shownEnd ? ' – ' + fmtShort(w.shownEnd) : '');
@@ -5950,7 +5970,7 @@ function explRenderRigs() {
     const cell = (w, d) => w ? `<a href="#" onclick="${exOpen(w)};return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}${w.kind === 'dev' ? ' · development' : ''}</small>` : '—';
     return `<tr><td class="ex-l"><strong>${rigLink(r.name)}</strong><small>${esc(tc(r.type))}</small></td>
       <td class="ex-l">${cell(r.now, r.now ? 'since ' + fmtShort(r.now.start) + (r.now.maybe ? ' (probably)' : '') : '')}</td>
-      <td class="ex-l">${cell(r.next, r.next ? fmtShort(r.next.planned) : '')}</td>
+      <td class="ex-l">${cell(r.next, r.next ? (r.next.overdue ? 'planned ' + fmtShort(r.next.sodirPlanned) + ' ⚠' : fmtShort(r.next.planned)) : '')}</td>
       <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) + (r.last.noEnd ? ' (est.)' : '') : '')}</td></tr>`;
   }).join('');
   const nDev = inWin.filter(w => w.kind === 'dev').reduce((t, b) => t + b.items.length, 0);
@@ -5971,7 +5991,8 @@ function explRenderRigs() {
         the rig's AIS track: the bar runs from when the rig arrived at the location until it left, and Sodir's dates only decide the
         order of activities within one stay (${aisBarsTotal} bars verified, ${ruleBarsTotal} still placed by the rules below
         because no matching stay was found${hiddenTotal ? `; ${hiddenTotal} activities are hidden because AIS places the rig elsewhere at those dates` : ''}).
-        Pale bars are port calls and stays no well explains. Click one to replay it. Where AIS is missing, the rules apply:
+        Pale bars are port calls and stays no well explains. A dashed amber bar with ⚠ is a well Sodir still lists as planned
+        although its start date has passed; it is drawn from the earliest the rig is free, so its timing is a placeholder. Click one to replay it. Where AIS is missing, the rules apply:
         a rig drills one well at a time, so there are no overlaps: end dates are treated as correct, and an activity
         whose start lies inside another is moved to where that one ended — Sodir's start is often a pre-drill, after which the rig
         moved on and returned. Development wells on the same field and rig, less than ${DEV_MERGE_GAP} days apart, are one campaign,

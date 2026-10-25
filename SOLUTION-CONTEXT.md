@@ -1890,8 +1890,8 @@ i `fetch_sodir.py` fra brønnlaget (5000). Bare formål WILDCAT og APPRAISAL;
 `wlbStatus = NULL`, ingen `wlbEntryDate` og kun `wlbEntryDatePlanned`.
 Ingen startdato eller startdato i fremtiden gir *planned*; startet uten
 sluttdato gir *drilling*; ellers *completed*. En planlagt dato som er passert
-markeres med ⚠ og holdes utenfor riggtidslinjen — Sodir oppdaterer den ikke
-når en brønn utsettes.
+markeres med ⚠. Riggtidslinjen tegner slike brønner likevel (se under), siden Sodir
+fortsatt regner dem som planlagte, men Sodir oppdaterer ikke datoen når en brønn utsettes.
 
 **Eierskap** fastsettes per spud-dato fra lag 3007 (lisensiærer med
 `ValidFrom`/`ValidTo`), ikke fra dagens lisensiærer, for lisenser overdras.
@@ -2034,6 +2034,14 @@ en tynn mørk linje øverst er AIS-målt.
 
 *Mulig videre arbeid:* ankomstsignal for planlagte brønner (riggen ligger ved den
 planlagte posisjonen), og å vise Sodirs egne datoer ved siden av de AIS-målte.
+
+**Planlagte brønner med passert dato i riggtidslinjen:** Sodir har ingen brukbar dato for
+dem, men rigg, og de står fortsatt som «ikke startet». De tegnes som stiplede ravgule bar
+med ⚠, fra det tidligste riggen kan være ledig (etter siste aktivitet, aldri før i dag), i
+rekkefølge etter Sodirs gamle dato, 60 dager hver (placeholder), og kortes inn mot en
+senere planlagt brønn med gyldig dato så de ikke overlapper. Tooltip og tabellen
+(«Next planned») viser Sodirs opprinnelige dato. Tidligere ble de utelatt, og bare
+brønner med fremtidig dato vistes.
 
 **Sodir mot AIS (avviksoversikten):** `<details>`-kortet under riggtabellen på
 Rigs-fanen. `planRigBars` samler tre slags avvik i `res.disc`: *shifted* (hver
