@@ -81,10 +81,26 @@
 
     /* ── Exploration ── */
     #explBox{display:none;}
-    body.expl #explBox{display:block;}
+    body.expl #explBox, body.lic #licBox{display:block;}
+    #licBox{display:none;}
+    body.lic .chart-wrap, body.lic #chartTable, body.lic .profile-wrap, body.lic .info-box,
+    body.lic .select-fab, body.lic #downloadBtn{display:none !important;}
     body.expl .chart-wrap, body.expl #chartTable, body.expl .profile-wrap, body.expl .info-box,
     body.expl .select-fab, body.expl #downloadBtn{display:none !important;}
     .expl-wrap{margin:10px 12px;}
+    .lc-row{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;}
+    .lc-row:hover .lc-name,.lc-row:focus-visible .lc-name{color:var(--blue);}
+    .lc-row:focus-visible{outline:none;}
+    .lc-name{flex:0 0 clamp(110px,26%,210px);font-size:0.74rem;font-weight:600;color:#1a2332;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .lc-track{display:flex;height:16px;border-radius:3px;overflow:hidden;min-width:2px;}
+    .lc-track span{display:block;min-width:1px;}
+    .lc-val{font-size:0.72rem;color:#44505f;font-variant-numeric:tabular-nums;}
+    .lc-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+    .lc-tools h3{margin:0;}
+    .lc-tools .ex-in{flex:0 1 220px;}
+    .lc-baa{display:inline-block;margin:1px 3px 1px 0;padding:0 6px;border-radius:8px;background:#eef0f3;
+      color:#44505f;font-size:0.62rem;font-weight:600;}
     .ex-bar{display:flex;flex-wrap:wrap;gap:6px;background:var(--card);border-radius:12px;
       box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:10px;margin-bottom:10px;align-items:center;}
     .ex-in{padding:6px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;
@@ -357,6 +373,7 @@
       <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
       <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
+      <button class="mode-btn" id="modeBtnLicences" onclick="switchMode('licences')">Licences</button>
     </div>
   </div>
   <div class="ctrl-row" id="periodRow">
@@ -390,6 +407,11 @@
 <div class="expl-wrap" id="explBox">
   <div id="explBar"></div>
   <div id="explBody"></div>
+</div>
+
+<div class="expl-wrap" id="licBox">
+  <div id="licBar"></div>
+  <div id="licBody"></div>
 </div>
 
 <div class="wd-overlay" id="wdOverlay" onclick="if(event.target===this)closeWell()">
@@ -1190,19 +1212,22 @@ const COMPANY_TABS = [
 function renderViewTabs() {
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
              : topMode === 'discoveries' ? DISCOVERY_TABS
-             : topMode === 'exploration' ? EXPL_TABS : COMPANY_TABS;
+             : topMode === 'exploration' ? EXPL_TABS
+             : topMode === 'licences' ? LIC_TABS : COMPANY_TABS;
   const cur  = currentSubView();
   document.body.classList.toggle('expl', topMode === 'exploration');
+  document.body.classList.toggle('lic', topMode === 'licences');
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
-  const showWaterRow = topMode !== 'companies' && topMode !== 'exploration' && cur === 'oilgas';
+  const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas' : false;
   document.getElementById('settingsBtn').style.display = topMode === 'hubs' ? '' : 'none';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
   // Reservevisningen har ingen tidsakse — ett estimat per felt — så periode og
   // årsutvalg gjelder ikke der.
-  document.getElementById('periodRow').style.display = isReservesView() ? 'none' : '';
+  document.getElementById('periodRow').style.display =
+    isReservesView() || topMode === 'licences' ? 'none' : '';
 }
 
 function setSubView(v) {
@@ -1210,6 +1235,7 @@ function setSubView(v) {
   else if (topMode === 'hubs') hubSubView = v;
   else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
   else if (topMode === 'exploration') explSubView = v;
+  else if (topMode === 'licences') licSubView = v;
   else { companySubView = v; syncCompanySelection(); }
   renderViewTabs();
   updateFab();
@@ -1280,7 +1306,7 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
-  if (topMode === 'exploration') return;   // filtrene ligger i selve visningen
+  if (topMode === 'exploration' || topMode === 'licences') return;   // filtrene ligger i selve visningen
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
               : topMode === 'discoveries' ? selectedDiscoveryIds.size
@@ -1656,6 +1682,8 @@ function resetView() {
   syncModeButtons();
   explF = {...explDefaults(), open: null};
   explSubView = 'wells';
+  licF = licDefaults();
+  licSubView = 'overview';
   if (document.getElementById('wdOverlay').classList.contains('open')) closeWell();
   document.getElementById('btnMonthly').classList.add('active');
   document.getElementById('btnQuarterly').classList.remove('active');
@@ -1707,6 +1735,7 @@ function currentSubView() {
        : topMode === 'hubs'   ? hubSubView
        : topMode === 'discoveries' ? discoverySubView
        : topMode === 'exploration' ? explSubView
+       : topMode === 'licences' ? licSubView
        : companySubView;
 }
 
@@ -1732,6 +1761,11 @@ function stateToHash() {
     if (explF.fixed) q.set('xf', '1');
     if (explF.open) q.set('xw', explF.open);
   }
+  else if (topMode === 'licences') {
+    const dflt = licDefaults();
+    [['company','lc'],['metric','lm'],['role','lr'],['q','lq']]
+      .forEach(([k, p]) => { if (licF[k] !== dflt[k]) q.set(p, licF[k]); });
+  }
   else                         q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && topMode !== 'companies' && currentSubView() === 'oilgas') q.set('w', '1');
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
@@ -1752,21 +1786,31 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['fields','hubs','discoveries','companies','exploration'].includes(m)) {
+  if (['fields','hubs','discoveries','companies','exploration','licences'].includes(m)) {
     topMode = m;
     syncModeButtons();
   }
 
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
              : topMode === 'discoveries' ? DISCOVERY_TABS
-             : topMode === 'exploration' ? EXPL_TABS : COMPANY_TABS;
+             : topMode === 'exploration' ? EXPL_TABS
+             : topMode === 'licences' ? LIC_TABS : COMPANY_TABS;
   const v = q.get('v');
   if (tabs.some(t => t.id === v)) {
     if (topMode === 'fields') fieldSubView = v;
     else if (topMode === 'hubs') hubSubView = v;
     else if (topMode === 'discoveries') discoverySubView = v;
     else if (topMode === 'exploration') explSubView = v;
+    else if (topMode === 'licences') licSubView = v;
     else companySubView = v;
+  }
+
+  if (topMode === 'licences') {
+    licF = {...licDefaults()};
+    if (q.get('lc')) licF.company = q.get('lc');
+    if (['count','net'].includes(q.get('lm'))) licF.metric = q.get('lm');
+    if (q.get('lr') === 'operator') licF.role = 'operator';
+    if (q.get('lq')) licF.q = q.get('lq');
   }
 
   if (topMode === 'exploration') {
@@ -1850,6 +1894,7 @@ async function refresh() {
   else if (topMode === 'hubs') await refreshHubs();
   else if (topMode === 'discoveries') await refreshDiscoveries();
   else if (topMode === 'exploration') await refreshExploration();
+  else if (topMode === 'licences') await refreshLicences();
   else await refreshCompanies();
 }
 
@@ -2358,7 +2403,7 @@ const mmboe = v => (v * BBL_PER_SM3).toLocaleString('en', {minimumFractionDigits
 // minPx}. Ringer utenfor utsnittet filtreres bort her, så kallerne kan sende
 // inn alt de har.
 function outlineMap(ownItems, opts = {}) {
-  const W = 560, H = 230, MIN_SPAN = 1.6;   // grader bredde
+  const W = 560, H = opts.h || 230, MIN_SPAN = 1.6;   // grader bredde
   // Hvor mye luft rundt forekomsten. Standard 3 passer for én forekomst eller
   // en samlet hub. En selskapsportefølje kan spenne over hele sokkelen, og da
   // blir 3 så mye at feltene blir usynlige prikker — derfor kan kallerne
@@ -2445,6 +2490,16 @@ function outlineMap(ownItems, opts = {}) {
   collect(ownItems, true);
   (opts.layers || []).forEach(L => { if (L.label !== false) collect(L.items, false); });
 
+  // Forekomstene tegnes gruppert på fyllfarge. Et element kan ha egen fill
+  // (operatørlisenser mot partnerlisenser); uten den brukes opts.fill.
+  const fillGroups = new Map();
+  ownItems.forEach(it => {
+    const k = it.fill || opts.fill;
+    fillGroups.set(k, (fillGroups.get(k) || []).concat(it.rings));
+  });
+  const ownPaths = [...fillGroups].map(([fill, rings]) =>
+    `<path d="${path(rings, 1, true)}" fill="${fill}" stroke="${opts.stroke}" stroke-width="1.2"/>`).join('');
+
   // Brønnmarkører (Exploration-detaljen): de andre brønnene som små prikker,
   // og brønnen selv som en stor markør oppå.
   const wellDot = (w, own) => {
@@ -2501,11 +2556,11 @@ function outlineMap(ownItems, opts = {}) {
   // som havet.
   return `
     <svg class="pf-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"
-         role="img" aria-label="${esc(opts.label || 'Map')}">
+         style="aspect-ratio:${W}/${H}" role="img" aria-label="${esc(opts.label || 'Map')}">
       <rect width="${W}" height="${H}" fill="#eef3f8"/>
       ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
       ${back}
-      <path d="${path(own, 1, true)}" fill="${opts.fill}" stroke="${opts.stroke}" stroke-width="1.2"/>
+      ${ownPaths}
       ${wellDots}
       ${labels}${inset}
     </svg>
@@ -5706,7 +5761,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && explF.open
 
 // ── Hopp til/fra andre moduser ───────────────────────────────────────────────
 function syncModeButtons() {
-  ['hubs', 'fields', 'companies', 'discoveries', 'exploration'].forEach(m =>
+  ['hubs', 'fields', 'companies', 'discoveries', 'exploration', 'licences'].forEach(m =>
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
 }
 
@@ -5761,6 +5816,390 @@ function explLinkCard(kind, key) {
         ${kind === 'company' ? `<button class="grp-btn ex-more" onclick="openExplorationFor(${esc(JSON.stringify(key))})">
           Show all ${total} wells in Exploration →</button>` : ''}
       </div>`);
+  });
+}
+
+
+// ── LICENCES ─────────────────────────────────────────────────────────────────
+// Utvinningstillatelsene på sokkelen: hvem som sitter på hvor mye, og hvor.
+// Alt bygges i nettleseren av fire datafiler:
+//   licences.json          lisensene — område, runde, fase, areal, operatør
+//   licence_licensees.json gjeldende eierandeler (sammen med BAA-andelene)
+//   licence_outlines.json  omriss til kartene (lastes først her)
+//   licence_baa.json       hvilke forretningsavtaleområder (BAA) en lisens inngår i
+// Arealene er Sodirs prlCurrentArea (km², lisensens areal i dag). Netto areal er
+// det multiplisert med selskapets eierandel; brutto er hele lisensens areal,
+// uavhengig av andel.
+const LIC_TABS = [
+  {id:'overview', label:'Overview'},
+  {id:'company',  label:'Company'},
+];
+const LIC_SEAS = [
+  {key:'North sea',     label:'North Sea',     color:'#2a6fa8'},
+  {key:'Norwegian sea', label:'Norwegian Sea', color:'#3fa7a0'},
+  {key:'Barents sea',   label:'Barents Sea',   color:'#e3a73a'},
+];
+let licSubView = 'overview';
+const licDefaults = () => ({company: '', metric: 'count', role: 'all', q: '', top: 20, all: false, tableAll: false, rowsAll: false});
+let licF = licDefaults();
+let licSort = {key: 'count', dir: -1};          // oversiktstabellen
+let licProfSort = {key: 'net', dir: -1};        // lisenstabellen på selskapssiden
+let licList = [], licByName = {}, licByCo = {}, licCos = [], licStats = {};
+let licLoaded = false, licLoading = null;
+
+const licKm = n => Math.round(n).toLocaleString('en-US');
+const licPct = v => v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + ' %';
+const licYear = ms => ms ? String(new Date(ms).getUTCFullYear()) : '—';
+const licSeaOf = k => LIC_SEAS.find(s => s.key === k);
+
+function loadLicences() {
+  if (licLoaded) return Promise.resolve();
+  if (licLoading) return licLoading;
+  const lazy = name => bundle[name] ? null : fetchBundle(name).then(b => { bundle[name] = b; });
+  licLoading = Promise.all([lazy('licence_outlines'), lazy('licence_baa'),
+                            loadDiscoveries().catch(() => {})]).then(() => {
+    const lb = bundle.licences, ll = bundle.licence_licensees;
+    if (!lb || !ll) { licLoaded = true; return; }
+    const li = Object.fromEntries(lb.columns.map((c, k) => [c, k]));
+    const ci = Object.fromEntries(ll.columns.map((c, k) => [c, k]));
+    const links = licLinks();
+    licList = lb.rows.map(r => ({
+      id: r[li.id], name: r[li.name], sea: r[li.area] || '', phase: r[li.phase] || '',
+      granted: r[li.granted], validTo: r[li.validTo], operator: r[li.operator] || '',
+      round: r[li.round] || '', km2: r[li.areaKm2] || 0, partners: [],
+    }));
+    licByName = Object.fromEntries(licList.map(l => [l.name, l]));
+    ll.rows.forEach(r => {
+      const l = r[ci.ownerKind] === 'PRODUCTION LICENCE' && licByName[r[ci.owner]];
+      if (l) l.partners.push({name: r[ci.company], share: r[ci.share]});
+    });
+    licList.forEach(l => {
+      const b = links(l.name);
+      l.baas = b.baas; l.fields = b.fields; l.discoveries = b.discoveries;
+    });
+    licByCo = {};
+    licList.forEach(l => l.partners.forEach(p => {
+      (licByCo[p.name] = licByCo[p.name] || []).push({lic: l, share: p.share});
+    }));
+    licCos = Object.keys(licByCo);
+    licStats = {};
+    licCos.forEach(c => {
+      const st = {count: 0, op: 0, gross: 0, net: 0, sea: {}};
+      LIC_SEAS.forEach(s => { st.sea[s.key] = {count: 0, op: 0, gross: 0, net: 0}; });
+      licByCo[c].forEach(({lic, share}) => {
+        const isOp = lic.operator === c, net = lic.km2 * share / 100;
+        const sea = st.sea[lic.sea];
+        [st, sea].forEach(t => {
+          if (!t) return;
+          t.count++; t.gross += lic.km2; t.net += net;
+          if (isOp) t.op++;
+        });
+      });
+      licStats[c] = st;
+    });
+    licLoaded = true;
+  });
+  return licLoading;
+}
+
+// Felt, funn og BAA per lisens. Et felt eller funn eies enten av lisensen selv
+// eller av et forretningsavtaleområde (unit) lisensen inngår i; begge veier
+// regnes med, slik at en lisens i en unit får feltet unitet driver.
+function licLinks() {
+  const owned = {field: {}, disc: {}};
+  const pb = bundle.field_profile;
+  if (pb) {
+    const i = Object.fromEntries(pb.columns.map((c, k) => [c, k]));
+    pb.rows.forEach(r => {
+      if (!r[i.owner]) return;
+      const key = r[i.ownerKind] + '|' + r[i.owner];
+      (owned.field[key] = owned.field[key] || []).push(
+        {id: r[i.id], name: allFields.find(f => f.id === r[i.id])?.name || String(r[i.id])});
+    });
+  }
+  const db = bundle.discoveries;
+  if (db) {
+    const i = Object.fromEntries(db.columns.map((c, k) => [c, k]));
+    db.rows.forEach(r => {
+      if (!r[i.owner]) return;
+      const key = r[i.ownerKind] + '|' + r[i.owner];
+      (owned.disc[key] = owned.disc[key] || []).push({id: r[i.id], name: r[i.name]});
+    });
+  }
+  const baaOf = {};
+  const bb = bundle.licence_baa;
+  if (bb) bb.rows.forEach(([lic, baa, kind]) => { (baaOf[lic] = baaOf[lic] || []).push({name: baa, kind}); });
+  const uniq = list => [...new Map(list.map(x => [x.id, x])).values()];
+  return name => {
+    const baas = baaOf[name] || [];
+    const keys = ['PRODUCTION LICENCE|' + name, ...baas.map(b => 'BUSINESS ARRANGEMENT AREA|' + b.name)];
+    return {
+      baas,
+      fields: uniq(keys.flatMap(k => owned.field[k] || [])),
+      discoveries: uniq(keys.flatMap(k => owned.disc[k] || [])),
+    };
+  };
+}
+
+async function refreshLicences() {
+  const box = document.getElementById('licBody');
+  if (!licLoaded) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+  setInfo('');
+  await loadLicences();
+  if (!licList.length) {
+    document.getElementById('licBar').innerHTML = '';
+    box.innerHTML = '<div class="status">No licence data available.</div>';
+    return;
+  }
+  if (licSubView === 'company' && !licF.company) {
+    licF.company = licCos.slice().sort((a, b) => licStats[b].count - licStats[a].count)[0];
+    syncUrl();
+  }
+  licRenderBar();
+  licRenderBody();
+}
+
+function licSet(key, val, rebuildBar) {
+  licF[key] = val;
+  syncUrl();
+  if (rebuildBar) licRenderBar();
+  licRenderBody();
+}
+
+function licRenderBar() {
+  const f = licF;
+  const pill = (key, val, label) =>
+    `<button class="pill-btn${f[key] === val ? ' active' : ''}" onclick="licSet('${key}','${val}',true)">${label}</button>`;
+  if (licSubView === 'company') {
+    document.getElementById('licBar').innerHTML = `
+      <div class="ex-bar">
+        <input class="ex-in" type="search" list="licCoList" placeholder="Company…" value="${esc(f.company)}"
+               onchange="licPick(this.value)" aria-label="Company"/>
+        <datalist id="licCoList">${sortCompanies(licCos).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      </div>`;
+    return;
+  }
+  document.getElementById('licBar').innerHTML = `
+    <div class="ex-bar">
+      <div class="pill-group">${pill('metric', 'count', 'Licences')}${pill('metric', 'net', 'Net area')}</div>
+      <div class="pill-group">${pill('role', 'all', 'All interests')}${pill('role', 'operator', 'Operatorships')}</div>
+    </div>`;
+}
+
+function licPick(name) {
+  if (!licStats[name]) return;
+  licF.company = name;
+  licF.rowsAll = false;
+  syncUrl();
+  licRenderBody();
+}
+
+function licOpenCompany(name) {
+  licF.company = name;
+  licF.rowsAll = false;
+  licSubView = 'company';
+  renderViewTabs();
+  refresh();
+  scrollToTop();
+}
+
+function licRenderBody() {
+  if (licSubView === 'company') licRenderCompany(); else licRenderOverview();
+}
+
+// ── Oversikt ─────────────────────────────────────────────────────────────────
+// Verdien en stolpe viser, per område. «Operatorships» teller bare lisenser
+// selskapet leder; «net» er areal × andel.
+function licCell(c, seaKey) {
+  const t = seaKey ? licStats[c].sea[seaKey] : licStats[c];
+  const op = licF.role === 'operator';
+  return licF.metric === 'net'
+    ? (op ? licOperNet(c, seaKey) : t.net)
+    : (op ? t.op : t.count);
+}
+function licOperNet(c, seaKey) {
+  return licByCo[c].reduce((s, {lic, share}) =>
+    s + (lic.operator === c && (!seaKey || lic.sea === seaKey) ? lic.km2 * share / 100 : 0), 0);
+}
+
+function licRenderOverview() {
+  const f = licF, net = f.metric === 'net';
+  const unit = net ? 'km² net' : (f.role === 'operator' ? 'operated licences' : 'licences');
+  const rows = licCos.map(c => ({c, total: LIC_SEAS.reduce((s, z) => s + licCell(c, z.key), 0)}))
+    .filter(r => r.total > 0).sort((a, b) => b.total - a.total);
+  const shown = rows.slice(0, f.all ? rows.length : f.top);
+  const max = shown[0] ? shown[0].total : 1;
+  const fmt = v => net ? licKm(v) : String(v);
+  const bars = shown.map(({c, total}) => `
+    <div class="lc-row" onclick="licOpenCompany(${esc(JSON.stringify(c))})" role="link" tabindex="0"
+         onkeydown="if(event.key==='Enter')licOpenCompany(${esc(JSON.stringify(c))})">
+      <div class="lc-name" title="${esc(c)}">${esc(c)}</div>
+      <div class="lc-track" style="width:${(total / max * 100).toFixed(1)}%">${LIC_SEAS.map(z => {
+        const v = licCell(c, z.key);
+        return v > 0 ? `<span style="flex:${v};background:${z.color}" title="${esc(c)} · ${z.label}: ${fmt(v)} ${unit}"></span>` : '';
+      }).join('')}</div>
+      <div class="lc-val">${fmt(total)}</div>
+    </div>`).join('');
+  const legend = LIC_SEAS.map(z =>
+    `<span class="ex-leg"><span class="ex-dot" style="background:${z.color}"></span>${z.label}</span>`).join('');
+
+  // Tabell
+  const q = f.q.trim().toLowerCase();
+  const sortVal = (c, k) => k === 'name' ? c.toLowerCase()
+    : k === 'count' ? licStats[c].count : k === 'op' ? licStats[c].op
+    : k === 'gross' ? licStats[c].gross : licStats[c].net;
+  const trs = licCos.filter(c => !q || c.toLowerCase().includes(q)).sort((a, b) => {
+    const x = sortVal(a, licSort.key), y = sortVal(b, licSort.key);
+    const d = typeof x === 'number' ? x - y : x.localeCompare(y, 'en');
+    return (d || a.localeCompare(b, 'en')) * licSort.dir;
+  });
+  const COLS = [['name', 'Company', 'ex-l'], ['count', 'Licences'], ['op', 'Operator'],
+                ['gross', 'Gross area, km²'], ['net', 'Net area, km²']];
+  const head = COLS.map(([k, label, cls]) =>
+    `<th class="${cls || ''}${licSort.key === k ? ' sorted' : ''}" onclick="licSortBy('${k}')">${label}` +
+    `<span class="lic-arrow">${licSort.key === k ? (licSort.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
+  const lim = f.tableAll || q ? trs.length : 25;
+  const tot = {count: licList.length, gross: licList.reduce((s, l) => s + l.km2, 0)};
+  document.getElementById('licBody').innerHTML = `
+    <div class="ex-sum"><strong>${licList.length}</strong> active production licences ·
+      <strong>${licCos.length}</strong> companies · <strong>${licKm(tot.gross)}</strong> km² licensed</div>
+    <div class="pf-card">
+      <h3>Companies ranked by ${net ? 'net area' : f.role === 'operator' ? 'operatorships' : 'active licences'}</h3>
+      ${bars || '<div class="ex-sum">No companies.</div>'}
+      <div class="ex-legend">${legend}
+        <span class="ex-leg">Showing ${shown.length} of ${rows.length}
+        ${rows.length > f.top ? `· <a href="#" onclick="licSet('all',${!f.all},false);return false;" class="row-link">${f.all ? 'show top ' + f.top : 'show all'}</a>` : ''}</span></div>
+      <div class="pf-map-note">Click a company for its profile. Net area = licence area × ownership share.
+        Area in km² as of today (Sodir layer 3000).</div>
+    </div>
+    <div class="pf-card">
+      <div class="lc-tools"><h3>All companies</h3>
+        <input class="ex-in" type="search" placeholder="Search company…" value="${esc(f.q)}"
+               oninput="licSearch(this.value)" aria-label="Search company"/></div>
+      <div class="pf-scroll"><table class="res-table ex-table">
+        <thead><tr>${head}</tr></thead>
+        <tbody>${trs.slice(0, lim).map(c => {
+          const st = licStats[c];
+          return `<tr class="ex-row" onclick="licOpenCompany(${esc(JSON.stringify(c))})">
+            <td class="ex-name"><strong>${esc(c)}</strong></td><td>${st.count}</td><td>${st.op || '—'}</td>
+            <td>${licKm(st.gross)}</td><td>${licKm(st.net)}</td></tr>`;
+        }).join('')}</tbody>
+      </table></div>
+      ${lim < trs.length ? `<button class="grp-btn ex-more" onclick="licSet('tableAll',true,false)">Show all ${trs.length} companies</button>` : ''}
+      <div class="pf-map-note">Gross area is the sum of the company's licences in full; net area is weighted by its share.
+        Licences shared by several companies are counted once per company.</div>
+    </div>`;
+}
+
+function licSortBy(key) {
+  licSort = {key, dir: licSort.key === key ? -licSort.dir : (key === 'name' ? 1 : -1)};
+  licRenderBody();
+}
+// Søkefeltet tegner tabellen på nytt, så fokus og markør må tas vare på.
+function licSearch(v) {
+  licF.q = v; syncUrl(); licRenderBody();
+  const el = document.querySelector('#licBody input[type=search]');
+  if (el) { el.focus(); el.setSelectionRange(v.length, v.length); }
+}
+
+// ── Selskapsside ─────────────────────────────────────────────────────────────
+function licRows(c) {
+  return licByCo[c].map(({lic, share}) => ({...lic, share, isOp: lic.operator === c,
+    gross: lic.km2, net: lic.km2 * share / 100}));
+}
+
+function licRenderCompany() {
+  const c = licF.company, st = licStats[c];
+  if (!st) {
+    document.getElementById('licBody').innerHTML = '<div class="status">Pick a company above.</div>';
+    return;
+  }
+  const rows = licRows(c);
+  const key = licProfSort.key, dir = licProfSort.dir;
+  const val = (r, k) => k === 'name' ? r.name : k === 'sea' ? r.sea : k === 'round' ? r.round
+    : k === 'role' ? (r.isOp ? 0 : 1) : k === 'share' ? r.share : k === 'gross' ? r.gross
+    : k === 'net' ? r.net : k === 'phase' ? r.phase : k === 'validTo' ? (r.validTo || 0)
+    : k === 'info' ? (r.fields[0]?.name || r.baas[0]?.name || r.discoveries[0]?.name || '￿') : '';
+  const sorted = rows.slice().sort((a, b) => {
+    const x = val(a, key), y = val(b, key);
+    const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'en', {numeric: true});
+    return (d || a.name.localeCompare(b.name, 'en', {numeric: true})) * dir;
+  });
+  const known = new Set(allDiscoveries.map(d => d.id));
+  const info = r => {
+    const parts = r.fields.map(f => `<a class="row-link" href="#" title="Open the profile for ${esc(f.name)}"` +
+      ` onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a>`);
+    r.discoveries.slice(0, 3).forEach(d => parts.push(known.has(d.id)
+      ? `<a class="row-link" href="#" onclick="openDiscoveryProfile(${d.id});return false;">${esc(d.name)}</a>`
+      : esc(d.name)));
+    if (r.discoveries.length > 3) parts.push(`<span class="lic-more">+${r.discoveries.length - 3} more</span>`);
+    const baa = r.baas.map(b => `<span class="lc-baa" title="${esc(tc(b.kind))}">${esc(b.name)}</span>`).join(' ');
+    return [parts.join(', '), baa].filter(Boolean).join('<br>');
+  };
+  const COLS = [['name', 'Licence', 'ex-l'], ['sea', 'Area', 'ex-l'], ['round', 'Round', 'ex-l'],
+                ['role', 'Role', 'ex-l'], ['share', 'Share'], ['gross', 'Gross, km²'], ['net', 'Net, km²'],
+                ['phase', 'Phase', 'ex-l'], ['validTo', 'Valid to'], ['info', 'Field / BAA / discoveries', 'ex-l']];
+  const head = COLS.map(([k, label, cls]) =>
+    `<th class="${cls || ''}${key === k ? ' sorted' : ''}" onclick="licProfSortBy('${k}')">${label}` +
+    `<span class="lic-arrow">${key === k ? (dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
+
+  const seaFacts = LIC_SEAS.map(z => {
+    const t = st.sea[z.key];
+    return `<div class="pf-fact"><span><i class="ex-dot" style="background:${z.color}"></i>${z.label}</span>
+      <strong>${t.count} · ${licKm(t.net)} km²</strong></div>`;
+  }).join('');
+  const lim = licF.rowsAll ? sorted.length : 50;
+  const table = sorted.slice(0, lim).map(r => `
+    <tr><td class="ex-l"><strong>${esc(r.name)}</strong></td>
+      <td class="ex-l">${esc(licSeaOf(r.sea)?.label || r.sea || '—')}</td>
+      <td class="ex-l">${esc(r.round || '—')}</td>
+      <td class="ex-l">${r.isOp ? '<span class="ex-chip ex-drilling">Operator</span>' : 'Partner'}</td>
+      <td>${licPct(r.share)}</td><td>${licKm(r.gross)}</td><td>${licKm(r.net)}</td>
+      <td class="ex-l">${esc(tc(r.phase) || '—')}</td><td>${licYear(r.validTo)}</td>
+      <td class="ex-l lic-info">${info(r) || '—'}</td></tr>`).join('');
+
+  document.getElementById('licBody').innerHTML = `
+    <div class="pf-card">
+      <h3>${esc(c)}</h3>
+      <div class="pf-facts">
+        <div class="pf-fact"><span>Active licences</span><strong>${st.count}</strong></div>
+        <div class="pf-fact"><span>Operatorships</span><strong>${st.op}</strong></div>
+        <div class="pf-fact"><span>Gross area</span><strong>${licKm(st.gross)} km²</strong></div>
+        <div class="pf-fact"><span>Net area</span><strong>${licKm(st.net)} km²</strong></div>
+        ${seaFacts}
+      </div>
+      <button class="grp-btn ex-more" onclick="explOpenCompany(${esc(JSON.stringify(c))})">Open the production profile →</button>
+    </div>
+    <div class="pf-card"><h3>Licence map</h3>${licCompanyMap(rows)}</div>
+    <div class="pf-card"><h3>Licences</h3>
+      <div class="pf-scroll"><table class="res-table ex-table lic-table">
+        <thead><tr>${head}</tr></thead><tbody>${table}</tbody></table></div>
+      ${lim < sorted.length ? `<button class="grp-btn ex-more" onclick="licSet('rowsAll',true,false)">Show all ${sorted.length} licences</button>` : ''}
+      <div class="pf-map-note">Active production licences. «Field / BAA / discoveries»: fields and discoveries owned
+        by the licence or by a business arrangement area it is part of (in grey). Click a heading to sort.</div>
+    </div>`;
+}
+
+function licProfSortBy(key) {
+  const text = ['name', 'sea', 'round', 'role', 'phase', 'info'].includes(key);
+  licProfSort = {key, dir: licProfSort.key === key ? -licProfSort.dir : (text ? 1 : -1)};
+  licRenderBody();
+}
+
+function licCompanyMap(rows) {
+  const set = (bundle.licence_outlines && bundle.licence_outlines.licences) || {};
+  const mine = new Set(rows.map(r => r.name));
+  const items = rows.filter(r => set[r.name]).map(r => ({
+    name: r.name, rings: set[r.name],
+    fill: r.isOp ? 'rgba(206,15,105,0.80)' : 'rgba(206,15,105,0.32)'}));
+  if (!items.length) return '<div class="ex-sum">No outlines available.</div>';
+  const others = Object.entries(set).filter(([n]) => !mine.has(n)).map(([n, rings]) => ({name: n, rings}));
+  return outlineMap(items, {
+    label: 'Licence map', h: 420, pad: 1.4, stroke: '#8e0a48', labelMax: 4, inset: false, fill: 'rgba(206,15,105,0.32)',
+    layers: [{items: others, fill: '#dfe5ec', stroke: '#c3ccd5', label: false}, fieldLayer()],
+    note: '<span class="ex-dot" style="background:rgba(206,15,105,0.80)"></span>Operator · ' +
+          '<span class="ex-dot" style="background:rgba(206,15,105,0.32)"></span>Partner · other licences in grey, ' +
+          'fields in blue-grey. Coastline: Natural Earth · outlines: Sodir, simplified to ~330 m',
   });
 }
 

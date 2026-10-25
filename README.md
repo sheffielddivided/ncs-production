@@ -29,6 +29,8 @@ statiske JSON-filer i dette repoet.
 | `data/exploration_wells.json` | Letebrønner (lag 5000) — planlagte, pågående og avsluttede, med eierskap per spud-dato. Lastes først når Exploration åpnes |
 | `data/rig_wells.json` | Utviklingsbrønner (lag 5000, siste to år) til riggoversikten i Exploration |
 | `data/licences.json` | Aktive utvinningstillatelser (lag 3000) |
+| `data/licence_outlines.json` | Forenklede lisensomriss til Licences-kartene. Lastes først når Licences åpnes |
+| `data/licence_baa.json` | Hvilke forretningsavtaleområder (BAA) hver lisens inngår i (lag 3301) |
 | `data/companies.json` | Selskapsfakta (lag 1200) — konsern, orgnr., roller |
 | `data/coastline.json` | Kystlinje til profilkartet — Natural Earth, bygget én gang |
 | `make_coastline.py` | Engangsscript som bygger `data/coastline.json` |

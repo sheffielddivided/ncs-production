@@ -544,7 +544,8 @@ def build_licences():
     rows = fetch_layer(
         LICENCE_LAYER,
         'prlNpdidLicence,prlName,prlMainArea,prlPhaseCurrent,prlDateGranted,'
-        'prlDateValidTo,cmpLongName',
+        'prlDateValidTo,cmpLongName,prlLicensingActivityName,prlCurrentArea,'
+        'prlOriginalArea,prlPartitionFrom',
         "prlActive='Y'",
     )
     out = []
@@ -560,10 +561,55 @@ def build_licences():
             as_int(r.get('prlDateGranted')),
             as_int(r.get('prlDateValidTo')),
             (r.get('cmpLongName') or '').strip(),
+            (r.get('prlLicensingActivityName') or '').strip(),
+            num(r.get('prlCurrentArea')),
+            num(r.get('prlOriginalArea')),
+            (r.get('prlPartitionFrom') or '').strip(),
         ])
     out.sort(key=lambda x: x[1])
-    return {'columns': ['id', 'name', 'area', 'phase', 'granted', 'validTo', 'operator'],
+    return {'columns': ['id', 'name', 'area', 'phase', 'granted', 'validTo', 'operator',
+                        'round', 'areaKm2', 'origKm2', 'partitionFrom'],
             'rows': out}
+
+
+# Lisensomriss til Licences-kartene. Nokkelen er lisensnavnet, siden det er
+# det eierandelene og tabellene kobler pa. Lisensene er grove blokker, sa
+# forenklingen kan vaere grovere enn for felt og funn.
+LICENCE_SIMPLIFY = 0.003   # grader (~330 m)
+
+
+def build_licence_outlines():
+    total = count_rows(LICENCE_LAYER, "prlActive='Y'")
+    print(f"  Lag {LICENCE_LAYER} (geometri): {total} rader")
+    feats, offset = [], 0
+    order = oid_field(LICENCE_LAYER)
+    while offset < total:
+        params = {
+            'f': 'json', 'where': "prlActive='Y'", 'outFields': 'prlName',
+            'returnGeometry': 'true', 'outSR': 4326,
+            'resultOffset': offset, 'resultRecordCount': PAGE_SIZE,
+        }
+        if order:
+            params['orderByFields'] = f'{order} ASC'
+        page = _get(f'{BASE}/{LICENCE_LAYER}/query', params).get('features', [])
+        if not page:
+            break
+        feats.extend(page)
+        offset += len(page)
+    out = {}
+    for f in feats:
+        name = ((f.get('attributes') or {}).get('prlName') or '').strip()
+        if not name:
+            continue
+        rings = []
+        for ring in (f.get('geometry') or {}).get('rings', []):
+            s = _simplify_ring(ring, LICENCE_SIMPLIFY)
+            if s:
+                rings.append([[round(x, OUTLINE_DECIMALS), round(y, OUTLINE_DECIMALS)]
+                              for x, y in s])
+        if rings:
+            out[name] = rings
+    return {'licences': dict(sorted(out.items()))}
 
 
 # Selskapsfakta til selskapsprofilen. Hele laget hentes - a filtrere til de
@@ -596,6 +642,25 @@ def build_companies():
                         'activeNcs', 'licenceOper', 'licensee', 'baaOper',
                         'baaPartner', 'tufOper', 'tufPartner', 'facilityOper'],
             'rows': out}
+
+
+# Hvilke forretningsavtaleomrader (BAA) en lisens inngar i, fra arealhistorikken
+# i lag 3301. Bare gjeldende rader. BAA-navnene er de samme som i
+# licence_licensees.json, sa et felt eller funn som eies av et BAA kan finnes
+# fra lisensen. Raden uten lisensnavn (utvinningstillatelser-uten-PL, EXL) droppes.
+BAA_AREA_LAYER = 3301   # bsns_arr_area_area_poly_hst
+
+
+def build_licence_baa():
+    rows = fetch_layer(BAA_AREA_LAYER, 'baaName,baaKind,prlName',
+                       'baaAreaPolyDateValidTo IS NULL')
+    out = set()
+    for r in rows:
+        lic = (r.get('prlName') or '').strip()
+        baa = (r.get('baaName') or '').strip()
+        if lic and baa:
+            out.add((lic, baa, (r.get('baaKind') or '').strip()))
+    return {'columns': ['licence', 'baa', 'kind'], 'rows': [list(x) for x in sorted(out)]}
 
 
 # Feltomriss til profilkartet. Hentes i WGS84 og forenkles kraftig: kartet er
@@ -840,6 +905,8 @@ def main():
         ('field_outlines.json', 'feltomriss', build_field_outlines),
         ('facilities.json', 'innretninger', build_facilities),
         ('licences.json', 'utvinningstillatelser', build_licences),
+        ('licence_outlines.json', 'lisensomriss', build_licence_outlines),
+        ('licence_baa.json', 'lisens-BAA-kobling', build_licence_baa),
         ('companies.json', 'selskaper', build_companies),
         ('exploration_wells.json', 'letebronner', build_exploration_wells),
         ('rig_wells.json', 'utviklingsbronner til riggoversikt', build_rig_wells),
