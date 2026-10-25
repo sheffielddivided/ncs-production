@@ -1813,6 +1813,7 @@ function stateToHash() {
       .forEach(([k, p]) => { if (explF[k] !== dflt[k]) q.set(p, explF[k]); });
     if (explF.from === '' && dflt.from !== '') q.set('xy', 'all');
     if (!explF.dev) q.set('xd', '0');
+    if (!explF.aisOnly) q.set('xo', '0');
     if (explF.fixed) q.set('xf', '1');
     if (explF.open) q.set('xw', explF.open);
     if (explF.rig) q.set('xg', explF.rig);
@@ -1884,6 +1885,7 @@ function applyHash() {
     else if (/^\d{4}$/.test(g('xy') || '')) explF.from = g('xy');
     if (g('xq')) explF.q = g('xq');
     if (g('xd') === '0') explF.dev = false;
+    if (g('xo') === '0') explF.aisOnly = false;
     if (g('xf') === '1') explF.fixed = true;
     if (+g('xw') > 0) explF.open = +g('xw');
     if (g('xg')) explF.rig = g('xg');
@@ -5014,7 +5016,7 @@ let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
                              purpose:'all', from:String(currentYear - 2), q:'',
-                             dev:true, fixed:false});   // dev/fixed: bare riggfanen
+                             dev:true, fixed:false, aisOnly:true});   // dev/fixed/aisOnly: bare riggfanen
 let explF = {...explDefaults(), open:null};
 let explSort = {key:'start', dir:-1};
 let explLimit = 100;
@@ -5230,7 +5232,8 @@ function explRenderBar() {
       </select>` : ''}
       ${explSubView === 'rigs' ? `
       <label class="ex-chk"><input type="checkbox" ${f.dev ? 'checked' : ''} onchange="explSet('dev', this.checked, true)"> Development wells</label>
-      <label class="ex-chk"><input type="checkbox" ${f.fixed ? 'checked' : ''} ${f.dev ? '' : 'disabled'} onchange="explSet('fixed', this.checked)"> Fixed platforms</label>` : ''}
+      <label class="ex-chk"><input type="checkbox" ${f.fixed ? 'checked' : ''} ${f.dev ? '' : 'disabled'} onchange="explSet('fixed', this.checked)"> Fixed platforms</label>
+      <label class="ex-chk"><input type="checkbox" ${f.aisOnly ? 'checked' : ''} onchange="explSet('aisOnly', this.checked)"> Port calls &amp; other stays</label>` : ''}
       <button class="grp-btn" onclick="explReset()">Reset</button>`}
     </div>`;
 }
@@ -5471,7 +5474,7 @@ const isoMax = (a, b) => (a > b ? a : b);
 // list: alle aktiviteter på én rigg (lete- og utviklingsbrønnbaner, planlagte
 // inkludert). Returnerer strekene som skal tegnes: letebrønnene med justert
 // start, utviklingskampanjer og de planlagte, uendret.
-function planRigBars(list, today) {
+function planRigBars(list, today, rigName) {
   const planned = list.filter(w => w.state === 'planned');
   const expl = list.filter(w => w.kind === 'expl' && w.state !== 'planned').map(w => ({...w, start0: w.start}));
 
@@ -5504,8 +5507,15 @@ function planRigBars(list, today) {
     c.items.forEach(i => { devBlockById[i.id] = c; });
   });
 
-  // 2. Sluttdatoen er master for alt med rapportert slutt.
-  const anchored = expl.concat(camps.filter(c => c.hasEnd))
+  // 2. AIS som fasit. Det som lar seg koble til et opphold får oppholdets
+  // tider; resten faller tilbake på reglene under.
+  const ais = rigName ? aisPlace(rigName, expl, camps, today) : null;
+  const explLeft = ais ? ais.explLeft : expl;
+  const campsLeft = ais ? ais.campsLeft : camps;
+  const aisBars = ais ? ais.bars : [];
+
+  // 3. Sluttdatoen er master for alt med rapportert slutt.
+  const anchored = explLeft.concat(campsLeft.filter(c => c.hasEnd))
     .sort((a, b) => (a.end < b.end ? -1 : a.end > b.end ? 1 : a.start < b.start ? -1 : 1));
   let prev = '';
   anchored.forEach(w => {
@@ -5514,10 +5524,10 @@ function planRigBars(list, today) {
     if (w.kind === 'dev' && w.maybe) w.tailStart = isoMax(w.tailStart, w.start);
   });
 
-  // 3. Forboringer uten rapportert slutt, i startrekkefølge.
-  const placed = anchored.map(w => [w.start, w.end]);
+  // 4. Forboringer uten rapportert slutt, i startrekkefølge.
+  const placed = anchored.map(w => [w.start, w.end]).concat(aisBars.map(w => [w.start, w.end]));
   const starts = () => placed.map(x => x[0]).concat(planned.map(w => w.start));
-  camps.filter(c => !c.hasEnd).sort((a, b) => (a.start < b.start ? -1 : 1)).forEach(c => {
+  campsLeft.filter(c => !c.hasEnd).sort((a, b) => (a.start < b.start ? -1 : 1)).forEach(c => {
     let s = c.start;
     for (let moved = true; moved;) {
       moved = false;
@@ -5530,28 +5540,196 @@ function planRigBars(list, today) {
     c.start = s; c.end = e;
     placed.push([s, e]);
   });
-  camps.forEach(c => { c.shifted = c.start > c.start0; });
+  campsLeft.forEach(c => { c.shifted = c.start > c.start0; });
 
-  // 4. Kampanjer på samme felt som nå ligger rett etter hverandre, for
-  // eksempel en forboring og kampanjen den hørte til, er én aktivitet.
+  // 5. Kampanjer på samme felt som nå ligger rett etter hverandre, for
+  // eksempel en forboring og kampanjen den hørte til, er én aktivitet. Mellom
+  // to AIS-oppholdsbiter tillates bare to dagers mellomrom — hver av dem er
+  // målt, så et lengre opphold mellom dem er noe annet riggen faktisk gjorde.
   const fin = [];
-  camps.slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).forEach(c => {
+  // Mellom to AIS-biter på samme felt kan det ligge en letebrønn eller en annen
+  // aktivitet; da er de ikke sammenhengende.
+  const blockers = aisBars.filter(b => b.kind === 'expl').concat(explLeft, ais ? ais.only : []);
+  campsLeft.concat(aisBars.filter(b => b.kind === 'dev')).sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).forEach(c => {
     const last = fin[fin.length - 1];
-    if (last && last.field && last.field === c.field && addDays(last.end, DEV_MERGE_GAP) >= c.start) {
-      last.items.push(...c.items);
+    const gap = last && last.ais && c.ais ? 20 : DEV_MERGE_GAP;
+    const blocked = last && last.ais && c.ais && blockers.some(b => b.start < c.start && b.end > last.end);
+    if (last && last.kind === 'dev' && last.field && last.field === c.field && !!last.ais === !!c.ais
+        && addDays(last.end, gap) >= c.start && !blocked) {
+      last.items.push(...c.items.filter(i => !last.items.includes(i)));
       last.end = isoMax(last.end, c.end);
       if (c.maybe) { last.tailStart = last.maybe ? last.tailStart : c.tailStart; last.maybe = true; last.state = 'drilling'; }
       last.noEnd = last.noEnd && c.noEnd;
       last.shifted = last.shifted || c.shifted;
       last.start0 = isoMin(last.start0, c.start0);
       last.show = last.show || c.show;
+      if (c.aisStay && last.aisStay) last.aisStay = {label: last.aisStay.label, from: isoMin(last.aisStay.from, c.aisStay.from), to: isoMax(last.aisStay.to, c.aisStay.to)};
       last.operator = [...new Set(last.items.map(i => i.operator).filter(Boolean))].join(', ');
       last.items.forEach(i => { devBlockById[i.id] = last; });
     } else {
       fin.push(c);
     }
   });
-  return expl.concat(fin, planned);
+
+  // 6. Prioritet: AIS-målte bar går foran regelbaserte, og regelbaserte foran
+  // «bare AIS». Den som taper trimmes mot den som vinner, så ingenting overlapper.
+  let hidden = 0;
+  const bars = explLeft.concat(fin.filter(c => !c.ais), fin.filter(c => c.ais), aisBars.filter(b => b.kind === 'expl'));
+  const sorted = bars.slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : (b.ais ? 1 : 0) - (a.ais ? 1 : 0)));
+  const out = [];
+  sorted.forEach(b => {
+    for (;;) {
+      const last = out[out.length - 1];
+      if (!last || b.start >= last.end) break;
+      if (!b.ais) { b.start = isoMin(last.end, b.end); break; }          // regelbasert viker
+      if (!last.ais) { last.end = b.start; if (last.end <= last.start) { out.pop(); hidden++; continue; } }
+      break;
+    }
+    if (b.ais ? b.end >= b.start : b.end > b.start) out.push(b); else hidden++;
+  });
+  // «Bare AIS»: opphold ingen brønn forklarer, i hullene mellom de andre.
+  const extra = [];
+  if (ais && explF.aisOnly && ais.only.length) {
+    ais.only.forEach(b => {
+      const clash = out.find(o => b.start < o.end && o.start < b.end);
+      if (!clash) extra.push(b);
+      else {
+        // trim til det som er ledig, hvis noe er igjen
+        let s = b.start, e = b.end;
+        out.forEach(o => { if (o.start <= s && s < o.end) s = o.end; if (o.start > s && o.start < e) e = o.start; });
+        if (e > s && dayMs(e) - dayMs(s) >= 2 * 864e5) extra.push({...b, start: s, end: e});
+      }
+    });
+  }
+  const res = out.concat(extra, planned);
+  res.hidden = hidden;
+  return res;
+}
+
+// Normalisert navn til sammenligning av felt: bare bokstaver og tall, store bokstaver.
+const normName = s => String(s || '').toUpperCase().replace(/[^A-ZÆØÅ0-9]/g, '');
+
+// Kobler rettens aktiviteter til AIS-oppholdene. Et opphold gir de ytre
+// grensene (når riggen kom og dro); rekkefølgen og fordelingen inni oppholdet
+// kommer fra Sodir, med sluttdatoen som master. Returnerer det som ikke lot seg
+// koble, de AIS-målte barene og oppholdene ingen brønn forklarer.
+function aisPlace(rigName, expl, camps, today) {
+  const data = rigData(rigName);
+  if (!data || !data.stays || !data.stays.length) return null;
+  const stays = data.stays.map((s, i) => ({
+    i, fm: s[0], from: minToDate(s[0]), to: minToDate(s[1]), kind: s[4], label: s[5], detail: s[6], wells: s[7] || [], acts: [],
+  }));
+  const cover = [stays[0].from, stays[stays.length - 1].to];
+  const overlap = (a1, a2, b1, b2) => (dayMs(isoMin(a2, b2)) - dayMs(isoMax(a1, b1))) / 864e5;
+  const TOL = 5;                       // dagers slingringsmonn mellom Sodirs datoer og oppholdet
+  const isSite = st => st.kind === 'field' || st.kind === 'well';
+  const explLeft = [], campsLeft = [];
+  // Omdøpte rigger (alias) deler oppholdene med hovedoppføringen, som alene viser «bare AIS».
+  const isPrimary = !(rigAis.tracks.rigs[rigName] && rigAis.tracks.rigs[rigName].alias);
+
+  expl.forEach(w => {
+    if (w.end < cover[0] || w.start0 > cover[1]) { explLeft.push(w); return; }
+    let best = null, bo = -1e9;
+    stays.forEach(st => {
+      if (!st.wells.includes(w.id)) return;
+      if (st.to < addDays(w.start0, -TOL) || st.from > addDays(w.end, TOL)) return;
+      const o = overlap(w.start0, w.end, st.from, st.to);
+      if (o > bo) { best = st; bo = o; }
+    });
+    if (!best) { explLeft.push(w); return; }
+    best.acts.push({kind: 'expl', src: w, known: w.state === 'completed', end0: w.end, s0: w.start0});
+  });
+
+  camps.forEach(c => {
+    const c0 = c.start0, c1 = c.end;
+    if (c1 < cover[0] || c0 > cover[1]) { campsLeft.push(c); return; }
+    const nf = normName(c.field);
+    let matched = nf ? stays.filter(st => isSite(st) && (normName(st.label) === nf || normName(st.detail) === nf
+        || normName(st.label).includes(nf) || normName(st.detail).includes(nf))
+      && st.to >= addDays(c0, -30) && st.from <= addDays(c1, 30)) : [];
+    if (!matched.length) {
+      // Navnet passer ikke (tilknytning til nabofeltet, som Irpa ved Dvalin): ta
+      // oppholdet på et felt eller en brønn som overlapper mest i tid.
+      const cand = stays.filter(st => isSite(st)).map(st => ({st, o: overlap(c0, c1, st.from, st.to)}))
+        .filter(x => x.o >= 3).sort((a, b) => b.o - a.o);
+      if (cand.length) matched = [cand[0].st];
+    }
+    if (!matched.length) { campsLeft.push(c); return; }
+    const groups = matched.map(() => []);
+    c.items.forEach(it => {
+      const i0 = it.entry, i1 = it.completion || it.entry;
+      let bi = 0, bo = -1e9;
+      matched.forEach((st, k) => {
+        const o = overlap(i0, i1, st.from, st.to) - (st.to < i0 ? dayMs(i0) - dayMs(st.to) : st.from > i1 ? dayMs(st.from) - dayMs(i1) : 0) / 864e5;
+        if (o > bo) { bi = k; bo = o; }
+      });
+      groups[bi].push(it);
+    });
+    // Et opphold på kampanjens felt uten egne brønner (riggen flyttet mellom
+    // malene) hører likevel til kampanjen: det får nærmeste oppholds brønner.
+    const filled = groups.map((g, k) => {
+      if (g.length) return g;
+      let bj = -1, bd = 1e18;
+      groups.forEach((o, j) => { if (o.length && Math.abs(matched[j].fm - matched[k].fm) < bd) { bj = j; bd = Math.abs(matched[j].fm - matched[k].fm); } });
+      return bj >= 0 ? groups[bj] : g;
+    });
+    matched.forEach((st, k) => {
+      const items = filled[k];
+      if (!items.length) return;
+      const reported = items.filter(i => i.completion);
+      const maybe = items.some(i => i.maybe);
+      const chunk = {
+        kind: 'dev', ais: true, field: c.field, title: c.title, rig: c.rig, rigType: c.rigType, items,
+        id: items[0].id, operator: [...new Set(items.map(i => i.operator).filter(Boolean))].join(', '),
+        show: items.some(i => i.show), start0: items.map(i => i.entry).sort()[0], maybe, noEnd: false,
+        tailStart: maybe ? items.filter(i => i.maybe).map(i => i.start0 || i.entry).sort()[0] : '',
+        state: maybe ? 'drilling' : 'completed', shifted: false,
+      };
+      st.acts.push({kind: 'dev', src: chunk, known: reported.length > 0 && !maybe,
+        end0: maybe ? today : (items.map(i => i.completion || addDays(i.entry, DEV_TYPICAL_DAYS)).sort().pop()),
+        s0: chunk.start0});
+    });
+  });
+
+  // Fordel hvert opphold på aktivitetene i det: sluttdatoen avgjør rekkefølgen,
+  // første starter når riggen kom, og siste varer til riggen dro.
+  const bars = [], only = [];
+  stays.forEach(st => {
+    if (!st.acts.length) {
+      if (!isPrimary) return;
+      const days = (dayMs(st.to) - dayMs(st.from)) / 864e5;
+      if (st.kind === 'port' ? days >= 1 : days >= 3) {
+        only.push({kind: 'ais', ais: true, cat: st.kind === 'port' ? 'port' : 'other', rig: rigName, rigType: (expl[0] || camps[0] || {}).rigType || '',
+          title: stayName(st.kind, st.label), start: st.from, end: st.to, state: 'completed', operator: '', show: true,
+          id: 'ais' + st.i, fm: st.fm});
+      }
+      return;
+    }
+    st.acts.sort((a, b) => (a.end0 < b.end0 ? -1 : a.end0 > b.end0 ? 1 : a.s0 < b.s0 ? -1 : 1));
+    // AIS-dataene begynner midt i det første oppholdet; da vet vi ikke når riggen kom,
+    // og Sodirs startdato er det beste vi har.
+    let cur = st.i === 0 ? isoMax(isoMin(st.from, st.acts.map(a => a.s0).sort()[0]), addDays(st.from, -21)) : st.from;
+    const n = st.acts.length;
+    st.acts.forEach((a, k) => {
+      let end;
+      if (k === n - 1) end = st.to;
+      else if (a.known) end = isoMin(isoMax(a.end0, cur), st.to);
+      else end = isoMin(addDays(cur, Math.max(1, Math.round((dayMs(st.to) - dayMs(cur)) / 864e5 / (n - k)))), st.to);
+      const bar = a.kind === 'expl' ? {...a.src} : a.src;
+      bar.sodirStart = a.s0; bar.sodirEnd = a.end0;
+      bar.ais = true;
+      bar.aisStay = {label: stayName(st.kind, st.label), from: st.from, to: st.to};
+      bar.start = cur; bar.end = isoMax(end, cur);
+      bar.start0 = a.kind === 'expl' ? a.src.start0 : a.src.start0;
+      if (bar.kind === 'dev') {
+        if (bar.maybe) bar.tailStart = isoMin(isoMax(bar.tailStart, bar.start), bar.end);
+        bar.items.forEach(i => { devBlockById[i.id] = bar; });
+      }
+      bars.push(bar);
+      cur = bar.end;
+    });
+  });
+  return {explLeft, campsLeft, bars, only};
 }
 
 function openDevWell(id) {
@@ -5574,7 +5752,8 @@ function openDevWell(id) {
     <div class="pf-card">
       <p class="wd-lead">${esc(`${wellCount === 1 ? '1 well' : wellCount + ' wells'}${n > wellCount ? ` (${n} wellbores)` : ''}${
         g.field ? ' on the ' + tc(g.field) + ' field' : ''}, drilled by ${g.operator || 'an unnamed operator'} with ${withRig}, ${when}.`)}${
-        g.noEnd || g.maybe ? ' Sodir reports completion dates with a delay, so the end of the bar on the rig schedule is an estimate.' : ''}</p>
+        g.ais && g.aisStay ? ` AIS places the rig on ${g.aisStay.label} from ${fmtShort(g.aisStay.from)} to ${fmtShort(g.aisStay.to)}, and that is what the bar shows.`
+          : g.noEnd || g.maybe ? ' Sodir reports completion dates with a delay, so the end of the bar on the rig schedule is an estimate.' : ''}</p>
       <div class="ex-btns">
         <a class="ex-btn" href="https://factpages.sodir.no/wellbore/pageview/development/all/${g.items[0].id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>
         ${fld ? `<button class="ex-btn" onclick="closeWell();openFieldProfile(${fld.id})">Field profile →</button>` : ''}
@@ -5602,7 +5781,8 @@ function openDevWell(id) {
   document.body.style.overflow = 'hidden';
 }
 
-const exOpen = w => w.kind === 'dev' ? `openDevWell(${w.id})` : `openWell(${w.id})`;
+const exOpen = w => w.kind === 'dev' ? `openDevWell(${w.id})`
+  : w.kind === 'ais' ? `openRigProfile(${esc(JSON.stringify(w.rig))}, false, ${w.fm})` : `openWell(${w.id})`;
 
 function explRenderRigs() {
   const today = new Date().toISOString().slice(0, 10);
@@ -5624,14 +5804,23 @@ function explRenderRigs() {
   const t0 = addDays(today, -456);
   devBlockById = {};
   let latestPlan = '';
-  const planned = Object.entries(byRigAll).map(([name, list]) => ({name, bars: planRigBars(list, today).filter(w => w.show)}));
+  const filtersActive = !!(explF.company.trim() || explF.q.trim() || explF.purpose !== 'all');
+  let hiddenTotal = 0, aisBarsTotal = 0, ruleBarsTotal = 0;
+  const planned = Object.entries(byRigAll).map(([name, list]) => {
+    const res = planRigBars(list, today, name);
+    hiddenTotal += res.hidden || 0;
+    // «Bare AIS»-opphold vises ikke når et filter er satt: de hører ikke til noe selskap.
+    const bars = res.filter(w => w.show && (w.kind !== 'ais' || !filtersActive));
+    bars.forEach(w => { if (w.kind !== 'ais' && w.state !== 'planned') { if (w.ais) aisBarsTotal++; else ruleBarsTotal++; } });
+    return {name, bars};
+  });
   planned.forEach(r => r.bars.filter(w => w.state === 'planned').forEach(w => { if (w.planned > latestPlan) latestPlan = w.planned; }));
   const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
   const out = planned.map(r => {
     const ws = r.bars.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).filter(w => w.start <= t1 && endOf(w) >= t0);
     const now = ws.filter(w => w.state === 'drilling').pop();
     const next = ws.find(w => w.state === 'planned');
-    const last = ws.filter(w => w.state === 'completed').pop();
+    const last = ws.filter(w => w.state === 'completed' && w.kind !== 'ais').pop();
     return {name: r.name, ws, now, next, last, type: ws.length ? ws[0].rigType : ''};
   }).filter(r => r.ws.length)
     .sort((a, b) => (!!b.now - !!a.now) || (!!b.next - !!a.next) || a.name.localeCompare(b.name));
@@ -5677,13 +5866,17 @@ function explRenderRigs() {
         fill = w.noEnd ? 'url(#exHatch)' : w.maybe ? EX_ACTIVE : DEV_COLOR;
         if (w.maybe) { stroke = '#0a6b47'; dash = '4 2'; opacity = 0.7; }
       }
+      const isAisOnly = w.kind === 'ais';
+      if (isAisOnly) { fill = w.cat === 'port' ? '#dbe7f1' : '#ece7ee'; stroke = '#b8c4d2'; }
       const room = Math.floor((b - a) / 5.6);
       const txt = room >= 5 ? w.title.slice(0, room - 1) + (w.title.length > room - 1 ? '…' : '') : '';
-      const dark = isDev || ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling';
+      const dark = !isAisOnly && (isDev || ['oil', 'oilgas', 'gas'].includes(w.resKey) || w.state === 'drilling');
       const note = (isDev && w.items.length > 1 ? ` · ${w.items.length} wellbores` : '')
         + (w.noEnd ? ' (no completion date reported; drawn until the rig\'s next activity)' : w.maybe ? ' (possibly still drilling)' : '')
-        + (isDev && w.shifted ? ' (start adjusted to avoid overlap)' : '');
-      const to = isDev ? (w.maybe || w.noEnd ? '' : ' – ' + fmtShort(w.end)) : (w.shownEnd ? ' – ' + fmtShort(w.shownEnd) : '');
+        + (isDev && w.shifted ? ' (start adjusted to avoid overlap)' : '')
+        + (w.ais && w.aisStay ? ` · AIS: on ${w.aisStay.label} ${fmtShort(w.aisStay.from)} – ${fmtShort(w.aisStay.to)}` : '');
+      const to = isAisOnly ? ' – ' + fmtShort(w.end) : w.ais ? ' – ' + fmtShort(w.end)
+        : isDev ? (w.maybe || w.noEnd ? '' : ' – ' + fmtShort(w.end)) : (w.shownEnd ? ' – ' + fmtShort(w.shownEnd) : '');
       // En kampanje der siste brønn trolig bores nå: blå til den brønnen starter, så grønn stiplet.
       const ry = y + 3 + (multi ? w.lane * 13 : 0), rh = multi ? 11 : RH - 8;
       const tail = isDev && w.maybe && w.tailStart ? clampX(w.tailStart) : null;
@@ -5696,8 +5889,9 @@ function explRenderRigs() {
              fill-opacity="${opacity}" stroke="${stroke}" stroke-dasharray="${dash}"/>`;
       return `<g onclick="${exOpen(w)}" style="cursor:pointer">
         ${rects}
+        ${w.ais && !isAisOnly ? `<rect x="${a.toFixed(1)}" y="${ry}" width="${(b - a).toFixed(1)}" height="2" fill="#1a2332" fill-opacity="0.45"/>` : ''}
         ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + (multi ? 12 + w.lane * 13 : RH / 2 + 3)}" class="ex-bar-t" style="${multi ? 'font-size:8px' : ''}" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
-        <title>${esc(w.title)}${isDev ? ' (development)' : ` (${esc(w.name)})`} · ${esc(w.operator)} · ${fmtShort(w.start)}${to}${note}</title></g>`;
+        <title>${isAisOnly ? esc(w.title) + (w.cat === 'port' ? ' (port stay, AIS)' : ' (stay, no matching well data — AIS)') : esc(w.title) + (isDev ? ' (development)' : ` (${esc(w.name)})`) + ' · ' + esc(w.operator)} · ${fmtShort(w.start)}${to}${note}</title></g>`;
     }).join('');
     return `<text x="4" y="${y + (multi ? 12 : RH / 2 + 3)}" class="ex-rig${hasRigAis(r.name) ? ' ex-rig-link' : ''}"${hasRigAis(r.name) ? ` onclick="openRigProfile(${esc(JSON.stringify(r.name))})"` : ''}>${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${row}`;
   }).join('');
@@ -5710,6 +5904,7 @@ function explRenderRigs() {
       <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) + (r.last.noEnd ? ' (est.)' : '') : '')}</td></tr>`;
   }).join('');
   const nDev = inWin.filter(w => w.kind === 'dev').reduce((t, b) => t + b.items.length, 0);
+  const nAisOnly = inWin.filter(w => w.kind === 'ais').length;
   document.getElementById('explBody').innerHTML = `
     <div class="ex-sum"><strong>${out.length}</strong> rigs · <strong>${out.filter(r => r.now).length}</strong> drilling now
       · <strong>${out.filter(r => r.next).length}</strong> with a planned well${nDev ? ` · <strong>${nDev}</strong> development wellbores` : ''}</div>
@@ -5720,8 +5915,14 @@ function explRenderRigs() {
         ${axis}${bars}
         <line x1="${tx}" x2="${tx}" y1="${TOP - 4}" y2="${H}" stroke="${OIL_COLOR}" stroke-width="1.4" stroke-dasharray="3 2"/>
       </svg></div>
-      ${explLegend(nDev ? [[DEV_COLOR, 'Development (by field)'], ['url(#exHatch)', 'Development, end not reported']] : [])}
-      <div class="pf-map-note">A rig drills one well at a time, so there are no overlaps: end dates are treated as correct, and an activity
+      ${explLegend((nDev ? [[DEV_COLOR, 'Development (by field)'], ['url(#exHatch)', 'Development, end not reported']] : [])
+        .concat(nAisOnly ? [['#dbe7f1', 'Port / other stay (AIS only)']] : []))}
+      <div class="pf-map-note"><strong>AIS is the reference.</strong> A thin dark line on top of a bar means its start and end come from
+        the rig's AIS track: the bar runs from when the rig arrived at the location until it left, and Sodir's dates only decide the
+        order of activities within one stay (${aisBarsTotal} bars verified, ${ruleBarsTotal} still placed by the rules below
+        because no matching stay was found${hiddenTotal ? `; ${hiddenTotal} activities are hidden because AIS places the rig elsewhere at those dates` : ''}).
+        Pale bars are port calls and stays no well explains. Click one to replay it. Where AIS is missing, the rules apply:
+        a rig drills one well at a time, so there are no overlaps: end dates are treated as correct, and an activity
         whose start lies inside another is moved to where that one ended — Sodir's start is often a pre-drill, after which the rig
         moved on and returned. Development wells on the same field and rig, less than ${DEV_MERGE_GAP} days apart, are one campaign,
         drawn as one bar named after the field. Striped bars are campaigns where no well has a reported completion date; they run
@@ -6030,7 +6231,7 @@ const RG_W = 720, RG_H = 430;
 const RG_SPEEDS = [[1, '1 day / s'], [3, '3 days / s'], [7, '1 week / s'], [30, '1 month / s']];
 const RG_PERIODS = [[90, 'Last 3 months'], [180, 'Last 6 months'], [365, 'Last 12 months'], [0, 'All']];
 
-async function openRigProfile(name, quiet) {
+async function openRigProfile(name, quiet, seekMin) {
   await loadRigAis();
   await loadExploration();
   const data = rigData(name);
@@ -6056,8 +6257,10 @@ async function openRigProfile(name, quiet) {
   rigStop();
   const last = data.wp[data.wp.length - 1][0];
   rg = {name, data, t1: last, period: 180, speed: 7, playing: false, raf: 0, lastTs: 0, view: null};
+  if (seekMin && seekMin < last - 180 * 1440) rg.period = 0;   // oppholdet ligger utenfor standardperioden
   rigBuild(true);
   show();
+  if (seekMin) rigSeek(seekMin, true);
 }
 
 function rigStop() {
