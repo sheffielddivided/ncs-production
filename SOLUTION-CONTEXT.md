@@ -1115,6 +1115,7 @@ slik at den kan merkes manuelt.
 | Companies | Prod per field | `drawCompaniesOePerField` (`:3535`) | Én serie per felt, equity-justert |
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:3402`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
 | Companies | Reserves | `drawCompaniesReserves` (`:4109`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert. Tabell under: per hub og felt |
+| Companies | Exploration | `drawCompaniesExploration` | Letebrønner per spuddår (grupperte brønner, sidesteg slått sammen), stablet operert/ikke-operert, med funnraten (funnbrønner / avsluttede brønner) som linje på høyre akse. Veksler «Wildcats only» (`cw=1`). Klikk på et år viser brønnene i tabellen under (`cy=`). Eierskap og selskapsnavn er som på spuddatoen |
 | Companies | Profile | `drawCompanyProfile` | Faktaark for **ett** selskap: årlig egenandelsjustert produksjon per hub i grafen, og under den nøkkeltall, kart, portefølje gruppert per hub, ressurser og en sorterbar lisenstabell |
 
 **Fire av hub-visningene er feltvisninger med hubens medlemsfelt.**

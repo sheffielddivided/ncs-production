@@ -1276,6 +1276,7 @@ const COMPANY_TABS = [
   {id:'oe_per_field',  label:'Prod per field'},
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'reserves',      label:'Reserves'},
+  {id:'exploration',   label:'Exploration'},
   {id:'profile',       label:'Profile'},
 ];
 
@@ -1890,6 +1891,10 @@ function stateToHash() {
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
     q.set('g', hubReserveGrouping);
   }
+  if (topMode === 'companies' && companySubView === 'exploration') {
+    if (cmpExplWildcat) q.set('cw', '1');
+    if (cmpExplYear) q.set('cy', cmpExplYear);
+  }
   return q.toString();
 }
 
@@ -1953,6 +1958,10 @@ function applyHash() {
     if (g('xm') === '1') explF.modu = true;
     if (+g('xw') > 0) explF.open = +g('xw');
     if (g('xg')) explF.rig = g('xg');
+  }
+  if (topMode === 'companies') {
+    cmpExplWildcat = q.get('cw') === '1';
+    if (/^\d{4}$/.test(q.get('cy') || '')) cmpExplYear = q.get('cy');
   }
 
   const pr = q.get('p');
@@ -2114,6 +2123,11 @@ async function refreshCompanies() {
   relevantIds.forEach(id => { if (fieldProdCache[id] === null) delete fieldProdCache[id]; });
   showSpinner();
   // Reservevisningen trenger eierandelene, men ikke produksjonstidsseriene.
+  if (companySubView === 'exploration') {
+    await loadExploration();
+    drawChart();
+    return;
+  }
   if (companySubView === 'reserves') {
     // Funndataene brukes av tabellen under reservetabellen.
     await Promise.all([loadFieldReserves(), loadDiscoveries()]);
@@ -2201,8 +2215,171 @@ function drawChart() {
     else if (sv === 'oe_per_field')  drawCompaniesOePerField();
     else if (sv === 'oe_per_hub')    drawCompaniesOePerHub();
     else if (sv === 'reserves')      drawCompaniesReserves();
+    else if (sv === 'exploration')   drawCompaniesExploration();
     else if (sv === 'profile')       drawCompanyProfile();
   }
+}
+
+// ── COMPANIES: EXPLORATION ───────────────────────────────────────────────────
+// Letebrønner per år for de valgte selskapene, delt på operert og ikke-operert,
+// med funnraten som linje på en egen akse. Grunnlaget er de grupperte brønnene
+// i explWells, så sidesteg og re-entries teller som én brønn, og året er
+// spuddåret. Eierandelene er lisensens på spuddatoen, med selskapsnavnet slik
+// Sodir hadde det da — en brønn boret av Statoil teller derfor ikke for
+// Equinor.
+//
+// Funnraten er andelen funnbrønner (Sodirs wlbDiscoveryWell) blant de
+// avsluttede brønnene i året. Brønner som fortsatt bores er med i stolpene,
+// men ikke i nevneren.
+let cmpExplWildcat = false;
+let cmpExplYear = null;   // året brønnlisten under grafen viser
+const CMP_EXPL_OP = 'rgba(0,48,87,0.85)';
+const CMP_EXPL_NONOP = 'rgba(73,147,180,0.6)';
+const CMP_EXPL_RATE = '#ce0f69';
+
+function cmpExplWells() {
+  const want = selectedCompanyNames;
+  const out = [];
+  explWells.forEach(w => {
+    if (w.state === 'planned' || !w.entry) return;
+    if (cmpExplWildcat && w.purpose !== 'WILDCAT') return;
+    const op = want.has(w.operator);
+    const share = w.partners.filter(p => want.has(p.name)).reduce((t, p) => t + p.share, 0);
+    if (!op && !share) return;
+    out.push({w, op, share, year: w.entry.slice(0, 4)});
+  });
+  return out;
+}
+
+function setCmpExplWildcat(v) {
+  cmpExplWildcat = v;
+  syncUrl();
+  drawCompaniesExploration();
+}
+
+function setCmpExplYear(y) {
+  cmpExplYear = y;
+  syncUrl();
+  renderCmpExplTable(cmpExplWells());
+  if (chartInstance) chartInstance.update('none');
+}
+
+function drawCompaniesExploration() {
+  const companies = [...selectedCompanyNames];
+  const cmpStr = companies.join(', ');
+  const title = companies.length === 1 ? companies[0] : companies.length + ' companies';
+  const kind = cmpExplWildcat ? 'wildcats' : 'exploration wells';
+  const toggle = `<div class="pill-group" style="margin-bottom:10px;width:max-content">
+      <button class="pill-btn${cmpExplWildcat ? '' : ' active'}" onclick="setCmpExplWildcat(false)">All exploration wells</button>
+      <button class="pill-btn${cmpExplWildcat ? ' active' : ''}" onclick="setCmpExplWildcat(true)">Wildcats only</button></div>`;
+  const rows = cmpExplWells();
+  setChartTitle(`${title} · Exploration`, `${cmpExplWildcat ? 'Wildcats' : 'Exploration wells'} per year · discovery rate`);
+  if (!rows.length) {
+    setChartEmpty(`No ${kind} found for ${esc(cmpStr)}.`);
+    document.getElementById('chartArea').insertAdjacentHTML('afterbegin', toggle);
+    setInfo('');
+    return;
+  }
+  const y0 = +rows.reduce((m, r) => r.year < m ? r.year : m, '9999');
+  const y1 = Math.max(currentYear, +rows.reduce((m, r) => r.year > m ? r.year : m, '0'));
+  const labels = [];
+  for (let y = y0; y <= y1; y++) labels.push(String(y));
+  const per = Object.fromEntries(labels.map(y => [y, {op: 0, nonop: 0, done: 0, disc: 0}]));
+  rows.forEach(r => {
+    const p = per[r.year];
+    if (r.op) p.op++; else p.nonop++;
+    if (r.w.state === 'completed') { p.done++; if (r.w.found) p.disc++; }
+  });
+  const rate = labels.map(y => per[y].done ? +(per[y].disc / per[y].done * 100).toFixed(1) : null);
+  const tot = Object.values(per).reduce((t, p) => ({done: t.done + p.done, disc: t.disc + p.disc}), {done: 0, disc: 0});
+  if (!cmpExplYear || !per[cmpExplYear] || !(per[cmpExplYear].op + per[cmpExplYear].nonop)) {
+    cmpExplYear = [...labels].reverse().find(y => per[y].op + per[y].nonop);
+  }
+
+  setChartTable(''); setProfile('');
+  lastLabels = labels;
+  lastXTitle = 'Year';
+  lastDatasets = [
+    {label: 'Operated', data: labels.map(y => per[y].op)},
+    {label: 'Non-operated', data: labels.map(y => per[y].nonop)},
+    {label: 'Discovery rate, %', data: rate.map(v => v ?? '')},
+  ];
+  const legend = [
+    {label: 'Operated', color: CMP_EXPL_OP},
+    {label: 'Non-operated', color: CMP_EXPL_NONOP},
+    {label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE},
+  ];
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${legend.map(l => `
+      <div class="legend-item"><div class="legend-dot" style="background:${l.color}"></div>${esc(l.label)}</div>`).join('')}
+    </div>
+    <div class="pf-map-note">Click a year to list its wells below.</div>`;
+  // Valgt år markeres ved at de andre stolpene tones ned.
+  const dim = (c, i) => labels[i] === cmpExplYear ? c : c.replace(/[\d.]+\)$/, m => (parseFloat(m) * 0.45).toFixed(2) + ')');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    data: {labels, datasets: [
+      {type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
+       backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: 3, tension: 0.25, spanGaps: true, order: 0},
+      {type: 'bar', label: 'Operated', data: labels.map(y => per[y].op), stack: 's', order: 1,
+       backgroundColor: ctx => dim(CMP_EXPL_OP, ctx.dataIndex), borderWidth: 0},
+      {type: 'bar', label: 'Non-operated', data: labels.map(y => per[y].nonop), stack: 's', order: 1,
+       backgroundColor: ctx => dim(CMP_EXPL_NONOP, ctx.dataIndex), borderWidth: 0},
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: {mode: 'index', intersect: false},
+      onClick: (e, els, chart) => {
+        const pts = chart.getElementsAtEventForMode(e, 'index', {intersect: false}, false);
+        if (pts.length) setCmpExplYear(labels[pts[0].index]);
+      },
+      onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      plugins: {
+        legend: {display: false},
+        tooltip: {callbacks: {
+          label: ctx => ctx.dataset.type === 'line'
+            ? (ctx.parsed.y == null ? null : ` Discovery rate: ${ctx.parsed.y.toFixed(0)} % (${per[labels[ctx.dataIndex]].disc} of ${per[labels[ctx.dataIndex]].done} completed)`)
+            : ` ${ctx.dataset.label}: ${ctx.parsed.y}`,
+          footer: items => `Total: ${per[labels[items[0].dataIndex]].op + per[labels[items[0].dataIndex]].nonop} wells`,
+        }},
+      },
+      scales: {
+        x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+        y: {stacked: true, beginAtZero: true, title: {display: true, text: 'wells', color: '#4a5568', font: {size: 10}},
+            ticks: {precision: 0, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
+        y1: {position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
+             ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
+      },
+    },
+  });
+  document.getElementById('downloadBtn').disabled = false;
+  const nOp = rows.filter(r => r.op).length;
+  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
+  renderCmpExplTable(rows);
+}
+
+function renderCmpExplTable(rows) {
+  const list = rows.filter(r => r.year === cmpExplYear)
+    .sort((a, b) => (a.w.entry < b.w.entry ? -1 : a.w.entry > b.w.entry ? 1 : 0));
+  if (!list.length) { setChartTable(''); return; }
+  const nOp = list.filter(r => r.op).length;
+  const disc = list.filter(r => r.w.found).length;
+  setChartTable(`
+    <div class="pf-scroll"><table class="res-table ex-table">
+      <caption>${cmpExplYear} · ${list.length} ${cmpExplWildcat ? 'wildcats' : 'exploration wells'} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}</caption>
+      <thead><tr><th class="ex-l">Well</th><th class="ex-l">Role</th><th class="ex-l">Purpose</th><th class="ex-l">Result</th>
+        <th class="ex-l">Operator</th><th class="ex-l">Rig</th><th>Spudded</th></tr></thead>
+      <tbody>${list.map(({w, op, share}) => `
+        <tr class="ex-row" onclick="openWell(${w.id}, true)">
+          <td class="ex-name"><strong>${esc(w.title)}</strong>${w.state !== 'completed' ? ` <span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}
+            ${w.sub ? `<small>${esc(w.sub)}</small>` : ''}</td>
+          <td class="ex-l">${op ? 'Operator' : 'Partner'}${share ? ` · ${(+share.toFixed(2))} %` : ''}</td>
+          <td class="ex-l">${esc(tc(w.purpose))}</td>
+          <td class="ex-l">${explResultCell(w)}${w.found ? ' <small>discovery</small>' : ''}</td>
+          <td class="ex-l">${esc(w.operator || '—')}</td>
+          <td class="ex-l">${esc(w.rig) || '—'}</td><td>${fmtShort(w.entry)}</td></tr>`).join('')}</tbody>
+    </table></div>`);
 }
 
 // ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
@@ -2320,7 +2497,8 @@ function isReservesView() {
       || (topMode === 'hubs'      && hubSubView     === 'profile')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'companies' && companySubView === 'profile')
-      || (topMode === 'companies' && companySubView === 'reserves');
+      || (topMode === 'companies' && companySubView === 'reserves')
+      || (topMode === 'companies' && companySubView === 'exploration');
 }
 
 async function loadFieldReserves() {
