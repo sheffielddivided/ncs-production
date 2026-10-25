@@ -5968,7 +5968,7 @@ function explRenderRigs() {
     const last = ws.filter(w => w.state === 'completed' && w.kind !== 'ais').pop();
     return {name: r.name, ws, now, next, last, type: ws.length ? ws[0].rigType : ''};
   }).filter(r => r.ws.length)
-    .sort((a, b) => (!!b.now - !!a.now) || (!!b.next - !!a.next) || a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name, 'nb'));
   const inWin = out.flatMap(r => r.ws);
 
   if (!out.length) {
