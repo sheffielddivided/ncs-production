@@ -88,6 +88,43 @@
     body.expl .chart-wrap, body.expl #chartTable, body.expl .profile-wrap, body.expl .info-box,
     body.expl .select-fab, body.expl #downloadBtn{display:none !important;}
     .expl-wrap{margin:10px 12px;}
+    .lc-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+    #licTlFacts{margin-bottom:4px;}
+    .lc-chips{display:flex;flex-wrap:wrap;gap:4px;}
+    .lc-chip{padding:3px 10px;border:1.5px solid var(--c);border-radius:12px;background:#fff;color:#44505f;
+      font-size:0.7rem;font-weight:600;cursor:pointer;}
+    .lc-chip.on{background:var(--c);color:#fff;}
+    .lc-kind{display:inline-block;padding:1px 8px;border-radius:9px;font-size:0.62rem;font-weight:700;
+      background:color-mix(in srgb,var(--c) 18%,#fff);color:#1a2332;border:1px solid var(--c);}
+    .lc-chart{width:100%;height:auto;display:block;}
+    .lc-ax{font-size:10px;fill:#828282;}
+    .lc-ax-sel{fill:#ce0f69;font-weight:700;}
+    .lc-rb{cursor:pointer;}
+    .lc-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    @media(max-width:700px){.lc-two{grid-template-columns:1fr;}}
+    .lc-bg-pos{background:#3fa7a0;} .lc-bg-neg{background:#ce0f69;}
+    .lc-pos{color:#1f8a82;font-weight:700;} .lc-neg{color:#ce0f69;font-weight:700;}
+    .lc-matrix{border-collapse:separate;border-spacing:2px;font-size:0.7rem;margin:0 auto;}
+    .lc-matrix th{font-weight:600;color:#1a2332;}
+    .lc-rh{text-align:right;padding-right:6px;white-space:nowrap;}
+    .lc-vh{height:104px;vertical-align:bottom;padding:0 0 4px;}
+    .lc-vh span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block;}
+    .lc-mx{width:36px;min-width:36px;height:30px;text-align:center;cursor:pointer;border-radius:4px;
+      background:#f3f5f8;font-variant-numeric:tabular-nums;}
+    .lc-mx:hover{outline:2px solid #1a2332;}
+    .lc-sel{outline:2px solid #1a2332;}
+    .lc-diag{background:#e8eef5;color:#1a2332;}
+    .lc-tl{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;}
+    @media(max-width:800px){.lc-tl{grid-template-columns:1fr;}}
+    .lc-tl-date{font-size:22px;font-weight:700;fill:#1a2332;paint-order:stroke;stroke:#fff;stroke-width:4px;}
+    .lc-slider{display:flex;align-items:center;gap:8px;margin-top:8px;}
+    .lc-slider input[type=range]{flex:1;accent-color:#ce0f69;}
+    .lc-slider-ends{display:flex;justify-content:space-between;font-size:0.64rem;color:var(--muted);padding:0 2px;}
+    .lc-h3{margin:14px 0 6px;font-size:0.74rem;color:var(--navy);}
+    .lc-spark{width:100%;height:60px;display:block;background:#f6f8fb;border-radius:6px;cursor:pointer;}
+    .lc-ev{list-style:none;margin:0;padding:0;font-size:0.74rem;}
+    .lc-ev li{padding:4px 0;border-bottom:1px solid #eef0f3;}
+    .lc-ev small{display:block;color:var(--muted);font-size:0.64rem;}
     .lc-row{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;}
     .lc-row:hover .lc-name,.lc-row:focus-visible .lc-name{color:var(--blue);}
     .lc-row:focus-visible{outline:none;}
@@ -1763,8 +1800,7 @@ function stateToHash() {
   }
   else if (topMode === 'licences') {
     const dflt = licDefaults();
-    [['company','lc'],['metric','lm'],['role','lr'],['q','lq']]
-      .forEach(([k, p]) => { if (licF[k] !== dflt[k]) q.set(p, licF[k]); });
+    LIC_PARAMS.forEach(([k, p]) => { if (licF[k] !== dflt[k]) q.set(p, licF[k]); });
   }
   else                         q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && topMode !== 'companies' && currentSubView() === 'oilgas') q.set('w', '1');
@@ -1807,10 +1843,14 @@ function applyHash() {
 
   if (topMode === 'licences') {
     licF = {...licDefaults()};
-    if (q.get('lc')) licF.company = q.get('lc');
-    if (['count','net'].includes(q.get('lm'))) licF.metric = q.get('lm');
-    if (q.get('lr') === 'operator') licF.role = 'operator';
-    if (q.get('lq')) licF.q = q.get('lq');
+    LIC_PARAMS.forEach(([k, p]) => { if (q.has(p)) licF[k] = q.get(p); });
+    if (!['count','net'].includes(licF.metric)) licF.metric = 'count';
+    if (!['all','operator'].includes(licF.role)) licF.role = 'all';
+    if (!['count','pct'].includes(licF.ovm)) licF.ovm = 'count';
+    if (!['any','buy','sell'].includes(licF.txRole)) licF.txRole = 'any';
+    if (!['group','entity'].includes(licF.txLevel)) licF.txLevel = 'group';
+    if (!/^\d+$/.test(licF.ovn)) licF.ovn = '15';
+    if (licF.date && !/^\d{4}-\d{2}-\d{2}$/.test(licF.date)) licF.date = '';
   }
 
   if (topMode === 'exploration') {
@@ -5831,8 +5871,12 @@ function explLinkCard(kind, key) {
 // det multiplisert med selskapets eierandel; brutto er hele lisensens areal,
 // uavhengig av andel.
 const LIC_TABS = [
-  {id:'overview', label:'Overview'},
-  {id:'company',  label:'Company'},
+  {id:'overview',     label:'Overview'},
+  {id:'company',      label:'Company'},
+  {id:'transactions', label:'Transactions'},
+  {id:'rounds',       label:'Rounds'},
+  {id:'overlap',      label:'Overlap'},
+  {id:'map',          label:'Map'},
 ];
 const LIC_SEAS = [
   {key:'North sea',     label:'North Sea',     color:'#2a6fa8'},
@@ -5840,7 +5884,14 @@ const LIC_SEAS = [
   {key:'Barents sea',   label:'Barents Sea',   color:'#e3a73a'},
 ];
 let licSubView = 'overview';
-const licDefaults = () => ({company: '', metric: 'count', role: 'all', q: '', top: 20, all: false, tableAll: false, rowsAll: false});
+const LIC_DEAL_KINDS = 'transfer,sdfi,withdrawal,merger';
+const licDefaults = () => ({company: '', metric: 'count', role: 'all', q: '', top: 20, all: false,
+  tableAll: false, rowsAll: false, round: '', ova: '', ovb: '', ovn: '15', ovm: 'count',
+  txRole: 'any', txFrom: '', txTo: '', txKinds: LIC_DEAL_KINDS, txAll: false, txLevel: 'group', date: ''});
+// Parametrene i adressen. Bare avvik fra standardverdiene skrives.
+const LIC_PARAMS = [['company','lc'],['metric','lm'],['role','lr'],['q','lq'],['round','lrd'],
+  ['ova','lo'],['ovb','lp'],['ovn','ln'],['ovm','lx'],['txRole','tr'],['txFrom','tf'],['txTo','tt'],
+  ['txKinds','tk'],['txLevel','tl'],['date','md']];
 let licF = licDefaults();
 let licSort = {key: 'count', dir: -1};          // oversiktstabellen
 let licProfSort = {key: 'net', dir: -1};        // lisenstabellen på selskapssiden
@@ -5942,6 +5993,7 @@ function licLinks() {
 }
 
 async function refreshLicences() {
+  licStop();
   const box = document.getElementById('licBody');
   if (!licLoaded) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
   setInfo('');
@@ -5951,12 +6003,12 @@ async function refreshLicences() {
     box.innerHTML = '<div class="status">No licence data available.</div>';
     return;
   }
-  if (licSubView === 'company' && !licF.company) {
+  if (['company', 'map'].includes(licSubView) && !licF.company) {
     licF.company = licCos.slice().sort((a, b) => licStats[b].count - licStats[a].count)[0];
     syncUrl();
   }
   licRenderBar();
-  licRenderBody();
+  await licRenderBody();
 }
 
 function licSet(key, val, rebuildBar) {
@@ -5970,15 +6022,16 @@ function licRenderBar() {
   const f = licF;
   const pill = (key, val, label) =>
     `<button class="pill-btn${f[key] === val ? ' active' : ''}" onclick="licSet('${key}','${val}',true)">${label}</button>`;
-  if (licSubView === 'company') {
+  if (licSubView === 'company' || licSubView === 'map') {
     document.getElementById('licBar').innerHTML = `
       <div class="ex-bar">
         <input class="ex-in" type="search" list="licCoList" placeholder="Company…" value="${esc(f.company)}"
                onchange="licPick(this.value)" aria-label="Company"/>
-        <datalist id="licCoList">${sortCompanies(licCos).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+        <datalist id="licCoList">${licCoOptions()}</datalist>
       </div>`;
     return;
   }
+  if (licSubView !== 'overview') { document.getElementById('licBar').innerHTML = ''; return; }
   document.getElementById('licBar').innerHTML = `
     <div class="ex-bar">
       <div class="pill-group">${pill('metric', 'count', 'Licences')}${pill('metric', 'net', 'Net area')}</div>
@@ -5986,8 +6039,17 @@ function licRenderBar() {
     </div>`;
 }
 
+function licCoOptions() {
+  // Aktive selskaper først, i samme rekkefølge som ellers; deretter alle som
+  // bare finnes i historikken (kun Map kan vise dem).
+  const hist = licHist ? licHist.companies.filter(n => !licStats[n]).sort((a, b) => a.localeCompare(b, 'en')) : [];
+  return [...sortCompanies(licCos), ...(licSubView === 'map' ? hist : [])]
+    .map(n => `<option value="${esc(n)}">`).join('');
+}
+
 function licPick(name) {
-  if (!licStats[name]) return;
+  const ok = licSubView === 'map' ? (licStats[name] || (licHist && licHist.companies.includes(name))) : licStats[name];
+  if (!ok) return;
   licF.company = name;
   licF.rowsAll = false;
   syncUrl();
@@ -6003,8 +6065,30 @@ function licOpenCompany(name) {
   scrollToTop();
 }
 
-function licRenderBody() {
-  if (licSubView === 'company') licRenderCompany(); else licRenderOverview();
+function licOpenTab(tab, company) {
+  if (company !== undefined) licF.company = company;
+  licSubView = tab;
+  renderViewTabs();
+  refresh();
+  scrollToTop();
+}
+
+async function licRenderBody() {
+  licStop();
+  const v = licSubView;
+  if (v === 'company') return licRenderCompany();
+  if (v === 'overview') return licRenderOverview();
+  const box = document.getElementById('licBody');
+  const need = v === 'transactions' ? licLoadTransfers : v === 'overlap' ? null : licLoadHistory;
+  if (need) {
+    if (!licNeedLoaded(v)) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+    await need();
+    if (licSubView !== v) return;     // brukeren byttet fane mens dataene lastet
+  }
+  if (v === 'transactions') licRenderTransactions();
+  else if (v === 'rounds') licRenderRounds();
+  else if (v === 'overlap') licRenderOverlap();
+  else if (v === 'map') licRenderMap();
 }
 
 // ── Oversikt ─────────────────────────────────────────────────────────────────
@@ -6168,7 +6252,11 @@ function licRenderCompany() {
         <div class="pf-fact"><span>Net area</span><strong>${licKm(st.net)} km²</strong></div>
         ${seaFacts}
       </div>
-      <button class="grp-btn ex-more" onclick="explOpenCompany(${esc(JSON.stringify(c))})">Open the production profile →</button>
+      <div class="lc-links">
+        <button class="grp-btn" onclick="licOpenTab('map', ${esc(JSON.stringify(c))})">Portfolio timeline →</button>
+        <button class="grp-btn" onclick="licF.txRole='any';licOpenTab('transactions', ${esc(JSON.stringify(licConcern(c).label))})">Deals →</button>
+        <button class="grp-btn" onclick="explOpenCompany(${esc(JSON.stringify(c))})">Production profile →</button>
+      </div>
     </div>
     <div class="pf-card"><h3>Licence map</h3>${licCompanyMap(rows)}</div>
     <div class="pf-card"><h3>Licences</h3>
@@ -6201,6 +6289,796 @@ function licCompanyMap(rows) {
           '<span class="ex-dot" style="background:rgba(206,15,105,0.32)"></span>Partner · other licences in grey, ' +
           'fields in blue-grey. Coastline: Natural Earth · outlines: Sodir, simplified to ~330 m',
   });
+}
+
+
+// ── Historikk: lasting ───────────────────────────────────────────────────────
+// De tre historikkfilene lastes først når en fane trenger dem. Datoene ligger
+// som dager siden 1970-01-01 (se fetch_sodir.py); licDay* gjør dem lesbare.
+const DAY_MS = 864e5;
+const licNowDay = () => Math.floor(Date.now() / DAY_MS);
+const licDayStr = d => new Date(d * DAY_MS).toLocaleDateString('en-GB',
+  {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'});
+const licDayYear = d => new Date(d * DAY_MS).getUTCFullYear();
+const licDayIso = d => new Date(d * DAY_MS).toISOString().slice(0, 10);
+const licIsoDay = s => Math.floor(Date.parse(s + 'T00:00:00Z') / DAY_MS);
+
+let licAll = [], licAllById = {}, licHist = null, licShares = {}, licOper = {};
+let licAreas = null, licTransfers = null;
+let licHistLoading = null, licTransfersLoading = null;
+
+function licNeedLoaded(tab) {
+  return tab === 'transactions' ? !!licTransfers : !!licHist;
+}
+
+function licLoadHistory() {
+  if (licHist) return Promise.resolve();
+  if (licHistLoading) return licHistLoading;
+  licHistLoading = Promise.all([fetchBundle('licence_all'), fetchBundle('licence_history'),
+                                fetchBundle('licence_areas'), licLoadTransfers()]).then(([all, hist, areas]) => {
+    if (!all || !hist) return;
+    const ai = Object.fromEntries(all.columns.map((c, k) => [c, k]));
+    licAll = all.rows.map(r => {
+      const l = {};
+      all.columns.forEach((c, k) => { l[c] = r[k]; });
+      const rd = licRoundOf(l.round);
+      l.rkey = rd.key; l.extra = rd.extra;
+      return l;
+    });
+    licAllById = Object.fromEntries(licAll.map(l => [l.id, l]));
+    licShares = {}; licOper = {};
+    hist.shares.forEach(([id, ci, from, to, share]) =>
+      (licShares[id] = licShares[id] || []).push({co: hist.companies[ci], from, to, share}));
+    hist.oper.forEach(([id, ci, from, to]) =>
+      (licOper[id] = licOper[id] || []).push({co: hist.companies[ci], from, to}));
+    licAreas = (areas && areas.licences) || {};
+    licHist = hist;
+    licRoundsBuild();
+  });
+  return licHistLoading;
+}
+
+function licLoadTransfers() {
+  if (licTransfers) return Promise.resolve();
+  if (licTransfersLoading) return licTransfersLoading;
+  licTransfersLoading = Promise.all([fetchBundle('licence_transfers'), fetchBundle('licence_all')]).then(([t, all]) => {
+    if (!t) return;
+    if (all && !licAll.length) {
+      licAll = all.rows.map(r => { const l = {}; all.columns.forEach((c, k) => { l[c] = r[k]; }); return l; });
+      licAllById = Object.fromEntries(licAll.map(l => [l.id, l]));
+    }
+    licTransfers = t.rows.map(r => ({
+      day: r[0], lic: r[1], seller: r[2] < 0 ? '' : t.companies[r[2]],
+      buyer: r[3] < 0 ? '' : t.companies[r[3]], share: r[4], kind: LIC_KIND_OF[t.kinds[r[5]]] || 'unknown',
+    }));
+  });
+  return licTransfersLoading;
+}
+
+const licName = id => (licAllById[id] && licAllById[id].name) || String(id);
+const licKmDisp = n => n ? licKm(n) : '—';
+
+// ── Overdragelser ────────────────────────────────────────────────────────────
+const LIC_KIND_OF = {
+  'TRANSFER': 'transfer', 'SDFI': 'sdfi', 'WITHDRAWAL FROM THE JOINT VENTURE': 'withdrawal',
+  'MERGER/TAKEOVER': 'merger', 'CHANGE OF COMPANY NAME': 'rename', 'UNKNOWN': 'unknown',
+};
+const LIC_KINDS = [
+  {id: 'transfer',   label: 'Transfers',     color: '#2a6fa8'},
+  {id: 'merger',     label: 'Mergers',       color: '#8e6bbf'},
+  {id: 'sdfi',       label: 'State (SDFI)',  color: '#3fa7a0'},
+  {id: 'withdrawal', label: 'Withdrawals',   color: '#e3a73a'},
+  {id: 'unknown',    label: 'Unspecified',   color: '#9aa5b1'},
+  {id: 'rename',     label: 'Name changes',  color: '#c9d1da'},
+];
+const licKindOf = id => LIC_KINDS.find(k => k.id === id);
+
+// Konsern per juridisk enhet, fra «group» i companies.json. Sodirs grupper er
+// nær, men ikke riktige på tvers av tid: Statoil og Equinor er to grupper, og
+// Det norske og Aker BP to. LIC_GROUP_ALIAS slår de kjente etterfølgerne sammen,
+// og visningsnavnet hentes fra det største aktive selskapet i konsernet.
+const LIC_GROUP_ALIAS = {'STATOIL': 'EQUINOR ENERGY', 'AKER': 'AKER BP', 'DET NORSKE': 'AKER BP',
+  'VÅR ENERGI': 'VÅR', 'DEA NORGE': 'WINTERSHALL', 'DEA': 'WINTERSHALL', 'SPIRIT ENERGY': 'SPIRIT',
+  'NEPTUNE E&P': 'NEPTUNE ENERGY', 'DNO NORTH SEA': 'DNO NORGE', 'ELF': 'TOTAL', 'MOBIL': 'EXXONMOBIL'};
+let licConMap = null;
+function licConcern(name) {
+  if (!licConMap) {
+    licConMap = {};
+    const cb = bundle.companies;
+    const lab = {};
+    if (cb) {
+      const i = Object.fromEntries(cb.columns.map((c, k) => [c, k]));
+      cb.rows.forEach(r => {
+        const key = LIC_GROUP_ALIAS[r[i.group]] || r[i.group] || r[i.name];
+        licConMap[r[i.name]] = key;
+        const n = licStats[r[i.name]] ? licStats[r[i.name]].count : 0;
+        if (n && (!lab[key] || n > lab[key][0])) lab[key] = [n, licShort(r[i.name])];
+        // Uten aktivt selskap: det korteste navnet uten «(old)».
+        if (!n && !/\(old\)/.test(r[i.name]) && (!lab[key] || (lab[key][0] === 0 && licShort(r[i.name]).length < lab[key][1].length))) lab[key] = [0, licShort(r[i.name])];
+      });
+    }
+    licConMap.__label = key => (lab[key] && lab[key][1]) || tc(key);
+  }
+  const key = licConMap[name] || name.toUpperCase();
+  return {key, label: licConMap.__label(key)};
+}
+// Navnet en avtalepart telles under: konsernet eller den juridiske enheten.
+const licEnt = name => !name ? '' : licF.txLevel === 'group' ? licConcern(name).label : name;
+const licSameSide = (n, q) => !!n && (n.toLowerCase().includes(q) ||
+  (licF.txLevel === 'group' && licConcern(n).label.toLowerCase().includes(q)));
+
+function licTxFiltered() {
+  const f = licF, kinds = new Set(f.txKinds.split(',').filter(Boolean));
+  const y0 = f.txFrom ? +f.txFrom : -Infinity, y1 = f.txTo ? +f.txTo : Infinity;
+  const q = f.company.trim().toLowerCase();
+  return licTransfers.filter(t => {
+    if (!kinds.has(t.kind)) return false;
+    const y = licDayYear(t.day);
+    if (y < y0 || y > y1) return false;
+    // Overføringer innad i ett konsern er omorganiseringer, ikke handel.
+    if (f.txLevel === 'group' && t.seller && t.buyer && licConcern(t.seller).key === licConcern(t.buyer).key) return false;
+    if (!q) return true;
+    const buy = licSameSide(t.buyer, q), sell = licSameSide(t.seller, q);
+    return f.txRole === 'buy' ? buy : f.txRole === 'sell' ? sell : buy || sell;
+  });
+}
+
+function licTxSet(key, val, rebuildBar) {
+  licF[key] = val;
+  licF.txAll = false;
+  syncUrl();
+  if (rebuildBar) licRenderBar();
+  licRenderTransactions();
+}
+function licTxKind(id) {
+  const set = new Set(licF.txKinds.split(',').filter(Boolean));
+  set.has(id) ? set.delete(id) : set.add(id);
+  licTxSet('txKinds', LIC_KINDS.map(k => k.id).filter(k => set.has(k)).join(','), true);
+}
+function licTxCompany(name) { licF.company = name; licF.txRole = 'any'; licTxSet('company', name, true); scrollToTop(); }
+
+function licRenderTxBar() {
+  const f = licF, opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
+  const years = Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i));
+  const on = new Set(f.txKinds.split(',').filter(Boolean));
+  const cnt = {};
+  licTransfers.forEach(t => [t.seller, t.buyer].forEach(n => { if (n) { const k = licEnt(n); cnt[k] = (cnt[k] || 0) + 1; } }));
+  const names = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b, 'en'));
+  document.getElementById('licBar').innerHTML = `
+    <div class="ex-bar">
+      <div class="pill-group"><button class="pill-btn${f.txLevel === 'group' ? ' active' : ''}" onclick="licTxSet('txLevel','group',true)">Concerns</button>
+        <button class="pill-btn${f.txLevel === 'entity' ? ' active' : ''}" onclick="licTxSet('txLevel','entity',true)">Legal entities</button></div>
+      <input class="ex-in" type="search" list="licTxCo" placeholder="Company…" value="${esc(f.company)}"
+             onchange="licTxSet('company', this.value, true)" aria-label="Company"/>
+      <datalist id="licTxCo">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <select class="year-select" onchange="licTxSet('txRole', this.value)" aria-label="Role" ${f.company ? '' : 'disabled'}>
+        ${opt('any', f.txRole, 'Buyer or seller')}${opt('buy', f.txRole, 'Buyer only')}${opt('sell', f.txRole, 'Seller only')}
+      </select>
+      <select class="year-select" onchange="licTxSet('txFrom', this.value)" aria-label="From year">
+        ${opt('', f.txFrom, 'From start')}${years.map(y => opt(y, f.txFrom, 'From ' + y)).join('')}</select>
+      <select class="year-select" onchange="licTxSet('txTo', this.value)" aria-label="To year">
+        ${opt('', f.txTo, 'To today')}${years.map(y => opt(y, f.txTo, 'To ' + y)).join('')}</select>
+      <div class="lc-chips">${LIC_KINDS.map(k =>
+        `<button class="lc-chip${on.has(k.id) ? ' on' : ''}" onclick="licTxKind('${k.id}')"
+           style="--c:${k.color}">${k.label}</button>`).join('')}</div>
+      <button class="grp-btn" onclick="licF.company='';licTxSet('txFrom','',false);licTxSet('txTo','',false);licTxSet('txKinds',LIC_DEAL_KINDS,true)">Reset</button>
+    </div>`;
+}
+
+// Søylediagram per år. series: [{label, color, vals: {år: n}, neg}] der neg-serier
+// tegnes nedover. Brukes både for kjøp/salg og for avtaler per type.
+function licYearChart(y0, y1, series, unit) {
+  const W = 900, H = 230, L = 34, R = 8, T = 10, B = 22;
+  const years = Array.from({length: y1 - y0 + 1}, (_, i) => y0 + i);
+  const pos = years.map(y => series.filter(s => !s.neg).reduce((t, s) => t + (s.vals[y] || 0), 0));
+  const neg = years.map(y => series.filter(s => s.neg).reduce((t, s) => t + (s.vals[y] || 0), 0));
+  const up = Math.max(1, ...pos), dn = Math.max(0, ...neg);
+  const nice = v => { const p = Math.pow(10, Math.floor(Math.log10(v))); return Math.ceil(v / p) * p; };
+  const U = nice(up), D = dn ? nice(dn) : 0;
+  const ph = H - T - B, y0px = T + ph * U / (U + D), sc = ph / (U + D);
+  const bw = (W - L - R) / years.length;
+  let bars = '';
+  years.forEach((y, i) => {
+    let a = y0px, b = y0px;
+    series.forEach(s => {
+      const v = s.vals[y] || 0;
+      if (!v) return;
+      const h = v * sc, x = L + i * bw + bw * 0.12;
+      const yy = s.neg ? b : a - h;
+      bars += `<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${(bw * 0.76).toFixed(1)}" height="${h.toFixed(1)}" fill="${s.color}">` +
+              `<title>${y} · ${s.label}: ${v} ${unit}</title></rect>`;
+      if (s.neg) b += h; else a -= h;
+    });
+  });
+  const step = years.length > 40 ? 10 : years.length > 20 ? 5 : years.length > 10 ? 2 : 1;
+  const xt = years.filter(y => y % step === 0).map(y =>
+    `<text class="lc-ax" x="${(L + (y - y0) * bw + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${y}</text>`).join('');
+  const grid = [U, U / 2, ...(D ? [-D, -D / 2] : [])].map(v =>
+    `<line x1="${L}" x2="${W - R}" y1="${(y0px - v * sc).toFixed(1)}" y2="${(y0px - v * sc).toFixed(1)}" stroke="#e3e8ee" stroke-width="0.6"/>` +
+    `<text class="lc-ax" x="${L - 4}" y="${(y0px - v * sc + 3).toFixed(1)}" text-anchor="end">${Math.abs(v)}</text>`).join('');
+  return `<svg class="lc-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">
+    ${grid}<line x1="${L}" x2="${W - R}" y1="${y0px.toFixed(1)}" y2="${y0px.toFixed(1)}" stroke="#9aa5b1" stroke-width="0.8"/>${bars}${xt}</svg>`;
+}
+
+function licRenderTransactions() {
+  const box = document.getElementById('licBody');
+  if (!licTransfers) { box.innerHTML = '<div class="status">No transaction data available.</div>'; return; }
+  licRenderTxBar();
+  const f = licF, list = licTxFiltered(), co = f.company.trim();
+  const q = co.toLowerCase();
+  const sel = co ? list[0] : null;
+  const isBuy = t => licSameSide(t.buyer, q);
+  const isSell = t => licSameSide(t.seller, q);
+  const lics = new Set(list.map(t => t.lic));
+  const years = list.map(t => licDayYear(t.day));
+  const y0 = f.txFrom ? +f.txFrom : (years.length ? Math.min(...years) : currentYear);
+  const y1 = f.txTo ? +f.txTo : currentYear;
+  const byYear = fn => { const o = {}; list.forEach(t => { if (fn(t)) { const y = licDayYear(t.day); o[y] = (o[y] || 0) + 1; } }); return o; };
+
+  // Diagram
+  let series;
+  if (co && sel) {
+    series = [{label: 'Bought', color: '#3fa7a0', vals: byYear(t => isBuy(t) && !isSell(t))},
+              {label: 'Sold', color: '#ce0f69', neg: true, vals: byYear(t => isSell(t) && !isBuy(t))}];
+  } else {
+    series = LIC_KINDS.filter(k => list.some(t => t.kind === k.id)).map(k =>
+      ({label: k.label, color: k.color, vals: byYear(t => t.kind === k.id)}));
+  }
+  const legend = series.map(s => `<span class="ex-leg"><span class="ex-dot" style="background:${s.color}"></span>${s.label}${s.neg ? ' (down)' : ''}</span>`).join('');
+
+  // Toppliste eller motparter
+  let side;
+  if (co && sel) {
+    const cp = {};
+    list.forEach(t => {
+      if (isBuy(t) && !isSell(t) && t.seller) { const k = licEnt(t.seller), c = cp[k] = cp[k] || {in: 0, out: 0}; c.in++; }
+      if (isSell(t) && !isBuy(t) && t.buyer) { const k = licEnt(t.buyer), c = cp[k] = cp[k] || {in: 0, out: 0}; c.out++; }
+    });
+    const rows = Object.entries(cp).sort((a, b) => (b[1].in + b[1].out) - (a[1].in + a[1].out)).slice(0, 12);
+    side = `<h3>Counterparties</h3>
+      <table class="res-table ex-table"><thead><tr><th class="ex-l">Company</th><th>Bought from</th><th>Sold to</th><th>Net</th></tr></thead>
+      <tbody>${rows.map(([n, c]) => `<tr class="ex-row" onclick="licTxCompany(${esc(JSON.stringify(n))})">
+        <td class="ex-name"><strong>${esc(n)}</strong></td><td>${c.in || '—'}</td><td>${c.out || '—'}</td>
+        <td class="${c.in - c.out >= 0 ? 'lc-pos' : 'lc-neg'}">${c.in - c.out > 0 ? '+' : ''}${c.in - c.out}</td></tr>`).join('')}</tbody></table>
+      <div class="pf-map-note">Licence stakes traded with each company in the period. Click a company to switch to it.</div>`;
+  } else {
+    const net = {};
+    list.forEach(t => {
+      if (t.kind === 'rename') return;
+      if (t.buyer) net[licEnt(t.buyer)] = (net[licEnt(t.buyer)] || 0) + 1;
+      if (t.seller) net[licEnt(t.seller)] = (net[licEnt(t.seller)] || 0) - 1;
+    });
+    const e = Object.entries(net), top = e.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 10),
+          bot = e.filter(x => x[1] < 0).sort((a, b) => a[1] - b[1]).slice(0, 10);
+    const m = Math.max(1, ...top.map(x => x[1]), ...bot.map(x => -x[1]));
+    const bar = (rows, cls) => rows.map(([n, v]) => `
+      <div class="lc-row" onclick="licTxCompany(${esc(JSON.stringify(n))})">
+        <div class="lc-name" title="${esc(n)}">${esc(licF.txLevel === 'group' ? n : licShort(n))}</div>
+        <div class="lc-track" style="width:${(Math.abs(v) / m * 55).toFixed(1)}%"><span class="${cls}" style="flex:1"></span></div>
+        <div class="lc-val">${v > 0 ? '+' : ''}${v}</div></div>`).join('') || '<div class="ex-sum">None.</div>';
+    side = `<div class="lc-two"><div><h3>Net buyers</h3>${bar(top, 'lc-bg-pos')}</div>
+      <div><h3>Net sellers</h3>${bar(bot, 'lc-bg-neg')}</div></div>
+      <div class="pf-map-note">Stakes bought minus stakes sold in the period (name changes excluded). Concerns merge legal entities and ignore transfers within a concern. Click a company to follow its deals.</div>`;
+  }
+
+  // Tabell
+  const lim = f.txAll ? list.length : 40;
+  const rows = list.slice().sort((a, b) => b.day - a.day || b.lic - a.lic).slice(0, lim);
+  const chipOf = t => { const k = licKindOf(t.kind); return `<span class="lc-kind" style="--c:${k.color}">${k.label}</span>`; };
+  const coLink = n => n ? `<a class="row-link" href="#" onclick="licTxCompany(${esc(JSON.stringify(n))});return false;">${esc(n)}</a>` : '<span class="ex-none">—</span>';
+  const sea = id => { const z = licSeaOf((licAllById[id] || {}).area); return z ? `<i class="ex-dot" style="background:${z.color}" title="${z.label}"></i>` : ''; };
+
+  box.innerHTML = `
+    <div class="ex-sum"><strong>${list.length}</strong> ${list.length === 1 ? 'stake' : 'stakes'} traded in
+      <strong>${lics.size}</strong> licences${list.length ? ` · ${licDayStr(Math.min(...list.map(t => t.day)))} – ${licDayStr(Math.max(...list.map(t => t.day)))}` : ''}${co ? ` · filtered on <strong>${esc(co)}</strong>` : ''}</div>
+    <div class="pf-card"><h3>${co && sel ? 'Bought and sold per year' : 'Transactions per year'}</h3>
+      ${list.length ? licYearChart(y0, y1, series, 'stakes') : '<div class="ex-sum">No transactions match the filters.</div>'}
+      <div class="ex-legend">${legend}</div>
+      <div class="pf-map-note">One stake is one company's interest in one licence changing hands. Transfers, state (SDFI) transfers,
+        withdrawals and mergers are shown by default; turn on name changes to see corporate renames.
+        Source: Sodir layer 3003.</div></div>
+    <div class="pf-card">${side}</div>
+    <div class="pf-card"><h3>Deals</h3>
+      <div class="pf-scroll"><table class="res-table ex-table"><thead><tr>
+        <th class="ex-l">Date</th><th class="ex-l">Licence</th><th class="ex-l">From</th><th class="ex-l">To</th><th>Share</th><th class="ex-l">Type</th></tr></thead>
+        <tbody>${rows.map(t => `<tr><td class="ex-l">${licDayStr(t.day)}</td><td class="ex-l">${sea(t.lic)}<strong>${esc(licName(t.lic))}</strong></td>
+          <td class="ex-l">${coLink(t.seller)}</td><td class="ex-l">${coLink(t.buyer)}</td><td>${licPct(t.share)}</td><td class="ex-l">${chipOf(t)}</td></tr>`).join('')}</tbody></table></div>
+      ${lim < list.length ? `<button class="grp-btn ex-more" onclick="licSet('txAll',true,false)">Show all ${list.length} deals</button>` : ''}
+    </div>`;
+}
+
+// Kortnavn til diagram og matrise: fjerner juridiske endelser og landsuffiks.
+const licShort = n => n.replace(/\b(AS|ASA|Norge|Norway|Norske|Skandinavia|Energy|Upstream|Petroleum|EP|Limited|Ltd)\b/g, '')
+  .replace(/\s+/g, ' ').replace(/^[\s/]+|[\s/]+$/g, '') || n;
+
+// ── Runder ───────────────────────────────────────────────────────────────────
+// Lisensene hører til en tildelingsrunde (prlLicensingActivityName). «Awarded
+// additionally to round X» er tilleggstildelinger og regnes med i runde X.
+function licRoundOf(name) {
+  const m = /^Awarded additionally(?: to)?(?: round)? (.+)$/i.exec(name || '');
+  let key = (m ? m[1] : name || '').replace(/\s+/g, ' ').trim().replace(/^(\d+) ([AB])$/i, '$1-$2');
+  if (/^barentshavprosj/i.test(key)) key = 'BARENTSHAVPROSJEKTET-' + (key.match(/(\d{2})$/) || ['', '97'])[1];
+  return {key: key || 'Unknown', extra: !!m};
+}
+const licOrd = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10 > 3 ? 0 : n % 10] || 'th');
+function licRoundLabel(key) {
+  let m;
+  if ((m = /^TFO(\d{4})$/.exec(key))) return `APA ${m[1]}`;
+  if ((m = /^(\d+)(?:-([AB]))?$/.exec(key))) return `${licOrd(+m[1])} round${m[2] ? ' (' + m[2] + ')' : ''}`;
+  if ((m = /^NST(\d{2,4})$/.exec(key))) return `NST ${m[1].length === 2 ? '19' + m[1] : m[1]}`;
+  if ((m = /^BARENTSHAVPROSJEKTET-(\d{2})$/.exec(key))) return `Barents Sea project 19${m[1]}`;
+  return key;
+}
+function licRoundShort(key) {
+  let m;
+  if ((m = /^TFO\d{2}(\d{2})$/.exec(key))) return `APA ${m[1]}`;
+  if ((m = /^(\d+)(?:-([AB]))?$/.exec(key))) return `${m[1]}${m[2] || ''}`;
+  if ((m = /^NST(\d{2,4})$/.exec(key))) return `NST${m[1].slice(-2)}`;
+  return key.startsWith('BARENTS') ? 'BHP' : key;
+}
+
+let licRounds = [];
+function licRoundsBuild() {
+  const by = {};
+  licAll.forEach(l => { (by[l.rkey] = by[l.rkey] || []).push(l); });
+  licRounds = Object.entries(by).map(([key, lics]) => {
+    const dates = lics.map(l => l.granted).filter(d => d != null);
+    const first = dates.length ? Math.min(...dates) : 0;
+    const sea = {};
+    lics.forEach(l => { sea[l.area] = (sea[l.area] || 0) + 1; });
+    return {key, label: licRoundLabel(key), short: licRoundShort(key), lics, first,
+            last: dates.length ? Math.max(...dates) : 0, sea,
+            active: lics.filter(l => l.active).length,
+            orig: lics.reduce((t, l) => t + (l.origKm2 || 0), 0)};
+  }).sort((a, b) => a.first - b.first || a.key.localeCompare(b.key, 'en', {numeric: true}));
+}
+
+function licSelectRound(key) { licF.round = key; licF.rowsAll = false; syncUrl(); licRenderRounds(); }
+
+function licRoundDetail(rd) {
+  // Første eierperiode er tildelingen; senere rader er overdragelser.
+  const awarded = {};
+  const bump = (name, k, v) => { const c = awarded[name] = awarded[name] || {n: 0, op: 0, net: 0, now: 0}; c[k] += v; };
+  rd.lics.forEach(l => {
+    const rows = licShares[l.id] || [];
+    if (!rows.length) return;
+    const first = Math.min(...rows.map(r => r.from));
+    rows.filter(r => r.from === first).forEach(r => { bump(r.co, 'n', 1); bump(r.co, 'net', (l.origKm2 || 0) * (r.share || 0) / 100); });
+    const ops = (licOper[l.id] || []).slice().sort((a, b) => a.from - b.from);
+    if (ops.length) bump(ops[0].co, 'op', 1);
+    if (l.active) rows.filter(r => r.to == null).forEach(r => bump(r.co, 'now', 1));
+  });
+  return awarded;
+}
+
+function licRenderRounds() {
+  const box = document.getElementById('licBody');
+  if (!licRounds.length) { box.innerHTML = '<div class="status">No round data available.</div>'; return; }
+  if (!licRounds.some(r => r.key === licF.round)) {
+    licF.round = [...licRounds].reverse().find(r => r.lics.length > 5)?.key || licRounds[licRounds.length - 1].key;
+  }
+  const rd = licRounds.find(r => r.key === licF.round);
+  document.getElementById('licBar').innerHTML = `
+    <div class="ex-bar"><select class="year-select" onchange="licSelectRound(this.value)" aria-label="Round">
+      ${licRounds.slice().reverse().map(r => `<option value="${esc(r.key)}"${r.key === rd.key ? ' selected' : ''}>${esc(r.label)} · ${licDayYear(r.first)} · ${r.lics.length}</option>`).join('')}
+    </select></div>`;
+
+  // Overblikk: antall tildelte lisenser per runde, kronologisk.
+  const W = Math.max(900, licRounds.length * 17) + 30, H = 220, L = 10, B = 44, T = 8;
+  const max = Math.max(...licRounds.map(r => r.lics.length)), bw = (W - L - 6) / licRounds.length;
+  const bars = licRounds.map((r, i) => {
+    let y = H - B;
+    const x = L + i * bw + bw * 0.1;
+    const segs = LIC_SEAS.map(z => {
+      const n = r.sea[z.key] || 0;
+      if (!n) return '';
+      const h = n / max * (H - B - T);
+      y -= h;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * 0.8).toFixed(1)}" height="${h.toFixed(1)}" fill="${z.color}"/>`;
+    }).join('');
+    const sel = r.key === rd.key;
+    return `<g class="lc-rb" onclick="licSelectRound(${esc(JSON.stringify(r.key))})">
+      <rect x="${(L + i * bw).toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${H}" fill="${sel ? 'rgba(206,15,105,0.12)' : 'transparent'}"/>
+      ${segs}<title>${esc(r.label)} (${licDayYear(r.first)}): ${r.lics.length} licences</title>
+      <text class="lc-ax${sel ? ' lc-ax-sel' : ''}" transform="translate(${(x + bw * 0.45).toFixed(1)} ${H - B + 8}) rotate(60)">${esc(r.short)}</text></g>`;
+  }).join('');
+  const legend = LIC_SEAS.map(z => `<span class="ex-leg"><span class="ex-dot" style="background:${z.color}"></span>${z.label}</span>`).join('');
+
+  // Detaljer for valgt runde
+  const awarded = licRoundDetail(rd);
+  const names = Object.keys(awarded).sort((a, b) => awarded[b].n - awarded[a].n || awarded[b].op - awarded[a].op || a.localeCompare(b, 'en'));
+  const coRow = n => {
+    const c = awarded[n], link = licStats[n];
+    return `<tr${link ? ` class="ex-row" onclick="licOpenCompany(${esc(JSON.stringify(n))})"` : ''}>
+      <td class="ex-name"><strong>${esc(n)}</strong></td><td>${c.n}</td><td>${c.op || '—'}</td>
+      <td>${c.net ? licKm(c.net) : '—'}</td><td>${c.now || '—'}</td></tr>`;
+  };
+  const years = rd.first === rd.last || !rd.last ? licDayYear(rd.first) : `${licDayYear(rd.first)}–${licDayYear(rd.last)}`;
+  const seaTxt = LIC_SEAS.filter(z => rd.sea[z.key]).map(z => `${rd.sea[z.key]} ${z.label}`).join(', ');
+
+  // Kart: lisensens første areal (ved tildeling), farget etter om den lever
+  const outl = (bundle.licence_outlines && bundle.licence_outlines.licences) || {};
+  const items = rd.lics.map(l => {
+    const vs = licAreas[l.id] || [];
+    const rings = vs.length ? vs[0][3] : (l.active ? outl[l.name] : null);
+    return rings ? {name: l.name, rings, fill: l.active ? 'rgba(206,15,105,0.78)' : 'rgba(110,125,145,0.42)'} : null;
+  }).filter(Boolean);
+  const map = items.length ? outlineMap(items, {
+    label: 'Licences awarded in the round', h: 360, pad: 1.35, stroke: '#7a2146', labelMax: 6, inset: false, fill: '#cc88a6',
+    layers: [fieldLayer()],
+    note: '<span class="ex-dot" style="background:rgba(206,15,105,0.78)"></span>Still active · ' +
+          '<span class="ex-dot" style="background:rgba(110,125,145,0.55)"></span>Relinquished or expired. ' +
+          'Areas as awarded. Coastline: Natural Earth · outlines: Sodir, simplified to ~440 m',
+  }) : '<div class="ex-sum">No outlines available for this round.</div>';
+
+  const opOf = l => { const o = (licOper[l.id] || []).slice().sort((a, b) => a.from - b.from)[0]; return o ? o.co : ''; };
+  const lrows = rd.lics.slice().sort((a, b) => (a.granted || 0) - (b.granted || 0) || a.name.localeCompare(b.name, 'en', {numeric: true}));
+  const lim = licF.rowsAll ? lrows.length : 40;
+  box.innerHTML = `
+    <div class="pf-card"><h3>Licences awarded per round</h3>
+      <div class="pf-scroll"><svg class="lc-chart lc-rchart" style="min-width:${W}px" viewBox="0 0 ${W} ${H}" role="img">${bars}</svg></div>
+      <div class="ex-legend">${legend}</div>
+      <div class="pf-map-note">Click a bar to open the round. APA = awards in predefined areas; numbered rounds are the licensing rounds.</div></div>
+    <div class="pf-card"><h3>${esc(rd.label)}</h3>
+      <div class="pf-facts">
+        <div class="pf-fact"><span>Awarded</span><strong>${years}</strong></div>
+        <div class="pf-fact"><span>Licences</span><strong>${rd.lics.length}</strong></div>
+        <div class="pf-fact"><span>Still active</span><strong>${rd.active}</strong></div>
+        <div class="pf-fact"><span>Area awarded</span><strong>${licKm(rd.orig)} km²</strong></div>
+        <div class="pf-fact"><span>Companies</span><strong>${names.length}</strong></div>
+        <div class="pf-fact"><span>Where</span><strong>${esc(seaTxt || '—')}</strong></div>
+      </div></div>
+    <div class="pf-card"><h3>Licence map</h3>${map}</div>
+    <div class="pf-card"><h3>Awards per company</h3>
+      <div class="pf-scroll"><table class="res-table ex-table"><thead><tr><th class="ex-l">Company</th><th>Licences awarded</th><th>Operator</th>
+        <th>Net area, km²</th><th>Still holds</th></tr></thead><tbody>${names.map(coRow).join('')}</tbody></table></div>
+      <div class="pf-map-note">Counted from the first owners of each licence. Net area is the area as awarded times the company's share.
+        «Still holds» is the number of the round's licences the company has an interest in today.</div></div>
+    <div class="pf-card"><h3>Licences</h3>
+      <div class="pf-scroll"><table class="res-table ex-table"><thead><tr><th class="ex-l">Licence</th><th class="ex-l">Area</th><th class="ex-l">Granted</th>
+        <th class="ex-l">Operator at award</th><th class="ex-l">Status</th><th>Awarded, km²</th><th>Now, km²</th></tr></thead>
+        <tbody>${lrows.slice(0, lim).map(l => `<tr><td class="ex-l"><strong>${esc(l.name)}</strong>${l.extra ? ' <small>additional</small>' : ''}</td>
+          <td class="ex-l">${esc(licSeaOf(l.area)?.label || l.area || '—')}</td><td class="ex-l">${l.granted != null ? licDayStr(l.granted) : '—'}</td>
+          <td class="ex-l">${esc(opOf(l) || '—')}</td>
+          <td class="ex-l">${l.active ? 'Active' : 'Ended ' + (l.validTo != null ? licDayYear(l.validTo) : '')}</td>
+          <td>${licKmDisp(l.origKm2)}</td><td>${l.active ? licKmDisp(l.areaKm2) : '—'}</td></tr>`).join('')}</tbody></table></div>
+      ${lim < lrows.length ? `<button class="grp-btn ex-more" onclick="licSet('rowsAll',true,false)">Show all ${lrows.length} licences</button>` : ''}
+    </div>`;
+}
+
+// ── Overlapp ─────────────────────────────────────────────────────────────────
+// Hvor mange aktive lisenser to selskaper deler. Matrisen viser de største
+// selskapene; en rute åpner detaljene for paret.
+let licOvCache = null;
+function licOverlapCounts() {
+  if (licOvCache) return licOvCache;
+  const m = {};
+  licList.forEach(l => {
+    const ps = l.partners.map(p => p.name);
+    ps.forEach(a => ps.forEach(b => { (m[a] = m[a] || {})[b] = (m[a][b] || 0) + 1; }));
+  });
+  return (licOvCache = m);
+}
+
+function licOvSet(key, val) { licF[key] = val; syncUrl(); licRenderOverlap(); }
+function licOvOpen(a, b) {
+  if (a === b) return licOpenCompany(a);
+  licF.ova = a; licF.ovb = b; syncUrl(); licRenderOverlap();
+  const el = document.getElementById('licOvDetail');
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function licRenderOverlap() {
+  const f = licF, ov = licOverlapCounts();
+  const n = Math.min(+f.ovn || 15, licCos.length);
+  const cos = licCos.slice().sort((a, b) => licStats[b].count - licStats[a].count || a.localeCompare(b, 'en')).slice(0, n);
+  const pct = f.ovm === 'pct';
+  const maxOff = Math.max(1, ...cos.flatMap(a => cos.filter(b => b !== a).map(b => (ov[a] || {})[b] || 0)));
+  const cell = (a, b) => {
+    const v = (ov[a] || {})[b] || 0, tot = licStats[a].count;
+    if (a === b) return `<td class="lc-mx lc-diag" onclick="licOvOpen(${esc(JSON.stringify(a))},${esc(JSON.stringify(b))})"
+      title="${esc(a)}: ${tot} licences. Open the company."><b>${tot}</b></td>`;
+    const shown = pct ? Math.round(v / tot * 100) : v;
+    const al = pct ? v / tot : Math.sqrt(v / maxOff);
+    const sel = (f.ova === a && f.ovb === b) || (f.ova === b && f.ovb === a);
+    return `<td class="lc-mx${sel ? ' lc-sel' : ''}" style="background:rgba(206,15,105,${(al * 0.9).toFixed(2)});color:${al > 0.5 ? '#fff' : '#1a2332'}"
+      onclick="licOvOpen(${esc(JSON.stringify(a))},${esc(JSON.stringify(b))})"
+      title="${esc(a)} × ${esc(b)}: ${v} shared licences (${tot ? Math.round(v / tot * 100) : 0}% of ${esc(licShort(a))}'s portfolio)">${v ? shown + (pct ? '%' : '') : ''}</td>`;
+  };
+  const opt = (v, cur, label) => `<option value="${v}"${String(cur) === String(v) ? ' selected' : ''}>${label}</option>`;
+  document.getElementById('licBar').innerHTML = `
+    <div class="ex-bar">
+      <div class="pill-group"><button class="pill-btn${!pct ? ' active' : ''}" onclick="licOvSet('ovm','count')">Shared licences</button>
+        <button class="pill-btn${pct ? ' active' : ''}" onclick="licOvSet('ovm','pct')">% of row company</button></div>
+      <select class="year-select" onchange="licOvSet('ovn', this.value)" aria-label="Companies shown">
+        ${[10, 15, 20, 30].map(k => opt(k, f.ovn, 'Top ' + k)).join('')}</select>
+      <input class="ex-in" list="licOvCo" placeholder="Compare: company A…" value="${esc(f.ova)}" onchange="licOvPair(this.value, licF.ovb)" aria-label="Company A"/>
+      <input class="ex-in" list="licOvCo" placeholder="…with company B" value="${esc(f.ovb)}" onchange="licOvPair(licF.ova, this.value)" aria-label="Company B"/>
+      <datalist id="licOvCo">${sortCompanies(licCos).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    </div>`;
+
+  const head = cos.map(c => `<th class="lc-vh"><span title="${esc(c)}">${esc(licShort(c))}</span></th>`).join('');
+  const matrix = `<div class="pf-scroll"><table class="lc-matrix"><thead><tr><th></th>${head}</tr></thead>
+    <tbody>${cos.map(a => `<tr><th class="lc-rh" title="${esc(a)}">${esc(licShort(a))}</th>${cos.map(b => cell(a, b)).join('')}</tr>`).join('')}</tbody></table></div>`;
+
+  document.getElementById('licBody').innerHTML = `
+    <div class="pf-card"><h3>Portfolio overlap</h3>${matrix}
+      <div class="pf-map-note">${pct ? 'Each row shows the share of that company\'s licences that the column company also holds. The matrix is not symmetric.'
+        : 'Number of active licences the two companies hold together. The diagonal is the company\'s total.'}
+        Click a cell for the shared licences; click a diagonal cell to open the company.</div></div>
+    <div id="licOvDetail">${f.ova && f.ovb && licStats[f.ova] && licStats[f.ovb] ? licOverlapDetail(f.ova, f.ovb) : `
+      <div class="pf-card"><div class="ex-sum">Click a cell in the matrix, or pick two companies above, to see the licences they share.</div></div>`}</div>`;
+}
+
+function licOvPair(a, b) {
+  licF.ova = licStats[a] ? a : ''; licF.ovb = licStats[b] ? b : '';
+  syncUrl(); licRenderOverlap();
+}
+
+function licOverlapDetail(a, b) {
+  const shared = licList.filter(l => l.partners.some(p => p.name === a) && l.partners.some(p => p.name === b));
+  const sa = l => l.partners.find(p => p.name === a).share, sb = l => l.partners.find(p => p.name === b).share;
+  const gross = shared.reduce((t, l) => t + l.km2, 0);
+  const COL = {a: '#ce0f69', b: '#2a6fa8', o: '#8a94a0'};
+  const role = l => l.operator === a ? 'a' : l.operator === b ? 'b' : 'o';
+  const set = (bundle.licence_outlines && bundle.licence_outlines.licences) || {};
+  const names = new Set(shared.map(l => l.name));
+  const items = shared.filter(l => set[l.name]).map(l => ({name: l.name, rings: set[l.name], fill: COL[role(l)] + 'cc'}));
+  const map = items.length ? outlineMap(items, {
+    label: 'Shared licences', h: 340, pad: 1.4, stroke: '#1a2332', labelMax: 5, inset: false, fill: COL.o,
+    layers: [{items: Object.entries(set).filter(([n]) => !names.has(n)).map(([n, rings]) => ({name: n, rings})), fill: '#dfe5ec', stroke: '#c3ccd5', label: false}, fieldLayer()],
+    note: `<span class="ex-dot" style="background:${COL.a}"></span>${esc(licShort(a))} operates · <span class="ex-dot" style="background:${COL.b}"></span>${esc(licShort(b))} operates · ` +
+          `<span class="ex-dot" style="background:${COL.o}"></span>another operator. Other licences in grey. Coastline: Natural Earth · outlines: Sodir`,
+  }) : '';
+  const known = new Set(allDiscoveries.map(d => d.id));
+  const info = l => {
+    const parts = l.fields.map(f => `<a class="row-link" href="#" onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a>`);
+    l.discoveries.slice(0, 2).forEach(d => parts.push(known.has(d.id) ? `<a class="row-link" href="#" onclick="openDiscoveryProfile(${d.id});return false;">${esc(d.name)}</a>` : esc(d.name)));
+    return [parts.join(', '), l.baas.map(x => `<span class="lc-baa">${esc(x.name)}</span>`).join(' ')].filter(Boolean).join('<br>');
+  };
+  const rows = shared.slice().sort((x, y) => y.km2 - x.km2);
+  const opA = shared.filter(l => l.operator === a).length, opB = shared.filter(l => l.operator === b).length;
+  const stA = licStats[a], stB = licStats[b];
+  return `
+    <div class="pf-card"><h3><a class="row-link" href="#" onclick="licOpenCompany(${esc(JSON.stringify(a))});return false;">${esc(a)}</a> ×
+        <a class="row-link" href="#" onclick="licOpenCompany(${esc(JSON.stringify(b))});return false;">${esc(b)}</a></h3>
+      <div class="pf-facts">
+        <div class="pf-fact"><span>Shared licences</span><strong>${shared.length}</strong></div>
+        <div class="pf-fact"><span>Of ${esc(licShort(a))}'s portfolio</span><strong>${(shared.length / stA.count * 100).toFixed(0)} %</strong></div>
+        <div class="pf-fact"><span>Of ${esc(licShort(b))}'s portfolio</span><strong>${(shared.length / stB.count * 100).toFixed(0)} %</strong></div>
+        <div class="pf-fact"><span>Shared gross area</span><strong>${licKm(gross)} km²</strong></div>
+        <div class="pf-fact"><span>Operated by ${esc(licShort(a))}</span><strong>${opA}</strong></div>
+        <div class="pf-fact"><span>Operated by ${esc(licShort(b))}</span><strong>${opB}</strong></div>
+        <div class="pf-fact"><span>Other operators</span><strong>${shared.length - opA - opB}</strong></div>
+      </div></div>
+    ${shared.length ? `<div class="pf-card"><h3>Map</h3>${map}</div>
+    <div class="pf-card"><h3>Shared licences</h3><div class="pf-scroll"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Licence</th><th class="ex-l">Area</th><th class="ex-l">Operator</th><th>${esc(licShort(a))}</th><th>${esc(licShort(b))}</th>
+      <th>Gross, km²</th><th class="ex-l">Field / BAA / discoveries</th></tr></thead>
+      <tbody>${rows.map(l => `<tr><td class="ex-l"><strong>${esc(l.name)}</strong></td><td class="ex-l">${esc(licSeaOf(l.sea)?.label || l.sea)}</td>
+        <td class="ex-l">${esc(l.operator || '—')}</td><td>${licPct(sa(l))}</td><td>${licPct(sb(l))}</td><td>${licKm(l.km2)}</td>
+        <td class="ex-l lic-info">${info(l) || '—'}</td></tr>`).join('')}</tbody></table></div></div>`
+    : '<div class="pf-card"><div class="ex-sum">These two companies share no active licences.</div></div>'}`;
+}
+
+// ── Tidslinjekart ────────────────────────────────────────────────────────────
+// Porteføljen til ett selskap på en valgt dato. Alt beregnes i nettleseren fra
+// eierhistorikken (licence_history), arealhistorikken (licence_areas) og
+// overdragelsene. Kartutsnittet låses til hele selskapets historikk, så det
+// ikke hopper når datoen flyttes.
+let licTl = null, licTlTimer = null;
+
+function licStop() {
+  if (licTlTimer) { clearInterval(licTlTimer); licTlTimer = null; }
+  const b = document.getElementById('licPlay');
+  if (b) b.textContent = '▶ Play';
+}
+
+const licActive = (r, d) => r.from <= d && (r.to == null || d < r.to);
+
+// Arealversjonen som gjelder på dato d. Før første versjon brukes den første,
+// og etter den siste den siste, så lisensen aldri forsvinner fra kartet bare
+// fordi arealhistorikken har hull.
+function licVersionAt(id, d) {
+  const vs = licAreas[id];
+  if (!vs || !vs.length) return null;
+  let best = null;
+  for (const v of vs) if (v[0] <= d && (v[1] == null || d < v[1])) best = v;
+  if (best) return best;
+  return d < vs[0][0] ? vs[0] : vs[vs.length - 1];
+}
+
+function licTlBuild(co) {
+  // Selskapet følges som konsern: forgjengerne (Det norske for Aker BP, Statoil
+  // for Equinor) ligger under andre juridiske navn i historikken.
+  const key = licConcern(co).key, entities = new Set();
+  const held = [];
+  Object.entries(licShares).forEach(([id, rows]) => rows.forEach(r => {
+    if (r.co === co || licConcern(r.co).key === key) { held.push({id: +id, ...r}); entities.add(r.co); }
+  }));
+  if (!held.length) return null;
+  const today = licNowDay();
+  const min = Math.min(...held.map(r => r.from));
+  const ops = {};
+  Object.entries(licOper).forEach(([id, rows]) => rows.forEach(r => {
+    if (r.co === co || licConcern(r.co).key === key) (ops[id] = ops[id] || []).push(r);
+  }));
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  new Set(held.map(r => r.id)).forEach(id => (licAreas[id] || []).forEach(v => v[3].forEach(ring => ring.forEach(([x, y]) => {
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }))));
+  if (x0 > x1) return null;
+  // Utsnitt som i outlineMap: ekvirektangulær med breddegradskorrigering.
+  const W = 640, kx = Math.cos(((y0 + y1) / 2) * Math.PI / 180);
+  const padX = 1.08, spanX = Math.max((x1 - x0) * padX, 1.6), spanY = Math.max((y1 - y0) * padX, 1.2);
+  const H = Math.round(Math.min(560, Math.max(300, W * spanY / (spanX * kx))));
+  // Felles skala: samme grader per piksel i begge retninger, korrigert med kx.
+  const scale = Math.min(W / (spanX * kx), H / spanY);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const px = x => W / 2 + (x - cx) * kx * scale, py = y => H / 2 - (y - cy) * scale;
+  return {co, key, entities: [...entities], held, ops, min, today, W, H, px, py, pathCache: {}, spark: null};
+}
+
+function licTlPath(id, v) {
+  const key = id + '|' + v[0];
+  const t = licTl;
+  if (t.pathCache[key]) return t.pathCache[key];
+  const d = v[3].map(ring => {
+    let s = '', lx = NaN, ly = NaN, n = 0;
+    for (const [x, y] of ring) {
+      const X = t.px(x), Y = t.py(y);
+      if (n && Math.abs(X - lx) < 0.8 && Math.abs(Y - ly) < 0.8) continue;
+      s += (n ? 'L' : 'M') + X.toFixed(1) + ' ' + Y.toFixed(1); lx = X; ly = Y; n++;
+    }
+    return n >= 3 ? s + 'Z' : '';
+  }).join('');
+  return (t.pathCache[key] = d);
+}
+
+function licTlState(d) {
+  const t = licTl, out = {rows: [], n: 0, op: 0, gross: 0, net: 0};
+  // Flere enheter i samme konsern kan eie samme lisens: andelene legges sammen,
+  // og lisensen telles én gang.
+  const byLic = {};
+  t.held.forEach(r => {
+    if (!licActive(r, d)) return;
+    const c = byLic[r.id] = byLic[r.id] || {id: r.id, share: 0, from: -Infinity};
+    c.share += r.share || 0;
+    c.from = Math.max(c.from, r.from);
+  });
+  Object.values(byLic).forEach(c => {
+    const v = licVersionAt(c.id, d);
+    const isOp = (t.ops[c.id] || []).some(o => licActive(o, d));
+    const km2 = v ? v[2] : 0;
+    out.rows.push({id: c.id, share: c.share, isOp, v, fresh: d - c.from < 365});
+    out.n++; if (isOp) out.op++;
+    out.gross += km2; out.net += km2 * c.share / 100;
+  });
+  return out;
+}
+
+function licTlSpark() {
+  const t = licTl;
+  if (t.spark) return t.spark;
+  const pts = [];
+  for (let d = t.min; d <= t.today; d += 30) {
+    const ids = new Set();
+    t.held.forEach(r => { if (licActive(r, d)) ids.add(r.id); });
+    pts.push([d, ids.size]);
+  }
+  return (t.spark = pts);
+}
+
+function licRenderMap() {
+  const box = document.getElementById('licBody');
+  const co = licF.company;
+  licTl = licTlBuild(co);
+  if (!licTl) { box.innerHTML = `<div class="status">No licence history found for ${esc(co)}.</div>`; return; }
+  const t = licTl;
+  const d0 = licF.date ? Math.min(Math.max(licIsoDay(licF.date), t.min), t.today) : t.today;
+  const coast = ((bundle.coastline && bundle.coastline.rings) || []);
+  const fields = Object.values((bundle.field_outlines && bundle.field_outlines.fields) || {}).flat();
+  const ringPath = rings => rings.map(r => {
+    let s = '', lx = NaN, ly = NaN, n = 0;
+    for (const [x, y] of r) {
+      const X = t.px(x), Y = t.py(y);
+      if (X < -40 || X > t.W + 40 || Y < -40 || Y > t.H + 40) continue;
+      if (n && Math.abs(X - lx) < 1.5 && Math.abs(Y - ly) < 1.5) continue;
+      s += (n ? 'L' : 'M') + X.toFixed(1) + ' ' + Y.toFixed(1); lx = X; ly = Y; n++;
+    }
+    return n >= 3 ? s + 'Z' : '';
+  }).join('');
+  const sp = licTlSpark(), maxN = Math.max(1, ...sp.map(p => p[1]));
+  const SW = 300, SH = 60;
+  const spX = d => (d - t.min) / (t.today - t.min || 1) * SW;
+  const spPath = sp.map((p, i) => `${i ? 'L' : 'M'}${spX(p[0]).toFixed(1)} ${(SH - 4 - p[1] / maxN * (SH - 10)).toFixed(1)}`).join('');
+  box.innerHTML = `
+    <div class="pf-card"><h3>${esc(co)} · licence portfolio over time</h3>
+      ${t.entities.length > 1 ? `<div class="pf-map-note" style="margin:-4px 0 8px">Follows the whole concern, including predecessors: ${esc(t.entities.slice(0, 8).map(licShort).join(', '))}${t.entities.length > 8 ? '…' : ''}</div>` : ''}
+      <div class="lc-tl">
+        <div>
+          <svg class="pf-map" viewBox="0 0 ${t.W} ${t.H}" style="aspect-ratio:${t.W}/${t.H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Portfolio map">
+            <rect width="${t.W}" height="${t.H}" fill="#eef3f8"/>
+            <path d="${ringPath(coast)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>
+            <path d="${ringPath(fields)}" fill="#cbd6e2" stroke="#b2bfcd" stroke-width="0.4" opacity="0.7"/>
+            <g id="licTlG"></g>
+            <text id="licTlDate" class="lc-tl-date" x="${t.W - 10}" y="30" text-anchor="end"></text>
+          </svg>
+          <div class="lc-slider"><button class="grp-btn" id="licPlay" onclick="licTlPlay()">▶ Play</button>
+            <input type="range" id="licTlRange" min="${t.min}" max="${t.today}" step="1" value="${d0}" aria-label="Date"
+                   oninput="licTlSet(+this.value)"/>
+            <select class="year-select" id="licTlSpeed" aria-label="Speed"><option value="30">1×</option><option value="90" selected>3×</option><option value="240">8×</option></select></div>
+          <div class="lc-slider-ends"><span>${licDayYear(t.min)}</span><span>${licDayYear(t.today)}</span></div>
+          <div class="pf-map-note"><span class="ex-dot" style="background:rgba(206,15,105,0.85)"></span>Operator ·
+            <span class="ex-dot" style="background:rgba(206,15,105,0.34)"></span>Partner · outlined: stake acquired within the last year.
+            Areas follow Sodir's area history, so a licence is shown at the size it had on the date. Fields: today's.</div>
+        </div>
+        <div>
+          <div class="pf-facts" id="licTlFacts"></div>
+          <h3 class="lc-h3">Licences held over time</h3>
+          <svg class="lc-spark" viewBox="0 0 ${SW} ${SH}" preserveAspectRatio="none" onclick="licTlSparkClick(event)">
+            <path d="${spPath}" fill="none" stroke="#ce0f69" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+            <line id="licTlMark" y1="0" y2="${SH}" stroke="#1a2332" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
+          <div class="lc-slider-ends"><span>max ${maxN}</span><span>click to jump</span></div>
+          <h3 class="lc-h3">Deals in the year up to this date</h3>
+          <div id="licTlEvents"></div>
+        </div>
+      </div></div>`;
+  licTlSet(d0, true);
+}
+
+function licTlSet(d, fromRender) {
+  const t = licTl;
+  if (!t || !document.getElementById('licTlG')) return;
+  t.d = d;
+  const st = licTlState(d);
+  // Operatørlisenser tegnes sist, så de ikke dekkes av partnerlisensene.
+  const rows = st.rows.slice().sort((a, b) => (a.isOp - b.isOp));
+  document.getElementById('licTlG').innerHTML = rows.map(r => {
+    if (!r.v) return '';
+    return `<path d="${licTlPath(r.id, r.v)}" fill="${r.isOp ? 'rgba(206,15,105,0.85)' : 'rgba(206,15,105,0.34)'}"
+      stroke="${r.fresh ? '#1a2332' : '#8e0a48'}" stroke-width="${r.fresh ? 1.3 : 0.4}"><title>${esc(licName(r.id))} · ${licPct(r.share)} · ${r.isOp ? 'operator' : 'partner'}</title></path>`;
+  }).join('');
+  document.getElementById('licTlDate').textContent = licDayStr(d);
+  const rng = document.getElementById('licTlRange');
+  if (rng && +rng.value !== d) rng.value = d;
+  document.getElementById('licTlFacts').innerHTML = `
+    <div class="pf-fact"><span>Licences</span><strong>${st.n}</strong></div>
+    <div class="pf-fact"><span>Operatorships</span><strong>${st.op}</strong></div>
+    <div class="pf-fact"><span>Gross area</span><strong>${licKm(st.gross)} km²</strong></div>
+    <div class="pf-fact"><span>Net area</span><strong>${licKm(st.net)} km²</strong></div>`;
+  const mark = document.getElementById('licTlMark');
+  const x = (d - t.min) / (t.today - t.min || 1) * 300;
+  mark.setAttribute('x1', x); mark.setAttribute('x2', x);
+  // Hendelser siste år før datoen.
+  const co = t.co;
+  const mine = n => !!n && licConcern(n).key === t.key;
+  const ev = (licTransfers || []).filter(e => e.day <= d && e.day > d - 365 && e.kind !== 'rename' && (mine(e.buyer) !== mine(e.seller)))
+    .sort((a, b) => b.day - a.day);
+  document.getElementById('licTlEvents').innerHTML = ev.length ? `<ul class="lc-ev">${ev.slice(0, 8).map(e => {
+    const buy = mine(e.buyer);
+    return `<li><b class="${buy ? 'lc-pos' : 'lc-neg'}">${buy ? 'Bought' : 'Sold'}</b> ${licPct(e.share)} of ${esc(licName(e.lic))}
+      ${buy ? (e.seller ? 'from ' + esc(licShort(e.seller)) : '') : (e.buyer ? 'to ' + esc(licShort(e.buyer)) : '')} <small>${licDayStr(e.day)} · ${esc(licKindOf(e.kind).label.toLowerCase())}</small></li>`;
+  }).join('')}${ev.length > 8 ? `<li><small>+${ev.length - 8} more</small></li>` : ''}</ul>` : '<div class="ex-sum">No deals in this window.</div>';
+  if (!fromRender) { clearTimeout(t.urlT); t.urlT = setTimeout(() => { licF.date = d >= t.today ? '' : licDayIso(d); syncUrl(); }, 250); }
+}
+
+function licTlSparkClick(e) {
+  const t = licTl, r = e.currentTarget.getBoundingClientRect();
+  licTlSet(Math.round(t.min + (e.clientX - r.left) / r.width * (t.today - t.min)));
+}
+
+function licTlPlay() {
+  if (licTlTimer) { licStop(); return; }
+  const t = licTl;
+  if (t.d >= t.today) licTlSet(t.min);
+  document.getElementById('licPlay').textContent = '❚❚ Pause';
+  licTlTimer = setInterval(() => {
+    const step = +document.getElementById('licTlSpeed').value;
+    const next = Math.min(t.today, t.d + step);
+    licTlSet(next);
+    if (next >= t.today) licStop();
+  }, 100);
 }
 
 
