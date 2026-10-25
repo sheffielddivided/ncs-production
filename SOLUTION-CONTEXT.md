@@ -1890,8 +1890,8 @@ i `fetch_sodir.py` fra brønnlaget (5000). Bare formål WILDCAT og APPRAISAL;
 `wlbStatus = NULL`, ingen `wlbEntryDate` og kun `wlbEntryDatePlanned`.
 Ingen startdato eller startdato i fremtiden gir *planned*; startet uten
 sluttdato gir *drilling*; ellers *completed*. En planlagt dato som er passert
-markeres med ⚠ og holdes utenfor riggtidslinjen — Sodir oppdaterer den ikke
-når en brønn utsettes.
+markeres med ⚠. Riggtidslinjen tegner slike brønner likevel (se under), siden Sodir
+fortsatt regner dem som planlagte, men Sodir oppdaterer ikke datoen når en brønn utsettes.
 
 **Eierskap** fastsettes per spud-dato fra lag 3007 (lisensiærer med
 `ValidFrom`/`ValidTo`), ikke fra dagens lisensiærer, for lisenser overdras.
@@ -2034,6 +2034,48 @@ en tynn mørk linje øverst er AIS-målt.
 
 *Mulig videre arbeid:* ankomstsignal for planlagte brønner (riggen ligger ved den
 planlagte posisjonen), og å vise Sodirs egne datoer ved siden av de AIS-målte.
+
+**Planlagte brønner med passert dato i riggtidslinjen:** Sodir har ingen brukbar dato for
+dem, men rigg, og de står fortsatt som «ikke startet». De tegnes som stiplede ravgule bar
+med ⚠, fra det tidligste riggen kan være ledig (etter siste aktivitet, aldri før i dag), i
+rekkefølge etter Sodirs gamle dato, 60 dager hver (placeholder), og kortes inn mot en
+senere planlagt brønn med gyldig dato så de ikke overlapper. Tooltip og tabellen
+(«Next planned») viser Sodirs opprinnelige dato. Tidligere ble de utelatt, og bare
+brønner med fremtidig dato vistes.
+
+**Sodir mot AIS (avviksoversikten):** `<details>`-kortet under riggtabellen på
+Rigs-fanen. `planRigBars` samler tre slags avvik i `res.disc`: *shifted* (hver
+AIS-målt bar, med hvor mange dager AIS flytter start og slutt mot Sodir),
+*hidden* (aktiviteter som havner inni et opphold AIS plasserer riggen et annet
+sted, og derfor ikke tegnes) og *unmatched* (aktiviteter i AIS-dekningen som ikke
+fant noe opphold: hull i AIS, feil kobling i `rig_ais.json`, eller feil dato eller
+posisjon i Sodir). Sammendraget viser median forskyvning og antall som avviker en
+uke eller mer; tabellen viser de 80 største, konflikter øverst. Filtrene gjelder.
+
+**Endringslogg og fanen News (`changes.py`, `data/changes.json`):** den daglige
+jobben sammenligner nye data med forrige fil og skriver hendelser med stabil id
+(`spud|<brønn-id>`, `rig|<rigg>|<opphold-start>` osv., så en ny kjøring samme dag
+ikke dobler): *plan* (ny planlagt brønn), *spud*, *done*, *discovery* (ferdig funnbrønn
+med olje eller gass), *postponed* (planlagt start flyttet minst syv dager),
+*cancelled* (planlagt brønn borte fra Sodirs data) og *rig* (nytt opphold,
+som ikke er en flytting mellom maler på samme felt). Første gang fylles loggen
+ut fra brønnenes egne datoer (siste 60 dager), og for rigger fra de siste
+oppholdene. Opphold som dukker opp i tiden før det vi allerede hadde (sporene tar
+igjen innlastingen) er ikke nyheter. Loggen beholder 180 dager og høyst 800
+hendelser. Klienten setter teksten sammen (`newsLine`), så funnnavn og tittel
+følger resten av visningen; klikk åpner brønnen eller riggprofilen ved oppholdet.
+Selskapsfilteret treffer brønnhendelser (ikke rigger).
+
+**Driftsrapport for AIS-steget (`health_report` i `fetch_rigs.py`):** hver kjøring
+skriver `data/rig_health.json` og, i Actions, en oppsummering (`GITHUB_STEP_SUMMARY`)
+og `::warning::`-merknader. Den melder fra om (1) rigger med aktivitet i
+Sodir-dataene som mangler kobling i `data/rig_ais.json` (faste plattformer og
+oppføringer under `excluded` hoppes over), (2) rigger Sodir sier bores nå, uten
+AIS-signal på tre dager, (3) rigger med minst 20 fjernede posisjoner, som tyder på
+en delt eller feilregistrert MMSI, og (4) at kilden feiler (teller kjøringer på rad
+i `rig_log.json`; tre på rad gir egen advarsel). Fleet-fanen viser det som et kort
+nederst når noe skal følges opp. Steget har `continue-on-error`, så advarslene er
+den eneste måten en feil blir synlig på.
 
 **Feltbilde i feltprofilen:** `fieldPhoto` hotlinker
 `https://factpages.sodir.no/pbl/field_jpgs/{NPDID}_{Navn}.jpg`, med understrek

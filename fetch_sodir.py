@@ -1058,6 +1058,23 @@ def write_if_changed(name, payload):
     return True
 
 
+def record_well_changes(payload):
+    """Skriv endringsloggen for brønner (data/changes.json) fra forskjellen mot
+    forrige fil. Feil her skal ikke stoppe datahentingen."""
+    try:
+        import changes
+        path = os.path.join(OUT_DIR, 'exploration_wells.json')
+        events = []
+        if os.path.exists(path):
+            with open(path, encoding='utf-8') as fh:
+                events += changes.well_events(json.load(fh), payload)
+        if not changes.exists():
+            events += changes.backfill_wells(payload)
+        changes.merge(events)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ! endringsloggen for bronner feilet: {exc}", file=sys.stderr)
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -1098,6 +1115,8 @@ def main():
             # datasett, og appen fortsetter a fungere pa gamle tall.
             print(f"FEIL under henting av {label}: {exc}", file=sys.stderr)
             return 1
+        if filename == 'exploration_wells.json':
+            record_well_changes(payload)
         if write_if_changed(filename, payload):
             changed = True
 
