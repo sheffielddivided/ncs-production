@@ -1,0 +1,28 @@
+{
+  "note": "Kobling fra riggnavn i Sodir-dataene (felt 'rig') til AIS. mmsi kan være flere, hvis riggen har byttet. alias peker til en annen oppføring (omdøpt rigg). Rediger for hånd; fetch_rigs.py endrer ikke denne fila.",
+  "rigs": {
+    "ASKELADDEN": {"mmsi": [257452000], "imo": 9698147, "ais": "ASKELADDEN"},
+    "ASKEPOTT": {"mmsi": [257459000], "imo": 9698159, "ais": "ASKEPOTT"},
+    "COSLInnovator": {"mmsi": [566391000, 565797000], "imo": 8769418, "ais": "COSLINNOVATOR"},
+    "COSLPioneer": {"mmsi": [565796000], "imo": 8769406, "ais": "COSLPIONEER"},
+    "COSLPromoter": {"mmsi": [565798000], "imo": 8769561, "ais": "COSLPROMOTER"},
+    "COSLProspector": {"mmsi": [565369000], "imo": 9649005, "ais": "COSL PROSPECTOR"},
+    "DEEPSEA ABERDEEN": {"mmsi": [310713000], "imo": 9652234, "ais": "DEEPSEA ABERDEEN"},
+    "DEEPSEA ATLANTIC": {"mmsi": [310766000], "imo": 8769042, "ais": "DEEPSEA ATLANTIC"},
+    "DEEPSEA BERGEN": {"alias": "DEEPSEA BOLLSTA"},
+    "DEEPSEA BOLLSTA": {"mmsi": [257440000], "imo": 9664196, "ais": "DEEPSEA BOLLSTA"},
+    "DEEPSEA NORDKAPP": {"mmsi": [310776000], "imo": 9701621, "ais": "DEEPSEA NORDKAPP"},
+    "DEEPSEA STAVANGER": {"mmsi": [310767000], "imo": 8769092, "ais": "DEEPSEA STAVANGER"},
+    "DEEPSEA YANTAI": {"mmsi": [311000483], "imo": 9731638, "ais": "DEEPSEA YANTAI"},
+    "LINUS": {"mmsi": [257095000], "imo": 9622356, "ais": "LINUS"},
+    "NOBLE INTEGRATOR": {"mmsi": [538010630], "imo": 9664627, "ais": "NOBLE INTEGRATOR"},
+    "NOBLE INTREPID": {"mmsi": [538010631], "imo": 8771540, "ais": "NOBLE INTREPID"},
+    "NOBLE INVINCIBLE": {"mmsi": [538010632], "imo": 9711858, "ais": "NOBLE INVINCIBLE"},
+    "SCARABEO 8": {"mmsi": [308928000], "imo": 8768737, "ais": "SCARABEO 8"},
+    "SHELF DRILLING BARSK": {"mmsi": [636016111], "imo": 9697272, "ais": "SHELF DRILLING BARSK"},
+    "TRANSOCEAN ENABLER": {"mmsi": [258615000], "imo": 8772087, "ais": "TRANSOCEAN ENABLER"},
+    "TRANSOCEAN ENCOURAGE": {"mmsi": [258627000], "imo": 8772075, "ais": "TRANSOCEAN ENCOURAGE"},
+    "TRANSOCEAN NORGE": {"mmsi": [538007928], "imo": 9659309, "ais": "TRANSOCEAN NORGE"},
+    "TRANSOCEAN SPITSBERGEN": {"mmsi": [538004905], "imo": 8768517, "ais": "TRANSOCEAN SPITSBERG"}
+  }
+}

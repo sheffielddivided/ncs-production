@@ -18,7 +18,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +32,14 @@ jobs:
 
       - name: Hent data fra Sodir
         run: python fetch_sodir.py
+
+      # Riggposisjoner fra Kystverkets åpne AIS-data. Kilden er av og til
+      # overbelastet, og et mislykket steg her skal ikke hindre at Sodir-dataene
+      # committes. Historikken hentes i biter og fortsetter neste kjøring.
+      - name: Hent riggposisjoner (AIS)
+        continue-on-error: true
+        timeout-minutes: 30
+        run: python fetch_rigs.py
 
       - name: Commit hvis dataene er endret
         run: |

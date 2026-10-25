@@ -170,6 +170,23 @@
     .ex-map{width:100%;height:auto;display:block;border-radius:8px;background:#eef3f8;}
     .ex-table td.ex-adj{color:var(--blue);font-weight:600;}
     .ex-chk{display:inline-flex;align-items:center;gap:5px;font-size:0.78rem;color:#44505f;cursor:pointer;}
+    .ex-rig-link{cursor:pointer;} .ex-rig-link:hover{fill:var(--blue);text-decoration:underline;}
+    .rig-link{color:var(--blue);font-weight:700;text-decoration:none;} .rig-link:hover{text-decoration:underline;}
+    .rg-map{cursor:default;background:#eef3f8;}
+    .rg-date{fill:#1a2332;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;}
+    .rg-lbl{font-size:9px;vector-effect:non-scaling-stroke;stroke-width:2.5px;}
+    .rg-date{vector-effect:non-scaling-stroke;}
+    .rg-stay-on{stroke:#1a2332;stroke-width:2;fill-opacity:0.9;}
+    .rg-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}
+    .rg-slider{flex:1 1 180px;min-width:140px;accent-color:var(--blue);}
+    .rg-stays{max-height:340px;overflow-y:auto;}
+    .rg-stay-row{display:grid;grid-template-columns:22px 1fr auto;gap:0 8px;align-items:baseline;padding:7px 4px;border-bottom:1px solid #eef0f3;cursor:pointer;font-size:0.76rem;}
+    .rg-stay-row:hover{background:#faf0f5;}
+    .rg-stay-row.rg-active{background:#d9f5ea;}
+    .rg-ic{text-align:center;color:var(--muted);} .rg-ic-port{color:#4993b4;} .rg-ic-field,.rg-ic-well{color:#00b373;}
+    .rg-st-sub{color:var(--muted);font-weight:400;}
+    .rg-st-when{text-align:right;color:#44505f;font-variant-numeric:tabular-nums;white-space:nowrap;}
+    .rg-st-dur{display:block;font-size:0.66rem;color:var(--muted);}
     .ex-scroll{overflow-x:auto;}
     .ex-gantt{min-width:760px;width:100%;height:auto;display:block;}
     .ex-ax{font-size:10px;fill:#828282;}
@@ -1798,6 +1815,7 @@ function stateToHash() {
     if (!explF.dev) q.set('xd', '0');
     if (explF.fixed) q.set('xf', '1');
     if (explF.open) q.set('xw', explF.open);
+    if (explF.rig) q.set('xg', explF.rig);
   }
   else if (topMode === 'licences') {
     const dflt = licDefaults();
@@ -1868,6 +1886,7 @@ function applyHash() {
     if (g('xd') === '0') explF.dev = false;
     if (g('xf') === '1') explF.fixed = true;
     if (+g('xw') > 0) explF.open = +g('xw');
+    if (g('xg')) explF.rig = g('xg');
   }
 
   const pr = q.get('p');
@@ -4987,6 +5006,7 @@ const EXPL_TABS = [
   {id:'wells', label:'Wells'},
   {id:'map',   label:'Map'},
   {id:'rigs',  label:'Rigs'},
+  {id:'fleet', label:'Fleet'},
 ];
 let explSubView = 'wells';
 let explWells = [], explOwners = [], explCompanies = [];
@@ -5181,7 +5201,11 @@ function explRenderBar() {
   const years = [''].concat(Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i)));
   document.getElementById('explBar').innerHTML = `
     <div class="ex-bar">
-      <input class="ex-in" type="search" list="exCompanyList" placeholder="Company…" value="${esc(f.company)}"
+      ${explSubView === 'fleet' ? `<input class="ex-in ex-q" type="search" placeholder="Search rig…" value="${esc(f.q)}"
+             oninput="explSet('q', this.value)" aria-label="Search"/>
+      <button class="grp-btn" onclick="explReset()">Reset</button>
+    </div>` : ''}
+      ${explSubView === 'fleet' ? '' : `<input class="ex-in" type="search" list="exCompanyList" placeholder="Company…" value="${esc(f.company)}"
              oninput="explSet('company', this.value)" aria-label="Filter by company"/>
       <datalist id="exCompanyList">${sortCompanies(explCompanies).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       <select class="year-select" onchange="explSet('role', this.value)" aria-label="Company role">
@@ -5207,7 +5231,7 @@ function explRenderBar() {
       ${explSubView === 'rigs' ? `
       <label class="ex-chk"><input type="checkbox" ${f.dev ? 'checked' : ''} onchange="explSet('dev', this.checked, true)"> Development wells</label>
       <label class="ex-chk"><input type="checkbox" ${f.fixed ? 'checked' : ''} ${f.dev ? '' : 'disabled'} onchange="explSet('fixed', this.checked)"> Fixed platforms</label>` : ''}
-      <button class="grp-btn" onclick="explReset()">Reset</button>
+      <button class="grp-btn" onclick="explReset()">Reset</button>`}
     </div>`;
 }
 
@@ -5226,6 +5250,7 @@ async function refreshExploration() {
   setInfo('');
   await loadExploration();
   if (explSubView === 'rigs') await loadRigWells();
+  if (explSubView === 'rigs' || explSubView === 'fleet' || explF.rig) await loadRigAis();
   if (!explWells.length) {
     document.getElementById('explBar').innerHTML = '';
     box.innerHTML = '<div class="status">No exploration well data available.</div>';
@@ -5234,11 +5259,13 @@ async function refreshExploration() {
   explRenderBar();
   explRenderBody();
   if (explF.open) openWell(explF.open, true);
+  if (explF.rig) openRigProfile(explF.rig, true);
 }
 
 function explRenderBody() {
   if (explSubView === 'map') return explRenderMap();
   if (explSubView === 'rigs') return explRenderRigs();
+  if (explSubView === 'fleet') return explRenderFleet();
   explRenderList();
 }
 
@@ -5672,12 +5699,12 @@ function explRenderRigs() {
         ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + (multi ? 12 + w.lane * 13 : RH / 2 + 3)}" class="ex-bar-t" style="${multi ? 'font-size:8px' : ''}" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
         <title>${esc(w.title)}${isDev ? ' (development)' : ` (${esc(w.name)})`} · ${esc(w.operator)} · ${fmtShort(w.start)}${to}${note}</title></g>`;
     }).join('');
-    return `<text x="4" y="${y + (multi ? 12 : RH / 2 + 3)}" class="ex-rig">${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${row}`;
+    return `<text x="4" y="${y + (multi ? 12 : RH / 2 + 3)}" class="ex-rig${hasRigAis(r.name) ? ' ex-rig-link' : ''}"${hasRigAis(r.name) ? ` onclick="openRigProfile(${esc(JSON.stringify(r.name))})"` : ''}>${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${row}`;
   }).join('');
   const tx = clampX(today);
   const table = out.map(r => {
     const cell = (w, d) => w ? `<a href="#" onclick="${exOpen(w)};return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}${w.kind === 'dev' ? ' · development' : ''}</small>` : '—';
-    return `<tr><td class="ex-l"><strong>${esc(r.name)}</strong><small>${esc(tc(r.type))}</small></td>
+    return `<tr><td class="ex-l"><strong>${rigLink(r.name)}</strong><small>${esc(tc(r.type))}</small></td>
       <td class="ex-l">${cell(r.now, r.now ? 'since ' + fmtShort(r.now.start) + (r.now.maybe ? ' (probably)' : '') : '')}</td>
       <td class="ex-l">${cell(r.next, r.next ? fmtShort(r.next.planned) : '')}</td>
       <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) + (r.last.noEnd ? ' (est.)' : '') : '')}</td></tr>`;
@@ -5820,11 +5847,423 @@ function openWell(id, quiet) {
 
 function closeWell() {
   explF.open = null;
+  explF.rig = null;
+  rigStop();
   document.getElementById('wdOverlay').classList.remove('open');
   if (!sheetOpen) document.body.style.overflow = '';
   syncUrl();
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && explF.open) closeWell(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('wdOverlay').classList.contains('open')) closeWell();
+});
+
+// ── Riggposisjoner (AIS) ─────────────────────────────────────────────────────
+// data/rig_tracks.json og data/rig_now.json bygges av fetch_rigs.py fra
+// Kystverkets åpne AIS-data. Tracks har per rigg veipunkter [t, lon, lat] — der
+// riggen står stille er det to punkter på samme sted, og avspillingen
+// interpolerer lineært mellom dem — og opphold [fra, til, lon, lat, type,
+// navn, detalj, brønn-id-er]. Tidene er minutter siden 1970. rig_now.json er
+// dagens posisjon, status og AIS-destinasjon (skrevet av mannskapet).
+let rigAis = null, rigAisLoading = null;
+
+function loadRigAis() {
+  if (rigAis) return Promise.resolve();
+  if (rigAisLoading) return rigAisLoading;
+  rigAisLoading = Promise.all([fetchBundle('rig_tracks'), fetchBundle('rig_now')]).then(([tracks, now]) => {
+    rigAis = {tracks: tracks || {rigs: {}}, now: now || {rigs: {}, asOf: 0}};
+  });
+  return rigAisLoading;
+}
+
+const rigRes = (map, name) => {
+  const r = map && map[name];
+  return r && r.alias ? map[r.alias] : r;
+};
+const rigData = name => (rigAis ? rigRes(rigAis.tracks.rigs, name) : null);
+const rigNow = name => (rigAis ? rigRes(rigAis.now.rigs, name) : null);
+const hasRigAis = name => !!rigData(name);
+const minToDate = m => new Date(m * 60000).toISOString().slice(0, 10);
+const fmtMin = m => fmtShort(minToDate(m));
+const fmtDur = mins => {
+  const h = mins / 60;
+  return h < 36 ? `${Math.max(1, Math.round(h))} h` : `${Math.round(h / 24)} d`;
+};
+const rigLink = name => hasRigAis(name)
+  ? `<a href="#" class="rig-link" onclick="openRigProfile(${esc(JSON.stringify(name))});return false">${esc(name)}</a>`
+  : esc(name);
+
+// Tilstand ut fra AIS: på lokasjon, i fart, ved kai eller åpent hav, og «gammel»
+// når siste melding er over tre dager.
+const RIG_STATE = {
+  location: {label: 'On location', color: '#00b373'},
+  transit:  {label: 'Under way',   color: '#f68d2e'},
+  quay:     {label: 'At quay',     color: '#4993b4'},
+  sea:      {label: 'At sea',      color: '#7d2248'},
+  stale:    {label: 'No recent AIS', color: '#9aa5b1'},
+};
+function rigState(n, asOf) {
+  if (asOf - n.t > 3 * 1440) return 'stale';
+  if ((n.sog || 0) > 1.5) return 'transit';
+  const kind = n.place ? n.place[0] : '';
+  return kind === 'port' ? 'quay' : kind === 'field' || kind === 'well' ? 'location' : 'sea';
+}
+const stayName = (kind, label) => (kind === 'sea' ? label : tc(label));
+const placeText = p => p ? (p[0] === 'port' ? 'Port: ' : '') + stayName(p[0], p[1]) + (p[2] && p[2] !== p[1] ? ` · ${tc(p[2])}` : '') : '—';
+
+// Felles kartprojeksjon: tar punkter [lon, lat] og gir x/y i et W×H-bilde.
+function rigProject(points, W, H, opts = {}) {
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  points.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+  if (!points.length) [x0, y0, x1, y1] = INSET_BOX;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, kx = Math.cos(cy * Math.PI / 180);
+  const pad = opts.pad || 1.15;
+  let spanX = Math.max((x1 - x0) * pad, opts.minSpan || 2), spanY = spanX * kx * H / W;
+  if ((y1 - y0) * pad > spanY) { spanY = (y1 - y0) * pad; spanX = spanY / kx * W / H; }
+  const west = cx - spanX / 2, south = cy - spanY / 2;
+  return {W, H, west, south, spanX, spanY,
+          px: x => ((x - west) / spanX) * W, py: y => H - ((y - south) / spanY) * H};
+}
+
+// Bakgrunnslag: kyst og feltomriss, klippet til utsnittet og tynnet til pikselnivå.
+function rigBaseLayers(P) {
+  const vis = r => r.some(([x, y]) => x > P.west - P.spanX * .15 && x < P.west + P.spanX * 1.15 &&
+                                      y > P.south - P.spanY * .15 && y < P.south + P.spanY * 1.15);
+  const path = (rings, minPx, minSize) => rings.filter(vis).map(r => {
+    let d = '', lx = NaN, ly = NaN, n = 0, bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+    for (const [x, y] of r) {
+      const sx = P.px(x), sy = P.py(y);
+      bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx); by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
+      if (n && Math.abs(sx - lx) < minPx && Math.abs(sy - ly) < minPx) continue;
+      d += (n ? 'L' : 'M') + sx.toFixed(1) + ' ' + sy.toFixed(1); lx = sx; ly = sy; n++;
+    }
+    return n >= 3 && (bx1 - bx0 >= minSize || by1 - by0 >= minSize) ? d + 'Z' : '';
+  }).join('');
+  const coast = (bundle.coastline && bundle.coastline.rings) || [];
+  const fields = Object.values((bundle.field_outlines && bundle.field_outlines.fields) || {}).flat();
+  return `<rect width="${P.W}" height="${P.H}" fill="#eef3f8"/>
+    <path d="${path(coast, 2, 4)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7" vector-effect="non-scaling-stroke"/>
+    <path d="${path(fields, 2, 2)}" fill="#cbd6e2" stroke="#b2bfcd" stroke-width="0.5" opacity="0.85" vector-effect="non-scaling-stroke"/>`;
+}
+
+// ── Flåtekart ────────────────────────────────────────────────────────────────
+// Område-knapper over flåtekartet. Sokkelen er så lang at Barentshavet trekker
+// hele kartet nordover og presser Nordsjøen sammen; knappene zoomer til ett hav.
+let fleetRegion = 'all';
+const FLEET_REGIONS = [
+  ['all', 'All', () => true],
+  ['north', 'North Sea', n => n.lat < 62.5],
+  ['norwegian', 'Norwegian Sea', n => n.lat >= 62.5 && n.lat < 68],
+  ['barents', 'Barents Sea', n => n.lat >= 68],
+];
+function setFleetRegion(r) { fleetRegion = r; explRenderFleet(); }
+
+async function explRenderFleet() {
+  const box = document.getElementById('explBody');
+  if (!rigAis) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+  await loadRigAis();
+  if (explSubView !== 'fleet') return;
+  const asOf = rigAis.now.asOf;
+  const q = explF.q.trim().toLowerCase();
+  const rows = Object.keys(rigAis.now.rigs).filter(n => !rigAis.now.rigs[n].alias)
+    .map(name => ({name, n: {...rigNow(name)}}))
+    .filter(r => r.n.lon != null && (!q || r.name.toLowerCase().includes(q)))
+    .map(r => ({...r, state: rigState(r.n, asOf)}));
+  const allRows = rows.slice();
+  const regionOf = FLEET_REGIONS.find(r => r[0] === fleetRegion) || FLEET_REGIONS[0];
+  rows.splice(0, rows.length, ...allRows.filter(r => regionOf[2](r.n)));
+  if (!rows.length && fleetRegion !== 'all') { fleetRegion = 'all'; return explRenderFleet(); }
+  if (!rows.length) {
+    box.innerHTML = '<div class="ex-sum">No AIS positions available. The data is built daily by fetch_rigs.py.</div>';
+    return;
+  }
+  const W = 900, H = 560;
+  const P = rigProject(rows.map(r => [r.n.lon, r.n.lat]), W, H, {pad: 1.25, minSpan: fleetRegion === 'all' ? 4 : 2.5});
+  // Etiketter: først til mølla, med enkel kollisjonstest.
+  const placed = [];
+  const lbl = rows.slice().sort((a, b) => a.name.localeCompare(b.name)).map(r => {
+    const x = P.px(r.n.lon), y = P.py(r.n.lat), w = r.name.length * 6.6 + 4, h = 13;
+    for (const [dx, dy, anchor] of [[9, 3, 'start'], [-9, 3, 'end'], [0, -10, 'middle'], [0, 17, 'middle']]) {
+      const bx = anchor === 'start' ? x + dx : anchor === 'end' ? x + dx - w : x - w / 2;
+      const box_ = [bx, y + dy - h, bx + w, y + dy + 2];
+      if (box_[0] < 0 || box_[2] > W || placed.some(p => box_[0] < p[2] && box_[2] > p[0] && box_[1] < p[3] && box_[3] > p[1])) continue;
+      placed.push(box_);
+      return `<text x="${(x + dx).toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${anchor}" class="pf-lbl pf-lbl-own">${esc(r.name)}</text>`;
+    }
+    return '';
+  }).join('');
+  const dots = rows.map(r => `<circle cx="${P.px(r.n.lon).toFixed(1)}" cy="${P.py(r.n.lat).toFixed(1)}" r="6" fill="${RIG_STATE[r.state].color}"
+      stroke="#fff" stroke-width="1.6" style="cursor:pointer" onclick="openRigProfile(${esc(JSON.stringify(r.name))})">
+      <title>${esc(r.name)} · ${RIG_STATE[r.state].label}</title></circle>`).join('');
+  const order = ['location', 'transit', 'quay', 'sea', 'stale'];
+  const table = rows.slice().sort((a, b) => order.indexOf(a.state) - order.indexOf(b.state) || a.name.localeCompare(b.name)).map(r => `
+    <tr class="ex-row" tabindex="0" onclick="openRigProfile(${esc(JSON.stringify(r.name))})">
+      <td class="ex-l"><strong>${esc(r.name)}</strong></td>
+      <td class="ex-l"><span class="ex-dot" style="background:${RIG_STATE[r.state].color}"></span>${RIG_STATE[r.state].label}</td>
+      <td class="ex-l">${esc(placeText(r.n.place))}</td>
+      <td>${r.n.since ? fmtMin(r.n.since) : '—'}</td>
+      <td class="ex-l">${esc(r.n.dest) || '—'}</td>
+      <td>${r.n.sog != null ? r.n.sog.toFixed(1) + ' kn' : '—'}</td>
+      <td>${fmtMin(r.n.t)}</td></tr>`).join('');
+  const count = k => rows.filter(r => r.state === k).length;
+  const legend = order.filter(k => count(k)).map(k =>
+    `<span class="ex-leg"><span class="ex-dot" style="background:${RIG_STATE[k].color}"></span>${RIG_STATE[k].label} (${count(k)})</span>`).join('');
+  box.innerHTML = `
+    <div class="ex-sum"><strong>${rows.length}</strong> rigs with AIS · positions as of ${fmtMin(asOf)} · click a rig for its history</div>
+    <div class="grp-row">${FLEET_REGIONS.filter(r => r[0] === 'all' || allRows.some(x => r[2](x.n))).map(r =>
+      `<button class="grp-btn${fleetRegion === r[0] ? ' active' : ''}" onclick="setFleetRegion('${r[0]}')">${r[1]}</button>`).join('')}</div>
+    <div class="pf-card ex-mapcard">
+      <svg class="ex-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Rig positions">
+        ${rigBaseLayers(P)}${lbl}${dots}
+      </svg>
+      <div class="ex-legend">${legend}</div>
+      <div class="pf-map-note">Positions from Kystverket's open AIS data (Kystdatahuset), updated with the daily data run. Fields in grey.
+        Coverage is the Norwegian economic zone, Svalbard and Jan Mayen.</div>
+    </div>
+    <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Rig</th><th class="ex-l">State</th><th class="ex-l">Place</th><th>Since</th>
+      <th class="ex-l">AIS destination</th><th>Speed</th><th>Last signal</th></tr></thead><tbody>${table}</tbody></table></div>`;
+}
+
+// ── Riggprofil med avspilling ────────────────────────────────────────────────
+let rg = null;   // tilstand for åpen riggprofil
+const RG_W = 720, RG_H = 430;
+const RG_SPEEDS = [[1, '1 day / s'], [3, '3 days / s'], [7, '1 week / s'], [30, '1 month / s']];
+const RG_PERIODS = [[90, 'Last 3 months'], [180, 'Last 6 months'], [365, 'Last 12 months'], [0, 'All']];
+
+async function openRigProfile(name, quiet) {
+  await loadRigAis();
+  await loadExploration();
+  const data = rigData(name);
+  const body = document.getElementById('wdBody');
+  explF.rig = name;
+  if (!quiet) syncUrl();
+  const show = () => {
+    document.getElementById('wdOverlay').classList.add('open');
+    document.getElementById('wdOverlay').scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+  };
+  if (!data || !data.wp || data.wp.length < 2) {
+    rigStop();
+    body.innerHTML = `
+      <div class="wd-head"><div><h2>${esc(name)}</h2><div class="wd-sub">Rig</div></div>
+        <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button></div>
+      <div class="pf-card"><p class="wd-lead">No AIS history for this rig. It has no matching AIS identity in data/rig_ais.json,
+        or it has not been seen in Norwegian waters in the period.</p></div>
+      <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
+    show();
+    return;
+  }
+  rigStop();
+  const last = data.wp[data.wp.length - 1][0];
+  rg = {name, data, t1: last, period: 180, speed: 7, playing: false, raf: 0, lastTs: 0, view: null};
+  rigBuild(true);
+  show();
+}
+
+function rigStop() {
+  if (rg && rg.raf) cancelAnimationFrame(rg.raf);
+  if (rg) { rg.playing = false; rg.raf = 0; }
+}
+
+// Tegner hele profilen. keepTime beholder avspillingstidspunktet ved bytte av periode.
+function rigBuild(reset) {
+  const {name, data} = rg;
+  rg.t0 = rg.period ? Math.max(data.wp[0][0], rg.t1 - rg.period * 1440) : data.wp[0][0];
+  if (reset || rg.t == null || rg.t < rg.t0 || rg.t > rg.t1) rg.t = rg.t1;
+  // Veipunktene i perioden, med et interpolert startpunkt.
+  const wp = [];
+  data.wp.forEach(p => { if (p[0] >= rg.t0 && p[0] <= rg.t1) wp.push(p); });
+  const first = rigPosAt(data.wp, rg.t0);
+  if (!wp.length || wp[0][0] > rg.t0) wp.unshift([rg.t0, first[0], first[1]]);
+  rg.wp = wp;
+  rg.stays = data.stays.filter(s => s[1] >= rg.t0 && s[0] <= rg.t1);
+  const P = rigProject(wp.map(p => [p[1], p[2]]), RG_W, RG_H, {pad: 1.18, minSpan: 1.6});
+  rg.P = P;
+  rg.xy = wp.map(p => [P.px(p[1]), P.py(p[2])]);
+
+  // Stien: heltrukket mellom observerte punkter, stiplet over hull i dataene.
+  const inGap = (a, b) => (data.gaps || []).some(g => a[0] <= g[0] && g[1] <= b[0]);
+  let solid = '', dashed = '';
+  for (let i = 1; i < wp.length; i++) {
+    const seg = `M${rg.xy[i - 1][0].toFixed(1)} ${rg.xy[i - 1][1].toFixed(1)}L${rg.xy[i][0].toFixed(1)} ${rg.xy[i][1].toFixed(1)}`;
+    if (inGap(wp[i - 1], wp[i])) dashed += seg; else solid += seg;
+  }
+  const kindColor = {port: '#4993b4', field: '#00b373', well: '#00b373', sea: '#9aa5b1'};
+  const stayDots = rg.stays.map((s, i) => {
+    const x = P.px(s[2]), y = P.py(s[3]), days = (s[1] - s[0]) / 1440;
+    const r = Math.min(11, 4 + Math.sqrt(Math.max(days, 0)) * 1.1);
+    return `<circle class="rg-stay" data-i="${i}" data-r="${r.toFixed(1)}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"
+      fill="${kindColor[s[4]] || '#9aa5b1'}" fill-opacity="0.55" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"
+      style="cursor:pointer" onclick="rigSeek(${s[0]}, true)"><title>${esc(stayName(s[4], s[5]))} · ${fmtMin(s[0])} – ${fmtMin(s[1])}</title></circle>`;
+  }).join('');
+  // Navn på de lengste oppholdene, uten overlapp.
+  const placed = [];
+  const labels = rg.stays.map((s, i) => ({s, i})).sort((a, b) => (b.s[1] - b.s[0]) - (a.s[1] - a.s[0])).slice(0, 9).map(({s}) => {
+    const text = stayName(s[4], s[5]).slice(0, 22), x = P.px(s[2]), y = P.py(s[3]) - 12, w = text.length * 5.6;
+    const bx = [x - w / 2, y - 10, x + w / 2, y + 2];
+    if (bx[0] < 0 || bx[2] > RG_W || bx[1] < 0 || placed.some(p => bx[0] < p[2] && bx[2] > p[0] && bx[1] < p[3] && bx[3] > p[1])) return '';
+    placed.push(bx);
+    return `<text class="pf-lbl rg-lbl" data-fs="9" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${esc(text)}</text>`;
+  }).join('');
+
+  const nowInfo = rigNow(name);
+  const state = nowInfo ? rigState(nowInfo, rigAis.now.asOf) : null;
+  const cur = rg.stays[rg.stays.length - 1];
+  document.getElementById('wdBody').innerHTML = `
+    <div class="wd-head">
+      <div><h2>${esc(name)}</h2>
+        <div class="wd-sub">${state ? `<span class="ex-dot" style="background:${RIG_STATE[state].color}"></span>${RIG_STATE[state].label}` : 'Rig'}${
+          nowInfo ? ` · ${esc(placeText(nowInfo.place))}${nowInfo.since ? ' since ' + fmtMin(nowInfo.since) : ''}` : ''}${
+          nowInfo && nowInfo.dest ? ` · AIS destination “${esc(nowInfo.dest)}”` : ''}</div></div>
+      <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="pf-card">
+      <svg id="rgSvg" class="ex-map rg-map" viewBox="0 0 ${RG_W} ${RG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Track of ${esc(name)}">
+        ${rigBaseLayers(P)}
+        <path d="${dashed}" fill="none" stroke="#9aa5b1" stroke-width="1.4" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>
+        <path d="${solid}" fill="none" stroke="#c9b3c0" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+        <polyline id="rgPlayed" points="" fill="none" stroke="${OIL_COLOR}" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        ${stayDots}${labels}
+        <g id="rgMarker"><circle data-r="11" r="11" fill="${OIL_COLOR}" fill-opacity="0.25"/>
+          <circle data-r="5.5" r="5.5" fill="${OIL_COLOR}" stroke="#fff" stroke-width="1.8" vector-effect="non-scaling-stroke"/></g>
+        <text id="rgDate" x="10" y="20" class="rg-date" data-fs="14"></text>
+      </svg>
+      <div class="rg-ctl">
+        <button class="ex-btn ex-btn-main" id="rgPlay" onclick="rigToggle()">▶ Play</button>
+        <select class="year-select" onchange="rigSetSpeed(+this.value)" aria-label="Speed">
+          ${RG_SPEEDS.map(([v, l]) => `<option value="${v}"${v === rg.speed ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <input id="rgSlider" class="rg-slider" type="range" min="${rg.t0}" max="${rg.t1}" step="60" value="${rg.t}" oninput="rigSeek(+this.value)" aria-label="Time">
+        <select class="year-select" onchange="rigSetPeriod(+this.value)" aria-label="Period">
+          ${RG_PERIODS.map(([v, l]) => `<option value="${v}"${v === rg.period ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <button class="grp-btn" onclick="rigFit()">Fit</button>
+        <button class="grp-btn" onclick="rigZoomRig()">Zoom to rig</button>
+      </div>
+      <div class="pf-map-note">Stays are shown as circles sized by duration — green on a field or well, blue in port. The line is dashed
+        where AIS data is missing. Source: Kystverket (NLOD). History for the last weeks is thinner while the monthly AIS load catches up.</div>
+    </div>
+    <div class="pf-card"><h3>Destinations in the period · ${rg.stays.length}</h3>
+      <div class="rg-stays" id="rgStays">${rigStaysHtml()}</div></div>
+    <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
+  rg.svg = document.getElementById('rgSvg');
+  rg.view = {x: 0, y: 0, w: RG_W};
+  rigRender();
+  const list = document.getElementById('rgStays');
+  const act = list.querySelector('.rg-active');
+  if (act) list.scrollTop = act.offsetTop - 60;
+}
+
+function rigStaysHtml() {
+  const wellsOf = ids => (ids || []).map(id => explById[id]).filter(Boolean)
+    .map(w => w.title).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3);
+  return rg.stays.map((s, i) => ({s, i})).reverse().map(({s, i}) => {
+    const icon = {port: '⚓', field: '◉', well: '◉', sea: '○'}[s[4]] || '○';
+    const w = wellsOf(s[7]);
+    return `<div class="rg-stay-row" data-i="${i}" onclick="rigSeek(${s[0]}, true)">
+      <span class="rg-ic rg-ic-${s[4]}">${icon}</span>
+      <div class="rg-st-main"><strong>${esc(stayName(s[4], s[5]))}</strong>${s[6] && s[6] !== s[5] ? `<span class="rg-st-sub"> · ${esc(tc(s[6]))}</span>` : ''}
+        ${w.length ? `<span class="rg-st-sub"> · well ${w.map(esc).join(', ')}</span>` : ''}</div>
+      <div class="rg-st-when">${fmtMin(s[0])} – ${s[1] >= rg.t1 - 5 ? 'now' : fmtMin(s[1])}<span class="rg-st-dur">${fmtDur(s[1] - s[0])}</span></div></div>`;
+  }).join('') || '<div class="pf-map-note">No stays of 6 hours or more in the period.</div>';
+}
+
+// Posisjon ved tidspunkt t: lineær interpolasjon mellom veipunktene.
+function rigPosAt(wp, t) {
+  if (t <= wp[0][0]) return [wp[0][1], wp[0][2]];
+  const n = wp.length;
+  if (t >= wp[n - 1][0]) return [wp[n - 1][1], wp[n - 1][2]];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (wp[mid][0] <= t) lo = mid; else hi = mid; }
+  const a = wp[lo], b = wp[hi], f = (t - a[0]) / (b[0] - a[0] || 1);
+  return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+}
+
+function rigRender() {
+  if (!rg || !rg.svg) return;
+  const [lon, lat] = rigPosAt(rg.wp, rg.t);
+  const x = rg.P.px(lon), y = rg.P.py(lat);
+  document.getElementById('rgMarker').setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+  let i = 0;
+  while (i + 1 < rg.wp.length && rg.wp[i + 1][0] <= rg.t) i++;
+  const pts = rg.xy.slice(0, i + 1).map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1));
+  pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+  document.getElementById('rgPlayed').setAttribute('points', pts.join(' '));
+  document.getElementById('rgDate').textContent = fmtMin(rg.t);
+  document.getElementById('rgSlider').value = rg.t;
+  // Aktivt opphold: det riggen står på nå, ellers ingenting (på vei).
+  const si = rg.stays.findIndex(s => s[0] <= rg.t && rg.t <= s[1]);
+  if (si !== rg.activeStay) {
+    rg.activeStay = si;
+    document.querySelectorAll('#rgStays .rg-stay-row').forEach(r => r.classList.toggle('rg-active', +r.dataset.i === si));
+    document.querySelectorAll('#rgSvg .rg-stay').forEach(c => c.classList.toggle('rg-stay-on', +c.dataset.i === si));
+    const act = document.querySelector('#rgStays .rg-active');
+    if (act && rg.playing) act.scrollIntoView({block: 'nearest'});
+  }
+  if (rg.follow) rigCenterOn(x, y);
+}
+
+function rigFrame(ts) {
+  if (!rg || !rg.playing) return;
+  const dt = Math.min((ts - rg.lastTs) / 1000, 0.2);
+  rg.lastTs = ts;
+  rg.t = Math.min(rg.t1, rg.t + dt * rg.speed * 1440);
+  rigRender();
+  if (rg.t >= rg.t1) { rigToggle(false); return; }
+  rg.raf = requestAnimationFrame(rigFrame);
+}
+
+function rigToggle(on) {
+  if (!rg) return;
+  const play = on === undefined ? !rg.playing : on;
+  if (play) {
+    if (rg.t >= rg.t1 - 1) rg.t = rg.t0;   // spill av på nytt fra starten
+    rg.playing = true;
+    rg.lastTs = performance.now();
+    rg.raf = requestAnimationFrame(rigFrame);
+  } else {
+    rigStop();
+  }
+  const b = document.getElementById('rgPlay');
+  if (b) b.textContent = rg.playing ? '❚❚ Pause' : '▶ Play';
+}
+
+function rigSeek(t, zoom) {
+  if (!rg) return;
+  rg.t = Math.min(rg.t1, Math.max(rg.t0, t));
+  rigRender();
+  if (zoom) {
+    rg.follow = false;
+    const [lon, lat] = rigPosAt(rg.wp, rg.t);
+    rigZoomTo(rg.P.px(lon), rg.P.py(lat), 0.22);
+  }
+}
+function rigSetSpeed(v) { if (rg) rg.speed = v; }
+function rigSetPeriod(days) { if (!rg) return; rigStop(); rg.period = days; rigBuild(true); }
+
+// Zoom: viewBox flyttes, og symbolene skaleres tilbake så de beholder pikselstørrelsen.
+function rigApplyView() {
+  const v = rg.view, k = v.w / RG_W;
+  rg.svg.setAttribute('viewBox', `${v.x.toFixed(1)} ${v.y.toFixed(1)} ${v.w.toFixed(1)} ${(v.w * RG_H / RG_W).toFixed(1)}`);
+  rg.svg.querySelectorAll('[data-r]').forEach(c => c.setAttribute('r', (c.dataset.r * k).toFixed(2)));
+  rg.svg.querySelectorAll('[data-fs]').forEach(t => { t.style.fontSize = (t.dataset.fs * k).toFixed(2) + 'px'; });
+  rg.svg.querySelectorAll('.rg-date').forEach(t => { t.setAttribute('x', (v.x + 10 * k).toFixed(1)); t.setAttribute('y', (v.y + 20 * k).toFixed(1)); });
+}
+function rigZoomTo(x, y, frac) {
+  const w = RG_W * frac, h = RG_H * frac;
+  rg.view = {x: x - w / 2, y: y - h / 2, w};
+  rigApplyView();
+}
+function rigCenterOn(x, y) {
+  const v = rg.view; if (v.w >= RG_W) return;
+  v.x = x - v.w / 2; v.y = y - (v.w * RG_H / RG_W) / 2;
+  rigApplyView();
+}
+function rigFit() { if (!rg) return; rg.follow = false; rg.view = {x: 0, y: 0, w: RG_W}; rigApplyView(); }
+function rigZoomRig() {
+  if (!rg) return;
+  rg.follow = true;
+  const [lon, lat] = rigPosAt(rg.wp, rg.t);
+  rigZoomTo(rg.P.px(lon), rg.P.py(lat), 0.22);
+}
 
 // ── Hopp til/fra andre moduser ───────────────────────────────────────────────
 function syncModeButtons() {
