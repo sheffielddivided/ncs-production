@@ -660,10 +660,10 @@ let topMode    = 'companies';
 let period     = 'monthly';
 let showWater  = false;
 
-let fieldSubView   = 'oilgas';
-let hubSubView     = 'oilgas';
+let fieldSubView   = 'oe_per_field';
+let hubSubView     = 'oe_per_field';
 let discoverySubView = 'per_discovery';
-let companySubView = 'oilgas';
+let companySubView = 'oe_per_field';
 
 let allFields            = [];
 let filteredFields       = [];
@@ -1790,7 +1790,7 @@ function discoveryPartners(d) {
 // slutt, så en delt visning man har åpnet blir borte også fra adressefeltet.
 function resetView() {
   topMode = 'companies';
-  fieldSubView = hubSubView = companySubView = 'oilgas';
+  fieldSubView = hubSubView = companySubView = 'oe_per_field';
   discoverySubView = 'per_discovery';
   hubReserveGrouping = 'field';
   period = 'monthly';
