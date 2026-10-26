@@ -2009,6 +2009,7 @@ function stateToHash() {
     if (prF.selSet) q.set('pf', prF.sel.join(SEP));
     if (prF.bm) q.set('pm', '1');
     if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
+    if (prF.real) q.set('pr', '1');
   }
   else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
@@ -2098,6 +2099,7 @@ function applyHash() {
     if (q.has('pf')) { prF.sel = q.get('pf') ? q.get('pf').split(SEP) : []; prF.selSet = true; }
     prF.bm = q.get('pm') === '1';
     if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
+    prF.real = q.get('pr') === '1';
   }
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
@@ -2411,8 +2413,8 @@ let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices')]).then(([b, d, e, g]) => {
-    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g} : {};
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi')]).then(([b, d, e, g, c]) => {
+    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c} : {};
     if (!priceData.diff) return;
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
@@ -2502,15 +2504,42 @@ function priceSet(k, v) { prF[k] = v; syncUrl(); drawChart(); }
 const PRICE_COLORS = PALETTE.map(p => p[0]);
 
 // Felles verktøylinje: periode, og for Brent dag/måned.
-function priceBar() {
+// Realpriser: nominell pris × KPI(basis) / KPI(måneden), med prisindeksen for
+// valutaen prisen vises i (USD: amerikansk CPI-U, EUR: euroområdets HICP,
+// NOK: norsk KPI; data/cpi.json fra fetch_cpi.py). Basis er alltid siste
+// publiserte observasjon i indeksen, så tallene flytter seg hver gang en ny
+// KPI kommer. Måneder etter siste KPI får faktor 1.
+function cpiLast(cur) {
+  const s = priceData.cpi && priceData.cpi.series[cur];
+  return s ? Object.keys(s).sort().pop() : null;
+}
+function cpiFactor(cur, month) {
+  const s = priceData.cpi && priceData.cpi.series[cur];
+  if (!s) return null;
+  const last = cpiLast(cur);
+  if (month >= last) return 1;
+  return s[month] ? s[last] / s[month] : null;
+}
+const cpiLabel = cur => { const m = cpiLast(cur); return m ? `${MONTH_ABBR[+m.slice(5) - 1]} ${m.slice(0, 4)}` : ''; };
+const CPI_NAME = {USD: 'US CPI-U (BLS)', EUR: 'euro area HICP (Eurostat)', NOK: 'Norwegian CPI (SSB)'};
+function cpiNote(cur) {
+  const ip = ((priceData.cpi || {}).interpolated || {})[cur] || [];
+  return `<strong>Real prices:</strong> nominal price × CPI in ${cpiLabel(cur)} / CPI in the month, using ${CPI_NAME[cur]}; the base is always the latest published CPI month` +
+    (ip.length ? `; ${ip.join(', ')} interpolated (not published)` : '');
+}
+
+function priceBar(extra = '') {
   const years = priceYears();
   const sel = (k) => `<select class="year-select" onchange="pricePeriod('${k}', this.value)" aria-label="${k === 'y0' ? 'From year' : 'To year'}">
     ${years.map(y => `<option value="${y}"${y === prF[k] ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
   const bm = priceSubView === 'brent' ? `<div class="pill-group">
       <button class="pill-btn${prF.bm ? '' : ' active'}" onclick="priceSet('bm', false)">Daily</button>
       <button class="pill-btn${prF.bm ? ' active' : ''}" onclick="priceSet('bm', true)">Monthly average</button></div>` : '';
+  const real = (priceSubView === 'brent' || priceSubView === 'gas') && priceData.cpi ? `<div class="pill-group">
+      <button class="pill-btn${prF.real ? '' : ' active'}" onclick="priceSet('real', false)">Nominal</button>
+      <button class="pill-btn${prF.real ? ' active' : ''}" onclick="priceSet('real', true)">Real (${cpiLabel(priceSubView === 'gas' ? gasCur() : 'USD')} prices)</button></div>` : '';
   return `<div class="np-bar">
-    <span class="ctrl-label">Period</span>${sel('y0')}<span>–</span>${sel('y1')}${bm}</div>`;
+    <span class="ctrl-label">Period</span>${sel('y0')}<span>–</span>${sel('y1')}${bm}${extra}${real}</div>`;
 }
 
 async function refreshPrices() {
@@ -2579,10 +2608,19 @@ function drawPriceBrent() {
     dFit = labels.map(d => all.get(d).f ?? (fit.length && d === sp.lastP ? all.get(d).b ?? null : null));
     dTail = labels.map(d => all.get(d).t ?? (tail.length && d === (lastFitD || sp.lastP) ? (all.get(d).f ?? all.get(d).b ?? null) : null));
   }
+  // Realvisning: alle tre linjene realjusteres med amerikansk KPI, og den
+  // nominelle serien vises som svak linje bak.
+  let nominal = null;
+  if (prF.real) {
+    nominal = labels.map((_, i) => dBase[i] ?? dFit[i] ?? dTail[i] ?? null);
+    const re = arr => arr.map((v, i) => { const f = v == null ? null : cpiFactor('USD', labels[i].slice(0, 7)); return f == null ? null : +(v * f).toFixed(2); });
+    dBase = re(dBase); dFit = re(dFit); dTail = re(dTail);
+  }
   const C = 'rgba(0,48,87,0.9)', F = 'rgba(232,110,30,0.95)', T = 'rgba(232,110,30,0.6)';
-  const datasets = [{label: 'Dated Brent (Petroleum Price Board)', data: dBase, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0}];
+  const datasets = [{label: 'Dated Brent (Petroleum Price Board)' + (prF.real ? ', real' : ''), data: dBase, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0}];
   if (dFit.some(v => v != null)) datasets.push({label: `Extension: ${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average`, data: dFit, borderColor: F, backgroundColor: F, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0});
   if (dTail.some(v => v != null)) datasets.push({label: 'Latest EIA daily quotes (not averaged)', data: dTail, borderColor: T, backgroundColor: T, borderWidth: 2, borderDash: [4, 3], pointRadius: 0, tension: 0});
+  if (nominal) datasets.push({label: 'Nominal', data: nominal, borderColor: 'rgba(0,48,87,0.25)', backgroundColor: 'rgba(0,48,87,0.25)', borderWidth: 1.5, pointRadius: 0, tension: 0});
   document.getElementById('chartArea').innerHTML = `${priceBar()}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}"></div>${esc(d.label)}</div>`).join('')}</div>`;
@@ -2592,11 +2630,11 @@ function drawPriceBrent() {
   const vals = labels.map((_, i) => dBase[i] ?? dFit[i]).filter(v => v != null);
   const fmtD = d => fmtShort(d);
   const lastFit = sp.fit.length ? sp.fit[sp.fit.length - 1] : null, lastTail = sp.tail.length ? sp.tail[sp.tail.length - 1] : null;
-  setChartTitle('Dated Brent', `${prF.bm ? 'Monthly average' : 'Daily'} · $/bbl · ${prF.y0}–${prF.y1}`);
-  setInfo(`<strong>Official:</strong> ${lastBase[1].toLocaleString('en', {maximumFractionDigits: 2})} $/bbl on ${fmtD(lastBase[0])} (latest from the Petroleum Price Board)` +
+  setChartTitle('Dated Brent', `${prF.bm ? 'Monthly average' : 'Daily'} · $/bbl${prF.real ? ` · real, ${cpiLabel('USD')} prices` : ''} · ${prF.y0}–${prF.y1}`);
+  setInfo((prF.real ? cpiNote('USD') + '; the latest values below are nominal &nbsp;|&nbsp; ' : '') + `<strong>Official:</strong> ${lastBase[1].toLocaleString('en', {maximumFractionDigits: 2})} $/bbl on ${fmtD(lastBase[0])} (latest from the Petroleum Price Board)` +
     (lastFit ? ` &nbsp;|&nbsp; <strong>Extended to ${fmtD(lastFit[0])}:</strong> ${lastFit[1].toFixed(2)} $/bbl` : '') +
     (lastTail ? ` &nbsp;|&nbsp; <strong>Latest EIA quote:</strong> ${lastTail[1].toFixed(2)} $/bbl on ${fmtD(lastTail[0])}` : '') +
-    ` &nbsp;|&nbsp; <strong>Period:</strong> low ${Math.min(...vals).toFixed(2)}, high ${Math.max(...vals).toFixed(2)} $/bbl` +
+    ` &nbsp;|&nbsp; <strong>Period${prF.real ? ' (real)' : ''}:</strong> low ${Math.min(...vals).toFixed(2)}, high ${Math.max(...vals).toFixed(2)} $/bbl` +
     ` &nbsp;|&nbsp; <strong>Construction:</strong> the Board's Dated Brent for a date is the average of the next five published Platts Dated Brent quotes after that date, rounded to 0.05. The orange extension applies the same rule to EIA's Brent spot price (series RBRTE) and is preliminary; small differences between spot and Dated Brent are expected. The dashed tail is EIA's latest daily quotes, which do not yet have five quotes after them` +
     ` &nbsp;|&nbsp; ${PRICE_SRC}; U.S. Energy Information Administration (EIA)`);
 }
@@ -2707,6 +2745,15 @@ function gasConvert(r, kind) {
   return r.eur ? noksm3 / r.eur / GAS_MWH_PER_SM3 : null;
 }
 
+const gasCur = () => ({eurmwh: 'EUR', noksm3: 'NOK'})[prF.gu || 'eurmwh'] || 'USD';
+// Pris i valgt enhet, realjustert når Real er valgt.
+function gasValue(r, kind) {
+  const v = gasConvert(r, kind);
+  if (v == null || !prF.real) return v;
+  const f = cpiFactor(gasCur(), r.m);
+  return f == null ? null : v * f;
+}
+
 function drawPriceGas() {
   const rows = gasRows().filter(r => { const y = +r.m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; });
   const unit = (GAS_UNITS.find(x => x[0] === (prF.gu || 'eurmwh')) || GAS_UNITS[0])[1];
@@ -2714,11 +2761,14 @@ function drawPriceGas() {
                   ['eu', 'Europe, TTF-based (IMF)', 'rgba(232,110,30,0.9)', 2],
                   ['hh', 'Henry Hub, US', 'rgba(0,150,100,0.85)', 1.5]];
   const labels = rows.map(r => r.m);
-  const datasets = series.map(([k, l, c, w]) => ({label: l, data: rows.map(r => { const v = gasConvert(r, k); return v == null ? null : +v.toFixed(2); }),
+  const datasets = series.map(([k, l, c, w]) => ({label: l + (prF.real ? ', real' : ''), data: rows.map(r => { const v = gasValue(r, k); return v == null ? null : +v.toFixed(2); }),
     borderColor: c, backgroundColor: c, borderWidth: w, pointRadius: labels.length > 48 ? 0 : 2, tension: 0, spanGaps: false}));
+  // Realvisning: den nominelle norske eksportprisen som svak linje bak.
+  if (prF.real) datasets.push({label: 'Norwegian export price, nominal', data: rows.map(r => { const v = gasConvert(r, 'no'); return v == null ? null : +v.toFixed(2); }),
+    borderColor: 'rgba(0,48,87,0.28)', backgroundColor: 'rgba(0,48,87,0.28)', borderWidth: 1.5, pointRadius: 0, tension: 0, spanGaps: false});
   const pills = `<div class="pill-group">${GAS_UNITS.map(([k, l]) =>
     `<button class="pill-btn${(prF.gu || 'eurmwh') === k ? ' active' : ''}" onclick="priceSet('gu','${k}')">${l}</button>`).join('')}</div>`;
-  document.getElementById('chartArea').innerHTML = `${priceBar().replace('</div>', pills + '</div>')}
+  document.getElementById('chartArea').innerHTML = `${priceBar(pills)}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}"></div>${esc(d.label)}</div>`).join('')}</div>`;
   priceLineChart(labels, datasets, unit);
@@ -2735,14 +2785,14 @@ function drawPriceGas() {
   const f1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   setChartTable(`
     <table class="res-table">
-      <caption>Norwegian gas exports, last 12 months · prices in ${unit}</caption>
+      <caption>Norwegian gas exports, last 12 months · prices in ${unit}${prF.real ? `, real (${cpiLabel(gasCur())} prices)` : ''}</caption>
       <thead><tr><th>Month</th><th>Volume, bn Sm³</th><th>Value, NOK bn</th><th>Norwegian export price</th><th>Europe (IMF)</th><th>Henry Hub</th></tr></thead>
       <tbody>${withNo.map(r => `<tr><td>${r.m}</td><td>${f1(r.sm3 / 1e9)}</td><td>${f1(r.nok / 1e9)}</td>
-        <td>${f2(gasConvert(r, 'no'))}</td><td>${f2(gasConvert(r, 'eu'))}</td><td>${f2(gasConvert(r, 'hh'))}</td></tr>`).join('')}</tbody>
+        <td>${f2(gasValue(r, 'no'))}</td><td>${f2(gasValue(r, 'eu'))}</td><td>${f2(gasValue(r, 'hh'))}</td></tr>`).join('')}</tbody>
     </table>`);
   const last = withNo[0], hhSrc = (priceData.gas.sources || {}).hh === 'EIA' ? 'EIA' : 'EIA via FRED';
-  setChartTitle('Gas prices', `Monthly · ${unit} · ${prF.y0}–${prF.y1}`);
-  setInfo(`<strong>Latest Norwegian export price:</strong> ${last ? `${f2(gasConvert(last, 'no'))} ${unit} (${last.m}), ${f1(last.sm3 / 1e9)} bn Sm³ exported` : '—'} &nbsp;|&nbsp; ` +
+  setChartTitle('Gas prices', `Monthly · ${unit}${prF.real ? ` · real, ${cpiLabel(gasCur())} prices` : ''} · ${prF.y0}–${prF.y1}`);
+  setInfo((prF.real ? cpiNote(gasCur()) + ' &nbsp;|&nbsp; ' : '') + `<strong>Latest Norwegian export price:</strong> ${last ? `${f2(gasValue(last, 'no'))} ${unit} (${last.m}), ${f1(last.sm3 / 1e9)} bn Sm³ exported` : '—'} &nbsp;|&nbsp; ` +
     `<strong>Norwegian export price</strong> = export value / export volume of natural gas in gaseous state (HS 27112100), i.e. what Norwegian gas was actually sold for, including long-term contracts &nbsp;|&nbsp; ` +
     `<strong>Conversion:</strong> monthly average exchange rates from Norges Bank; energy content assumed ${GAS_MJ_PER_SM3} MJ/Sm³ (gross), so converted figures are approximate; USD/boe uses Sodir's oil-equivalent convention (1 000 Sm³ gas = 1 Sm³ o.e. = ${BBL_PER_SM3} bbl, about ${Math.round(1 / GAS_BOE_PER_SM3)} Sm³ per boe), which makes it directly comparable with Brent in $/bbl &nbsp;|&nbsp; ` +
     `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank. Daily European hub prices (TTF, NBP) are licensed and not shown`);

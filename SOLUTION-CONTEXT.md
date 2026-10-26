@@ -1146,6 +1146,18 @@ EUR/NOK brukes til omregning, og 40 MJ/Sm³ som antatt brennverdi
 USD/boe, NOK/Sm³). USD/boe bruker Sodirs o.e.-omregning (1 000 Sm³ gass =
 1 Sm³ o.e. = 6,29 fat), som resten av appen. Daglige hubpriser (TTF, NBP) er lisensierte og er bevisst ikke med.
 
+**Realpriser** (`pr=1`, knappene Nominal / Real på Dated Brent og Gas):
+nominell pris × KPI(siste måned) / KPI(prisens måned), med indeksen for
+valutaen som vises: USD bruker amerikansk CPI-U (BLS via FRED CPIAUCSL), EUR
+euroområdets HICP (Eurostat `prc_hicp_minr`) og NOK SSBs KPI (tabell 14710).
+Basisen er alltid siste publiserte KPI-måned for valutaen (`cpiLast`), så
+den flytter seg av seg selv når nye tall kommer; måneder etter den får
+faktor 1. Indeksene hentes av `fetch_cpi.py` til `data/cpi.json` (eget steg,
+`continue-on-error`). Enkeltmåneder som mangler midt i en serie fylles med
+snittet av naboene og merkes i `interpolated` (USD 2025-10, som BLS ikke
+publiserte). Realkurven er hovedlinjen, med nominell pris som blek linje.
+Differentials og Heatmap er differanser og vises bare nominelt.
+
 **Konstruksjonen av Datert Brent og skjøten.** Petroleumsprisrådets Datert
 Brent for dato *d* er snittet av de **fem neste publiserte Platts Dated
 Brent-noteringene (PCAAS00) etter *d*** — ikke *d* selv — rundet til nærmeste

@@ -51,6 +51,12 @@ jobs:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: python fetch_gas.py
 
+      # Konsumprisindekser (USD, EUR, NOK) til realprisvisningen i Prices.
+      - name: Hent konsumprisindekser
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_cpi.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB
