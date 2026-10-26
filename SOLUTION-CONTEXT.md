@@ -1134,6 +1134,23 @@ Periode (`py=2023-2026`) og feltutvalg (`pf`) deles mellom fanene og ligger
 i lenken. Korrelasjonsstudien (`normpris-korrelasjon.html`) er fortsatt en
 egen side; lenken tilbake derfra peker på Prices. Gasspriser er ikke med.
 
+**Konstruksjonen av Datert Brent og skjøten.** Petroleumsprisrådets Datert
+Brent for dato *d* er snittet av de **fem neste publiserte Platts Dated
+Brent-noteringene (PCAAS00) etter *d*** — ikke *d* selv — rundet til nærmeste
+0,05 $/fat med halve opp. Helger får fredagens verdi, og britiske
+helligdager (der Platts ikke publiserer) hoppes over. Regelen gjenskaper
+serien eksakt for alle 982 dager i perioden okt. 2023–jun. 2026, kontrollert
+mot daglige Platts-data levert av bruker (ikke i repoet, lisensiert).
+
+Serien kommer med flere måneders forsinkelse, så grafen skjøtes med EIAs
+Brent spot (RBRTE) fra `data/brent_eia.json`, hentet daglig av
+`fetch_eia.py` med GitHub-hemmeligheten `EIA_API_KEY` (uten nøkkel, eller
+når EIA ikke svarer: samme serie fra FRED, DCOILBRENTEU). `priceSplice`
+bruker samme femdagersregel på EIA-prisene for dagene etter Rådets siste
+dato (oransje linje); mot Rådets serie gir det median avvik 0,24 $/fat
+(2020–2026), mot 1,34 for rå dagspriser. De siste dagene, som ennå ikke har
+fem noteringer etter seg, vises som rå EIA-dagspriser (stiplet hale).
+
 #### PowerPoint-eksport
 
 «Download PPT» (`downloadPpt`) lager en .pptx med grafen som ekte
