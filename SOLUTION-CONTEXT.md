@@ -1143,7 +1143,8 @@ naturgass i gassform (tabell 11008, HS 27112100), IMFs «Natural gas, EU»
 `EIA_API_KEY`, ellers FRED MHHNGSP). Norges Banks månedssnitt for USD/NOK og
 EUR/NOK brukes til omregning, og 40 MJ/Sm³ som antatt brennverdi
 (`GAS_MJ_PER_SM3`). Enhet velges med `pu` (EUR/MWh standard, USD/MMBtu,
-NOK/Sm³). Daglige hubpriser (TTF, NBP) er lisensierte og er bevisst ikke med.
+USD/boe, NOK/Sm³). USD/boe bruker Sodirs o.e.-omregning (1 000 Sm³ gass =
+1 Sm³ o.e. = 6,29 fat), som resten av appen. Daglige hubpriser (TTF, NBP) er lisensierte og er bevisst ikke med.
 
 **Konstruksjonen av Datert Brent og skjøten.** Petroleumsprisrådets Datert
 Brent for dato *d* er snittet av de **fem neste publiserte Platts Dated
