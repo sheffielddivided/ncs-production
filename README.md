@@ -49,6 +49,7 @@ statiske JSON-filer i dette repoet.
 | `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
+| `fetch_gas.py` | Henter månedlige gasspriser (SSB eksportpris, IMF Europa, Henry Hub, Norges Bank-kurser) til `data/gas_prices.json` |
 | `fetch_eia.py` | Henter daglig Brent spot (EIA RBRTE, ev. FRED) til `data/brent_eia.json`, skjøten av Datert Brent |
 | `fetch_normpris.py` | Bygger `data/normpris_*.json` fra xlsx-filene |
 | `data/normpris_brent.json` | Daglig Datert Brent, $/fat |
