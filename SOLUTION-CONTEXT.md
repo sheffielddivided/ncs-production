@@ -1115,6 +1115,7 @@ slik at den kan merkes manuelt.
 | Companies | Prod per field | `drawCompaniesOePerField` (`:3535`) | Én serie per felt, equity-justert |
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:3402`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
 | Companies | Reserves | `drawCompaniesReserves` (`:4109`) | **Kun gjenstående** reserver over tid, stablet Liquids/Gas, summert over valgte selskaper, equity-justert. Tabell under: per hub og felt |
+| Companies | Operated | `drawCompaniesOperated` | Ett selskap (enkeltvalg). Egenandelsjustert netto OE stablet som operert (felt der selskapet var operatør på datoen, fra `data/field_operators.json`, Sodir lag 7110, bygget av `build_field_operators()`) og partner. Tabell under: feltene i siste periode med rolle, andel og produksjon |
 | Companies | Exploration | `drawCompaniesExploration` | Letebrønner per spuddår (grupperte brønner, sidesteg slått sammen), stablet operert/ikke-operert, med funnraten (funnbrønner / avsluttede brønner) som linje på høyre akse. Veksler «Wildcats only» (`cw=1`). Klikk på et år viser brønnene i tabellen under (`cy=`). Eierskap og selskapsnavn er som på spuddatoen |
 | Companies | Profile | `drawCompanyProfile` | Faktaark for **ett** selskap: årlig egenandelsjustert produksjon per hub i grafen, og under den nøkkeltall, kart, portefølje gruppert per hub, ressurser og en sorterbar lisenstabell |
 
@@ -1183,6 +1184,13 @@ skrift som krymper med antall selskaper. Kurven lagres i localStorage og lastes 
 med ett lysbilde per element, i den rekkefølgen panelet viser.
 
 #### NCS-modusen
+
+Standardvalg: appen åpner på Companies / Prod per hub med Aker BP.
+NCS / Production bruker årsoppløsning fra 1970 når man går inn i NCS
+(`ncsEnterPeriod`); perioden man hadde ellers settes tilbake når man går
+ut, med mindre den er endret i NCS. Discoveries åpner på Per company,
+Exploration / Rigs med «MODUs only» på (`xm=0` i lenken slår det av), og
+Prices fra året før inneværende år.
 
 Hele sokkelen samlet, uten utvalg (velgerknappen er skjult, `body.ncs`).
 Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`, `nf`, `ne`, `ns`).
