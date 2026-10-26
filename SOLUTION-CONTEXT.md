@@ -1146,7 +1146,9 @@ PNG-reserve, så PowerPoint 365 viser vektorgrafikk som kan konverteres til
 figurer. Kortets forklaring legges på lysbildet som fargeruter med tekst,
 og noten som fotnote. Kort med søyler bygd i HTML (lisensoversikten og
 tildelinger per selskap i Rounds) har `data-ppt-spec` og en grafbeskrivelse
-i `pptCardSpecs`, og «+ PPT» gir der en ekte graf. Kurven lagres i localStorage og lastes ned som én fil
+i `pptCardSpecs`, og «+ PPT» gir der en ekte graf. Overlappsmatrisen blir en
+PowerPoint-tabell (`kind: 'table'`) med cellefargene blandet mot hvitt og
+skrift som krymper med antall selskaper. Kurven lagres i localStorage og lastes ned som én fil
 med ett lysbilde per element, i den rekkefølgen panelet viser.
 
 #### NCS-modusen
