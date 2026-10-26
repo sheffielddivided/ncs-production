@@ -42,6 +42,15 @@ jobs:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: python fetch_eia.py
 
+      # Månedlige gasspriser (SSB eksportpris, IMF Europa, Henry Hub, Norges
+      # Bank-kurser) til Gas-fanen i Prices.
+      - name: Hent gasspriser
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+        run: python fetch_gas.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB
