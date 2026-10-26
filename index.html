@@ -120,7 +120,18 @@
     .np-chip:disabled{opacity:0.4;cursor:not-allowed;}
     .np-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid #9aa5b1;}
     .np-legend{display:flex;align-items:center;gap:8px;font-size:0.72rem;color:var(--muted);margin:0 0 8px;flex-wrap:wrap;}
-    .np-ramp{width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#eb6834,#e9e8e4,#2a78d6);}
+    .np-ramp{width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#f1f3f6,#003057);}
+    .og-table td{text-align:center;min-width:34px;}
+    .og-table th,.og-table td{padding:1px 3px;line-height:1.25;}
+    .og-scroll{max-height:640px;}
+    .og-table tfoot th{position:sticky;bottom:0;background:#fff;z-index:2;}
+    .og-table tfoot th:first-child{left:0;z-index:3;}
+    .og-table td.e{background:#f5f6f8;}
+    .og-table .vl{border-left:3px solid #1a2332;}
+    .og-table .hl{border-bottom:3px solid #1a2332;}
+    .og-table tfoot th{color:var(--muted);font-weight:600;text-align:center;line-height:1.15;}
+    .og-table tbody th{min-width:64px;text-align:right;}
+    .og-quad td,.og-quad th{text-align:center;}
     .np-scroll{overflow:auto;max-height:560px;border:1px solid var(--border);border-radius:8px;}
     .np-table{border-collapse:separate;border-spacing:0;font-size:0.66rem;font-variant-numeric:tabular-nums;}
     .np-table th,.np-table td{padding:3px 4px;text-align:right;white-space:nowrap;min-width:42px;border-right:2px solid #fff;border-bottom:2px solid #fff;}
@@ -2010,6 +2021,8 @@ function stateToHash() {
     if (prF.bm) q.set('pm', '1');
     if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
     if (prF.real) q.set('pr', '1');
+    if (prF.og === 'grid') q.set('po', 'grid');
+    if (prF.gk && prF.gk !== 'no') q.set('pg', prF.gk);
   }
   else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
@@ -2051,7 +2064,8 @@ function applyHash() {
              : topMode === 'licences' ? LIC_TABS
              : topMode === 'ncs' ? NCS_TABS
              : topMode === 'prices' ? PRICE_TABS : COMPANY_TABS;
-  const v = q.get('v');
+  // Prices / Heatmap er erstattet av Oil vs gas; gamle lenker sendes dit.
+  const v = topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas' : q.get('v');
   if (tabs.some(t => t.id === v)) {
     if (topMode === 'fields') fieldSubView = v;
     else if (topMode === 'hubs') hubSubView = v;
@@ -2100,6 +2114,8 @@ function applyHash() {
     prF.bm = q.get('pm') === '1';
     if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
     prF.real = q.get('pr') === '1';
+    prF.og = q.get('po') === 'grid' ? 'grid' : 'scatter';
+    prF.gk = ['eu', 'hh'].includes(q.get('pg')) ? q.get('pg') : 'no';
   }
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
@@ -2398,8 +2414,8 @@ function drawChart() {
 const PRICE_TABS = [
   {id: 'brent',   label: 'Dated Brent'},
   {id: 'diff',    label: 'Differentials'},
-  {id: 'heatmap', label: 'Heatmap'},
   {id: 'gas',     label: 'Gas'},
+  {id: 'oilgas',  label: 'Oil vs gas'},
 ];
 let priceSubView = 'brent';
 const PRICE_MAX_SEL = 8;
@@ -2535,7 +2551,7 @@ function priceBar(extra = '') {
   const bm = priceSubView === 'brent' ? `<div class="pill-group">
       <button class="pill-btn${prF.bm ? '' : ' active'}" onclick="priceSet('bm', false)">Daily</button>
       <button class="pill-btn${prF.bm ? ' active' : ''}" onclick="priceSet('bm', true)">Monthly average</button></div>` : '';
-  const real = (priceSubView === 'brent' || priceSubView === 'gas') && priceData.cpi ? `<div class="pill-group">
+  const real = ['brent', 'gas', 'oilgas'].includes(priceSubView) && priceData.cpi ? `<div class="pill-group">
       <button class="pill-btn${prF.real ? '' : ' active'}" onclick="priceSet('real', false)">Nominal</button>
       <button class="pill-btn${prF.real ? ' active' : ''}" onclick="priceSet('real', true)">Real (${cpiLabel(priceSubView === 'gas' ? gasCur() : 'USD')} prices)</button></div>` : '';
   return `<div class="np-bar">
@@ -2551,12 +2567,12 @@ async function refreshPrices() {
 
 function drawPrices() {
   if (!priceData || !priceData.diff) return;
-  // Tvinger PPT-knappene til å sjekke tilstanden på nytt (varmekartet har ingen graf).
+  // Tvinger PPT-knappene til å sjekke tilstanden på nytt (tellerutenettet har ingen graf).
   document.getElementById('downloadBtn').disabled = true;
   setProfile(''); setChartTable('');
   if (priceSubView === 'diff') drawPriceDiff();
-  else if (priceSubView === 'heatmap') drawPriceHeatmap();
   else if (priceSubView === 'gas') drawPriceGas();
+  else if (priceSubView === 'oilgas') drawPriceOilGas();
   else drawPriceBrent();
   document.getElementById('downloadBtn').disabled = false;
 }
@@ -2669,37 +2685,6 @@ function drawPriceDiff() {
   setInfo(`<strong>Differential:</strong> the field's norm price minus Dated Brent, set monthly by the Petroleum Price Board &nbsp;|&nbsp; Gaps mean no monthly value: probably no oil sold, or several differentials in the month (sub-periods in 2018 and 2020, not imported) &nbsp;|&nbsp; ${PRICE_SRC}`);
 }
 
-// Varmekart: alle felt og måneder i perioden. Blått over Brent, oransje under.
-// Full farge ved 97-persentilen av absoluttverdiene, så enkeltutslag ikke
-// vasker ut resten.
-function drawPriceHeatmap() {
-  const d = priceData.diff, months = priceMonths();
-  const abs = Object.values(d.fields).flatMap(o => Object.values(o)).map(Math.abs).sort((a, b) => a - b);
-  const clampAt = Math.max(1, abs[Math.floor(abs.length * 0.97)]);
-  const POS = [42, 120, 214], NEG = [235, 104, 52], MID = [233, 232, 228];
-  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
-  const lum = ([r, g, b]) => { const f = v => (v /= 255) <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
-  const nf = v => v.toLocaleString('en', {maximumFractionDigits: 2});
-  const head = months.map((m, i) => { const [y, mm] = m.split('-'); return `<th class="${mm === '01' ? 'yr' : ''}">${MONTH_ABBR[+mm - 1]}<br>${mm === '01' || !i ? y : ''}</th>`; }).join('');
-  const body = Object.keys(d.fields).map(f => `<tr><th scope="row">${esc(f)}</th>${months.map(m => {
-    const v = d.fields[f][m];
-    if (v == null) {
-      const split = (d.split && d.split[f] || []).includes(m);
-      return `<td class="na" title="${esc(f)} ${m}: ${split ? 'several differentials in the month (sub-periods), not imported' : 'no value'}">${split ? '*' : '–'}</td>`;
-    }
-    const bg = mix(MID, v >= 0 ? POS : NEG, Math.min(1, Math.abs(v) / clampAt));
-    return `<td style="background:rgb(${bg});color:${lum(bg) > .35 ? '#0b0b0b' : '#fff'}" title="${esc(f)} ${m}: ${nf(v)} $/bbl">${nf(v)}</td>`;
-  }).join('')}</tr>`).join('');
-  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-  document.getElementById('chartArea').innerHTML = `${priceBar()}
-    <div class="np-legend"><span>Lower</span><span class="np-ramp"></span><span>Higher</span><span>(full colour at ±${nf(clampAt)} $/bbl)</span></div>
-    <div class="np-scroll" tabindex="0"><table class="np-table"><thead><tr><th>Field</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-  lastLabels = months; lastXTitle = 'Month';
-  lastDatasets = Object.keys(d.fields).map(f => ({label: f + ', $/bbl', data: months.map(m => d.fields[f][m] ?? '')}));
-  setChartTitle('Norm price differentials · all fields', `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`);
-  setInfo(`<strong>Colours:</strong> blue is above Brent, orange below, grey around zero &nbsp;|&nbsp; <strong>–</strong> no value; <strong>*</strong> several differentials in the month (sub-periods in 2018 and 2020, not imported) &nbsp;|&nbsp; ${PRICE_SRC}`);
-}
-
 // ── PRICES: GAS ──
 // Månedlige gasspriser fra data/gas_prices.json (fetch_gas.py): norsk
 // eksportpris (SSBs eksportverdi delt på eksportvolum for naturgass i
@@ -2729,8 +2714,7 @@ function gasRows() {
 
 // Pris i valgt enhet. Norsk eksportpris kommer i NOK/Sm³, IMF og Henry Hub
 // i USD/MMBtu; valutakursen er samme måneds snitt.
-function gasConvert(r, kind) {
-  const u = prF.gu || 'eurmwh';
+function gasConvert(r, kind, u = prF.gu || 'eurmwh') {
   let noksm3 = null;
   if (kind === 'no') noksm3 = r.nok && r.sm3 ? r.nok / r.sm3 : null;
   else {
@@ -2796,6 +2780,155 @@ function drawPriceGas() {
     `<strong>Norwegian export price</strong> = export value / export volume of natural gas in gaseous state (HS 27112100), i.e. what Norwegian gas was actually sold for, including long-term contracts &nbsp;|&nbsp; ` +
     `<strong>Conversion:</strong> monthly average exchange rates from Norges Bank; energy content assumed ${GAS_MJ_PER_SM3} MJ/Sm³ (gross), so converted figures are approximate; USD/boe uses Sodir's oil-equivalent convention (1 000 Sm³ gas = 1 Sm³ o.e. = ${BBL_PER_SM3} bbl, about ${Math.round(1 / GAS_BOE_PER_SM3)} Sm³ per boe), which makes it directly comparable with Brent in $/bbl &nbsp;|&nbsp; ` +
     `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank. Daily European hub prices (TTF, NBP) are licensed and not shown`);
+}
+
+// ── PRICES: OIL VS GAS ──
+// Datert Brent mot gasspris, begge i USD/boe, én observasjon per måned (gass
+// finnes bare månedlig). Brent er månedssnittet av den sammenskjøtte
+// dagsserien (Rådets serie + EIA-forlengelsen). Gassprisen regnes om med
+// Sodirs o.e.-omregning, så 1 USD/boe gass har samme energiinnhold som 1
+// $/fat olje. Med Real valgt realjusteres begge med amerikansk KPI.
+const OG_GAS = [['no', 'Norwegian export price'], ['eu', 'Europe (IMF)'], ['hh', 'Henry Hub']];
+const OG_BIN = 5;   // intervallbredde i tellerutenettet, USD/boe
+
+function brentMonthly() {
+  const acc = {};
+  priceData.brent.rows.concat(priceSplice().fit).forEach(([d, v]) => { (acc[d.slice(0, 7)] = acc[d.slice(0, 7)] || []).push(v); });
+  return Object.fromEntries(Object.entries(acc).map(([m, a]) => [m, a.reduce((t, v) => t + v, 0) / a.length]));
+}
+
+function oilGasPoints() {
+  const b = brentMonthly(), k = prF.gk || 'no';
+  return gasRows().filter(r => { const y = +r.m.slice(0, 4); return y >= prF.y0 && y <= prF.y1 && b[r.m] != null; }).map(r => {
+    let x = b[r.m], y = gasConvert(r, k, 'usdboe');
+    if (y == null) return null;
+    if (prF.real) { const f = cpiFactor('USD', r.m); if (f == null) return null; x *= f; y *= f; }
+    return {m: r.m, x: +x.toFixed(2), y: +y.toFixed(2)};
+  }).filter(Boolean);
+}
+
+// Minste kvadraters metode: y = a + b·x.
+function olsFit(p) {
+  const n = p.length, mx = p.reduce((t, q) => t + q.x, 0) / n, my = p.reduce((t, q) => t + q.y, 0) / n;
+  let sxx = 0, sxy = 0, syy = 0;
+  p.forEach(q => { sxx += (q.x - mx) ** 2; sxy += (q.x - mx) * (q.y - my); syy += (q.y - my) ** 2; });
+  const b = sxx ? sxy / sxx : 0;
+  return {a: my - b * mx, b, r2: sxx && syy ? sxy * sxy / (sxx * syy) : 0, n};
+}
+const median = a => { const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+
+function drawPriceOilGas() {
+  const pts = oilGasPoints(), grid = prF.og === 'grid', gk = prF.gk || 'no';
+  const gName = OG_GAS.find(g => g[0] === gk)[1];
+  const pills = `<div class="pill-group">
+      <button class="pill-btn${grid ? '' : ' active'}" onclick="priceSet('og', 'scatter')">Scatter</button>
+      <button class="pill-btn${grid ? ' active' : ''}" onclick="priceSet('og', 'grid')">Count grid</button></div>
+    <div class="pill-group">${OG_GAS.map(([k, l]) => `<button class="pill-btn${gk === k ? ' active' : ''}" onclick="priceSet('gk', '${k}')">${l}</button>`).join('')}</div>`;
+  const realTxt = prF.real ? ` · real, ${cpiLabel('USD')} prices` : '';
+  setChartTitle(`Oil vs gas · ${gName}`, `Monthly · Dated Brent vs gas price, USD/boe${realTxt} · ${prF.y0}–${prF.y1}`);
+  if (pts.length < 3) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.getElementById('chartArea').innerHTML = `${priceBar(pills)}<div class="status">Too few months with both oil and gas prices in the period.</div>`;
+    setInfo(''); return;
+  }
+  const fit = olsFit(pts), f2 = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const xMed = median(pts.map(p => p.x)), yMed = median(pts.map(p => p.y));
+  const vEdge = Math.round(xMed / OG_BIN) * OG_BIN, hEdge = Math.round(yMed / OG_BIN) * OG_BIN;
+  const quad = {ll: 0, lh: 0, hl: 0, hh: 0};
+  pts.forEach(p => { quad[(p.x >= vEdge ? 'h' : 'l') + (p.y >= hEdge ? 'h' : 'l')]++; });
+  lastLabels = pts.map(p => p.m); lastXTitle = 'Month';
+  lastDatasets = [{label: `Dated Brent, USD/bbl${prF.real ? ' (real)' : ''}`, data: pts.map(p => p.x)},
+                  {label: `${gName}, USD/boe${prF.real ? ' (real)' : ''}`, data: pts.map(p => p.y)}];
+  const fitTxt = `gas = ${f2(fit.a)} ${fit.b < 0 ? '−' : '+'} ${Math.abs(fit.b).toFixed(3)} × Brent, R² = ${fit.r2.toFixed(2)}, ${fit.n} months`;
+  const quadTable = `
+    <table class="res-table og-quad">
+      <caption>Months in each quadrant · split at ${vEdge} USD/boe for oil and ${hEdge} USD/boe for gas (the interval edges nearest the medians, ${f2(xMed)} and ${f2(yMed)})</caption>
+      <thead><tr><th></th><th>Oil below ${vEdge}</th><th>Oil ${vEdge} and above</th></tr></thead>
+      <tbody><tr><th>Gas ${hEdge} and above</th><td>${quad.lh}</td><td>${quad.hh}</td></tr>
+             <tr><th>Gas below ${hEdge}</th><td>${quad.ll}</td><td>${quad.hl}</td></tr></tbody>
+    </table>`;
+  const srcTxt = `<strong>Sources:</strong> ${PRICE_SRC.replace('Source: ', '')}; EIA; Statistics Norway (SSB), table 11008; IMF via FRED; Norges Bank`;
+  const convTxt = `<strong>Units:</strong> Brent in $/bbl (monthly average of the Board's Dated Brent, extended with EIA); gas converted to USD/boe with Sodir's oil-equivalent convention (1 000 Sm³ gas = 1 Sm³ o.e. = ${BBL_PER_SM3} bbl) and ${GAS_MJ_PER_SM3} MJ/Sm³, so the two axes are directly comparable`;
+
+  if (!grid) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.getElementById('chartArea').innerHTML = `${priceBar(pills)}
+      <div class="chart-container"><canvas id="prodChart"></canvas></div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(90deg,rgba(0,48,87,0.25),rgba(0,48,87,1))"></div>Months, older (light) to newer (dark)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgb(232,110,30)"></div>Latest month (${pts[pts.length - 1].m})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(232,110,30,0.8);height:3px;border-radius:0"></div>Linear trend</div></div>`;
+    const n = pts.length, last = pts[n - 1];
+    const xs = pts.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const trend = [{x: x0, y: +(fit.a + fit.b * x0).toFixed(2)}, {x: x1, y: +(fit.a + fit.b * x1).toFixed(2)}];
+    const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}});
+    chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+      type: 'scatter',
+      data: {datasets: [
+        {label: 'Months', data: pts.slice(0, -1), pointRadius: 3.5, pointHoverRadius: 5,
+          backgroundColor: c => `rgba(0,48,87,${(0.25 + 0.75 * c.dataIndex / Math.max(1, n - 2)).toFixed(2)})`, borderColor: 'rgba(0,48,87,0.9)', borderWidth: 0},
+        {label: 'Latest month', data: [last], pointRadius: 5.5, backgroundColor: 'rgb(232,110,30)', borderColor: '#fff', borderWidth: 1.5},
+        {label: 'Linear trend', type: 'line', data: trend, borderColor: 'rgba(232,110,30,0.8)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0},
+      ]},
+      options: {responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {legend: {display: false}, tooltip: {filter: c => c.dataset.label !== 'Linear trend', callbacks: {
+          label: c => ` ${c.raw.m}: Brent ${f2(c.raw.x)}, gas ${f2(c.raw.y)} USD/boe`}}},
+        scales: {x: axis(`Dated Brent, USD/bbl${prF.real ? ' (real)' : ''}`), y: axis(`${gName}, USD/boe${prF.real ? ' (real)' : ''}`)}},
+    });
+    // PowerPoint: punktene uten linjer, og trendlinjen som egen figur over
+    // grafen (PptxGenJS har ikke trendlinjer, og linjetykkelsen gjelder alle seriene).
+    const sx = chartInstance.scales.x, sy = chartInstance.scales.y;
+    pptSpec = {kind: 'scatter', markers: true, xTitle: sx.options.title.text, yTitle: sy.options.title.text,
+      xMin: sx.min, xMax: sx.max, yMin: sy.min, yMax: sy.max,
+      series: [{name: 'Months', points: pts.slice(0, -1), color: '003057'}, {name: `Latest month (${last.m})`, points: [last], color: 'E86E1E'}],
+      trend: {from: trend[0], to: trend[1], color: 'E86E1E', label: fitTxt}};
+    setChartTable(quadTable);
+    setInfo((prF.real ? cpiNote('USD') + ' &nbsp;|&nbsp; ' : '') + `<strong>Trend:</strong> ${fitTxt} &nbsp;|&nbsp; ${convTxt} &nbsp;|&nbsp; ${srcTxt}`);
+    return;
+  }
+
+  // Tellerutenett: antall måneder per kombinasjon av olje- og gasspris i
+  // intervaller på OG_BIN USD/boe. De tykke linjene ligger på intervallgrensen
+  // nærmest medianen langs hver akse, og deler månedene omtrent i to.
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const bin = v => Math.floor(v / OG_BIN) * OG_BIN;
+  const range = (a, b) => { const out = []; for (let v = a; v <= b; v += OG_BIN) out.push(v); return out; };
+  const xb = range(bin(Math.min(...pts.map(p => p.x))), bin(Math.max(...pts.map(p => p.x))));
+  const yb = range(bin(Math.min(...pts.map(p => p.y))), bin(Math.max(...pts.map(p => p.y)))).reverse();
+  const cnt = {}, months = {};
+  pts.forEach(p => { const k = bin(p.x) + '|' + bin(p.y); cnt[k] = (cnt[k] || 0) + 1; (months[k] = months[k] || []).push(p.m); });
+  const max = Math.max(...Object.values(cnt));
+  const shade = c => { const t = Math.sqrt(c / max); return [241, 243, 246].map((v, i) => Math.round(v + ([0, 48, 87][i] - v) * t)); };
+  const hex = rgb => rgb.map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+  const lbl = v => `${v}–${v + OG_BIN}`;
+  const body = yb.map(y => `<tr><th scope="row" class="${y === hEdge ? 'hl' : ''}">${lbl(y)}</th>${xb.map(x => {
+    const c = cnt[x + '|' + y], cls = [x === vEdge ? 'vl' : '', y === hEdge ? 'hl' : ''];
+    if (!c) return `<td class="e ${cls.join(' ')}"></td>`;
+    const bg = shade(c);
+    return `<td class="${cls.join(' ')}" style="background:rgb(${bg});color:${Math.sqrt(c / max) > 0.45 ? '#fff' : '#1a2332'}" title="Brent ${lbl(x)}, gas ${lbl(y)} USD/boe: ${c} month${c === 1 ? '' : 's'} (${months[x + '|' + y].join(', ')})">${c}</td>`;
+  }).join('')}</tr>`).join('');
+  const foot = xb.map(x => `<th class="${x === vEdge ? 'vl' : ''}">${x}–<br>${x + OG_BIN}</th>`).join('');
+  document.getElementById('chartArea').innerHTML = `${priceBar(pills)}
+    <div class="np-legend"><span>Fewer months</span><span class="np-ramp"></span><span>More (max ${max})</span>
+      <span>· thick lines: interval edges nearest the median, Brent ${vEdge} and gas ${hEdge} USD/boe</span></div>
+    <div class="np-scroll og-scroll" tabindex="0"><table class="np-table og-table">
+      <tbody>${body}</tbody>
+      <tfoot><tr><th>Gas ↑ / Brent →</th>${foot}</tr></tfoot></table></div>`;
+  // Rull til den vannrette medianlinjen, der de fleste månedene ligger.
+  const sc = document.querySelector('.og-scroll'), hr = sc.querySelector('tbody th.hl');
+  if (hr) sc.scrollTop = Math.max(0, hr.offsetTop - sc.clientHeight / 2);
+  lastLabels = yb.map(lbl); lastXTitle = 'Gas, USD/boe';
+  lastDatasets = xb.map(x => ({label: `Brent ${lbl(x)} USD/bbl, months`, data: yb.map(y => cnt[x + '|' + y] || 0)}));
+  // PowerPoint-tabell med de samme tykke skillelinjene.
+  const thin = {type: 'solid', pt: 0.5, color: 'E3E8EE'}, thick = {type: 'solid', pt: 3, color: '1A2332'};
+  const bord = (x, y) => [thin, thin, y === hEdge ? thick : thin, x === vEdge ? thick : thin];
+  pptSpec = {kind: 'table', rows: yb.map(y => [{text: lbl(y), bold: true, align: 'right', border: bord(null, y)}].concat(xb.map(x => {
+    const c = cnt[x + '|' + y];
+    return {text: c ? String(c) : '', fill: c ? hex(shade(c)) : 'F5F6F8', color: c && Math.sqrt(c / max) > 0.45 ? 'FFFFFF' : '1A2332', border: bord(x, y)};
+  }))).concat([[{text: 'Gas ↑ / Brent →', bold: true}].concat(xb.map(x => ({text: lbl(x), bold: true, border: bord(x, null)})))])};
+  setChartTable(quadTable);
+  setInfo((prF.real ? cpiNote('USD') + ' &nbsp;|&nbsp; ' : '') + `<strong>Count grid:</strong> number of months in each combination of Brent (columns) and ${gName} (rows), ${OG_BIN} USD/boe intervals; hover a cell for the months &nbsp;|&nbsp; ` +
+    `<strong>Median:</strong> Brent ${f2(xMed)}, gas ${f2(yMed)} USD/boe; the thick lines are at the nearest interval edges &nbsp;|&nbsp; <strong>Trend:</strong> ${fitTxt} &nbsp;|&nbsp; ${convTxt} &nbsp;|&nbsp; ${srcTxt}`);
 }
 
 // ── NCS ──────────────────────────────────────────────────────────────────────
@@ -6860,13 +6993,37 @@ function pptAddChart(pptx, slide, spec, box) {
     // Tabell (overlappsmatrisen): første kolonne bredere, resten likt fordelt;
     // skriften krymper med antall rader så alt får plass på lysbildet.
     const n = spec.rows.length, cols = spec.rows[0].length;
-    const fs = n <= 11 ? 11 : n <= 16 ? 9 : n <= 21 ? 8 : 6;
+    const fs = n <= 11 ? 11 : n <= 16 ? 9 : n <= 21 ? 8 : n <= 40 ? 6 : 4;
     const first = 1.7, rest = (box.w - first) / (cols - 1);
     const rowH = Math.min(0.4, box.h / n);
     const rows = spec.rows.map(r => r.map(c => ({text: c.text, options: {bold: !!c.bold, align: c.align || 'center',
-      ...(c.fill ? {fill: {color: c.fill}} : {}), color: c.color || '1A2332'}})));
+      ...(c.fill ? {fill: {color: c.fill}} : {}), ...(c.border ? {border: c.border} : {}), color: c.color || '1A2332'}})));
     slide.addTable(rows, {x: box.x, y: box.y, w: box.w, colW: [first].concat(Array(cols - 1).fill(rest)), rowH,
-      fontFace: 'Arial', fontSize: fs, valign: 'middle', margin: 0.02, border: {type: 'solid', pt: 0.5, color: 'E3E8EE'}});
+      fontFace: 'Arial', fontSize: fs, valign: 'middle', margin: n > 40 ? 0 : 0.02, border: {type: 'solid', pt: 0.5, color: 'E3E8EE'}});
+    return;
+  }
+  if (spec.kind === 'scatter' && spec.markers) {
+    // Punktsky (olje mot gass): bare punkter, faste akser og fast plassering
+    // av plottområdet, så trendlinjen kan legges over som en linjefigur på
+    // riktig sted.
+    const xs = [...new Set(spec.series.flatMap(s => s.points.map(p => p.x)))].sort((a, b) => a - b);
+    const data = [{name: 'X', values: xs}].concat(spec.series.map(s => {
+      const m = new Map(s.points.map(p => [p.x, p.y]));
+      return {name: s.name, values: xs.map(x => (m.has(x) ? m.get(x) : null))};
+    }));
+    const L = {x: 0.08, y: 0.03, w: 0.9, h: 0.78};
+    slide.addChart(C.SCATTER, data, {...common, chartColors: spec.series.map(s => s.color), lineSize: 0,
+      lineDataSymbol: 'circle', lineDataSymbolSize: 6, layout: L, catAxisMinVal: spec.xMin, catAxisMaxVal: spec.xMax,
+      valAxisMinVal: spec.yMin, valAxisMaxVal: spec.yMax, catAxisLabelFormatCode: '#,##0', ...axisTitle(spec.yTitle), ...axisTitle(spec.xTitle, 'catAxis')});
+    if (spec.trend) {
+      const px = x => box.x + box.w * (L.x + L.w * (x - spec.xMin) / (spec.xMax - spec.xMin));
+      const py = y => box.y + box.h * (L.y + L.h * (1 - (y - spec.yMin) / (spec.yMax - spec.yMin)));
+      const a = spec.trend.from, b = spec.trend.to, ya = py(a.y), yb = py(b.y);
+      slide.addShape(pptx.shapes.LINE, {x: px(a.x), y: Math.min(ya, yb), w: px(b.x) - px(a.x), h: Math.max(0.001, Math.abs(yb - ya)),
+        flipV: yb < ya, line: {color: spec.trend.color, width: 2, dashType: 'dash'}});
+      slide.addText('Linear trend: ' + spec.trend.label, {x: box.x + box.w * L.x + 0.1, y: box.y + 0.05, w: 8, h: 0.3,
+        fontFace: 'Arial', fontSize: 10, color: spec.trend.color});
+    }
     return;
   }
   if (spec.kind === 'scatter') {
