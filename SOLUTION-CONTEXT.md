@@ -1136,6 +1136,17 @@ Visninger uten Chart.js setter `pptSpec` selv (rangeringene i NCS);
 MutationObserver, og er skjult i Exploration og Licences. Lysbildet er 16:9
 med tittel, undertittel og kildelinje (Sodir eller SSB etter infofeltet).
 
+**Kurv** (`pptBasket`): «Add to PPT» legger grafen som vises i kurven, og
+hvert kort med en SVG-figur (kart, kakediagram, `licYearChart`-grafer,
+riggtidslinjen, letekartet) får en «+ PPT»-knapp (`pptDecorate`, lagt på av
+en MutationObserver) som legger figuren inn som SVG-bilde. SVG-en
+serialiseres med de beregnede CSS-stilene lagt inn (`pptSerializeSvg`, bare
+der de avviker fra forelder/standard). PptxGenJS lagrer den som SVG med
+PNG-reserve, så PowerPoint 365 viser vektorgrafikk som kan konverteres til
+figurer. Kortets forklaring legges på lysbildet som fargeruter med tekst,
+og noten som fotnote. Kurven lagres i localStorage og lastes ned som én fil
+med ett lysbilde per element, i den rekkefølgen panelet viser.
+
 #### NCS-modusen
 
 Hele sokkelen samlet, uten utvalg (velgerknappen er skjult, `body.ncs`).
