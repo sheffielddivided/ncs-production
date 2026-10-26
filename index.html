@@ -609,6 +609,7 @@ async function loadBundles() {
                  'discoveries','discovery_resources','licence_licensees',
                  'discovery_descriptions','discovery_outlines',
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
+                 'field_investments',
                  'licences','companies',
                  'meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
@@ -3233,10 +3234,92 @@ function drawFieldProfile() {
     ${fieldPhoto(id, name)}
     ${profileMap(id) ? `<div class="pf-card"><h3>Location</h3>${profileMap(id)}</div>` : ''}
     ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
+    ${investmentCard([id], () => name)}
     ${(() => { const o = profileOwnership(id, p.operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
     ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
       descs.map(d => `<h4>${esc(d.heading)}</h4><p>${esc(d.text)}</p>`).join('')}</div>` : ''}
   `);
+}
+
+// ── INVESTERINGER ────────────────────────────────────────────────────────────
+// Kort i felt- og hubprofilen. To tall fra Sodir som ikke kan legges sammen:
+// historiske investeringer per år i nominelle kroner, og anslaget for
+// gjenstående framtidige investeringer i faste kroner for et gitt år. Det
+// første vises som søyler, det andre som nøkkeltall ved siden av.
+//
+// Sodir rapporterer null for år som ennå ikke er tallfestet, og fetch_sodir
+// dropper nullårene. Siste rapporterte år er derfor det siste året med tall
+// for noe felt, og aksen går dit — ikke til i år.
+let invLast = null;
+function invLastYear() {
+  const b = bundle.field_investments;
+  if (invLast === null) invLast = b ? Math.max(0, ...Object.values(b.fields).flatMap(r => r.map(x => x[0]))) : 0;
+  return invLast;
+}
+// Sodirs anslag kan være svakt negativt (Tyrving: −23 MNOK); under 50 MNOK
+// vises som 0.0, så det ikke står «-0.0».
+const bnok = v => (Math.abs(v) < 50 ? 0 : v / 1000).toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+
+function investmentCard(ids, nameOf) {
+  const b = bundle.field_investments;
+  if (!b) return '';
+  const per = ids.map(id => {
+    const rows = b.fields[String(id)] || [];
+    const exp = b.expected[String(id)] || null;
+    return {id, name: nameOf(id), rows, exp, total: rows.reduce((t, r) => t + r[1], 0)};
+  }).filter(h => h.rows.length || h.exp);
+  if (!per.length) return '';
+
+  const last = invLastYear();
+  const years = per.flatMap(h => h.rows.map(r => r[0]));
+  const total = per.reduce((t, h) => t + h.total, 0);
+  const withExp = per.filter(h => h.exp);
+  const expSum = withExp.reduce((t, h) => t + h.exp[0], 0);
+  const fixYears = [...new Set(withExp.map(h => h.exp[1]))].sort();
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+
+  let chart = '', legend = '', peak = '';
+  if (years.length) {
+    const y0 = Math.min(...years), y1 = Math.max(last, ...years);
+    // Én serie for et felt; for en hub én per medlemsfelt, eldst først, så
+    // søylene viser når hver utbygging kom.
+    const withRows = per.filter(h => h.rows.length).sort((a, c) => a.rows[0][0] - c.rows[0][0]);
+    const series = withRows.map((h, i) => ({
+      label: h.name,
+      color: per.length === 1 ? 'rgba(0,48,87,0.8)' : PALETTE[i % PALETTE.length][0],
+      vals: Object.fromEntries(h.rows.map(r => [r[0], +(r[1] / 1000).toFixed(2)])),
+    }));
+    chart = licYearChart(y0, y1, series, 'bn NOK');
+    if (series.length > 1) legend = `<div class="ex-legend">${series.map(s =>
+      `<span class="ex-leg"><span class="ex-dot" style="background:${s.color}"></span>${esc(s.label)}</span>`).join('')}</div>`;
+    const byYear = {};
+    per.forEach(h => h.rows.forEach(([y, v]) => { byYear[y] = (byYear[y] || 0) + v; }));
+    const [py, pv] = Object.entries(byYear).sort((a, c) => c[1] - a[1])[0];
+    peak = `${py} · ${bnok(pv)} bn NOK`;
+  }
+
+  // Tabell per felt for huber med mer enn ett felt.
+  const table = per.length > 1 ? `
+    <div class="pf-scroll"><table class="res-table">
+      <thead><tr><th>Field</th><th>Invested to date, bn NOK</th><th>Expected future, bn NOK</th></tr></thead>
+      <tbody>${per.slice().sort((a, c) => (c.total + (c.exp ? c.exp[0] : 0)) - (a.total + (a.exp ? a.exp[0] : 0))).map(h => `
+        <tr><td><a class="row-link" href="#" onclick="openFieldProfile(${h.id});return false;">${esc(h.name)}</a></td>
+          <td>${h.total ? bnok(h.total) : '—'}</td><td>${h.exp ? bnok(h.exp[0]) : '—'}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td>${bnok(total)}</td><td>${withExp.length ? bnok(expSum) : '—'}</td></tr></tfoot>
+    </table></div>` : '';
+
+  const fixTxt = fixYears.join('/');
+  return `<div class="pf-card pf-wide"><h3>Investments</h3>
+    <div class="pf-facts">
+      ${fact('Invested to date', years.length ? `${bnok(total)} bn NOK` : '')}
+      ${fact('Period', years.length ? `${Math.min(...years)}–${Math.max(...years)}` : '')}
+      ${fact('Peak year', peak)}
+      ${fact('Expected future investments', withExp.length ? `${bnok(expSum)} bn NOK${fixTxt ? ` (${fixTxt} NOK)` : ''}` : '')}
+    </div>
+    ${chart ? `<div class="pf-map-note">Annual investments, bn NOK (nominal)</div>${chart}` : ''}${legend}${table}
+    <div class="pf-map-note">Annual investments as reported to Sodir, in nominal NOK, through ${last}.
+      ${withExp.length ? `Expected future investments are Sodir's estimate of the remaining investments, in fixed ${fixTxt} NOK. The two use different price bases and are kept apart rather than added up.` : 'Sodir has no estimate of future investments for this ' + (ids.length > 1 ? 'hub.' : 'field.')}
+      Source: Sodir FactPages.</div></div>`;
 }
 
 // ── HUBS: PROFILE ────────────────────────────────────────────────────────────
@@ -3526,6 +3609,7 @@ function drawHubProfile() {
     ${(() => { const m = hubMap(ids); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card"><h3>Fields</h3>${t}</div>` : ''; })()}
     ${(() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
+    ${investmentCard(ids, nameOf)}
     ${(() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })()}
     ${conns.length ? `<div class="pf-card pf-desc"><h3>How it is connected</h3>${
       conns.map(c => `<h4>${esc(c.name)}</h4><p>${esc(c.text)}</p>`).join('')}</div>` : ''}
