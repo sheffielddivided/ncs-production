@@ -1984,6 +1984,9 @@ function applyHash() {
     ncsF.wild = q.get('nw') === '1';
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
     if (q.get('nk') === 'all') ncsF.rank = 'all';
+    if (q.get('nc') === 'year') ncsF.cr = 'year';
+    ncsF.crArea = q.get('na') === '1';
+    if (q.get('nf') === 'timeline') ncsF.fl = 'timeline';
   }
   if (topMode === 'companies') {
     cmpExplWildcat = q.get('cw') === '1';
@@ -2255,18 +2258,24 @@ function drawChart() {
 // vekslere over grafen. Tilstanden ligger i ncsF og i lenken.
 const NCS_TABS = [
   {id:'production',  label:'Production'},
+  {id:'fields',      label:'Fields'},
+  {id:'water',       label:'Water'},
   {id:'reserves',    label:'Reserves'},
   {id:'replacement', label:'Replacement'},
   {id:'exploration', label:'Exploration'},
+  {id:'creaming',    label:'Creaming'},
   {id:'companies',   label:'Companies'},
   {id:'investments', label:'Investments'},
 ];
 let ncsSubView = 'production';
 // prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · wild: bare wildcats
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn)
-const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, year: '', rank: 'res', all: false});
+// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'timeline'
+const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, year: '', rank: 'res', all: false,
+                            cr: 'curve', crArea: false, fl: 'rank'});
 let ncsF = ncsDefaults();
-const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['year', 'ny'], ['rank', 'nk']];
+const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['year', 'ny'], ['rank', 'nk'],
+                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
 // Havområdene, i samme farger som i Licences. Felt uten område i
@@ -2306,7 +2315,8 @@ function ncsToggleAbove(html) {
 async function refreshNcs() {
   showSpinner();
   const v = ncsSubView;
-  if (v === 'production') await loadProdForFields(ncsFieldIds());
+  if (v === 'production' || v === 'fields' || v === 'water') await loadProdForFields(ncsFieldIds());
+  else if (v === 'creaming') await Promise.all([loadExploration(), loadFieldReserves(), loadDiscoveries()]);
   else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
   else if (v === 'exploration') await loadExploration();
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries()]);
@@ -2320,6 +2330,9 @@ function drawNcs() {
   else if (v === 'exploration') drawNcsExploration();
   else if (v === 'companies') drawNcsCompanies();
   else if (v === 'investments') drawNcsInvestments();
+  else if (v === 'creaming') drawNcsCreaming();
+  else if (v === 'fields') drawNcsFields();
+  else if (v === 'water') drawNcsWater();
   else drawNcsProduction();
 }
 
@@ -2592,6 +2605,306 @@ function renderNcsExplTable(rows) {
   const disc = list.filter(r => r.w.found).length, dry = list.filter(r => r.w.resKey === 'dry').length;
   setChartTable(explYearTableHtml(list,
     `${ncsF.year} · ${list.length} ${ncsF.wild ? 'wildcats' : 'exploration wells'} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false));
+}
+
+// ── NCS: CREAMING ──
+// Funnvolumer mot letearbeid. Creaming-kurven viser samlede funnvolumer mot
+// samlet antall wildcats, år for år; når kurven flater ut, gir hver ny
+// brønn mindre. Volumene fordeles på funnåret: felt med Sodirs utvinnbare
+// volum (siste årgang, inkludert det som er produsert) på feltets funnår,
+// og funn som ikke er bygd ut med betingede ressurser på funnets år. Felt
+// som er satt sammen av flere funn, står samlet på det første funnåret.
+const ncsSeaKey = s => { const t = String(s || '').toLowerCase(); return t ? t[0].toUpperCase() + t.slice(1) : ''; };
+
+function ncsCreamingData() {
+  const vol = {}, wells = {};   // år -> område -> mill boe / antall
+  const add = (o, y, a, v) => { const r = o[y] = o[y] || {}; r[a] = (r[a] || 0) + v; };
+  Object.entries(fieldReserves || {}).forEach(([id, rows]) => {
+    const p = profileRow(+id);
+    if (!p || !p.discoveryYear || !rows.length) return;
+    add(vol, p.discoveryYear, ncsArea(+id), rows[rows.length - 1].recoverableOE * BBL_PER_SM3);
+  });
+  allDiscoveries.forEach(d => {
+    const v = discoveryRes[d.id];
+    if (!v || !d.year) return;
+    const a = ncsSeaKey(d.area);
+    add(vol, d.year, LIC_SEAS.some(z => z.key === a) ? a : '', v.oe * BBL_PER_SM3);
+  });
+  explWells.forEach(w => {
+    if (w.purpose !== 'WILDCAT' || w.state === 'planned' || !w.entry) return;
+    const a = ncsSeaKey(w.area);
+    add(wells, +w.entry.slice(0, 4), LIC_SEAS.some(z => z.key === a) ? a : '', 1);
+  });
+  const ys = Object.keys(vol).concat(Object.keys(wells)).map(Number);
+  return {vol, wells, y0: Math.min(...ys), y1: Math.max(...ys)};
+}
+
+function drawNcsCreaming() {
+  const {vol, wells, y0, y1} = ncsCreamingData();
+  const byArea = ncsF.crArea;
+  const groups = byArea ? ncsAreas().filter(z => z.key) : [{key: null, label: 'NCS', color: '#003057'}];
+  const sumOf = (o, y, k) => !o[y] ? 0 : k === null ? Object.values(o[y]).reduce((a, b) => a + b, 0) : (o[y][k] || 0);
+  const toggles = ncsPills('cr', [['curve', 'Creaming curve'], ['year', 'Discovered per year']])
+    + ncsPills('crArea', [[false, 'Total'], [true, 'By sea area']]);
+  const totalVol = Object.keys(vol).reduce((t, y) => t + sumOf(vol, y, null), 0);
+  const totalW = Object.keys(wells).reduce((t, y) => t + sumOf(wells, y, null), 0);
+  setChartTable(''); setProfile('');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  if (ncsF.cr === 'year') {
+    const labels = [];
+    for (let y = y0; y <= y1; y++) labels.push(String(y));
+    const datasets = groups.map(g => ({type: 'bar', label: g.label, stack: 's', borderWidth: 0, order: 1, yAxisID: 'y',
+      backgroundColor: byArea ? rgba(g.color, 0.85) : 'rgba(0,48,87,0.75)',
+      data: labels.map(y => +sumOf(vol, y, g.key).toFixed(1))}));
+    datasets.unshift({type: 'line', label: 'Wildcats', yAxisID: 'y1', order: 0, borderColor: CMP_EXPL_RATE,
+      backgroundColor: CMP_EXPL_RATE, borderWidth: 1.5, pointRadius: 1.5, tension: 0.2,
+      data: labels.map(y => sumOf(wells, y, null))});
+    lastLabels = labels; lastXTitle = 'Year';
+    lastDatasets = datasets.map(d => ({label: d.label + (d.type === 'line' ? ', wells' : ', million boe'), data: d.data}));
+    const legend = datasets.slice(1).map(d => [d.label, d.backgroundColor]).concat([['Wildcats (right axis)', CMP_EXPL_RATE]]);
+    document.getElementById('chartArea').innerHTML = `${toggles}
+      <div class="chart-container"><canvas id="prodChart"></canvas></div>
+      <div class="legend-row">${legend.map(([l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${esc(l)}</div>`).join('')}</div>`;
+    chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+      data: {labels, datasets},
+      options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {
+          label: ctx => ctx.dataset.type === 'line' ? ` Wildcats: ${ctx.parsed.y}`
+            : ` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('en')} million boe`}}},
+        scales: {
+          x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+          y: {stacked: true, beginAtZero: true, title: {display: true, text: 'million boe discovered', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}},
+          y1: {position: 'right', beginAtZero: true, title: {display: true, text: 'wildcats', color: CMP_EXPL_RATE, font: {size: 10}},
+               ticks: {precision: 0, font: {size: 9}}, grid: {display: false}},
+        }},
+    });
+    setChartTitle('Norwegian Continental Shelf · Discovered volumes', 'Recoverable volumes by discovery year · million boe');
+  } else {
+    // Kurven: ett punkt per år med wildcats, x = samlet antall, y = samlet volum.
+    const datasets = groups.map(g => {
+      let cw = 0, cv = 0;
+      const pts = [];
+      for (let y = y0; y <= y1; y++) {
+        cw += sumOf(wells, y, g.key); cv += sumOf(vol, y, g.key);
+        if (cw > 0) pts.push({x: cw, y: +(cv / 1000).toFixed(2), year: y});
+      }
+      return {label: g.label, data: pts, showLine: true, borderColor: byArea ? g.color : '#003057',
+        backgroundColor: byArea ? g.color : '#003057', borderWidth: 2, pointRadius: 2, pointHoverRadius: 5, tension: 0};
+    });
+    lastLabels = datasets[0].data.map(p => String(p.year)); lastXTitle = 'Year';
+    lastDatasets = datasets.flatMap(d => [
+      {label: `${d.label}: cumulative wildcats`, data: lastLabels.map(y => (d.data.find(p => String(p.year) === y) || {}).x ?? '')},
+      {label: `${d.label}: cumulative discovered, billion boe`, data: lastLabels.map(y => (d.data.find(p => String(p.year) === y) || {}).y ?? '')}]);
+    document.getElementById('chartArea').innerHTML = `${toggles}
+      <div class="chart-container"><canvas id="prodChart"></canvas></div>
+      ${byArea ? `<div class="legend-row">${groups.map(g => `<div class="legend-item"><div class="legend-dot" style="background:${g.color}"></div>${g.label}</div>`).join('')}</div>` : ''}`;
+    chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+      type: 'scatter', data: {datasets},
+      options: {responsive: true, maintainAspectRatio: false,
+        plugins: {legend: {display: false}, tooltip: {callbacks: {
+          label: ctx => ` ${ctx.dataset.label} ${ctx.raw.year}: ${ctx.raw.x} wildcats, ${ctx.raw.y.toLocaleString('en', {maximumFractionDigits: 1})} billion boe discovered`}}},
+        scales: {
+          x: {type: 'linear', beginAtZero: true, title: {display: true, text: 'cumulative wildcats', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}},
+          y: {beginAtZero: true, title: {display: true, text: 'cumulative discovered, billion boe', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}},
+        }},
+    });
+    setChartTitle('Norwegian Continental Shelf · Creaming curve', 'Cumulative discovered volumes against cumulative wildcats');
+  }
+  document.getElementById('downloadBtn').disabled = false;
+  setInfo(`<strong>Discovered:</strong> ${(totalVol / 1000).toLocaleString('en', {maximumFractionDigits: 1})} billion boe in ${totalW} wildcats &nbsp;|&nbsp; <strong>Volumes:</strong> recoverable volumes of fields (latest Sodir estimate, incl. what has been produced) on the field's discovery year, plus contingent resources in undeveloped discoveries on their discovery year &nbsp;|&nbsp; <strong>Wells:</strong> wildcats by spud year, sidetracks merged. Fields made up of several discoveries count on the first discovery year`);
+}
+
+// ── NCS: FIELDS ──
+// Rangering etter produksjon de siste tolv månedene med data, og en
+// tidslinje over felt som kom i produksjon og ble stengt ned. Oppstart er
+// Sodirs produksjonsstart; nedstengt er siste år med produksjon for felt med
+// status «Shut down». Antall producerende felt teller felt med produksjon i
+// året.
+function ncsMonthly(id) {
+  return (fieldProdCache[id] || []).map(r => r.attributes).filter(a => a.prfMonth > 0);
+}
+
+function drawNcsFields() {
+  const ids = ncsFieldIds();
+  const toggle = ncsPills('fl', [['rank', 'Ranking'], ['timeline', 'Start-ups & shutdowns']]);
+  setProfile(''); setChartTable('');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  if (ncsF.fl === 'timeline') return drawNcsFieldTimeline(ids, toggle);
+
+  // Siste måned med rapportert produksjon, og de tolv månedene som ender der.
+  let last = 0;
+  ids.forEach(id => ncsMonthly(id).forEach(a => {
+    if ((a.prfPrdOeNetMillSm3 || 0) > 0) last = Math.max(last, a.prfYear * 12 + a.prfMonth - 1);
+  }));
+  const first = last - 11;
+  let dayCount = 0;
+  for (let k = first; k <= last; k++) dayCount += daysInMonth(Math.floor(k / 12), k % 12 + 1);
+  const list = ids.map(id => {
+    let oe = 0, gas = 0;
+    ncsMonthly(id).forEach(a => {
+      const k = a.prfYear * 12 + a.prfMonth - 1;
+      if (k < first || k > last) return;
+      oe += a.prfPrdOeNetMillSm3 || 0; gas += a.prfPrdGasNetBillSm3 || 0;
+    });
+    return {id, name: fieldNameOf(id), area: ncsArea(id),
+      liq: Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3 / dayCount, gas: gas * 1e6 * BBL_PER_SM3 / dayCount};
+  }).map(f => ({...f, total: f.liq + f.gas})).filter(f => f.total >= 1).sort((a, b) => b.total - a.total);
+  const grand = list.reduce((t, f) => t + f.total, 0);
+  const top10 = list.slice(0, 10).reduce((t, f) => t + f.total, 0);
+  const half = (() => { let acc = 0, n = 0; for (const f of list) { acc += f.total; n++; if (acc >= grand / 2) break; } return n; })();
+  const shown = ncsF.all ? list : list.slice(0, 25);
+  const max = shown.length ? shown[0].total : 1;
+  const n0 = v => Math.round(v).toLocaleString('en');
+  const mLabel = k => `${MONTH_ABBR[k % 12]} ${Math.floor(k / 12)}`;
+  const bars = shown.map((f, i) => `<div class="lc-row" onclick="openFieldProfile(${f.id})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')openFieldProfile(${f.id})">
+      <div class="lc-name" title="${esc(f.name)}">${i + 1}. ${esc(f.name)}</div>
+      <div class="lc-track" style="width:${(f.total / max * 70).toFixed(1)}%">
+        ${f.liq > 0 ? `<span style="flex:${f.liq};background:${OIL_COLOR}" title="${esc(f.name)} · Oil: ${n0(f.liq)} boe/day"></span>` : ''}
+        ${f.gas > 0 ? `<span style="flex:${f.gas};background:${GAS_COLOR}" title="${esc(f.name)} · Gas: ${n0(f.gas)} boe/day"></span>` : ''}</div>
+      <div class="lc-val">${n0(f.total)} · ${(f.total / grand * 100).toFixed(1)} %</div></div>`).join('');
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="pf-facts" style="margin-bottom:10px">
+      <div class="pf-fact"><span>Producing fields</span><strong>${list.length}</strong></div>
+      <div class="pf-fact"><span>Top 10 share</span><strong>${(top10 / grand * 100).toFixed(0)} %</strong></div>
+      <div class="pf-fact"><span>Fields making half the output</span><strong>${half}</strong></div>
+      <div class="pf-fact"><span>NCS average</span><strong>${n0(grand)} boe/day</strong></div>
+    </div>
+    ${bars}
+    <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${OIL_COLOR}"></span>Oil</span>
+      <span class="ex-leg"><span class="ex-dot" style="background:${GAS_COLOR}"></span>Gas</span>
+      <span class="ex-leg">Showing ${shown.length} of ${list.length}
+      ${list.length > 25 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 25' : 'show all'}</a>` : ''}</span></div>
+    <div class="pf-map-note">Average net production ${mLabel(first)} – ${mLabel(last)}, boe/day, with share of the NCS total. Click a field for its profile.</div>`;
+  setChartTitle('Norwegian Continental Shelf · Fields', `Ranked by production, last 12 months (${mLabel(first)} – ${mLabel(last)})`);
+  setInfo(`<strong>Ranking:</strong> average net production over the last 12 months with reported data &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+  lastLabels = list.map(f => f.name); lastXTitle = 'Field';
+  lastDatasets = [{label: 'Oil, boe/day', data: list.map(f => Math.round(f.liq))}, {label: 'Gas, boe/day', data: list.map(f => Math.round(f.gas))}];
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+function drawNcsFieldTimeline(ids, toggle) {
+  const annual = id => (fieldProdCache[id] || []).map(r => r.attributes).filter(a => a.prfMonth === 0 && (a.prfPrdOeNetMillSm3 || 0) > 0);
+  const starts = {}, stops = {}, producing = {};
+  const push = (o, y, name) => { (o[y] = o[y] || []).push(name); };
+  ids.forEach(id => {
+    const p = profileRow(id) || {}, rows = annual(id), name = fieldNameOf(id);
+    rows.forEach(a => { producing[a.prfYear] = (producing[a.prfYear] || 0) + 1; });
+    const sy = p.productionStart ? new Date(p.productionStart).getUTCFullYear() : rows.length ? rows[0].prfYear : null;
+    if (sy) push(starts, sy, name);
+    if (p.status === 'Shut down' && rows.length) push(stops, rows[rows.length - 1].prfYear, name);
+  });
+  const ys = Object.keys(starts).concat(Object.keys(stops), Object.keys(producing)).map(Number);
+  const labels = [];
+  for (let y = Math.min(...ys); y <= Math.max(currentYear, ...ys); y++) labels.push(String(y));
+  const up = labels.map(y => (starts[y] || []).length), down = labels.map(y => -(stops[y] || []).length);
+  // Inneværende år har ufullstendige årsrader; antall producerende vises ikke for det.
+  const prod = labels.map(y => +y < currentYear ? producing[y] || 0 : null);
+  const UP_C = 'rgba(0,179,115,0.85)', DOWN_C = 'rgba(154,165,177,0.9)', LINE_C = '#003057';
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${[['Came on stream', UP_C], ['Shut down', DOWN_C], ['Producing fields (right axis)', LINE_C]]
+      .map(([l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>`;
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    data: {labels, datasets: [
+      {type: 'line', label: 'Producing fields', data: prod, yAxisID: 'y1', borderColor: LINE_C, backgroundColor: LINE_C,
+       borderWidth: 2, pointRadius: 0, tension: 0.2, order: 0},
+      {type: 'bar', label: 'Came on stream', data: up, backgroundColor: UP_C, borderWidth: 0, stack: 's', order: 1},
+      {type: 'bar', label: 'Shut down', data: down, backgroundColor: DOWN_C, borderWidth: 0, stack: 's', order: 1},
+    ]},
+    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: ctx => ctx.dataset.type === 'line' ? (ctx.parsed.y == null ? null : ` Producing fields: ${ctx.parsed.y}`)
+          : ctx.parsed.y ? ` ${ctx.dataset.label}: ${Math.abs(ctx.parsed.y)}` : null,
+        afterBody: items => {
+          const y = labels[items[0].dataIndex], out = [];
+          if (starts[y]) out.push('On stream: ' + starts[y].join(', '));
+          if (stops[y]) out.push('Shut down: ' + stops[y].join(', '));
+          return out;
+        }}}},
+      scales: {
+        x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+        y: {stacked: true, title: {display: true, text: 'fields per year', color: '#4a5568', font: {size: 10}}, ticks: {precision: 0, font: {size: 9}}},
+        y1: {position: 'right', beginAtZero: true, title: {display: true, text: 'producing fields', color: LINE_C, font: {size: 10}},
+             ticks: {precision: 0, font: {size: 9}}, grid: {display: false}},
+      }},
+  });
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = [{label: 'Came on stream', data: up}, {label: 'Shut down', data: down.map(Math.abs)}, {label: 'Producing fields', data: prod.map(v => v ?? '')}];
+  document.getElementById('downloadBtn').disabled = false;
+  const nS = Object.values(starts).flat().length, nD = Object.values(stops).flat().length;
+  setChartTitle('Norwegian Continental Shelf · Fields', 'Fields coming on stream and shutting down per year');
+  setInfo(`<strong>On stream:</strong> ${nS} fields, by Sodir's production start date &nbsp;|&nbsp; <strong>Shut down:</strong> ${nD} fields with status «Shut down», on their last year of production &nbsp;|&nbsp; <strong>Producing:</strong> fields with production in the year (complete years only) &nbsp;|&nbsp; Hover a year for the field names`);
+}
+
+// ── NCS: WATER ──
+// Produsert vann mot olje (væske) per år, og vannkuttet: vannets andel av
+// væsken som kommer opp, vann / (vann + olje). Et stigende vannkutt er et
+// modningstegn. Bare hele år.
+function drawNcsWater() {
+  const ids = ncsFieldIds();
+  const per = {}, perField = {};
+  ids.forEach(id => (fieldProdCache[id] || []).forEach(r => {
+    const a = r.attributes;
+    if (a.prfMonth !== 0 || a.prfYear >= currentYear) return;
+    const liq = Math.max(0, (a.prfPrdOeNetMillSm3 || 0) - (a.prfPrdGasNetBillSm3 || 0)), wat = a.prfPrdProducedWaterInFieldMillS || 0;
+    const o = per[a.prfYear] = per[a.prfYear] || {liq: 0, wat: 0};
+    o.liq += liq; o.wat += wat;
+    if (a.prfYear === currentYear - 1) perField[id] = {liq, wat};
+  }));
+  // Sodir har produsert vann for de fleste felt først fra 2000; før det
+  // rapporterer bare en håndfull felt, og vannkuttet ville sett ut som 0 %.
+  // Grafen starter derfor ved første år med minst en tidel av det høyeste
+  // årlige vannvolumet.
+  const maxWat = Math.max(...Object.values(per).map(o => o.wat));
+  const firstWat = Math.min(...Object.keys(per).map(Number).filter(y => per[y].wat >= maxWat / 10));
+  const ys = Object.keys(per).map(Number).filter(y => y >= firstWat && per[y].liq + per[y].wat > 0).sort((a, b) => a - b);
+  if (!ys.length) { setChartEmpty('No production data available.'); setInfo(''); return; }
+  const labels = ys.map(String);
+  const toBd = (v, y) => v * 1e6 * BBL_PER_SM3 / daysInYear(y);
+  const liqD = ys.map(y => Math.round(toBd(per[y].liq, y))), watD = ys.map(y => Math.round(toBd(per[y].wat, y)));
+  const cut = ys.map(y => +(per[y].wat / (per[y].wat + per[y].liq) * 100).toFixed(1));
+  const CUT_C = '#003057';
+  setChartTable(''); setProfile('');
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = [{label: 'Oil, bbl/day', data: liqD}, {label: 'Produced water, bbl/day', data: watD}, {label: 'Water cut, %', data: cut}];
+  document.getElementById('chartArea').innerHTML = `
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${[['Oil (incl. NGL, condensate)', OIL_COLOR], ['Produced water', WATER_COLOR], ['Water cut (right axis)', CUT_C]]
+      .map(([l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>`;
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    data: {labels, datasets: [
+      {type: 'line', label: 'Water cut', data: cut, yAxisID: 'y1', borderColor: CUT_C, backgroundColor: CUT_C, borderWidth: 2, pointRadius: 0, tension: 0.2, order: 0},
+      {type: 'bar', label: 'Oil', data: liqD, backgroundColor: OIL_COLOR, borderWidth: 0, order: 1},
+      {type: 'bar', label: 'Produced water', data: watD, backgroundColor: WATER_COLOR, borderWidth: 0, order: 1},
+    ]},
+    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: ctx => ctx.dataset.type === 'line' ? ` Water cut: ${ctx.parsed.y} %` : ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en')} bbl/day`}}},
+      scales: {
+        x: {ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+        y: {beginAtZero: true, title: {display: true, text: 'bbl/day', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}},
+        y1: {position: 'right', min: 0, max: 100, title: {display: true, text: 'water cut, %', color: CUT_C, font: {size: 10}},
+             ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
+      }},
+  });
+  document.getElementById('downloadBtn').disabled = false;
+  const ly = ys[ys.length - 1];
+  setChartTitle('Norwegian Continental Shelf · Produced water', 'Oil and produced water · bbl/day · water cut');
+  setInfo(`<strong>Water cut</strong> = produced water / (produced water + oil), by volume &nbsp;|&nbsp; <strong>${ly}:</strong> ${cut[cut.length - 1]} % — ${(per[ly].wat / per[ly].liq).toFixed(1)} barrels of water per barrel of oil &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate (OE minus gas) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir field production, complete years; produced water is reported from ${ys[0]}`);
+  const n0 = v => Math.round(v).toLocaleString('en');
+  const top = Object.entries(perField).map(([id, v]) => ({id: +id, name: fieldNameOf(+id), ...v}))
+    .filter(f => f.wat > 0).sort((a, b) => b.wat - a.wat).slice(0, 15);
+  if (top.length) setChartTable(`
+    <table class="res-table">
+      <caption>Largest producers of water, ${currentYear - 1} · bbl/day</caption>
+      <thead><tr><th>Field</th><th>Produced water</th><th>Oil</th><th>Water cut</th></tr></thead>
+      <tbody>${top.map(f => `<tr><td><a class="row-link" href="#" onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a></td>
+        <td>${n0(toBd(f.wat, currentYear - 1))}</td><td>${n0(toBd(f.liq, currentYear - 1))}</td>
+        <td>${(f.wat / (f.wat + f.liq) * 100).toFixed(0)} %</td></tr>`).join('')}</tbody>
+    </table>`);
 }
 
 // ── NCS: COMPANIES ──
