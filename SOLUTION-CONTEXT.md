@@ -1144,7 +1144,9 @@ serialiseres med de beregnede CSS-stilene lagt inn (`pptSerializeSvg`, bare
 der de avviker fra forelder/standard). PptxGenJS lagrer den som SVG med
 PNG-reserve, så PowerPoint 365 viser vektorgrafikk som kan konverteres til
 figurer. Kortets forklaring legges på lysbildet som fargeruter med tekst,
-og noten som fotnote. Kurven lagres i localStorage og lastes ned som én fil
+og noten som fotnote. Kort med søyler bygd i HTML (lisensoversikten og
+tildelinger per selskap i Rounds) har `data-ppt-spec` og en grafbeskrivelse
+i `pptCardSpecs`, og «+ PPT» gir der en ekte graf. Kurven lagres i localStorage og lastes ned som én fil
 med ett lysbilde per element, i den rekkefølgen panelet viser.
 
 #### NCS-modusen

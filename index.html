@@ -6487,9 +6487,32 @@ function pptAddSvg(btn) {
   pptToast(`Added to PPT basket as image (${pptBasket.length})`);
 }
 
-// «+ PPT»-knapp i hvert kort med en SVG-figur. Kortene tegnes om hele tiden,
-// så en MutationObserver legger knappen på nye kort.
+// Kort med søyler bygd i HTML (lisensoversikten, tildelinger per selskap)
+// registrerer en grafbeskrivelse her under navnet i data-ppt-spec, og blir
+// ekte PowerPoint-grafer i stedet for bilder.
+const pptCardSpecs = {};
+function pptAddCardSpec(btn) {
+  const card = btn.closest('.pf-card'), spec = pptCardSpecs[card.dataset.pptSpec];
+  if (!spec) return;
+  const m = pptSvgMeta(card);
+  pptBasket.push({kind: 'chart', spec, meta: {title: m.title, subtitle: spec.subtitle || m.subtitle, source: m.source}});
+  pptBasketSave();
+  pptToast(`Added to PPT basket (${pptBasket.length})`);
+}
+
+// «+ PPT»-knapp i hvert kort med en SVG-figur eller en registrert graf.
+// Kortene tegnes om hele tiden, så en MutationObserver legger knappen på
+// nye kort.
 function pptDecorate() {
+  document.querySelectorAll('.pf-card[data-ppt-spec]').forEach(card => {
+    if (card.querySelector(':scope > .ppt-add')) return;
+    const b = document.createElement('button');
+    b.className = 'ppt-add'; b.type = 'button'; b.textContent = '+ PPT';
+    b.title = 'Add this chart to the PowerPoint basket (as a native chart)';
+    b.onclick = e => { e.stopPropagation(); pptAddCardSpec(b); };
+    card.classList.add('ppt-card');
+    card.prepend(b);
+  });
   document.querySelectorAll(PPT_SVG_SEL).forEach(svg => {
     const card = svg.closest('.pf-card');
     if (!card || card.querySelector(':scope > .ppt-add')) return;
@@ -8898,6 +8921,9 @@ function licRenderOverview() {
   const rows = licCos.map(c => ({c, total: LIC_SEAS.reduce((s, z) => s + licCell(c, z.key), 0)}))
     .filter(r => r.total > 0).sort((a, b) => b.total - a.total);
   const shown = rows.slice(0, f.all ? rows.length : f.top);
+  pptCardSpecs.licOverview = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(r => r.c), yTitle: unit,
+    series: LIC_SEAS.map(z => ({name: z.label, type: 'bar', color: pptHex(z.color),
+      values: shown.map(r => { const v = licCell(r.c, z.key); return area ? +v.toFixed(1) : v; })}))};
   const max = shown[0] ? shown[0].total : 1;
   const fmt = v => area ? licKm(v) : String(v);
   const bars = shown.map(({c, total}) => `
@@ -8933,7 +8959,7 @@ function licRenderOverview() {
   document.getElementById('licBody').innerHTML = `
     <div class="ex-sum"><strong>${licList.length}</strong> active production licences ·
       <strong>${licCos.length}</strong> companies · <strong>${licKm(tot.gross)}</strong> km² licensed</div>
-    <div class="pf-card">
+    <div class="pf-card" data-ppt-spec="licOverview">
       <h3>Companies ranked by ${area ? f.metric + ' area' : f.role === 'operator' ? 'operatorships' : 'active licences'}</h3>
       ${bars || '<div class="ex-sum">No companies.</div>'}
       <div class="ex-legend">${legend}
@@ -9491,6 +9517,9 @@ function licRenderRounds() {
   // Tildelinger per selskap som liggende stolper, synkende, delt på havområde
   // som stolpene i Overview.
   const coMax = names.length ? awarded[names[0]].n : 1;
+  pptCardSpecs.licRounds = {kind: 'cat', dir: 'bar', stacked: true, labels: names, yTitle: 'licences',
+    subtitle: `Licences awarded per company · ${rd.label} (${licDayYear(rd.first)})`,
+    series: LIC_SEAS.map(z => ({name: z.label, type: 'bar', color: pptHex(z.color), values: names.map(n => awarded[n].sea[z.key] || 0)}))};
   const coBars = names.map(n => {
     const c = awarded[n], link = licStats[n];
     const open = link ? ` onclick="licOpenCompany(${esc(JSON.stringify(n))})" role="link" tabindex="0"
@@ -9541,7 +9570,7 @@ function licRenderRounds() {
         <div class="pf-fact"><span>Where</span><strong>${esc(seaTxt || '—')}</strong></div>
       </div></div>
     <div class="pf-card"><h3>Licence map</h3>${map}</div>
-    ${names.length ? `<div class="pf-card"><h3>Licences awarded per company</h3>
+    ${names.length ? `<div class="pf-card" data-ppt-spec="licRounds"><h3>Licences awarded per company</h3>
       ${coBars}
       <div class="ex-legend">${legend}</div>
       <div class="pf-map-note">Number of the round's licences each company was awarded an interest in, as partner or operator.</div></div>` : ''}
