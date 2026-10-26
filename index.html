@@ -88,6 +88,7 @@
     body.lic .select-fab, body.lic #downloadBtn{display:none !important;}
     body.expl .chart-wrap, body.expl #chartTable, body.expl .profile-wrap, body.expl .info-box,
     body.expl .select-fab, body.expl #downloadBtn{display:none !important;}
+    body.ncs .select-fab{display:none !important;}
     .expl-wrap{margin:10px 12px;}
     .lc-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
     #licTlFacts{margin-bottom:4px;}
@@ -438,6 +439,7 @@
 <div class="controls-bar">
   <div class="ctrl-row">
     <div class="mode-switcher">
+      <button class="mode-btn" id="modeBtnNcs" onclick="switchMode('ncs')">NCS</button>
       <button class="mode-btn" id="modeBtnHubs" onclick="switchMode('hubs')">Hubs</button>
       <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Fields</button>
       <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Companies</button>
@@ -1285,15 +1287,18 @@ function renderViewTabs() {
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
              : topMode === 'discoveries' ? DISCOVERY_TABS
              : topMode === 'exploration' ? EXPL_TABS
-             : topMode === 'licences' ? LIC_TABS : COMPANY_TABS;
+             : topMode === 'licences' ? LIC_TABS
+             : topMode === 'ncs' ? NCS_TABS : COMPANY_TABS;
   const cur  = currentSubView();
   document.body.classList.toggle('expl', topMode === 'exploration');
   document.body.classList.toggle('lic', topMode === 'licences');
+  document.body.classList.toggle('ncs', topMode === 'ncs');
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
-  const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas' : false;
+  const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas'
+    : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product' : false;
   document.getElementById('settingsBtn').style.display = topMode === 'hubs' ? '' : 'none';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
   // Reservevisningen har ingen tidsakse — ett estimat per felt — så periode og
@@ -1308,6 +1313,7 @@ function setSubView(v) {
   else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
   else if (topMode === 'exploration') explSubView = v;
   else if (topMode === 'licences') licSubView = v;
+  else if (topMode === 'ncs') ncsSubView = v;
   else { companySubView = v; syncCompanySelection(); }
   renderViewTabs();
   updateFab();
@@ -1318,6 +1324,7 @@ function setWater(val) { showWater = val; syncUrl(); drawChart(); }
 function firstYearInCache() {
   const ids = topMode === 'fields'
     ? [...selectedFieldIds]
+    : topMode === 'ncs' ? ncsFieldIds()
     : [...new Set([
         ...allLicRecords.filter(r => selectedCompanyNames.has(r.cmpLongName)).map(r => r.fldNpdidField),
         ...Object.entries(TRIAL_PROD_OWNERSHIP)
@@ -1380,7 +1387,7 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
-  if (topMode === 'exploration' || topMode === 'licences') return;   // filtrene ligger i selve visningen
+  if (topMode === 'exploration' || topMode === 'licences' || topMode === 'ncs') return;   // filtrene ligger i selve visningen
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
               : topMode === 'discoveries' ? selectedDiscoveryIds.size
@@ -1803,6 +1810,8 @@ function resetView() {
   explSubView = 'wells';
   licF = licDefaults();
   licSubView = 'overview';
+  ncsSubView = 'production';
+  ncsF = ncsDefaults();
   if (document.getElementById('wdOverlay').classList.contains('open')) closeWell();
   document.getElementById('btnMonthly').classList.add('active');
   document.getElementById('btnQuarterly').classList.remove('active');
@@ -1855,6 +1864,7 @@ function currentSubView() {
        : topMode === 'discoveries' ? discoverySubView
        : topMode === 'exploration' ? explSubView
        : topMode === 'licences' ? licSubView
+       : topMode === 'ncs' ? ncsSubView
        : companySubView;
 }
 
@@ -1887,10 +1897,15 @@ function stateToHash() {
     const dflt = licDefaults();
     LIC_PARAMS.forEach(([k, p]) => { if (licF[k] !== dflt[k]) q.set(p, licF[k]); });
   }
-  else                         q.set('c', [...selectedCompanyNames].join(SEP));
-  if (showWater && topMode !== 'companies' && currentSubView() === 'oilgas') q.set('w', '1');
+  else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
+  if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
+                    || (topMode === 'ncs' && ncsSubView === 'production' && ncsF.prod === 'product'))) q.set('w', '1');
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
     q.set('g', hubReserveGrouping);
+  }
+  if (topMode === 'ncs') {
+    const dflt = ncsDefaults();
+    NCS_PARAMS.forEach(([k, p]) => { if (ncsF[k] !== dflt[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
   }
   if (topMode === 'companies' && companySubView === 'exploration') {
     if (cmpExplWildcat) q.set('cw', '1');
@@ -1911,7 +1926,7 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['fields','hubs','discoveries','companies','exploration','licences'].includes(m)) {
+  if (['ncs','fields','hubs','discoveries','companies','exploration','licences'].includes(m)) {
     topMode = m;
     syncModeButtons();
   }
@@ -1919,7 +1934,8 @@ function applyHash() {
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
              : topMode === 'discoveries' ? DISCOVERY_TABS
              : topMode === 'exploration' ? EXPL_TABS
-             : topMode === 'licences' ? LIC_TABS : COMPANY_TABS;
+             : topMode === 'licences' ? LIC_TABS
+             : topMode === 'ncs' ? NCS_TABS : COMPANY_TABS;
   const v = q.get('v');
   if (tabs.some(t => t.id === v)) {
     if (topMode === 'fields') fieldSubView = v;
@@ -1927,6 +1943,7 @@ function applyHash() {
     else if (topMode === 'discoveries') discoverySubView = v;
     else if (topMode === 'exploration') explSubView = v;
     else if (topMode === 'licences') licSubView = v;
+    else if (topMode === 'ncs') ncsSubView = v;
     else companySubView = v;
   }
 
@@ -1959,6 +1976,14 @@ function applyHash() {
     if (g('xm') === '1') explF.modu = true;
     if (+g('xw') > 0) explF.open = +g('xw');
     if (g('xg')) explF.rig = g('xg');
+  }
+  if (topMode === 'ncs') {
+    ncsF = ncsDefaults();
+    if (q.get('np') === 'area') ncsF.prod = 'area';
+    if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
+    ncsF.wild = q.get('nw') === '1';
+    if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
+    if (q.get('nk') === 'all') ncsF.rank = 'all';
   }
   if (topMode === 'companies') {
     cmpExplWildcat = q.get('cw') === '1';
@@ -2031,6 +2056,7 @@ async function refresh() {
   else if (topMode === 'discoveries') await refreshDiscoveries();
   else if (topMode === 'exploration') await refreshExploration();
   else if (topMode === 'licences') await refreshLicences();
+  else if (topMode === 'ncs') await refreshNcs();
   else await refreshCompanies();
 }
 
@@ -2204,6 +2230,8 @@ function drawChart() {
     else if (hubSubView === 'reserves') drawFieldsReserves(opts);
     else if (hubSubView === 'profile')  drawHubProfile();
     else drawFieldsOePerField(opts);
+  } else if (topMode === 'ncs') {
+    drawNcs();
   } else if (topMode === 'discoveries') {
     const sv = discoverySubView;
     if (sv === 'per_company')    drawDiscoveriesPerCompany();
@@ -2219,6 +2247,449 @@ function drawChart() {
     else if (sv === 'exploration')   drawCompaniesExploration();
     else if (sv === 'profile')       drawCompanyProfile();
   }
+}
+
+// ── NCS ──────────────────────────────────────────────────────────────────────
+// Hele sokkelen samlet. Ingen utvalg — alt summeres over alle felt, brønner
+// og selskaper — så velgerknappen er skjult, og hver fane har sine egne
+// vekslere over grafen. Tilstanden ligger i ncsF og i lenken.
+const NCS_TABS = [
+  {id:'production',  label:'Production'},
+  {id:'reserves',    label:'Reserves'},
+  {id:'replacement', label:'Replacement'},
+  {id:'exploration', label:'Exploration'},
+  {id:'companies',   label:'Companies'},
+  {id:'investments', label:'Investments'},
+];
+let ncsSubView = 'production';
+// prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · wild: bare wildcats
+// · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn)
+const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, year: '', rank: 'res', all: false});
+let ncsF = ncsDefaults();
+const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['year', 'ny'], ['rank', 'nk']];
+const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
+
+// Havområdene, i samme farger som i Licences. Felt uten område i
+// feltfaktaene havner under «Other».
+const ncsAreas = () => LIC_SEAS.concat([{key: '', label: 'Other', color: '#9aa5b1'}]);
+function ncsArea(id) {
+  const a = (profileRow(id) || {}).area || '';
+  return LIC_SEAS.some(z => z.key === a) ? a : '';
+}
+const rgba = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
+
+// Alle felt med produksjon: feltlisten pluss det som finnes i
+// produksjonsbundelen, så felt som har falt ut av feltlisten kommer med.
+function ncsFieldIds() {
+  const ids = new Set(allFields.map(f => f.id));
+  if (bundle.production) Object.keys(bundle.production.fields).forEach(k => ids.add(+k));
+  return [...ids];
+}
+
+function ncsSet(key, val) {
+  ncsF[key] = val;
+  syncUrl();
+  if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
+  drawChart();
+}
+
+function ncsPills(key, opts) {
+  return `<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${opts.map(([v, l]) =>
+    `<button class="pill-btn${ncsF[key] === v ? ' active' : ''}" onclick="ncsSet('${key}', ${JSON.stringify(v).replace(/"/g, "'")})">${l}</button>`).join('')}</div>`;
+}
+
+// Etter renderChart: vekslerne over grafen.
+function ncsToggleAbove(html) {
+  document.getElementById('chartArea').insertAdjacentHTML('afterbegin', html);
+}
+
+async function refreshNcs() {
+  showSpinner();
+  const v = ncsSubView;
+  if (v === 'production') await loadProdForFields(ncsFieldIds());
+  else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
+  else if (v === 'exploration') await loadExploration();
+  else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries()]);
+  drawChart();
+}
+
+function drawNcs() {
+  const v = ncsSubView;
+  if (v === 'reserves') drawNcsReserves();
+  else if (v === 'replacement') drawNcsReplacement();
+  else if (v === 'exploration') drawNcsExploration();
+  else if (v === 'companies') drawNcsCompanies();
+  else if (v === 'investments') drawNcsInvestments();
+  else drawNcsProduction();
+}
+
+// ── NCS: PRODUCTION ──
+// Summen over alle felt, i én gjennomgang av radene. Feltvisningenes
+// tegnefunksjoner slår opp hver periode for hvert felt, som med nesten to
+// hundre felt og månedsoppløsning blir for tregt. Logikken er den samme:
+// samme gyldige rader, samme komplette perioder, og et kvartal teller bare
+// når alle tre månedene finnes.
+function drawNcsProduction() {
+  const ids = ncsFieldIds();
+  const fy = +document.getElementById('yearFrom').value;
+  const ty = +document.getElementById('yearTo').value;
+  const byArea = ncsF.prod === 'area';
+  const q = period === 'quarterly';
+  const acc = {}, qMonths = {};
+  const add = (o, k, v) => { o[k] = (o[k] || 0) + v; };
+  ids.forEach(id => {
+    const area = byArea ? ncsArea(id) : '';
+    (fieldProdCache[id] || []).forEach(r => {
+      const a = r.attributes;
+      if (!isValidRow(a) || a.prfYear < fy || a.prfYear > ty) return;
+      const key = q ? getQuarterKey(a.prfYear, a.prfMonth) : periodKey(a);
+      if (!isCompletePeriod(key)) return;
+      const d = days(a), w = q ? d : 1;   // kvartal: fat summeres og deles på kvartalets dager
+      const o = acc[key] = acc[key] || {};
+      const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
+      if (byArea) add(o, area, oeBoed(oe, d) * w);
+      else {
+        add(o, 'Oil', oilBoed(a.prfPrdOilNetMillSm3 || 0, gas, oe, d) * w);
+        add(o, 'Gas', gasBoed(gas, d) * w);
+        if (showWater) add(o, 'Water', waterBoed(a.prfPrdProducedWaterInFieldMillS || 0, d) * w);
+      }
+      if (q) (qMonths[key] = qMonths[key] || new Set()).add(a.prfMonth);
+    });
+  });
+  let labels = Object.keys(acc).sort();
+  if (q) labels = labels.filter(k => qMonths[k].size === 3);
+  const val = (k, s) => {
+    const v = acc[k][s] || 0;
+    return +(q ? v / daysInQuarter(+k.slice(0, 4), +k.slice(6)) : v).toFixed(0);
+  };
+  const series = byArea
+    ? ncsAreas().map(z => ({key: z.key, label: z.label, color: rgba(z.color, 0.85)}))
+    : [{key: 'Oil', label: 'Oil', color: OIL_COLOR}, {key: 'Gas', label: 'Gas', color: GAS_COLOR}]
+        .concat(showWater ? [{key: 'Water', label: 'Water', color: WATER_COLOR}] : []);
+  const datasets = series.map(s => ({label: s.label, data: labels.map(k => val(k, s.key)),
+                                     backgroundColor: s.color, borderWidth: 0, stack: 's'}))
+    .filter(d => hasAnyValue(d.data));
+  setChartTitle('Norwegian Continental Shelf · Production',
+    byArea ? 'Oil equivalents by sea area · boe/day' : `Oil${showWater ? ', gas & water' : ' & gas'} · boe/day`);
+  setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Series:</strong> ${byArea ? 'Net OE per sea area' : 'Oil (incl. NGL and condensate), Gas' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields (e.g. test production from discoveries) is not included`);
+  if (!labels.length || !datasets.length) { setChartEmpty('No data for the selected period.'); }
+  else renderChart(labels, datasets, series.filter(s => datasets.some(d => d.label === s.label)), 'boe/day');
+  ncsToggleAbove(ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area']]));
+}
+
+// ── NCS: RESERVES ──
+// Reserver per årgang er Sodirs anslag per 31.12. Et felt uten anslag i et
+// år bærer forrige anslag videre (reserveAt), som i feltvisningene.
+const ncsResVal = (cur, k) => !cur ? 0
+  : k === 'gas' ? cur.remainingGas * BBL_PER_SM3
+  : k === 'liq' ? Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3
+  : cur.remainingOE * BBL_PER_SM3;
+const ncsResLabel = k => (NCS_RES.find(x => x[0] === k) || NCS_RES[0])[1];
+const ncsResNoun = k => k === 'oe' ? 'OE' : ncsResLabel(k).toLowerCase();
+
+function ncsReserveYears() {
+  const all = Object.values(fieldReserves || {});
+  return [...new Set(all.flatMap(rows => rows.map(r => r.year)))].sort((a, b) => a - b);
+}
+
+function drawNcsReserves() {
+  const k = ncsF.res;
+  const ids = Object.keys(fieldReserves || {}).map(Number);
+  const years = ncsReserveYears();
+  if (!years.length) { setChartEmpty('No reserves data available.'); setInfo(''); return; }
+  const areas = ncsAreas();
+  const per = {};   // år -> område -> verdi
+  years.forEach(y => { per[y] = {}; });
+  ids.forEach(id => {
+    const rows = fieldReserves[id], area = ncsArea(id);
+    years.forEach(y => { per[y][area] = (per[y][area] || 0) + ncsResVal(reserveAt(rows, y), k); });
+  });
+  const datasets = areas.map(z => ({label: z.label, data: years.map(y => +(per[y][z.key] || 0).toFixed(1)),
+    backgroundColor: rgba(z.color, 0.85), borderWidth: 0, stack: 's'})).filter(d => hasAnyValue(d.data));
+  const legend = areas.filter(z => datasets.some(d => d.label === z.label)).map(z => ({label: z.label, color: rgba(z.color, 0.85)}));
+  const last = years[years.length - 1], prev = years[years.length - 2];
+  setChartTitle('Norwegian Continental Shelf · Remaining reserves', `${ncsResLabel(k)} by sea area · million boe`);
+  setInfo(`<strong>Scope:</strong> All fields &nbsp;|&nbsp; <strong>Series:</strong> Remaining ${ncsResNoun(k)} reserves per sea area &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${last}, as of 31 Dec of each vintage. Liquids = oil, NGL and condensate; contingent resources in discoveries are not included`);
+  renderChart(years.map(String), datasets, legend, 'million boe', {xTitle: 'Year', allTicks: true});
+  ncsToggleAbove(ncsPills('res', NCS_RES));
+
+  // Tabell: siste årgang per område og de største feltene.
+  const n = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const sum = y => areas.reduce((t, z) => t + (per[y][z.key] || 0), 0);
+  const areaRows = areas.filter(z => per[last][z.key] || (prev && per[prev][z.key])).map(z => {
+    const now = per[last][z.key] || 0, before = prev ? per[prev][z.key] || 0 : 0;
+    return `<tr><td>${z.label}</td><td>${n(now)}</td><td>${prev ? (now - before >= 0 ? '+' : '') + n(now - before) : '—'}</td></tr>`;
+  }).join('');
+  const fields = ids.map(id => ({id, name: fieldNameOf(id), v: ncsResVal(reserveAt(fieldReserves[id], last), k)}))
+    .filter(f => f.v > 0).sort((a, b) => b.v - a.v);
+  const tot = sum(last);
+  setChartTable(`
+    <table class="res-table">
+      <caption>Remaining ${ncsResNoun(k)} reserves, vintage ${last} · million boe</caption>
+      <thead><tr><th>Sea area</th><th>${last}</th><th>Change from ${prev || '—'}</th></tr></thead>
+      <tbody>${areaRows}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td>${n(tot)}</td><td>${prev ? (tot - sum(prev) >= 0 ? '+' : '') + n(tot - sum(prev)) : '—'}</td></tr></tfoot>
+    </table>
+    <table class="res-table">
+      <caption>Largest fields by remaining ${ncsResNoun(k)} reserves, vintage ${last} · million boe</caption>
+      <thead><tr><th>Field</th><th>Sea area</th><th>Remaining</th><th>Share of NCS</th></tr></thead>
+      <tbody>${fields.slice(0, 15).map(f => `<tr><td><a class="row-link" href="#" onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a></td>
+        <td>${(LIC_SEAS.find(z => z.key === ncsArea(f.id)) || {label: 'Other'}).label}</td><td>${n(f.v)}</td><td>${(f.v / tot * 100).toFixed(1)} %</td></tr>`).join('')}</tbody>
+    </table>`);
+}
+
+// ── NCS: RESERVE REPLACEMENT ──
+// Tilført i år y = gjenstående(y) − gjenstående(y−1) + produsert(y). Det som
+// er produsert i løpet av året, er trukket ut av anslaget; det som ellers
+// har endret seg — nye felt med PUD, oppjusteringer og nedjusteringer — er
+// det som er lagt til. Erstatningsgraden er tilført delt på produsert.
+// Produksjonen hentes fra årsradene i produksjonsbundelen, som dekker alle år
+// uavhengig av periodevelgeren.
+function ncsAnnualProduction(k) {
+  const out = {};
+  const b = bundle.production;
+  if (!b) return out;
+  Object.values(b.fields).forEach(rows => rows.forEach(([y, m, , gas, oe]) => {
+    if (m !== 0) return;
+    const v = k === 'gas' ? gas : k === 'liq' ? Math.max(0, oe - gas) : oe;   // gass i mrd Sm3 = mill Sm3 o.e.
+    out[y] = (out[y] || 0) + v * BBL_PER_SM3;
+  }));
+  return out;
+}
+
+function drawNcsReplacement() {
+  const k = ncsF.res;
+  if (!bundle.production) {
+    setChartEmpty('Reserve replacement needs the full production history, which is not available in live mode.');
+    setInfo(''); return;
+  }
+  const years = ncsReserveYears();
+  const ids = Object.keys(fieldReserves || {}).map(Number);
+  const rem = {};
+  years.forEach(y => { rem[y] = ids.reduce((t, id) => t + ncsResVal(reserveAt(fieldReserves[id], y), k), 0); });
+  const prod = ncsAnnualProduction(k);
+  const ys = years.slice(1).filter(y => prod[y]);
+  if (!ys.length) { setChartEmpty('Not enough reserve vintages to compute replacement.'); setInfo(''); return; }
+  const produced = ys.map(y => +prod[y].toFixed(1));
+  const added = ys.map(y => +(rem[y] - rem[y - 1] + prod[y]).toFixed(1));
+  const ratio = ys.map((y, i) => +(added[i] / produced[i] * 100).toFixed(0));
+  const labels = ys.map(String);
+  const PROD_C = 'rgba(148,163,184,0.8)', ADD_C = 'rgba(0,179,115,0.85)', RATIO_C = '#ce0f69';
+
+  setChartTable(''); setProfile('');
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = [{label: 'Produced, million boe', data: produced}, {label: 'Added, million boe', data: added},
+                  {label: 'Replacement ratio, %', data: ratio}];
+  const legend = [['Produced', PROD_C], ['Added to reserves', ADD_C], ['Replacement ratio (right axis)', RATIO_C]];
+  document.getElementById('chartArea').innerHTML = `${ncsPills('res', NCS_RES)}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${legend.map(([l, c]) => `
+      <div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>`;
+  if (chartInstance) chartInstance.destroy();
+  const r50 = v => Math.ceil(Math.abs(v) / 50) * 50 * Math.sign(v);
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    data: {labels, datasets: [
+      {type: 'line', label: 'Replacement ratio', data: ratio, yAxisID: 'y1', borderColor: RATIO_C, backgroundColor: RATIO_C,
+       borderWidth: 2, pointRadius: 3, tension: 0.2, order: 0},
+      {type: 'bar', label: 'Produced', data: produced, backgroundColor: PROD_C, borderWidth: 0, order: 1},
+      {type: 'bar', label: 'Added to reserves', data: added, backgroundColor: ADD_C, borderWidth: 0, order: 1},
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: ctx => ctx.dataset.type === 'line' ? ` Replacement ratio: ${ctx.parsed.y} %`
+          : ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en', {maximumFractionDigits: 0})} million boe`,
+      }}},
+      scales: {
+        x: {ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+        y: {title: {display: true, text: 'million boe', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
+            grid: {color: 'rgba(0,0,0,0.05)'}},
+        y1: {position: 'right', min: Math.min(0, r50(Math.min(...ratio))), max: Math.max(150, r50(Math.max(...ratio))),
+             title: {display: true, text: 'replacement ratio, %', color: RATIO_C, font: {size: 10}},
+             ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
+      },
+    },
+  });
+  document.getElementById('downloadBtn').disabled = false;
+
+  const sumP = produced.reduce((a, b) => a + b, 0), sumA = added.reduce((a, b) => a + b, 0);
+  const n0 = v => Math.round(v).toLocaleString('en');
+  setChartTitle('Norwegian Continental Shelf · Reserve replacement', `${ncsResLabel(k)} · added vs produced per year · million boe`);
+  setInfo(`<strong>Added</strong> = remaining reserves at year end − remaining a year earlier + production in the year &nbsp;|&nbsp; <strong>Replacement ratio</strong> = added / produced &nbsp;|&nbsp; <strong>${ys[0]}–${ys[ys.length - 1]}:</strong> ${n0(sumA)} added vs ${n0(sumP)} produced, ${(sumA / sumP * 100).toFixed(0)} % replaced &nbsp;|&nbsp; <strong>Basis:</strong> Sodir field reserve vintages and field production. New fields enter when they get an approved development plan; volumes still in discoveries are not counted`);
+  setChartTable(`
+    <table class="res-table">
+      <caption>Reserve replacement, ${ncsResNoun(k)} · million boe</caption>
+      <thead><tr><th>Year</th><th>Remaining at start</th><th>Produced</th><th>Added</th><th>Remaining at end</th><th>Replacement</th></tr></thead>
+      <tbody>${ys.slice().reverse().map(y => {
+        const i = ys.indexOf(y);
+        return `<tr><td>${y}</td><td>${n0(rem[y - 1])}</td><td>${n0(produced[i])}</td><td>${n0(added[i])}</td><td>${n0(rem[y])}</td><td>${ratio[i]} %</td></tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>${ys[0]}–${ys[ys.length - 1]}</td><td>${n0(rem[ys[0] - 1])}</td><td>${n0(sumP)}</td><td>${n0(sumA)}</td><td>${n0(rem[ys[ys.length - 1]])}</td><td>${(sumA / sumP * 100).toFixed(0)} %</td></tr></tfoot>
+    </table>`);
+}
+
+// ── NCS: EXPLORATION ──
+// Alle letebrønner per spuddår, delt på funn, tørre og øvrige. «Øvrige» er
+// brønner med spor, avgrensningsbrønner som traff hydrokarboner i et kjent
+// funn, og brønner som fortsatt bores. Funnraten regnes som i Companies.
+const NCS_EXPL_CAT = [
+  {key: 'disc',  label: 'Discovery', color: 'rgba(0,179,115,0.85)'},
+  {key: 'other', label: 'Other (shows, appraisal, ongoing)', color: 'rgba(232,201,66,0.8)'},
+  {key: 'dry',   label: 'Dry', color: 'rgba(154,165,177,0.85)'},
+];
+const ncsExplCat = w => w.found ? 'disc' : w.resKey === 'dry' ? 'dry' : 'other';
+
+function ncsExplWells() {
+  return explWells.filter(w => w.state !== 'planned' && w.entry && (!ncsF.wild || w.purpose === 'WILDCAT'))
+    .map(w => ({w, year: w.entry.slice(0, 4)}));
+}
+
+function ncsPickYear(y) {
+  ncsF.year = y;
+  syncUrl();
+  renderNcsExplTable(ncsExplWells());
+  if (chartInstance) chartInstance.update('none');
+}
+
+function drawNcsExploration() {
+  const rows = ncsExplWells();
+  const kind = ncsF.wild ? 'wildcats' : 'exploration wells';
+  const toggle = ncsPills('wild', [[false, 'All exploration wells'], [true, 'Wildcats only']]);
+  setChartTitle('Norwegian Continental Shelf · Exploration', `${ncsF.wild ? 'Wildcats' : 'Exploration wells'} per year · discovery rate`);
+  if (!rows.length) { setChartEmpty('No exploration wells available.'); ncsToggleAbove(toggle); setInfo(''); return; }
+  const y0 = +rows.reduce((m, r) => r.year < m ? r.year : m, '9999');
+  const y1 = Math.max(currentYear, +rows.reduce((m, r) => r.year > m ? r.year : m, '0'));
+  const labels = [];
+  for (let y = y0; y <= y1; y++) labels.push(String(y));
+  const per = Object.fromEntries(labels.map(y => [y, {disc: 0, dry: 0, other: 0, done: 0}]));
+  rows.forEach(r => {
+    const p = per[r.year];
+    p[ncsExplCat(r.w)]++;
+    if (r.w.state === 'completed') p.done++;
+  });
+  // Funnraten teller funnbrønner blant de avsluttede; en funnbrønn som
+  // fortsatt bores står som funn i søylen, men ikke i raten.
+  labels.forEach(y => { per[y].discDone = rows.filter(r => r.year === y && r.w.found && r.w.state === 'completed').length; });
+  const rate = labels.map(y => per[y].done ? +(per[y].discDone / per[y].done * 100).toFixed(1) : null);
+  if (!ncsF.year || !per[ncsF.year] || !(per[ncsF.year].disc + per[ncsF.year].dry + per[ncsF.year].other)) {
+    ncsF.year = [...labels].reverse().find(y => per[y].disc + per[y].dry + per[y].other);
+  }
+  explYearChart({
+    toggle, labels, rate, selected: () => ncsF.year, onPick: ncsPickYear,
+    per: Object.fromEntries(labels.map(y => [y, {disc: per[y].discDone, done: per[y].done}])),
+    stacks: NCS_EXPL_CAT.map(c => ({label: c.label, color: c.color, data: labels.map(y => per[y][c.key])})),
+  });
+  const done = labels.reduce((t, y) => t + per[y].done, 0), disc = labels.reduce((t, y) => t + per[y].discDone, 0);
+  setInfo(`<strong>Wells:</strong> ${rows.length} ${kind}, sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${done ? (disc / done * 100).toFixed(0) : '—'} % overall (${disc} discoveries in ${done} completed wells) &nbsp;|&nbsp; <strong>Discovery</strong> = Sodir's discovery well flag; <strong>Other</strong> = shows, appraisal wells with hydrocarbons in a known discovery, and wells still drilling &nbsp;|&nbsp; <strong>Basis:</strong> Sodir exploration wellbores by spud year`);
+  renderNcsExplTable(rows);
+}
+
+function renderNcsExplTable(rows) {
+  const list = rows.filter(r => r.year === ncsF.year)
+    .sort((a, b) => (a.w.entry < b.w.entry ? -1 : a.w.entry > b.w.entry ? 1 : 0));
+  if (!list.length) { setChartTable(''); return; }
+  const disc = list.filter(r => r.w.found).length, dry = list.filter(r => r.w.resKey === 'dry').length;
+  setChartTable(explYearTableHtml(list,
+    `${ncsF.year} · ${list.length} ${ncsF.wild ? 'wildcats' : 'exploration wells'} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false));
+}
+
+// ── NCS: COMPANIES ──
+// Rangering etter gjenstående reserver, egenandelsjustert med dagens
+// lisensandeler mot siste reserveårgang. Med ressurser tas også betingede
+// ressurser i funn med (samme andelsberegning som i selskapsvisningene).
+// Andeler som ikke er fordelt på noe selskap — britisk del av felt som deles
+// over grensen — faller utenfor.
+function drawNcsCompanies() {
+  const now = new Date();
+  const res = {};
+  const get = n => res[n] = res[n] || {name: n, liq: 0, gas: 0, cr: 0};
+  Object.entries(fieldReserves || {}).forEach(([id, rows]) => {
+    if (!rows.length) return;
+    const cur = rows[rows.length - 1];
+    fieldPartners(+id, now).forEach(p => {
+      const v = remainingSplit(cur, p.share / 100);
+      const o = get(p.name); o.liq += v.liq; o.gas += v.gas;
+    });
+  });
+  const withRes = ncsF.rank === 'all';
+  if (withRes) allDiscoveries.forEach(d => {
+    const v = discoveryRes[d.id];
+    if (!v) return;
+    discoveryPartners(d).forEach(p => { get(p.name).cr += v.oe * BBL_PER_SM3 * p.share / 100; });
+  });
+  const list = Object.values(res).map(o => ({...o, total: o.liq + o.gas + (withRes ? o.cr : 0)}))
+    .filter(o => o.total >= 0.05).sort((a, b) => b.total - a.total);
+  const grand = list.reduce((t, o) => t + o.total, 0);
+  const shown = ncsF.all ? list : list.slice(0, 20);
+  const max = shown.length ? shown[0].total : 1;
+  const SEG = [['liq', 'Liquids reserves', OIL_COLOR], ['gas', 'Gas reserves', GAS_COLOR]]
+    .concat(withRes ? [['cr', 'Contingent resources', 'rgba(0,179,115,0.7)']] : []);
+  const n = v => v.toLocaleString('en', {maximumFractionDigits: 0});
+  const bars = shown.map((o, i) => {
+    const link = allCompanies.includes(o.name);
+    const open = link ? ` onclick="openCompanyProfile(${esc(jsStr(o.name))})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')openCompanyProfile(${esc(jsStr(o.name))})"` : ' style="cursor:default"';
+    return `<div class="lc-row"${open}>
+      <div class="lc-name" title="${esc(o.name)}">${i + 1}. ${esc(o.name)}</div>
+      <div class="lc-track" style="width:${(o.total / max * 70).toFixed(1)}%">${SEG.map(([k, l, c]) =>
+        o[k] > 0 ? `<span style="flex:${o[k]};background:${c}" title="${esc(o.name)} · ${l}: ${n(o[k])} million boe"></span>` : '').join('')}</div>
+      <div class="lc-val">${n(o.total)} · ${(o.total / grand * 100).toFixed(1)} %</div></div>`;
+  }).join('');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  setProfile('');
+  const vintage = Math.max(...Object.values(fieldReserves || {}).filter(r => r.length).map(r => r[r.length - 1].year));
+  document.getElementById('chartArea').innerHTML = `
+    ${ncsPills('rank', [['res', 'Reserves'], ['all', 'Reserves + contingent resources']])}
+    ${bars}
+    <div class="ex-legend">${SEG.map(([, l, c]) => `<span class="ex-leg"><span class="ex-dot" style="background:${c}"></span>${l}</span>`).join('')}
+      <span class="ex-leg">Showing ${shown.length} of ${list.length}
+      ${list.length > 20 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 20' : 'show all'}</a>` : ''}</span></div>
+    <div class="pf-map-note">Click a company for its profile. Values in million boe, share of the total shown.</div>`;
+  setChartTitle('Norwegian Continental Shelf · Companies', `Ranked by remaining reserves${withRes ? ' and contingent resources' : ''}, equity-adjusted · million boe`);
+  setInfo(`<strong>Reserves:</strong> Sodir field reserves, vintage ${vintage}, multiplied by each company's licence share today &nbsp;|&nbsp; ${withRes ? '<strong>Contingent resources:</strong> undeveloped discoveries (resource classes 4F, 5F, 7F) by licence share &nbsp;|&nbsp; ' : ''}<strong>Total:</strong> ${n(grand)} million boe across ${list.length} companies. Cross-border shares held outside Norway are not included`);
+  lastLabels = list.map(o => o.name); lastXTitle = 'Company';
+  lastDatasets = SEG.map(([k, l]) => ({label: l + ', million boe', data: list.map(o => +o[k].toFixed(1))}));
+  document.getElementById('downloadBtn').disabled = false;
+  setChartTable('');
+}
+
+// ── NCS: INVESTMENTS ──
+// Historiske investeringer per år og havområde (nominelle kroner), og
+// Sodirs anslag for framtidige investeringer per felt (faste kroner).
+function drawNcsInvestments() {
+  const b = bundle.field_investments;
+  if (!b) { setChartEmpty('No investment data available.'); setInfo(''); return; }
+  const areas = ncsAreas();
+  const per = {};
+  Object.entries(b.fields).forEach(([id, rows]) => {
+    const area = ncsArea(+id);
+    rows.forEach(([y, v]) => { (per[y] = per[y] || {})[area] = (per[y][area] || 0) + v; });
+  });
+  const years = Object.keys(per).map(Number).sort((a, c) => a - c);
+  const labels = [];
+  for (let y = years[0]; y <= years[years.length - 1]; y++) labels.push(String(y));
+  const datasets = areas.map(z => ({label: z.label, data: labels.map(y => +(((per[y] || {})[z.key] || 0) / 1000).toFixed(2)),
+    backgroundColor: rgba(z.color, 0.85), borderWidth: 0, stack: 's'})).filter(d => hasAnyValue(d.data));
+  const legend = areas.filter(z => datasets.some(d => d.label === z.label)).map(z => ({label: z.label, color: rgba(z.color, 0.85)}));
+  renderChart(labels, datasets, legend, 'NOK bn', {xTitle: 'Year'});
+
+  const total = Object.values(b.fields).reduce((t, rows) => t + rows.reduce((s, r) => s + r[1], 0), 0);
+  const exp = Object.entries(b.expected).map(([id, [v, fix]]) => ({id: +id, name: fieldNameOf(+id), v, fix,
+    hist: (b.fields[id] || []).reduce((s, r) => s + r[1], 0)})).filter(f => Math.abs(f.v) >= 50).sort((a, c) => c.v - a.v);
+  const expSum = exp.reduce((t, f) => t + f.v, 0);
+  const fix = [...new Set(exp.map(f => f.fix))].sort().join('/');
+  setChartTitle('Norwegian Continental Shelf · Investments', 'By sea area · NOK bn (nominal)');
+  setInfo(`<strong>Invested ${labels[0]}–${labels[labels.length - 1]}:</strong> ${nokBn(total)} (nominal) &nbsp;|&nbsp; <strong>Expected future investments:</strong> ${nokBn(expSum)} in fixed ${fix} prices, ${exp.length} fields &nbsp;|&nbsp; <strong>Basis:</strong> Investments reported to Sodir per field; the two figures use different price bases and are kept apart`);
+  setChartTable(`
+    <table class="res-table">
+      <caption>Expected future investments per field · fixed ${fix} prices · NOK bn</caption>
+      <thead><tr><th>Field</th><th>Sea area</th><th>Expected future</th><th>Share</th><th>Invested to date (nominal)</th></tr></thead>
+      <tbody>${exp.slice(0, 25).map(f => `<tr><td><a class="row-link" href="#" onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a></td>
+        <td>${(LIC_SEAS.find(z => z.key === ncsArea(f.id)) || {label: 'Other'}).label}</td>
+        <td>${bnNum(f.v)}</td><td>${(f.v / expSum * 100).toFixed(1)} %</td><td>${f.hist ? bnNum(f.hist) : '—'}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total (${exp.length} fields)</td><td></td><td>${bnNum(expSum)}</td><td>100 %</td><td>${bnNum(total)}</td></tr></tfoot>
+    </table>`);
 }
 
 // ── COMPANIES: EXPLORATION ───────────────────────────────────────────────────
@@ -2297,43 +2768,53 @@ function drawCompaniesExploration() {
     cmpExplYear = [...labels].reverse().find(y => per[y].op + per[y].nonop);
   }
 
+  const nOp = rows.filter(r => r.op).length;
+  explYearChart({
+    toggle, labels, per, rate, selected: () => cmpExplYear, onPick: setCmpExplYear,
+    stacks: [
+      {label: 'Operated', color: CMP_EXPL_OP, data: labels.map(y => per[y].op)},
+      {label: 'Non-operated', color: CMP_EXPL_NONOP, data: labels.map(y => per[y].nonop)},
+    ],
+  });
+  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
+  renderCmpExplTable(rows);
+}
+
+// Felles graf for letebrønner per år: stablede søyler (stacks) og funnraten
+// som linje på høyre akse. per[år] må ha done og disc til verktøytipset.
+// Valgt år (selected()) markeres ved at de andre stolpene tones ned; et
+// klikk kaller onPick med året.
+function explYearChart({toggle, labels, per, rate, stacks, selected, onPick}) {
   setChartTable(''); setProfile('');
   lastLabels = labels;
   lastXTitle = 'Year';
-  lastDatasets = [
-    {label: 'Operated', data: labels.map(y => per[y].op)},
-    {label: 'Non-operated', data: labels.map(y => per[y].nonop)},
-    {label: 'Discovery rate, %', data: rate.map(v => v ?? '')},
-  ];
-  const legend = [
-    {label: 'Operated', color: CMP_EXPL_OP},
-    {label: 'Non-operated', color: CMP_EXPL_NONOP},
-    {label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE},
-  ];
+  lastDatasets = stacks.map(st => ({label: st.label, data: st.data}))
+    .concat([{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}]);
+  const legend = stacks.map(st => ({label: st.label, color: st.color}))
+    .concat([{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}]);
   document.getElementById('chartArea').innerHTML = `${toggle}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l => `
       <div class="legend-item"><div class="legend-dot" style="background:${l.color}"></div>${esc(l.label)}</div>`).join('')}
     </div>
     <div class="pf-map-note">Click a year to list its wells below.</div>`;
-  // Valgt år markeres ved at de andre stolpene tones ned.
-  const dim = (c, i) => labels[i] === cmpExplYear ? c : c.replace(/[\d.]+\)$/, m => (parseFloat(m) * 0.45).toFixed(2) + ')');
+  // Fargene må være rgba(), så alfaverdien kan skaleres ned.
+  const dim = (c, i) => labels[i] === selected() ? c : c.replace(/[\d.]+\)$/, m => (parseFloat(m) * 0.45).toFixed(2) + ')');
+  const totalOf = i => stacks.reduce((t, st) => t + st.data[i], 0);
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
     data: {labels, datasets: [
       {type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
-       backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: 3, tension: 0.25, spanGaps: true, order: 0},
-      {type: 'bar', label: 'Operated', data: labels.map(y => per[y].op), stack: 's', order: 1,
-       backgroundColor: ctx => dim(CMP_EXPL_OP, ctx.dataIndex), borderWidth: 0},
-      {type: 'bar', label: 'Non-operated', data: labels.map(y => per[y].nonop), stack: 's', order: 1,
-       backgroundColor: ctx => dim(CMP_EXPL_NONOP, ctx.dataIndex), borderWidth: 0},
+       backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0},
+      ...stacks.map(st => ({type: 'bar', label: st.label, data: st.data, stack: 's', order: 1,
+        backgroundColor: ctx => dim(st.color, ctx.dataIndex), borderWidth: 0})),
     ]},
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: {mode: 'index', intersect: false},
       onClick: (e, els, chart) => {
         const pts = chart.getElementsAtEventForMode(e, 'index', {intersect: false}, false);
-        if (pts.length) setCmpExplYear(labels[pts[0].index]);
+        if (pts.length) onPick(labels[pts[0].index]);
       },
       onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
       plugins: {
@@ -2342,7 +2823,7 @@ function drawCompaniesExploration() {
           label: ctx => ctx.dataset.type === 'line'
             ? (ctx.parsed.y == null ? null : ` Discovery rate: ${ctx.parsed.y.toFixed(0)} % (${per[labels[ctx.dataIndex]].disc} of ${per[labels[ctx.dataIndex]].done} completed)`)
             : ` ${ctx.dataset.label}: ${ctx.parsed.y}`,
-          footer: items => `Total: ${per[labels[items[0].dataIndex]].op + per[labels[items[0].dataIndex]].nonop} wells`,
+          footer: items => `Total: ${totalOf(items[0].dataIndex)} wells`,
         }},
       },
       scales: {
@@ -2355,9 +2836,26 @@ function drawCompaniesExploration() {
     },
   });
   document.getElementById('downloadBtn').disabled = false;
-  const nOp = rows.filter(r => r.op).length;
-  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
-  renderCmpExplTable(rows);
+}
+
+// Tabellen under grafen: brønnene i ett år. list: [{w, op, share}]. Med
+// withRole vises selskapenes rolle og andel (Companies); ellers ikke (NCS).
+function explYearTableHtml(list, caption, withRole) {
+  return `
+    <div class="pf-scroll"><table class="res-table ex-table">
+      <caption>${caption}</caption>
+      <thead><tr><th class="ex-l">Well</th>${withRole ? '<th class="ex-l">Role</th>' : ''}<th class="ex-l">Purpose</th><th class="ex-l">Result</th>
+        <th class="ex-l">Operator</th><th class="ex-l">Rig</th><th>Spudded</th></tr></thead>
+      <tbody>${list.map(({w, op, share}) => `
+        <tr class="ex-row" onclick="openWell(${w.id}, true)">
+          <td class="ex-name"><strong>${esc(w.title)}</strong>${w.state !== 'completed' ? ` <span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}
+            ${w.sub ? `<small>${esc(w.sub)}</small>` : ''}</td>
+          ${withRole ? `<td class="ex-l">${op ? 'Operator' : 'Partner'}${share ? ` · ${(+share.toFixed(2))} %` : ''}</td>` : ''}
+          <td class="ex-l">${esc(tc(w.purpose))}</td>
+          <td class="ex-l">${explResultCell(w)}${w.found ? ' <small>discovery</small>' : ''}</td>
+          <td class="ex-l">${esc(w.operator || '—')}</td>
+          <td class="ex-l">${esc(w.rig) || '—'}</td><td>${fmtShort(w.entry)}</td></tr>`).join('')}</tbody>
+    </table></div>`;
 }
 
 function renderCmpExplTable(rows) {
@@ -2366,21 +2864,8 @@ function renderCmpExplTable(rows) {
   if (!list.length) { setChartTable(''); return; }
   const nOp = list.filter(r => r.op).length;
   const disc = list.filter(r => r.w.found).length;
-  setChartTable(`
-    <div class="pf-scroll"><table class="res-table ex-table">
-      <caption>${cmpExplYear} · ${list.length} ${cmpExplWildcat ? 'wildcats' : 'exploration wells'} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}</caption>
-      <thead><tr><th class="ex-l">Well</th><th class="ex-l">Role</th><th class="ex-l">Purpose</th><th class="ex-l">Result</th>
-        <th class="ex-l">Operator</th><th class="ex-l">Rig</th><th>Spudded</th></tr></thead>
-      <tbody>${list.map(({w, op, share}) => `
-        <tr class="ex-row" onclick="openWell(${w.id}, true)">
-          <td class="ex-name"><strong>${esc(w.title)}</strong>${w.state !== 'completed' ? ` <span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}
-            ${w.sub ? `<small>${esc(w.sub)}</small>` : ''}</td>
-          <td class="ex-l">${op ? 'Operator' : 'Partner'}${share ? ` · ${(+share.toFixed(2))} %` : ''}</td>
-          <td class="ex-l">${esc(tc(w.purpose))}</td>
-          <td class="ex-l">${explResultCell(w)}${w.found ? ' <small>discovery</small>' : ''}</td>
-          <td class="ex-l">${esc(w.operator || '—')}</td>
-          <td class="ex-l">${esc(w.rig) || '—'}</td><td>${fmtShort(w.entry)}</td></tr>`).join('')}</tbody>
-    </table></div>`);
+  setChartTable(explYearTableHtml(list,
+    `${cmpExplYear} · ${list.length} ${cmpExplWildcat ? 'wildcats' : 'exploration wells'} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}`, true));
 }
 
 // ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
@@ -2493,6 +2978,7 @@ let fieldReservesLoaded = false;
 // Visninger uten tidsakse: periode- og årsvelgeren gjelder ikke for dem.
 function isReservesView() {
   return topMode === 'discoveries' || topMode === 'exploration'
+      || (topMode === 'ncs' && ncsSubView !== 'production')
       || (topMode === 'fields'    && fieldSubView   === 'profile')
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
@@ -7074,7 +7560,7 @@ function rigZoomRig() {
 
 // ── Hopp til/fra andre moduser ───────────────────────────────────────────────
 function syncModeButtons() {
-  ['hubs', 'fields', 'companies', 'discoveries', 'exploration', 'licences'].forEach(m =>
+  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'licences'].forEach(m =>
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
 }
 

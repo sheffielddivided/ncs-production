@@ -1119,6 +1119,23 @@ slik at den kan merkes manuelt.
 | Companies | Profile | `drawCompanyProfile` | Faktaark for **ett** selskap: årlig egenandelsjustert produksjon per hub i grafen, og under den nøkkeltall, kart, portefølje gruppert per hub, ressurser og en sorterbar lisenstabell |
 
 **Fire av hub-visningene er feltvisninger med hubens medlemsfelt.**
+
+#### NCS-modusen
+
+Hele sokkelen samlet, uten utvalg (velgerknappen er skjult, `body.ncs`).
+Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`).
+
+| Fane | Funksjon | Hva som tegnes |
+|---|---|---|
+| Production | `drawNcsProduction` | Summen av alle felt, olje/gass(/vann) eller OE per havområde (`np=area`). Én gjennomgang av radene i stedet for oppslag per periode og felt, men samme regler for gyldige rader, komplette perioder og kvartaler som feltvisningene |
+| Reserves | `drawNcsReserves` | Gjenstående reserver per årgang, stablet per havområde, veksler Total OE / Liquids / Gas (`nr`). Tabell: per havområde med endring fra året før, og de 15 største feltene |
+| Replacement | `drawNcsReplacement` | Tilført = gjenstående(y) − gjenstående(y−1) + produsert(y), mot produsert, med erstatningsgraden som linje. Produksjonen tas fra årsradene i produksjonsbundelen, så fanen krever bundelen |
+| Exploration | `drawNcsExploration` | Letebrønner per spuddår: funn (wlbDiscoveryWell), øvrige, tørre, med funnrate og «Wildcats only» (`nw`). Felles graf og tabell med Companies/Exploration (`explYearChart`, `explYearTableHtml`) |
+| Companies | `drawNcsCompanies` | Rangering etter gjenstående reserver (siste årgang × dagens lisensandel), eventuelt pluss betingede ressurser i funn (`nk=all`) |
+| Investments | `drawNcsInvestments` | Investeringer per år og havområde (nominelt), og forventede framtidige investeringer per felt (faste kroner) |
+
+Havområdet hentes fra feltfaktaene (`ncsArea`); felt uten område havner under
+«Other».
 `drawFieldsOilGas`, `drawFieldsOePerField`, `drawFieldsOePerCompany` og
 `drawFieldsReserves` tar `{ids, scope}`: `ids` overstyrer feltutvalget og
 `scope` gir tittel og infoboks hubens navn i stedet for feltlisten. Tallene er
