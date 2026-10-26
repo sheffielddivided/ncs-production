@@ -40,6 +40,7 @@ STATUS_LAYER  = 7101   # field_activity_status_hst
 DESCR_LAYER   = 7102   # field_description
 FACILITY_LAYER = 6000  # facility
 FACILITY_PHASE_LAYER = 6002  # facility_phase_hst
+FLDINV_EXP_LAYER = 7107  # field_investment_expected
 LICENCE_LAYER = 3000   # licence
 COMPANY_LAYER = 1200   # company
 WELL_LAYER    = 5000   # wellbore
@@ -184,6 +185,39 @@ def build_production():
         'columns': ['year', 'month', 'oil', 'gas', 'oe', 'water'],
         'fields': fields,
     }
+
+
+# Investeringer per felt: årlige historiske tall fra produksjonsprofilene
+# (prfInvestmentsMillNOK på årsradene, nominelle MNOK) og Sodirs anslag for
+# gjenstående framtidige investeringer (lag 7107, MNOK i faste kroner for
+# fldInvExpFixYear). Holdes utenfor production.json, som appen også kan
+# bygge direkte fra APIet med de kolonnene den har i dag.
+def build_field_investments():
+    rows = fetch_layer(
+        PROD_LAYER,
+        'prfNpdidInformationCarrier,prfInformationCarrierKind,prfYear,prfInvestmentsMillNOK',
+        'prfMonth=0 AND prfInvestmentsMillNOK IS NOT NULL',
+    )
+    fields = {}
+    for r in rows:
+        fid, year = as_int(r.get('prfNpdidInformationCarrier')), as_int(r.get('prfYear'))
+        if fid is None or year is None or _clean(r.get('prfInformationCarrierKind')) != 'FIELD':
+            continue
+        mnok = round(num(r.get('prfInvestmentsMillNOK')), 1)
+        # Nullår utelates; appen fyller hull med null. Det halverer fila, og
+        # Sodir rapporterer uansett null for år som ennå ikke er tallfestet.
+        if mnok:
+            fields.setdefault(str(fid), []).append([year, mnok])
+    for series in fields.values():
+        series.sort()
+    expected = {}
+    for r in fetch_layer(FLDINV_EXP_LAYER, 'fldNpdidField,fldInvestmentExpected,fldInvExpFixYear'):
+        fid = as_int(r.get('fldNpdidField'))
+        if fid is None or r.get('fldInvestmentExpected') is None:
+            continue
+        expected[str(fid)] = [round(num(r.get('fldInvestmentExpected')), 1), as_int(r.get('fldInvExpFixYear'))]
+    return {'columns': ['year', 'mnok'], 'fields': fields,
+            'expectedColumns': ['mnok', 'fixYear'], 'expected': expected}
 
 
 def build_licensees():
@@ -1145,6 +1179,7 @@ def main():
         ('field_profile.json', 'feltfakta', build_field_profile),
         ('field_descriptions.json', 'feltbeskrivelser', build_field_descriptions),
         ('field_outlines.json', 'feltomriss', build_field_outlines),
+        ('field_investments.json', 'investeringer per felt', build_field_investments),
         ('facilities.json', 'innretninger', build_facilities),
         ('licences.json', 'utvinningstillatelser', build_licences),
         ('licence_outlines.json', 'lisensomriss', build_licence_outlines),
