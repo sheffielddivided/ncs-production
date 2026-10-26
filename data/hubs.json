@@ -319,6 +319,10 @@
       "hub": "Eiga area",
       "auto": false
     },
+    "26376286": {
+      "hub": "Sverdrup",
+      "auto": false
+    },
     "26465170": {
       "hub": "TYRIHANS",
       "auto": true
@@ -420,7 +424,7 @@
       "auto": false
     },
     "42002481": {
-      "hub": "NORNE",
+      "hub": "Other",
       "auto": false
     },
     "42002482": {
