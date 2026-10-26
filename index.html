@@ -85,9 +85,29 @@
     body.expl #explBox, body.lic #licBox{display:block;}
     #licBox{display:none;}
     body.lic .chart-wrap, body.lic #chartTable, body.lic .profile-wrap, body.lic .info-box,
-    body.lic .select-fab, body.lic #downloadBtn, body.lic #pptBtn{display:none !important;}
+    body.lic .select-fab, body.lic #downloadBtn, body.lic #pptBtn, body.lic #pptAddBtn{display:none !important;}
     body.expl .chart-wrap, body.expl #chartTable, body.expl .profile-wrap, body.expl .info-box,
-    body.expl .select-fab, body.expl #downloadBtn, body.expl #pptBtn{display:none !important;}
+    body.expl .select-fab, body.expl #downloadBtn, body.expl #pptBtn, body.expl #pptAddBtn{display:none !important;}
+    .ppt-card{position:relative;}
+    .ppt-add{position:absolute;top:8px;right:8px;z-index:2;padding:2px 8px;border:1px solid var(--green);border-radius:6px;
+      background:#fff;color:var(--green);font-size:0.68rem;font-weight:600;cursor:pointer;opacity:0.75;}
+    .ppt-add:hover{opacity:1;}
+    .ppt-basket{position:relative;}
+    .ppt-basket-btn{background:var(--green);color:#fff;}
+    .ppt-panel{display:none;position:absolute;right:0;bottom:calc(100% + 6px);z-index:90;width:min(420px,calc(100vw - 24px));
+      background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,0.15);padding:10px;}
+    .ppt-panel.open{display:block;}
+    .ppt-bl{max-height:50vh;overflow:auto;margin-bottom:8px;}
+    .ppt-bi{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #eef0f3;font-size:0.74rem;}
+    .ppt-bk{flex:0 0 auto;font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;width:38px;}
+    .ppt-bt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+    .ppt-bt small{display:block;color:var(--muted);}
+    .ppt-bx{flex:0 0 auto;border:none;background:none;cursor:pointer;color:var(--muted);font-size:0.8rem;padding:2px 4px;}
+    .ppt-bx:disabled{opacity:0.3;cursor:default;}
+    .ppt-ba{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+    .ppt-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a2332;color:#fff;padding:8px 14px;
+      border-radius:8px;font-size:0.78rem;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:400;}
+    .ppt-toast.show{opacity:0.92;}
     body.ncs .select-fab{display:none !important;}
     .expl-wrap{margin:10px 12px;}
     .lc-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
@@ -529,6 +549,17 @@
     </svg>
     <span>Download PPT</span>
   </button>
+  <button class="dl-btn" id="pptAddBtn" onclick="pptAddCurrent()" disabled title="Add this chart to the PowerPoint basket">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    Add to PPT
+  </button>
+  <div class="ppt-basket">
+    <button class="dl-btn ppt-basket-btn" id="pptBasketBtn" onclick="pptBasketToggle()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8h14l-1.5 11h-11z"/><path d="M9 8V6a3 3 0 016 0v2"/></svg>
+      <span>PPT basket (0)</span>
+    </button>
+    <div class="ppt-panel" id="pptBasketPanel"></div>
+  </div>
 </div>
 
 <div class="source-note"><a href="https://factpages.sodir.no" target="_blank">Norwegian Offshore Directorate</a> – NLOD 2.0<span id="dataDate"></span></div>
@@ -6307,6 +6338,18 @@ function pptAddChart(pptx, slide, spec, box) {
   slide.addChart(types, opts);
 }
 
+function pptSlideHead(slide, meta) {
+  slide.addText(meta.title, {x: 0.5, y: 0.3, w: 12.3, h: 0.6, fontFace: 'Arial', fontSize: 24, bold: true, color: '1A2332'});
+  if (meta.subtitle) slide.addText(meta.subtitle, {x: 0.5, y: 0.85, w: 12.3, h: 0.4, fontFace: 'Arial', fontSize: 14, color: '6B7785'});
+}
+
+function pptAddChartSlide(pptx, spec, meta) {
+  const slide = pptx.addSlide();
+  pptSlideHead(slide, meta);
+  pptAddChart(pptx, slide, spec, {x: 0.5, y: 1.35, w: 12.3, h: 5.55});
+  slide.addText(meta.source, {x: 0.5, y: 6.95, w: 12.3, h: 0.3, fontFace: 'Arial', fontSize: 10, color: '8A94A0'});
+}
+
 async function downloadPpt() {
   const spec = pptSpec || (chartInstance ? pptSpecFromChart(chartInstance) : null);
   if (!spec) return;
@@ -6319,11 +6362,7 @@ async function downloadPpt() {
     const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';   // 13.33 × 7.5 tommer
     pptx.title = meta.title;
-    const slide = pptx.addSlide();
-    slide.addText(meta.title, {x: 0.5, y: 0.3, w: 12.3, h: 0.6, fontFace: 'Arial', fontSize: 24, bold: true, color: '1A2332'});
-    if (meta.subtitle) slide.addText(meta.subtitle, {x: 0.5, y: 0.85, w: 12.3, h: 0.4, fontFace: 'Arial', fontSize: 14, color: '6B7785'});
-    pptAddChart(pptx, slide, spec, {x: 0.5, y: 1.35, w: 12.3, h: 5.55});
-    slide.addText(meta.source, {x: 0.5, y: 6.95, w: 12.3, h: 0.3, fontFace: 'Arial', fontSize: 10, color: '8A94A0'});
+    pptAddChartSlide(pptx, spec, meta);
     const name = (meta.title || 'NCS chart').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim();
     await pptx.writeFile({fileName: `${name}.pptx`});
   } catch (e) {
@@ -6334,11 +6373,209 @@ async function downloadPpt() {
   }
 }
 
-// PPT-knappen følger Excel-knappen: aktiv når det finnes en graf.
+// PPT-knappene følger Excel-knappen: aktive når det finnes en graf.
 new MutationObserver(() => {
-  const b = document.getElementById('pptBtn');
-  if (b.querySelector('span').textContent === 'Download PPT') b.disabled = document.getElementById('downloadBtn').disabled;
+  const b = document.getElementById('pptBtn'), dis = document.getElementById('downloadBtn').disabled;
+  if (b.querySelector('span').textContent === 'Download PPT') b.disabled = dis;
+  document.getElementById('pptAddBtn').disabled = dis;
 }).observe(document.getElementById('downloadBtn'), {attributes: true, attributeFilter: ['disabled']});
+
+// ── PPT-KURV ─────────────────────────────────────────────────────────────────
+// Flere grafer i én fil. «Add to PPT» legger grafen som vises i kurven; kart,
+// tidslinjer og andre SVG-figurer får en egen «+ PPT»-knapp i kortet sitt og
+// legges inn som SVG-bilde. Kurven lastes ned som én presentasjon med ett
+// lysbilde per element.
+//
+// SVG er vektorgrafikk, så bildet er skarpt i alle størrelser, og i
+// PowerPoint 365 kan det gjøres om til redigerbare figurer med «Konverter til
+// figur». CSS-stilene lagres inn i figuren før den serialiseres, så den ser
+// lik ut utenfor siden. Forklaringen og noten i kortet ligger utenfor
+// SVG-en og legges på lysbildet som tekst.
+//
+// Kurven lagres i nettleseren (localStorage) og overlever at siden lastes på
+// nytt. Blir den for stor til lagringen, beholdes den bare i minnet.
+const PPT_BASKET_KEY = 'ncs_ppt_basket_v1';
+const PPT_SVG_SEL = 'svg.pf-map, svg.pf-pie, svg.lc-chart, svg.ex-map, svg.ex-gantt';
+let pptBasket = [];
+try { pptBasket = JSON.parse(localStorage.getItem(PPT_BASKET_KEY) || '[]') || []; } catch (e) { pptBasket = []; }
+
+function pptBasketSave() {
+  try { localStorage.setItem(PPT_BASKET_KEY, JSON.stringify(pptBasket)); } catch (e) { /* for stor: bare i minnet */ }
+  renderPptBasket();
+}
+
+function pptToast(msg) {
+  let t = document.getElementById('pptToast');
+  if (!t) { t = document.createElement('div'); t.id = 'pptToast'; t.className = 'ppt-toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(pptToast.timer); pptToast.timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function pptAddCurrent() {
+  const spec = pptSpec || (chartInstance ? pptSpecFromChart(chartInstance) : null);
+  if (!spec) return;
+  pptBasket.push({kind: 'chart', spec, meta: pptMeta()});
+  pptBasketSave();
+  pptToast(`Added to PPT basket (${pptBasket.length})`);
+}
+
+// SVG med stilene lagt inn. Arvbare egenskaper skrives bare der de avviker
+// fra forelderen, og de andre bare når de avviker fra standard — ellers blir
+// et kart med tusenvis av stier flere megabyte.
+const PPT_INHERIT = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-linejoin',
+                     'stroke-linecap', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-anchor', 'visibility', 'paint-order'];
+const PPT_OWN = {opacity: '1', 'dominant-baseline': 'auto'};
+function pptSerializeSvg(svg) {
+  const clone = svg.cloneNode(true);
+  const src = [svg, ...svg.querySelectorAll('*')], dst = [clone, ...clone.querySelectorAll('*')];
+  const comp = src.map(el => getComputedStyle(el));
+  const drop = [];
+  src.forEach((el, i) => {
+    const cs = comp[i], parent = i ? comp[src.indexOf(el.parentElement)] : null;
+    if (cs.display === 'none') { drop.push(dst[i]); return; }
+    const st = [];
+    PPT_INHERIT.forEach(p => { const v = cs.getPropertyValue(p); if (!parent || parent.getPropertyValue(p) !== v) st.push(`${p}:${v}`); });
+    Object.entries(PPT_OWN).forEach(([p, d]) => { const v = cs.getPropertyValue(p); if (v && v !== d) st.push(`${p}:${v}`); });
+    dst[i].setAttribute('style', st.join(';'));
+    dst[i].removeAttribute('class');
+    dst[i].removeAttribute('onclick');
+  });
+  drop.forEach(n => n.remove());
+  const vb = svg.viewBox && svg.viewBox.baseVal;
+  const r = svg.getBoundingClientRect();
+  const w = vb && vb.width ? vb.width : r.width, h = vb && vb.height ? vb.height : r.height;
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', w); clone.setAttribute('height', h);
+  return {svg: new XMLSerializer().serializeToString(clone), w, h};
+}
+
+function pptSvgMeta(card) {
+  const h3 = card.querySelector('h3');
+  const overlay = card.closest('#wdOverlay');
+  let title;
+  if (overlay) title = (overlay.querySelector('h2') || {}).textContent || '';
+  else if (topMode === 'exploration' || topMode === 'licences') {
+    const mode = document.querySelector('.mode-btn.active'), tab = document.querySelector('.view-tab.active');
+    title = [mode && mode.textContent, tab && tab.textContent].filter(Boolean).join(' · ');
+  } else title = pptMeta().title;
+  const text = card.innerText;
+  const legend = [...card.querySelectorAll('.ex-leg, .legend-item')].map(el => {
+    const dot = el.querySelector('.ex-dot, .legend-dot');
+    if (!dot) return null;
+    const bg = getComputedStyle(dot).backgroundColor;
+    return {label: el.textContent.trim(), color: /^rgba?\(/.test(bg) && pptAlpha(bg) > 0 ? pptHex(bg) : '9AA5B1'};
+  }).filter(x => x && x.label);
+  const note = [...card.querySelectorAll('.pf-map-note')].map(n => n.textContent.trim()).filter(Boolean).join(' ');
+  const src = /Kystverket/.test(text) ? 'Source: Norwegian Coastal Administration (AIS); Norwegian Offshore Directorate (Sodir)'
+            : /\bSSB\b/.test(text) ? 'Source: Statistics Norway (SSB)' : 'Source: Norwegian Offshore Directorate (Sodir), FactPages';
+  // Noten kuttes ved en hel setning, så den får plass over kildelinjen.
+  let short = note;
+  if (short.length > 230) {
+    const cut = short.slice(0, 230), dot = cut.lastIndexOf('. ');
+    short = dot > 60 ? cut.slice(0, dot + 1) : cut.replace(/\s+\S*$/, '') + ' …';
+  }
+  return {title: title.trim(), subtitle: h3 ? h3.textContent.trim() : '', source: src, legend, note: short};
+}
+
+function pptAddSvg(btn) {
+  const card = btn.closest('.pf-card');
+  const svg = card && card.querySelector(PPT_SVG_SEL);
+  if (!svg) return;
+  const s = pptSerializeSvg(svg);
+  pptBasket.push({kind: 'svg', ...s, meta: pptSvgMeta(card)});
+  pptBasketSave();
+  pptToast(`Added to PPT basket as image (${pptBasket.length})`);
+}
+
+// «+ PPT»-knapp i hvert kort med en SVG-figur. Kortene tegnes om hele tiden,
+// så en MutationObserver legger knappen på nye kort.
+function pptDecorate() {
+  document.querySelectorAll(PPT_SVG_SEL).forEach(svg => {
+    const card = svg.closest('.pf-card');
+    if (!card || card.querySelector(':scope > .ppt-add')) return;
+    const b = document.createElement('button');
+    b.className = 'ppt-add'; b.type = 'button'; b.textContent = '+ PPT';
+    b.title = 'Add this figure to the PowerPoint basket (as an SVG image)';
+    b.onclick = e => { e.stopPropagation(); pptAddSvg(b); };
+    card.classList.add('ppt-card');
+    card.prepend(b);
+  });
+}
+let pptDecoQueued = false;
+new MutationObserver(() => {
+  if (pptDecoQueued) return;
+  pptDecoQueued = true;
+  requestAnimationFrame(() => { pptDecoQueued = false; pptDecorate(); });
+}).observe(document.body, {childList: true, subtree: true});
+
+function renderPptBasket() {
+  const n = pptBasket.length;
+  const btn = document.getElementById('pptBasketBtn');
+  btn.style.display = n ? '' : 'none';
+  btn.querySelector('span').textContent = `PPT basket (${n})`;
+  const panel = document.getElementById('pptBasketPanel');
+  if (!n) panel.classList.remove('open');
+  panel.innerHTML = `
+    <div class="ppt-bl">${pptBasket.map((it, i) => `
+      <div class="ppt-bi"><span class="ppt-bk">${it.kind === 'svg' ? 'Image' : 'Chart'}</span>
+        <span class="ppt-bt">${esc(it.meta.title)}${it.meta.subtitle ? ` <small>${esc(it.meta.subtitle)}</small>` : ''}</span>
+        <button class="ppt-bx" onclick="pptBasketMove(${i},-1)" title="Move up" ${i ? '' : 'disabled'}>↑</button>
+        <button class="ppt-bx" onclick="pptBasketRemove(${i})" title="Remove">✕</button></div>`).join('')}</div>
+    <div class="ppt-ba"><button class="dl-btn" onclick="downloadPptBasket()">Download ${n} ${n === 1 ? 'slide' : 'slides'}</button>
+      <button class="grp-btn" onclick="pptBasketClear()">Empty basket</button></div>`;
+}
+function pptBasketToggle() { document.getElementById('pptBasketPanel').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ppt-basket')) document.getElementById('pptBasketPanel').classList.remove('open');
+});
+function pptBasketRemove(i) { pptBasket.splice(i, 1); pptBasketSave(); }
+function pptBasketMove(i, d) { const [it] = pptBasket.splice(i, 1); pptBasket.splice(i + d, 0, it); pptBasketSave(); }
+function pptBasketClear() { pptBasket = []; pptBasketSave(); }
+
+// Lysbilde med SVG-bilde: tittel, bildet tilpasset feltet med bevart
+// sideforhold, forklaringen som fargeruter med tekst, noten og kilden.
+function pptAddSvgSlide(pptx, it) {
+  const slide = pptx.addSlide(), m = it.meta;
+  pptSlideHead(slide, m);
+  const legendRows = m.legend.length ? Math.min(2, Math.ceil(m.legend.reduce((t, l) => t + 0.35 + l.label.length * 0.075, 0) / 12.3)) : 0;
+  const bottom = 6.85 - legendRows * 0.3 - (m.note ? 0.45 : 0);
+  const box = {x: 0.5, y: 1.35, w: 12.3, h: bottom - 1.35};
+  const k = Math.min(box.w / it.w, box.h / it.h);
+  const w = it.w * k, h = it.h * k;
+  const b64 = btoa(unescape(encodeURIComponent(it.svg)));
+  slide.addImage({data: 'data:image/svg+xml;base64,' + b64, x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h});
+  let x = 0.5, y = bottom + 0.05;
+  m.legend.forEach(l => {
+    const lw = 0.35 + l.label.length * 0.075;
+    if (x + lw > 12.8) { x = 0.5; y += 0.3; }
+    if (y > bottom + 0.05 + (legendRows - 1) * 0.3 + 0.01) return;
+    slide.addShape(pptx.shapes.RECTANGLE, {x, y: y + 0.08, w: 0.13, h: 0.13, fill: {color: l.color}, line: {color: l.color}});
+    slide.addText(l.label, {x: x + 0.17, y, w: lw - 0.17, h: 0.28, fontFace: 'Arial', fontSize: 10, color: '44505F', margin: 0});
+    x += lw;
+  });
+  if (m.note) slide.addText(m.note, {x: 0.5, y: 6.85 - 0.45, w: 12.3, h: 0.42, fontFace: 'Arial', fontSize: 8, color: '8A94A0', valign: 'top', margin: 0});
+  slide.addText(m.source, {x: 0.5, y: 6.95, w: 12.3, h: 0.3, fontFace: 'Arial', fontSize: 10, color: '8A94A0'});
+}
+
+async function downloadPptBasket() {
+  if (!pptBasket.length) return;
+  pptToast('Preparing PowerPoint…');
+  try {
+    await loadPptx();
+    const pptx = new PptxGenJS();
+    pptx.layout = 'LAYOUT_WIDE';
+    pptx.title = 'NCS charts';
+    pptBasket.forEach(it => {
+      if (it.kind === 'svg') pptAddSvgSlide(pptx, it);
+      else pptAddChartSlide(pptx, it.spec, it.meta);
+    });
+    await pptx.writeFile({fileName: `NCS charts (${pptBasket.length}).pptx`});
+  } catch (e) {
+    alert('Could not create the PowerPoint file: ' + e.message);
+  }
+}
+
+renderPptBasket();
 
 // ── EXCEL ─────────────────────────────────────────────────────────────────────
 async function downloadExcel() {
