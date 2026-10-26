@@ -1123,7 +1123,7 @@ slik at den kan merkes manuelt.
 #### NCS-modusen
 
 Hele sokkelen samlet, uten utvalg (velgerknappen er skjult, `body.ncs`).
-Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`).
+Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`, `nf`).
 
 | Fane | Funksjon | Hva som tegnes |
 |---|---|---|
@@ -1132,6 +1132,9 @@ Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`).
 | Replacement | `drawNcsReplacement` | Tilført = gjenstående(y) − gjenstående(y−1) + produsert(y), mot produsert, med erstatningsgraden som linje. Produksjonen tas fra årsradene i produksjonsbundelen, så fanen krever bundelen |
 | Exploration | `drawNcsExploration` | Letebrønner per spuddår: funn (wlbDiscoveryWell), øvrige, tørre, med funnrate og «Wildcats only» (`nw`). Felles graf og tabell med Companies/Exploration (`explYearChart`, `explYearTableHtml`) |
 | Companies | `drawNcsCompanies` | Rangering etter gjenstående reserver (siste årgang × dagens lisensandel), eventuelt pluss betingede ressurser i funn (`nk=all`) |
+| Fields | `drawNcsFields` | Rangering etter gjennomsnittlig produksjon siste 12 måneder med data, med andel og konsentrasjon (topp 10, antall felt for halve produksjonen). Veksler `nf=timeline`: felt i produksjon og nedstengt per år (produksjonsstart; siste produksjonsår for status «Shut down») med antall producerende felt som linje |
+| Water | `drawNcsWater` | Olje og produsert vann per år (bbl/d) og vannkuttet, vann / (vann + olje). Starter ved første år med rapportert vann (2000). Tabell: de største vannprodusentene siste hele år |
+| Creaming | `drawNcsCreaming` | Creaming-kurve: samlet funnvolum mot samlet antall wildcats, år for år (`nc=year` gir funnvolum per funnår med wildcats som linje). Volum: feltenes utvinnbare volum på feltets funnår pluss betingede ressurser i funn på funnåret. Total eller per havområde (`na=1`) |
 | Investments | `drawNcsInvestments` | Investeringer per år og havområde (nominelt), og forventede framtidige investeringer per felt (faste kroner) |
 
 Havområdet hentes fra feltfaktaene (`ncsArea`); felt uten område havner under
