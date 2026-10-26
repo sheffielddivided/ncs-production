@@ -33,6 +33,15 @@ jobs:
       - name: Hent data fra Sodir
         run: python fetch_sodir.py
 
+      # Daglig Brent spotpris fra EIA til skjøten av Datert Brent i Prices.
+      # Uten nøkkel, eller hvis EIA ikke svarer, brukes FRED (samme serie).
+      - name: Hent Brent spotpris (EIA)
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+        run: python fetch_eia.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB
