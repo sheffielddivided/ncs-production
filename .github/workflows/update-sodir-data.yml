@@ -33,6 +33,13 @@ jobs:
       - name: Hent data fra Sodir
         run: python fetch_sodir.py
 
+      # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
+      # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
+      - name: Hent nøkkeltall fra SSB
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_ssb.py
+
       # Riggposisjoner fra Kystverkets åpne AIS-data. Kilden er av og til
       # overbelastet, og et mislykket steg her skal ikke hindre at Sodir-dataene
       # committes. Historikken hentes i biter og fortsetter neste kjøring.
