@@ -1127,10 +1127,11 @@ Normprisene for olje, tidligere den frittstående siden `normpris.html`, som
 nå bare sender videre til `index.html#m=prices`. Data fra
 `data/normpris_brent.json` og `data/normpris_diff.json` (bygget av
 `fetch_normpris.py` fra regnearkene i `data/normpris-raw/`, egen
-arbeidsflyt). Tre faner: **Dated Brent** (daglig eller månedssnitt, `pm=1`),
+arbeidsflyt). Fire faner: **Dated Brent** (daglig eller månedssnitt, `pm=1`),
 **Differentials** (månedlige differensialer for opptil åtte felt, med
-favoritter lagret i nettleseren under samme nøkkel som den gamle siden) og
-**Heatmap** (alle felt og måneder, blått over Brent og oransje under).
+favoritter lagret i nettleseren under samme nøkkel som den gamle siden),
+**Gas** og **Oil vs gas** (under). Den tidligere fanen Heatmap er fjernet;
+gamle lenker (`v=heatmap`) åpner Oil vs gas.
 Periode (`py=2023-2026`) og feltutvalg (`pf`) deles mellom fanene og ligger
 i lenken. Korrelasjonsstudien (`normpris-korrelasjon.html`) er fortsatt en
 egen side; lenken tilbake derfra peker på Prices. Gasspriser er ikke med.
@@ -1156,7 +1157,22 @@ faktor 1. Indeksene hentes av `fetch_cpi.py` til `data/cpi.json` (eget steg,
 `continue-on-error`). Enkeltmåneder som mangler midt i en serie fylles med
 snittet av naboene og merkes i `interpolated` (USD 2025-10, som BLS ikke
 publiserte). Realkurven er hovedlinjen, med nominell pris som blek linje.
-Differentials og Heatmap er differanser og vises bare nominelt.
+Differentials er differanser og vises bare nominelt.
+
+**Oil vs gas** (`drawPriceOilGas`): Datert Brent mot gasspris, begge i
+USD/boe, én observasjon per måned i perioden. Brent er månedssnittet av den
+sammenskjøtte dagsserien (`brentMonthly`), gassen regnes om med
+`gasConvert(r, kind, 'usdboe')`. Gassprisen velges med `pg` (norsk
+eksportpris standard, `eu`, `hh`), og Real realjusterer begge aksene med
+amerikansk KPI. To visninger (`po`): **Scatter** med lineær trendlinje
+(minste kvadrater, `olsFit`; ligning og R² i infofeltet), punktene blekere
+jo eldre og siste måned i oransje; og **Count grid** (`po=grid`), antall
+måneder per kombinasjon i intervaller på 5 USD/boe (`OG_BIN`). De tykke
+skillelinjene ligger på intervallgrensen nærmest medianen langs hver akse
+og deler månedene i fire kvadranter, som telles i tabellen under. I PPT blir
+punktgrafen en ekte graf uten linjer med trendlinjen lagt over som figur
+(faste akser og plottområde, `spec.markers`), og rutenettet en tabell med de
+tykke linjene som cellekanter.
 
 **Konstruksjonen av Datert Brent og skjøten.** Petroleumsprisrådets Datert
 Brent for dato *d* er snittet av de **fem neste publiserte Platts Dated
