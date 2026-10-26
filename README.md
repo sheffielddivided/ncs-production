@@ -52,7 +52,7 @@ statiske JSON-filer i dette repoet.
 | `fetch_normpris.py` | Bygger `data/normpris_*.json` fra xlsx-filene |
 | `data/normpris_brent.json` | Daglig Datert Brent, $/fat |
 | `data/normpris_diff.json` | Månedlige normpris-differensialer per felt, $/fat |
-| `normpris.html` | Frittstående side som viser normpris-dataene (Chart.js) |
+| `normpris.html` | Sender videre til modusen Prices i `index.html`, der normprisene nå vises |
 | `normpris-korrelasjon.html` | Studie: korrelasjon mellom feltenes differensialer (beregnes i nettleseren fra `normpris_diff.json`) |
 | `.github/workflows/update-normpris.yml` | Bygger normpris-JSON når rådata endres |
 | `SOLUTION-CONTEXT.md` | Teknisk dokumentasjon — datamodell, enheter, fallgruver |

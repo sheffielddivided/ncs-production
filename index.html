@@ -108,7 +108,24 @@
     .ppt-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a2332;color:#fff;padding:8px 14px;
       border-radius:8px;font-size:0.78rem;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:400;}
     .ppt-toast.show{opacity:0.92;}
-    body.ncs .select-fab{display:none !important;}
+    body.ncs .select-fab, body.prices .select-fab{display:none !important;}
+    .np-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;}
+    .np-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+    .np-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;background:#fff;
+      color:var(--muted);font:inherit;font-size:0.72rem;padding:4px 10px;cursor:pointer;}
+    .np-chip.on{color:#1a2332;border-color:#9aa5b1;}
+    .np-chip:disabled{opacity:0.4;cursor:not-allowed;}
+    .np-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid #9aa5b1;}
+    .np-legend{display:flex;align-items:center;gap:8px;font-size:0.72rem;color:var(--muted);margin:0 0 8px;flex-wrap:wrap;}
+    .np-ramp{width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#eb6834,#e9e8e4,#2a78d6);}
+    .np-scroll{overflow:auto;max-height:560px;border:1px solid var(--border);border-radius:8px;}
+    .np-table{border-collapse:separate;border-spacing:0;font-size:0.66rem;font-variant-numeric:tabular-nums;}
+    .np-table th,.np-table td{padding:3px 4px;text-align:right;white-space:nowrap;min-width:42px;border-right:2px solid #fff;border-bottom:2px solid #fff;}
+    .np-table thead th{position:sticky;top:0;background:#fff;color:var(--muted);font-weight:600;z-index:2;line-height:1.15;}
+    .np-table thead th.yr{color:#1a2332;}
+    .np-table tbody th{position:sticky;left:0;background:#fff;color:#1a2332;text-align:left;font-weight:600;z-index:1;min-width:120px;}
+    .np-table thead th:first-child{left:0;z-index:3;text-align:left;}
+    .np-table td.na{color:#9aa5b1;text-align:center;}
     .expl-wrap{margin:10px 12px;}
     .lc-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
     #licTlFacts{margin-bottom:4px;}
@@ -466,6 +483,7 @@
       <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
       <button class="mode-btn" id="modeBtnLicences" onclick="switchMode('licences')">Licences</button>
+      <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Prices</button>
     </div>
   </div>
   <div class="ctrl-row" id="periodRow">
@@ -1327,11 +1345,13 @@ function renderViewTabs() {
              : topMode === 'discoveries' ? DISCOVERY_TABS
              : topMode === 'exploration' ? EXPL_TABS
              : topMode === 'licences' ? LIC_TABS
-             : topMode === 'ncs' ? NCS_TABS : COMPANY_TABS;
+             : topMode === 'ncs' ? NCS_TABS
+             : topMode === 'prices' ? PRICE_TABS : COMPANY_TABS;
   const cur  = currentSubView();
   document.body.classList.toggle('expl', topMode === 'exploration');
   document.body.classList.toggle('lic', topMode === 'licences');
   document.body.classList.toggle('ncs', topMode === 'ncs');
+  document.body.classList.toggle('prices', topMode === 'prices');
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -1353,6 +1373,7 @@ function setSubView(v) {
   else if (topMode === 'exploration') explSubView = v;
   else if (topMode === 'licences') licSubView = v;
   else if (topMode === 'ncs') ncsSubView = v;
+  else if (topMode === 'prices') priceSubView = v;
   else { companySubView = v; syncCompanySelection(); }
   renderViewTabs();
   updateFab();
@@ -1426,7 +1447,7 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
-  if (topMode === 'exploration' || topMode === 'licences' || topMode === 'ncs') return;   // filtrene ligger i selve visningen
+  if (['exploration', 'licences', 'ncs', 'prices'].includes(topMode)) return;   // filtrene ligger i selve visningen
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
               : topMode === 'discoveries' ? selectedDiscoveryIds.size
@@ -1851,6 +1872,13 @@ function resetView() {
   licSubView = 'overview';
   ncsSubView = 'production';
   ncsF = ncsDefaults();
+  priceSubView = 'brent';
+  prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
+  if (priceData && priceData.diff) {
+    const ys = priceYears();
+    prF.y1 = Math.min(ys[ys.length - 1], currentYear); prF.y0 = Math.max(ys[0], prF.y1 - 3);
+    priceSetSel(priceStartSel());
+  }
   if (document.getElementById('wdOverlay').classList.contains('open')) closeWell();
   document.getElementById('btnMonthly').classList.add('active');
   document.getElementById('btnQuarterly').classList.remove('active');
@@ -1904,6 +1932,7 @@ function currentSubView() {
        : topMode === 'exploration' ? explSubView
        : topMode === 'licences' ? licSubView
        : topMode === 'ncs' ? ncsSubView
+       : topMode === 'prices' ? priceSubView
        : companySubView;
 }
 
@@ -1936,6 +1965,11 @@ function stateToHash() {
     const dflt = licDefaults();
     LIC_PARAMS.forEach(([k, p]) => { if (licF[k] !== dflt[k]) q.set(p, licF[k]); });
   }
+  else if (topMode === 'prices') {
+    if (prF.y0) q.set('py', prF.y0 + '-' + prF.y1);
+    if (prF.selSet) q.set('pf', prF.sel.join(SEP));
+    if (prF.bm) q.set('pm', '1');
+  }
   else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
                     || (topMode === 'ncs' && ncsSubView === 'production' && ncsF.prod === 'product'))) q.set('w', '1');
@@ -1965,7 +1999,7 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['ncs','fields','hubs','discoveries','companies','exploration','licences'].includes(m)) {
+  if (['ncs','fields','hubs','discoveries','companies','exploration','licences','prices'].includes(m)) {
     topMode = m;
     syncModeButtons();
   }
@@ -1974,7 +2008,8 @@ function applyHash() {
              : topMode === 'discoveries' ? DISCOVERY_TABS
              : topMode === 'exploration' ? EXPL_TABS
              : topMode === 'licences' ? LIC_TABS
-             : topMode === 'ncs' ? NCS_TABS : COMPANY_TABS;
+             : topMode === 'ncs' ? NCS_TABS
+             : topMode === 'prices' ? PRICE_TABS : COMPANY_TABS;
   const v = q.get('v');
   if (tabs.some(t => t.id === v)) {
     if (topMode === 'fields') fieldSubView = v;
@@ -1983,6 +2018,7 @@ function applyHash() {
     else if (topMode === 'exploration') explSubView = v;
     else if (topMode === 'licences') licSubView = v;
     else if (topMode === 'ncs') ncsSubView = v;
+    else if (topMode === 'prices') priceSubView = v;
     else companySubView = v;
   }
 
@@ -2015,6 +2051,12 @@ function applyHash() {
     if (g('xm') === '1') explF.modu = true;
     if (+g('xw') > 0) explF.open = +g('xw');
     if (g('xg')) explF.rig = g('xg');
+  }
+  if (topMode === 'prices') {
+    const py = (q.get('py') || '').match(/^(\d{4})-(\d{4})$/);
+    if (py) { prF.y0 = +py[1]; prF.y1 = +py[2]; }
+    if (q.has('pf')) { prF.sel = q.get('pf') ? q.get('pf').split(SEP) : []; prF.selSet = true; }
+    prF.bm = q.get('pm') === '1';
   }
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
@@ -2101,6 +2143,7 @@ async function refresh() {
   else if (topMode === 'exploration') await refreshExploration();
   else if (topMode === 'licences') await refreshLicences();
   else if (topMode === 'ncs') await refreshNcs();
+  else if (topMode === 'prices') await refreshPrices();
   else await refreshCompanies();
 }
 
@@ -2277,6 +2320,8 @@ function drawChart() {
     else drawFieldsOePerField(opts);
   } else if (topMode === 'ncs') {
     drawNcs();
+  } else if (topMode === 'prices') {
+    drawPrices();
   } else if (topMode === 'discoveries') {
     const sv = discoverySubView;
     if (sv === 'per_company')    drawDiscoveriesPerCompany();
@@ -2292,6 +2337,225 @@ function drawChart() {
     else if (sv === 'exploration')   drawCompaniesExploration();
     else if (sv === 'profile')       drawCompanyProfile();
   }
+}
+
+// ── PRICES ───────────────────────────────────────────────────────────────────
+// Normpriser for olje: daglig Datert Brent og Petroleumsprisrådets månedlige
+// differensialer per felt, fra data/normpris_brent.json og
+// data/normpris_diff.json (bygget av fetch_normpris.py fra regnearkene i
+// data/normpris-raw/). Tidligere en egen side, normpris.html, som nå sender
+// hit. Korrelasjonsstudien er fortsatt en egen side og er ikke med her.
+//
+// Fanene deler periode (fra–til år) og feltutvalg; begge ligger i lenken.
+// Feltfavorittene lagres i nettleseren under samme nøkkel som den gamle
+// siden brukte, så lagrede favoritter følger med.
+const PRICE_TABS = [
+  {id: 'brent',   label: 'Dated Brent'},
+  {id: 'diff',    label: 'Differentials'},
+  {id: 'heatmap', label: 'Heatmap'},
+];
+let priceSubView = 'brent';
+const PRICE_MAX_SEL = 8;
+const PRICE_DEFAULT_SEL = ['TROLL', 'JOHAN SVERDRUP', 'EKOFISK', 'OSEBERG'];
+const PRICE_FAV_KEY = 'normpris.favoriteFields.v1';
+const PRICE_SRC = 'Source: Norwegian Petroleum Price Board / Ministry of Energy (regjeringen.no)';
+let priceData = null, priceLoading = null;
+// y0/y1: periode · sel: valgte felt i valgrekkefølge · slot: felt -> farge 0..7 · bm: Brent som månedssnitt
+let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
+
+function loadPrices() {
+  if (priceData) return Promise.resolve();
+  if (priceLoading) return priceLoading;
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff')]).then(([b, d]) => {
+    priceData = b && d ? {brent: b, diff: d} : {};
+    if (!priceData.diff) return;
+    const years = priceYears();
+    const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
+    if (!prF.y1) prF.y1 = clamp(currentYear);
+    if (!prF.y0) prF.y0 = clamp(prF.y1 - 3);
+    prF.sel = prF.sel.filter(f => priceData.diff.fields[f]);
+    if (!prF.sel.length && !prF.selSet) priceSetSel(priceStartSel());
+    else priceSetSel(prF.sel);
+  });
+  return priceLoading;
+}
+
+function priceYears() {
+  const d = priceData.diff, b = priceData.brent;
+  return [...new Set(d.months.map(m => +m.slice(0, 4)).concat(b.rows.map(r => +r[0].slice(0, 4))))].sort((a, c) => a - c);
+}
+function priceMonths() { return priceData.diff.months.filter(m => { const y = +m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; }); }
+
+function priceFavs() {
+  try {
+    const list = JSON.parse(localStorage.getItem(PRICE_FAV_KEY) || '[]');
+    return Array.isArray(list) ? list.filter(f => typeof f === 'string' && priceData.diff.fields[f]).slice(0, PRICE_MAX_SEL) : [];
+  } catch (e) { return []; }
+}
+function priceStartSel() { const f = priceFavs(); return f.length ? f : PRICE_DEFAULT_SEL; }
+// Hvert valgt felt beholder fargen sin så lenge det er valgt.
+function priceSetSel(list) {
+  prF.sel = []; prF.slot = {};
+  list.filter(f => priceData.diff.fields[f]).slice(0, PRICE_MAX_SEL).forEach(priceAddField);
+}
+function priceAddField(f) {
+  const used = new Set(Object.values(prF.slot));
+  let s = 0; while (used.has(s)) s++;
+  prF.slot[f] = s; prF.sel.push(f);
+}
+function priceToggle(f) {
+  if (prF.sel.includes(f)) { prF.sel = prF.sel.filter(x => x !== f); delete prF.slot[f]; }
+  else if (prF.sel.length < PRICE_MAX_SEL) priceAddField(f);
+  prF.selSet = true;
+  syncUrl(); drawChart();
+}
+function priceSelAction(kind) {
+  if (kind === 'reset') priceSetSel(priceStartSel());
+  else if (kind === 'clear') priceSetSel([]);
+  else if (kind === 'save') {
+    try { localStorage.setItem(PRICE_FAV_KEY, JSON.stringify(prF.sel)); pptToast(`Saved ${prF.sel.length} favourite field${prF.sel.length === 1 ? '' : 's'}`); }
+    catch (e) { pptToast('This browser does not allow saving favourites'); }
+  } else if (kind === 'unsave') {
+    try { localStorage.removeItem(PRICE_FAV_KEY); pptToast('Favourites deleted'); } catch (e) { /* ignoreres */ }
+  }
+  prF.selSet = true;
+  syncUrl(); drawChart();
+}
+function pricePeriod(which, v) {
+  prF[which] = +v;
+  if (prF.y0 > prF.y1) { if (which === 'y0') prF.y1 = prF.y0; else prF.y0 = prF.y1; }
+  syncUrl(); drawChart();
+}
+function priceSet(k, v) { prF[k] = v; syncUrl(); drawChart(); }
+
+const PRICE_COLORS = PALETTE.map(p => p[0]);
+
+// Felles verktøylinje: periode, og for Brent dag/måned.
+function priceBar() {
+  const years = priceYears();
+  const sel = (k) => `<select class="year-select" onchange="pricePeriod('${k}', this.value)" aria-label="${k === 'y0' ? 'From year' : 'To year'}">
+    ${years.map(y => `<option value="${y}"${y === prF[k] ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
+  const bm = priceSubView === 'brent' ? `<div class="pill-group">
+      <button class="pill-btn${prF.bm ? '' : ' active'}" onclick="priceSet('bm', false)">Daily</button>
+      <button class="pill-btn${prF.bm ? ' active' : ''}" onclick="priceSet('bm', true)">Monthly average</button></div>` : '';
+  return `<div class="np-bar">
+    <span class="ctrl-label">Period</span>${sel('y0')}<span>–</span>${sel('y1')}${bm}</div>`;
+}
+
+async function refreshPrices() {
+  showSpinner();
+  await loadPrices();
+  if (!priceData.diff) { setChartTitle('', ''); setChartEmpty('Could not load the price data.'); setInfo(''); return; }
+  drawChart();
+}
+
+function drawPrices() {
+  if (!priceData || !priceData.diff) return;
+  // Tvinger PPT-knappene til å sjekke tilstanden på nytt (varmekartet har ingen graf).
+  document.getElementById('downloadBtn').disabled = true;
+  setProfile(''); setChartTable('');
+  if (priceSubView === 'diff') drawPriceDiff();
+  else if (priceSubView === 'heatmap') drawPriceHeatmap();
+  else drawPriceBrent();
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+function priceLineChart(labels, datasets, yTitle, opts = {}) {
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'line', data: {labels, datasets},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: c => c.parsed.y == null ? null : ` ${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 2})} $/bbl`}}},
+      scales: {
+        x: {ticks: {maxRotation: 0, autoSkipPadding: 24, font: {size: 9}, ...(opts.tick ? {callback: opts.tick} : {})}, grid: {display: false}},
+        y: {title: {display: true, text: yTitle, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
+            grid: {color: opts.zeroLine ? (ctx => ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)') : 'rgba(0,0,0,0.05)'}},
+      }},
+  });
+}
+
+function drawPriceBrent() {
+  const rows = priceData.brent.rows.filter(r => { const y = +r[0].slice(0, 4); return y >= prF.y0 && y <= prF.y1; });
+  let labels, data;
+  if (prF.bm) {
+    const acc = {};
+    rows.forEach(([d, v]) => { const m = d.slice(0, 7); (acc[m] = acc[m] || []).push(v); });
+    labels = Object.keys(acc).sort();
+    data = labels.map(m => +(acc[m].reduce((a, b) => a + b, 0) / acc[m].length).toFixed(2));
+  } else { labels = rows.map(r => r[0]); data = rows.map(r => r[1]); }
+  const C = 'rgba(0,48,87,0.9)';
+  document.getElementById('chartArea').innerHTML = `${priceBar()}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>`;
+  priceLineChart(labels, [{label: 'Dated Brent', data, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0}],
+    '$/bbl', {tick: prF.bm ? undefined : function (v) { return this.getLabelForValue(v).slice(0, 7); }});
+  lastLabels = labels; lastXTitle = prF.bm ? 'Month' : 'Date';
+  lastDatasets = [{label: 'Dated Brent, $/bbl', data}];
+  const last = priceData.brent.rows[priceData.brent.rows.length - 1];
+  const vals = data.filter(v => v != null);
+  setChartTitle('Dated Brent', `${prF.bm ? 'Monthly average' : 'Daily'} · $/bbl · ${prF.y0}–${prF.y1}`);
+  setInfo(`<strong>Latest:</strong> ${last[1].toLocaleString('en', {maximumFractionDigits: 2})} $/bbl (${last[0]}) &nbsp;|&nbsp; <strong>Period:</strong> low ${Math.min(...vals).toFixed(2)}, high ${Math.max(...vals).toFixed(2)}, average ${(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)} $/bbl &nbsp;|&nbsp; Dated Brent is the basis the norm prices are set from; the field differentials are added to it &nbsp;|&nbsp; ${PRICE_SRC}`);
+}
+
+function drawPriceDiff() {
+  const d = priceData.diff, months = priceMonths(), full = prF.sel.length >= PRICE_MAX_SEL;
+  const favs = priceFavs();
+  const chips = Object.keys(d.fields).map(f => {
+    const on = prF.sel.includes(f);
+    return `<button class="np-chip${on ? ' on' : ''}" ${!on && full ? 'disabled' : ''} aria-pressed="${on}"
+      onclick="priceToggle(${esc(jsStr(f))})"><span class="np-dot" ${on ? `style="background:${PRICE_COLORS[prF.slot[f]]};border-color:${PRICE_COLORS[prF.slot[f]]}"` : ''}></span>${esc(f)}</button>`;
+  }).join('');
+  document.getElementById('chartArea').innerHTML = `${priceBar()}
+    <div class="np-chips">${chips}</div>
+    <div class="np-bar">
+      <button class="grp-btn" onclick="priceSelAction('reset')">${favs.length ? 'My favourites' : 'Default selection'}</button>
+      <button class="grp-btn" onclick="priceSelAction('clear')">Clear all</button>
+      <button class="grp-btn" onclick="priceSelAction('save')" ${prF.sel.length ? '' : 'disabled'} title="Save the selected fields as favourites in this browser">★ Save as favourites</button>
+      ${favs.length ? `<button class="grp-btn" onclick="priceSelAction('unsave')">Delete favourites</button>` : ''}
+      <span class="pf-map-note" style="margin:0">Up to ${PRICE_MAX_SEL} fields.</span></div>
+    ${prF.sel.length ? '<div class="chart-container"><canvas id="prodChart"></canvas></div>' : '<div class="status">Pick one or more fields above.</div>'}`;
+  const datasets = prF.sel.map(f => {
+    const c = PRICE_COLORS[prF.slot[f]];
+    return {label: f, data: months.map(m => d.fields[f][m] ?? null), borderColor: c, backgroundColor: c, borderWidth: 2,
+      spanGaps: false, pointRadius: months.length > 60 ? 1.5 : 3, tension: 0};
+  });
+  if (prF.sel.length) priceLineChart(months, datasets, 'differential, $/bbl', {zeroLine: true});
+  else if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  lastLabels = months; lastXTitle = 'Month';
+  lastDatasets = datasets.map(x => ({label: x.label + ', $/bbl', data: x.data.map(v => v ?? '')}));
+  setChartTitle('Norm price differentials', `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`);
+  setInfo(`<strong>Differential:</strong> the field's norm price minus Dated Brent, set monthly by the Petroleum Price Board &nbsp;|&nbsp; Gaps mean no monthly value: probably no oil sold, or several differentials in the month (sub-periods in 2018 and 2020, not imported) &nbsp;|&nbsp; ${PRICE_SRC}`);
+}
+
+// Varmekart: alle felt og måneder i perioden. Blått over Brent, oransje under.
+// Full farge ved 97-persentilen av absoluttverdiene, så enkeltutslag ikke
+// vasker ut resten.
+function drawPriceHeatmap() {
+  const d = priceData.diff, months = priceMonths();
+  const abs = Object.values(d.fields).flatMap(o => Object.values(o)).map(Math.abs).sort((a, b) => a - b);
+  const clampAt = Math.max(1, abs[Math.floor(abs.length * 0.97)]);
+  const POS = [42, 120, 214], NEG = [235, 104, 52], MID = [233, 232, 228];
+  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const lum = ([r, g, b]) => { const f = v => (v /= 255) <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+  const nf = v => v.toLocaleString('en', {maximumFractionDigits: 2});
+  const head = months.map((m, i) => { const [y, mm] = m.split('-'); return `<th class="${mm === '01' ? 'yr' : ''}">${MONTH_ABBR[+mm - 1]}<br>${mm === '01' || !i ? y : ''}</th>`; }).join('');
+  const body = Object.keys(d.fields).map(f => `<tr><th scope="row">${esc(f)}</th>${months.map(m => {
+    const v = d.fields[f][m];
+    if (v == null) {
+      const split = (d.split && d.split[f] || []).includes(m);
+      return `<td class="na" title="${esc(f)} ${m}: ${split ? 'several differentials in the month (sub-periods), not imported' : 'no value'}">${split ? '*' : '–'}</td>`;
+    }
+    const bg = mix(MID, v >= 0 ? POS : NEG, Math.min(1, Math.abs(v) / clampAt));
+    return `<td style="background:rgb(${bg});color:${lum(bg) > .35 ? '#0b0b0b' : '#fff'}" title="${esc(f)} ${m}: ${nf(v)} $/bbl">${nf(v)}</td>`;
+  }).join('')}</tr>`).join('');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  document.getElementById('chartArea').innerHTML = `${priceBar()}
+    <div class="np-legend"><span>Lower</span><span class="np-ramp"></span><span>Higher</span><span>(full colour at ±${nf(clampAt)} $/bbl)</span></div>
+    <div class="np-scroll" tabindex="0"><table class="np-table"><thead><tr><th>Field</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  lastLabels = months; lastXTitle = 'Month';
+  lastDatasets = Object.keys(d.fields).map(f => ({label: f + ', $/bbl', data: months.map(m => d.fields[f][m] ?? '')}));
+  setChartTitle('Norm price differentials · all fields', `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`);
+  setInfo(`<strong>Colours:</strong> blue is above Brent, orange below, grey around zero &nbsp;|&nbsp; <strong>–</strong> no value; <strong>*</strong> several differentials in the month (sub-periods in 2018 and 2020, not imported) &nbsp;|&nbsp; ${PRICE_SRC}`);
 }
 
 // ── NCS ──────────────────────────────────────────────────────────────────────
@@ -3628,6 +3892,7 @@ let fieldReservesLoaded = false;
 function isReservesView() {
   return topMode === 'discoveries' || topMode === 'exploration'
       || (topMode === 'ncs' && ncsSubView !== 'production')
+      || topMode === 'prices'
       || (topMode === 'fields'    && fieldSubView   === 'profile')
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
@@ -6388,7 +6653,8 @@ async function downloadPpt() {
 
 // PPT-knappene følger Excel-knappen: aktive når det finnes en graf.
 new MutationObserver(() => {
-  const b = document.getElementById('pptBtn'), dis = document.getElementById('downloadBtn').disabled;
+  const b = document.getElementById('pptBtn');
+  const dis = document.getElementById('downloadBtn').disabled || (!chartInstance && !pptSpec);
   if (b.querySelector('span').textContent === 'Download PPT') b.disabled = dis;
   document.getElementById('pptAddBtn').disabled = dis;
 }).observe(document.getElementById('downloadBtn'), {attributes: true, attributeFilter: ['disabled']});
@@ -6624,7 +6890,7 @@ async function downloadExcel() {
   // den som åpner arket.
   const categorical = !!lastXTitle;
   const filename = categorical
-    ? 'NCS_Reserves.xlsx'
+    ? `${(pptMeta().title || 'NCS').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
     : `NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`;
 
   const wb = new ExcelJS.Workbook();
@@ -8623,7 +8889,7 @@ function rigZoomRig() {
 
 // ── Hopp til/fra andre moduser ───────────────────────────────────────────────
 function syncModeButtons() {
-  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'licences'].forEach(m =>
+  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'licences', 'prices'].forEach(m =>
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
 }
 
