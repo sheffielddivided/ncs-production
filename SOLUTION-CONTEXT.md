@@ -1123,7 +1123,7 @@ slik at den kan merkes manuelt.
 #### NCS-modusen
 
 Hele sokkelen samlet, uten utvalg (velgerknappen er skjult, `body.ncs`).
-Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`, `nf`, `ne`).
+Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`, `nf`, `ne`, `ns`).
 
 | Fane | Funksjon | Hva som tegnes |
 |---|---|---|
@@ -1146,7 +1146,12 @@ produksjonsverdi, bearbeidingsverdi og investeringer per næring 06 / 09.1 /
 `employment` (sysselsatte per næring, stiplet linje ved bruddet i
 tjenesteserien 2008–2009, og nøkkeltall siste år), `investments` (påløpt per
 art, med siste anslag for de kommende årene som blekere søyler) og `survey`
-(hvordan anslaget for hvert år utviklet seg gjennom rundene). Undersøkelsen
+(hvordan anslaget for hvert år utviklet seg gjennom rundene, med underveksler
+`ns=acc` for treffsikkerheten: første anslag mot påløpt fra 1986) og `share`
+(olje og gass mot industri, kraftforsyning og bergverk, med andelen som
+linje). Treffsikkerheten og andelen bruker tabell 07155, som er den samme
+undersøkelsen som 08050, men med næringene ved siden av hverandre og
+anslag tilbake til 1986 — uten fordeling på investeringsart. Undersøkelsen
 fyller ikke-publiserte anslag med 0; de behandles som manglende. Alt i
 løpende kroner, kilde SSB (CC BY 4.0).
 
