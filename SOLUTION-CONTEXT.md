@@ -1930,6 +1930,9 @@ rigg enn hovedhullet.
 årsradene i produksjonsprofilene (lag 7300, `prfInvestmentsMillNOK`, nominelle
 MNOK; nullår utelatt) og Sodirs anslag for gjenstående framtidige investeringer
 (lag 7107, `fldInvestmentExpected` i faste kroner for `fldInvExpFixYear`).
+Selskapsprofilen viser det samme egenandelsjustert, gruppert per hub
+(historikk med andelen midt i året, framtidig anslag med dagens andel).
+Beløp skrives «NOK 45.8 bn» (`nokBn`).
 Felt- og hubprofilen viser dem i kortet «Investments» (`investmentCard`):
 søyler per år (for huber stablet per medlemsfelt, med tabell per felt) og det
 framtidige anslaget som eget nøkkeltall, ikke i grafen, siden prisgrunnlaget er
