@@ -109,6 +109,9 @@
       border-radius:8px;font-size:0.78rem;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:400;}
     .ppt-toast.show{opacity:0.92;}
     body.ncs .select-fab, body.prices .select-fab{display:none !important;}
+    .lc-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;}
+    .lc-two > .pf-card{margin-bottom:10px;min-width:0;}
+    @media (max-width:800px){.lc-two{grid-template-columns:1fr;}}
     .np-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;}
     .np-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
     .np-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;background:#fff;
@@ -668,7 +671,7 @@ async function loadBundles() {
                  'discoveries','discovery_resources','licence_licensees',
                  'discovery_descriptions','discovery_outlines',
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
-                 'field_investments',
+                 'field_investments','field_operators',
                  'licences','companies',
                  'meta','hubs'];
   const results = await Promise.all(names.map(fetchBundle));
@@ -722,8 +725,8 @@ let showWater  = false;
 
 let fieldSubView   = 'oe_per_field';
 let hubSubView     = 'oe_per_field';
-let discoverySubView = 'per_discovery';
-let companySubView = 'oe_per_field';
+let discoverySubView = 'per_company';
+let companySubView = 'oe_per_hub';
 
 let allFields            = [];
 let filteredFields       = [];
@@ -1335,6 +1338,7 @@ const COMPANY_TABS = [
   {id:'oe_per_hub',    label:'Prod per hub'},
   {id:'oe_per_field',  label:'Prod per field'},
   {id:'oilgas',        label:'Oil & Gas'},
+  {id:'operated',      label:'Operated'},
   {id:'reserves',      label:'Reserves'},
   {id:'exploration',   label:'Exploration'},
   {id:'profile',       label:'Profile'},
@@ -1406,6 +1410,7 @@ function firstYearInCache() {
 
 function setPeriod(p) {
   if (period === p) return;
+  if (topMode === 'ncs') ncsPrevPeriod = null;   // valgt i NCS: beholdes
   period = p;
   document.getElementById('btnMonthly').classList.toggle('active',   p === 'monthly');
   document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
@@ -1431,8 +1436,35 @@ function setPeriod(p) {
   }
 }
 
+// NCS-produksjonen viser hele historikken som standard: årsoppløsning fra
+// 1970. Perioden brukeren hadde ellers i appen tas vare på og settes
+// tilbake når man går ut av NCS — med mindre den er endret i NCS.
+let ncsPrevPeriod = null;
+function applyPeriodQuiet(p, yf, yt) {
+  period = p;
+  document.getElementById('btnMonthly').classList.toggle('active',   p === 'monthly');
+  document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
+  document.getElementById('btnAnnual').classList.toggle('active',    p === 'annual');
+  document.getElementById('yearFrom').value = yf;
+  if (yt) document.getElementById('yearTo').value = yt;
+  sessionClearProd();
+  fieldProdCache = {};
+}
+function ncsEnterPeriod() {
+  if (period === 'annual') return;
+  ncsPrevPeriod = {p: period, yf: document.getElementById('yearFrom').value, yt: document.getElementById('yearTo').value};
+  applyPeriodQuiet('annual', 1970, currentYear);
+}
+function ncsLeavePeriod() {
+  if (!ncsPrevPeriod) return;
+  applyPeriodQuiet(ncsPrevPeriod.p, ncsPrevPeriod.yf, ncsPrevPeriod.yt);
+  ncsPrevPeriod = null;
+}
+
 function switchMode(m) {
   if (topMode === m) return;
+  if (topMode === 'ncs') ncsLeavePeriod();
+  if (m === 'ncs') ncsEnterPeriod();
   topMode = m;
   syncModeButtons();
   if (sheetOpen) closeSheet();
@@ -1459,7 +1491,7 @@ function updateFab() {
               : topMode === 'discoveries' ? 'discoveries' : 'companies';
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
-  const onePick = discoveryProfileMode() || companyProfileMode()
+  const onePick = discoveryProfileMode() || companySingleMode()
                || fieldProfileMode() || hubProfileMode();
   document.getElementById('sheetTitle').textContent =
     onePick ? `Select a ${noun}` : `Select ${nounP}`;
@@ -1606,7 +1638,7 @@ function renderCompanyList() {
     return;
   }
   el.innerHTML = '';
-  const single = companyProfileMode();
+  const single = companySingleMode();
   filteredCompanies.forEach(name => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedCompanyNames.has(name) ? ' checked' : '');
@@ -1641,7 +1673,7 @@ function toggleField(id, item, cb) {
 
 function toggleCompany(name, item, cb) {
   // Som i funnprofilen: ett selskap om gangen, så listen blir en radioknapp.
-  if (companyProfileMode()) {
+  if (companySingleMode()) {
     selectedCompanyNames = new Set([name]);
     renderCompanyList();
     updateFab();
@@ -1791,6 +1823,11 @@ function companyProfileMode() {
   return topMode === 'companies' && companySubView === 'profile';
 }
 
+// Visningene der bare ett selskap kan velges: profilen og Operated.
+function companySingleMode() {
+  return topMode === 'companies' && (companySubView === 'profile' || companySubView === 'operated');
+}
+
 function fieldProfileMode() {
   return topMode === 'fields' && fieldSubView === 'profile';
 }
@@ -1819,7 +1856,7 @@ function syncHubSelection() {
 // selskapslisten er sortert med Aker BP øverst og deretter synkende reserver,
 // så det er det største av de valgte.
 function syncCompanySelection() {
-  if (!companyProfileMode() || selectedCompanyNames.size <= 1) return;
+  if (!companySingleMode() || selectedCompanyNames.size <= 1) return;
   const pick = allCompanies.find(n => selectedCompanyNames.has(n))
             || [...selectedCompanyNames][0];
   selectedCompanyNames = new Set([pick]);
@@ -1859,8 +1896,10 @@ function discoveryPartners(d) {
 // slutt, så en delt visning man har åpnet blir borte også fra adressefeltet.
 function resetView() {
   topMode = 'companies';
-  fieldSubView = hubSubView = companySubView = 'oe_per_field';
-  discoverySubView = 'per_discovery';
+  ncsPrevPeriod = null;
+  fieldSubView = hubSubView = 'oe_per_field';
+  companySubView = 'oe_per_hub';
+  discoverySubView = 'per_company';
   hubReserveGrouping = 'field';
   period = 'monthly';
   showWater = false;
@@ -1876,7 +1915,7 @@ function resetView() {
   prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
   if (priceData && priceData.diff) {
     const ys = priceYears();
-    prF.y1 = Math.min(ys[ys.length - 1], currentYear); prF.y0 = Math.max(ys[0], prF.y1 - 3);
+    prF.y1 = Math.min(ys[ys.length - 1], currentYear); prF.y0 = Math.max(ys[0], Math.min(prF.y1, currentYear - 1));
     priceSetSel(priceStartSel());
   }
   if (document.getElementById('wdOverlay').classList.contains('open')) closeWell();
@@ -1957,7 +1996,7 @@ function stateToHash() {
     if (!explF.dev) q.set('xd', '0');
     if (!explF.aisOnly) q.set('xo', '0');
     if (explF.fixed) q.set('xf', '1');
-    if (explF.modu) q.set('xm', '1');
+    if (!explF.modu) q.set('xm', '0');
     if (explF.open) q.set('xw', explF.open);
     if (explF.rig) q.set('xg', explF.rig);
   }
@@ -2048,7 +2087,7 @@ function applyHash() {
     if (g('xd') === '0') explF.dev = false;
     if (g('xo') === '0') explF.aisOnly = false;
     if (g('xf') === '1') explF.fixed = true;
-    if (g('xm') === '1') explF.modu = true;
+    if (g('xm') === '0') explF.modu = false;
     if (+g('xw') > 0) explF.open = +g('xw');
     if (g('xg')) explF.rig = g('xg');
   }
@@ -2083,6 +2122,8 @@ function applyHash() {
     document.getElementById('btnQuarterly').classList.toggle('active', pr === 'quarterly');
     document.getElementById('btnAnnual').classList.toggle('active',    pr === 'annual');
   }
+
+  if (topMode === 'ncs' && !pr) ncsEnterPeriod();
 
   const yr = (q.get('y') || '').match(/^(\d{4})-(\d{4})$/);
   if (yr) {
@@ -2335,6 +2376,7 @@ function drawChart() {
     else if (sv === 'oe_per_hub')    drawCompaniesOePerHub();
     else if (sv === 'reserves')      drawCompaniesReserves();
     else if (sv === 'exploration')   drawCompaniesExploration();
+    else if (sv === 'operated')      drawCompaniesOperated();
     else if (sv === 'profile')       drawCompanyProfile();
   }
 }
@@ -2372,7 +2414,7 @@ function loadPrices() {
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
     if (!prF.y1) prF.y1 = clamp(currentYear);
-    if (!prF.y0) prF.y0 = clamp(prF.y1 - 3);
+    if (!prF.y0) prF.y0 = clamp(currentYear - 1);
     prF.sel = prF.sel.filter(f => priceData.diff.fields[f]);
     if (!prF.sel.length && !prF.selSet) priceSetSel(priceStartSel());
     else priceSetSel(prF.sel);
@@ -2535,7 +2577,7 @@ function drawPriceBrent() {
   const C = 'rgba(0,48,87,0.9)', F = 'rgba(232,110,30,0.95)', T = 'rgba(232,110,30,0.6)';
   const datasets = [{label: 'Dated Brent (Petroleum Price Board)', data: dBase, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0}];
   if (dFit.some(v => v != null)) datasets.push({label: `Extension: ${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average`, data: dFit, borderColor: F, backgroundColor: F, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0});
-  if (dTail.some(v => v != null)) datasets.push({label: 'Latest EIA daily quotes (not averaged)', data: dTail, borderColor: T, backgroundColor: T, borderWidth: 2, borderDash: [4, 3], pointRadius: 2.5, tension: 0});
+  if (dTail.some(v => v != null)) datasets.push({label: 'Latest EIA daily quotes (not averaged)', data: dTail, borderColor: T, backgroundColor: T, borderWidth: 2, borderDash: [4, 3], pointRadius: 0, tension: 0});
   document.getElementById('chartArea').innerHTML = `${priceBar()}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}"></div>${esc(d.label)}</div>`).join('')}</div>`;
@@ -3659,6 +3701,70 @@ function drawNcsInvestments() {
         <td>${(LIC_SEAS.find(z => z.key === ncsArea(f.id)) || {label: 'Other'}).label}</td>
         <td>${bnNum(f.v)}</td><td>${(f.v / expSum * 100).toFixed(1)} %</td><td>${f.hist ? bnNum(f.hist) : '—'}</td></tr>`).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total (${exp.length} fields)</td><td></td><td>${bnNum(expSum)}</td><td>100 %</td><td>${bnNum(total)}</td></tr></tfoot>
+    </table>`);
+}
+
+// ── COMPANIES: OPERATED ──────────────────────────────────────────────────────
+// Selskapets egenandelsjusterte produksjon delt i operert og partner. Operert
+// er andelen fra felt der selskapet var operatør i perioden, slått opp i
+// Sodirs operatørhistorikk (data/field_operators.json, lag 7110) på samme
+// dato som eierandelen. Ett selskap om gangen.
+let fieldOperatorRows = null;
+function fieldOperatorAt(id, date) {
+  if (!fieldOperatorRows) {
+    fieldOperatorRows = {};
+    const b = bundle.field_operators;
+    (b ? b.rows : []).forEach(([fid, name, from, to]) => { (fieldOperatorRows[fid] = fieldOperatorRows[fid] || []).push({name, from, to}); });
+  }
+  const ts = date.getTime(), rows = fieldOperatorRows[id];
+  // Uten historikk (prøveproduksjon o.l.) brukes dagens operatør fra feltfaktaene.
+  if (!rows) return (profileRow(id) || {}).operator || '';
+  const r = rows.find(o => (o.from == null || ts >= o.from) && (o.to == null || ts <= o.to + 86399999));
+  return r ? r.name : '';
+}
+
+function drawCompaniesOperated() {
+  const cmp = [...selectedCompanyNames][0];
+  if (!cmp) { setChartEmpty('Select a company.'); setInfo(''); return; }
+  const ids = getFieldsForCompany(cmp);
+  const labels = unionLabels(ids);
+  if (!labels.length) { setChartEmpty('No data for selected period.'); setInfo(''); return; }
+  const q = period === 'quarterly', qMap = q ? buildQuarterMap(ids) : null, want = new Set(labels);
+  const op = {}, part = {}, byField = {};
+  ids.forEach(id => (fieldProdCache[id] || []).forEach(r => {
+    const a = r.attributes;
+    if (!isValidRow(a)) return;
+    const key = q ? getQuarterKey(a.prfYear, a.prfMonth) : periodKey(a);
+    if (!want.has(key)) return;
+    const date = midDate(a.prfYear, a.prfMonth || 7);
+    const share = getShare(id, date, cmp) / 100;
+    if (!share) return;
+    const d = days(a), v = oeBoed(a.prfPrdOeNetMillSm3 || 0, d) * share * (q ? d : 1);
+    const isOp = fieldOperatorAt(id, date) === cmp;
+    (isOp ? op : part)[key] = ((isOp ? op : part)[key] || 0) + v;
+    if (key === labels[labels.length - 1]) byField[id] = {v, isOp, share: share * 100};
+  }));
+  const per = k => q ? qMap[k].totalDays : 1;
+  const dOp = labels.map(k => +((op[k] || 0) / per(k)).toFixed(0)), dPart = labels.map(k => +((part[k] || 0) / per(k)).toFixed(0));
+  const OP_C = 'rgba(0,48,87,0.85)', PART_C = 'rgba(73,147,180,0.6)';
+  renderChart(labels,
+    [{label: 'Operated', data: dOp, backgroundColor: OP_C, borderWidth: 0, stack: 's'},
+     {label: 'Partner', data: dPart, backgroundColor: PART_C, borderWidth: 0, stack: 's'}],
+    [{label: 'Operated', color: OP_C}, {label: 'Partner', color: PART_C}], 'boe/day');
+  const sum = a => a.reduce((t, v) => t + v, 0), totOp = sum(dOp), tot = totOp + sum(dPart);
+  const last = labels[labels.length - 1];
+  setChartTitle(`${cmp} · Operated`, `Net production, operated vs partner · equity-adjusted · boe/day`);
+  setInfo(`<strong>Company:</strong> ${esc(cmp)} &nbsp;|&nbsp; <strong>Operated</strong> = the company's share of production from fields it operated at the time; <strong>Partner</strong> = its share in fields operated by others &nbsp;|&nbsp; <strong>Operated share in the period:</strong> ${tot ? (totOp / tot * 100).toFixed(0) : '—'} % &nbsp;|&nbsp; <strong>Basis:</strong> equity-adjusted net OE; operator from Sodir's operator history`);
+  const n0 = v => Math.round(v).toLocaleString('en');
+  const rows = Object.entries(byField).map(([id, o]) => ({id: +id, name: fieldNameOf(+id), ...o, v: o.v / per(last)}))
+    .filter(r => r.v >= 1).sort((a, b) => b.isOp - a.isOp || b.v - a.v);
+  if (rows.length) setChartTable(`
+    <table class="res-table">
+      <caption>Fields in ${last} · equity-adjusted net production, boe/day</caption>
+      <thead><tr><th>Field</th><th>Role</th><th>Share</th><th>Net production</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td><a class="row-link" href="#" onclick="openFieldProfile(${r.id});return false;">${esc(r.name)}</a></td>
+        <td>${r.isOp ? 'Operator' : 'Partner'}</td><td>${r.share.toFixed(2)} %</td><td>${n0(r.v)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td>${n0(sum(rows.map(r => r.v)))}</td></tr></tfoot>
     </table>`);
 }
 
@@ -7258,7 +7364,7 @@ let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
                              purpose:'all', from:String(currentYear - 2), q:'',
-                             dev:true, fixed:false, aisOnly:true, modu:false});   // dev/fixed/aisOnly/modu: bare riggfanen
+                             dev:true, fixed:false, aisOnly:true, modu:true});   // dev/fixed/aisOnly/modu: bare riggfanen
 let explF = {...explDefaults(), open:null};
 let explSort = {key:'start', dir:-1};
 let explLimit = 100;
@@ -9905,11 +10011,13 @@ function licRenderRounds() {
         <div class="pf-fact"><span>Companies</span><strong>${names.length}</strong></div>
         <div class="pf-fact"><span>Where</span><strong>${esc(seaTxt || '—')}</strong></div>
       </div></div>
+    <div class="lc-two">
     <div class="pf-card"><h3>Licence map</h3>${map}</div>
     ${names.length ? `<div class="pf-card" data-ppt-spec="licRounds"><h3>Licences awarded per company</h3>
       ${coBars}
       <div class="ex-legend">${legend}</div>
       <div class="pf-map-note">Number of the round's licences each company was awarded an interest in, as partner or operator.</div></div>` : ''}
+    </div>
     <div class="pf-card"><h3>Awards per company</h3>
       <div class="pf-scroll"><table class="res-table ex-table"><thead><tr><th class="ex-l">Company</th><th>Licences awarded</th><th>Operator</th>
         <th>Gross area, km²</th><th>Net area, km²</th><th>Still holds</th></tr></thead><tbody>${names.map(coRow).join('')}</tbody></table></div>

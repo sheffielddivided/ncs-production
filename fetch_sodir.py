@@ -41,6 +41,7 @@ DESCR_LAYER   = 7102   # field_description
 FACILITY_LAYER = 6000  # facility
 FACILITY_PHASE_LAYER = 6002  # facility_phase_hst
 FLDINV_EXP_LAYER = 7107  # field_investment_expected
+FLDOPER_LAYER = 7110     # field_operator_hst
 LICENCE_LAYER = 3000   # licence
 COMPANY_LAYER = 1200   # company
 WELL_LAYER    = 5000   # wellbore
@@ -218,6 +219,21 @@ def build_field_investments():
         expected[str(fid)] = [round(num(r.get('fldInvestmentExpected')), 1), as_int(r.get('fldInvExpFixYear'))]
     return {'columns': ['year', 'mnok'], 'fields': fields,
             'expectedColumns': ['mnok', 'fixYear'], 'expected': expected}
+
+
+# Operatørhistorikk per felt, til Operated-visningen i Companies: hvem var
+# operatør på hvert felt, og fra–til når. Datoene er millisekunder som i
+# licensees.json; til-dato tom betyr gjeldende operatør.
+def build_field_operators():
+    rows = fetch_layer(FLDOPER_LAYER, 'fldNpdidField,cmpLongName,fldOperatorFrom,fldOperatorTo')
+    out = []
+    for r in rows:
+        fid, name = as_int(r.get('fldNpdidField')), _clean(r.get('cmpLongName'))
+        if fid is None or not name:
+            continue
+        out.append([fid, name, as_int(r.get('fldOperatorFrom')), as_int(r.get('fldOperatorTo'))])
+    out.sort(key=lambda x: (x[0], x[2] or 0))
+    return {'columns': ['fieldId', 'company', 'from', 'to'], 'rows': out}
 
 
 def build_licensees():
@@ -1169,6 +1185,7 @@ def main():
         ('fields.json',     'felt',        build_fields),
         ('production.json', 'produksjon',  build_production),
         ('licensees.json',  'lisensiaerer', build_licensees),
+        ('field_operators.json', 'operatorhistorikk', build_field_operators),
         ('reserves.json',   'reserver',    build_reserves),
         ('reserves_field.json', 'reserver per felt', build_field_reserves),
         ('discoveries.json', 'funn', build_discoveries),
