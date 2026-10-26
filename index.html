@@ -2008,6 +2008,7 @@ function stateToHash() {
     if (prF.y0) q.set('py', prF.y0 + '-' + prF.y1);
     if (prF.selSet) q.set('pf', prF.sel.join(SEP));
     if (prF.bm) q.set('pm', '1');
+    if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
   }
   else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
@@ -2096,6 +2097,7 @@ function applyHash() {
     if (py) { prF.y0 = +py[1]; prF.y1 = +py[2]; }
     if (q.has('pf')) { prF.sel = q.get('pf') ? q.get('pf').split(SEP) : []; prF.selSet = true; }
     prF.bm = q.get('pm') === '1';
+    if (['usdmmbtu', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
   }
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
@@ -2395,6 +2397,7 @@ const PRICE_TABS = [
   {id: 'brent',   label: 'Dated Brent'},
   {id: 'diff',    label: 'Differentials'},
   {id: 'heatmap', label: 'Heatmap'},
+  {id: 'gas',     label: 'Gas'},
 ];
 let priceSubView = 'brent';
 const PRICE_MAX_SEL = 8;
@@ -2408,8 +2411,8 @@ let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia')]).then(([b, d, e]) => {
-    priceData = b && d ? {brent: b, diff: d, eia: e} : {};
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices')]).then(([b, d, e, g]) => {
+    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g} : {};
     if (!priceData.diff) return;
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
@@ -2449,7 +2452,8 @@ function priceSplice() {
 
 function priceYears() {
   const d = priceData.diff, b = priceData.brent;
-  return [...new Set(d.months.map(m => +m.slice(0, 4)).concat(b.rows.map(r => +r[0].slice(0, 4))))].sort((a, c) => a - c);
+  const g = priceData.gas ? priceData.gas.rows.map(r => +r[0].slice(0, 4)) : [];
+  return [...new Set(d.months.map(m => +m.slice(0, 4)).concat(b.rows.map(r => +r[0].slice(0, 4)), g))].sort((a, c) => a - c);
 }
 function priceMonths() { return priceData.diff.months.filter(m => { const y = +m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; }); }
 
@@ -2523,6 +2527,7 @@ function drawPrices() {
   setProfile(''); setChartTable('');
   if (priceSubView === 'diff') drawPriceDiff();
   else if (priceSubView === 'heatmap') drawPriceHeatmap();
+  else if (priceSubView === 'gas') drawPriceGas();
   else drawPriceBrent();
   document.getElementById('downloadBtn').disabled = false;
 }
@@ -2655,6 +2660,88 @@ function drawPriceHeatmap() {
   lastDatasets = Object.keys(d.fields).map(f => ({label: f + ', $/bbl', data: months.map(m => d.fields[f][m] ?? '')}));
   setChartTitle('Norm price differentials · all fields', `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`);
   setInfo(`<strong>Colours:</strong> blue is above Brent, orange below, grey around zero &nbsp;|&nbsp; <strong>–</strong> no value; <strong>*</strong> several differentials in the month (sub-periods in 2018 and 2020, not imported) &nbsp;|&nbsp; ${PRICE_SRC}`);
+}
+
+// ── PRICES: GAS ──
+// Månedlige gasspriser fra data/gas_prices.json (fetch_gas.py): norsk
+// eksportpris (SSBs eksportverdi delt på eksportvolum for naturgass i
+// gassform), IMFs europeiske gasspris (TTF-basert) og Henry Hub. Daglige
+// TTF/NBP-priser er lisensierte og er bevisst ikke med.
+//
+// Omregning mellom enheter: valuta med Norges Banks månedssnitt, og volum
+// til energi med en antatt brennverdi på 40 MJ/Sm³ (øvre brennverdi, typisk
+// for norsk eksportgass). Energiinnholdet varierer noe mellom felt og
+// leveranser, så omregnede tall er tilnærmet.
+const GAS_MJ_PER_SM3 = 40;
+const GAS_MMBTU_PER_SM3 = GAS_MJ_PER_SM3 / 1055.056;    // 1 MMBtu = 1 055,056 MJ
+const GAS_MWH_PER_SM3 = GAS_MJ_PER_SM3 / 3600;          // 1 MWh = 3 600 MJ
+const GAS_UNITS = [['eurmwh', 'EUR/MWh'], ['usdmmbtu', 'USD/MMBtu'], ['noksm3', 'NOK/Sm³']];
+let gasData = null;
+
+function gasRows() {
+  const b = priceData.gas;
+  if (!b) return [];
+  const i = Object.fromEntries(b.columns.map((c, k) => [c, k]));
+  return b.rows.map(r => ({m: r[i.month], nok: r[i.export_nok], sm3: r[i.export_sm3], eu: r[i.eu_usd_mmbtu],
+    hh: r[i.hh_usd_mmbtu], usd: r[i.usdnok], eur: r[i.eurnok]}));
+}
+
+// Pris i valgt enhet. Norsk eksportpris kommer i NOK/Sm³, IMF og Henry Hub
+// i USD/MMBtu; valutakursen er samme måneds snitt.
+function gasConvert(r, kind) {
+  const u = prF.gu || 'eurmwh';
+  let noksm3 = null;
+  if (kind === 'no') noksm3 = r.nok && r.sm3 ? r.nok / r.sm3 : null;
+  else {
+    const usd = r[kind];
+    if (usd == null || !r.usd) return null;
+    noksm3 = usd * r.usd * GAS_MMBTU_PER_SM3;
+  }
+  if (noksm3 == null) return null;
+  if (u === 'noksm3') return noksm3;
+  if (u === 'usdmmbtu') return r.usd ? noksm3 / r.usd / GAS_MMBTU_PER_SM3 : null;
+  return r.eur ? noksm3 / r.eur / GAS_MWH_PER_SM3 : null;
+}
+
+function drawPriceGas() {
+  const rows = gasRows().filter(r => { const y = +r.m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; });
+  const unit = (GAS_UNITS.find(x => x[0] === (prF.gu || 'eurmwh')) || GAS_UNITS[0])[1];
+  const series = [['no', 'Norwegian export price (SSB)', 'rgba(0,48,87,0.9)', 2.5],
+                  ['eu', 'Europe, TTF-based (IMF)', 'rgba(232,110,30,0.9)', 2],
+                  ['hh', 'Henry Hub, US', 'rgba(0,150,100,0.85)', 1.5]];
+  const labels = rows.map(r => r.m);
+  const datasets = series.map(([k, l, c, w]) => ({label: l, data: rows.map(r => { const v = gasConvert(r, k); return v == null ? null : +v.toFixed(2); }),
+    borderColor: c, backgroundColor: c, borderWidth: w, pointRadius: labels.length > 48 ? 0 : 2, tension: 0, spanGaps: false}));
+  const pills = `<div class="pill-group">${GAS_UNITS.map(([k, l]) =>
+    `<button class="pill-btn${(prF.gu || 'eurmwh') === k ? ' active' : ''}" onclick="priceSet('gu','${k}')">${l}</button>`).join('')}</div>`;
+  document.getElementById('chartArea').innerHTML = `${priceBar().replace('</div>', pills + '</div>')}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}"></div>${esc(d.label)}</div>`).join('')}</div>`;
+  priceLineChart(labels, datasets, unit);
+  chartInstance.options.plugins.tooltip.callbacks.label = c => c.parsed.y == null ? null : ` ${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 2})} ${unit}`;
+  chartInstance.update('none');
+  lastLabels = labels; lastXTitle = 'Month';
+  lastDatasets = datasets.map(d => ({label: `${d.label}, ${unit}`, data: d.data.map(v => v ?? '')}))
+    .concat([{label: 'Export volume, million Sm³', data: rows.map(r => r.sm3 ? +(r.sm3 / 1e6).toFixed(1) : '')},
+             {label: 'Export value, NOK million', data: rows.map(r => r.nok ? +(r.nok / 1e6).toFixed(1) : '')}]);
+
+  // Tabell: de siste tolv månedene med norsk eksport.
+  const withNo = gasRows().filter(r => r.sm3).slice(-12).reverse();
+  const f2 = v => v == null ? '—' : v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const f1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  setChartTable(`
+    <table class="res-table">
+      <caption>Norwegian gas exports, last 12 months · prices in ${unit}</caption>
+      <thead><tr><th>Month</th><th>Volume, bn Sm³</th><th>Value, NOK bn</th><th>Norwegian export price</th><th>Europe (IMF)</th><th>Henry Hub</th></tr></thead>
+      <tbody>${withNo.map(r => `<tr><td>${r.m}</td><td>${f1(r.sm3 / 1e9)}</td><td>${f1(r.nok / 1e9)}</td>
+        <td>${f2(gasConvert(r, 'no'))}</td><td>${f2(gasConvert(r, 'eu'))}</td><td>${f2(gasConvert(r, 'hh'))}</td></tr>`).join('')}</tbody>
+    </table>`);
+  const last = withNo[0], hhSrc = (priceData.gas.sources || {}).hh === 'EIA' ? 'EIA' : 'EIA via FRED';
+  setChartTitle('Gas prices', `Monthly · ${unit} · ${prF.y0}–${prF.y1}`);
+  setInfo(`<strong>Latest Norwegian export price:</strong> ${last ? `${f2(gasConvert(last, 'no'))} ${unit} (${last.m}), ${f1(last.sm3 / 1e9)} bn Sm³ exported` : '—'} &nbsp;|&nbsp; ` +
+    `<strong>Norwegian export price</strong> = export value / export volume of natural gas in gaseous state (HS 27112100), i.e. what Norwegian gas was actually sold for, including long-term contracts &nbsp;|&nbsp; ` +
+    `<strong>Conversion:</strong> monthly average exchange rates from Norges Bank; energy content assumed ${GAS_MJ_PER_SM3} MJ/Sm³ (gross), so converted figures are approximate &nbsp;|&nbsp; ` +
+    `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank. Daily European hub prices (TTF, NBP) are licensed and not shown`);
 }
 
 // ── NCS ──────────────────────────────────────────────────────────────────────

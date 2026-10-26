@@ -1135,6 +1135,16 @@ Periode (`py=2023-2026`) og feltutvalg (`pf`) deles mellom fanene og ligger
 i lenken. Korrelasjonsstudien (`normpris-korrelasjon.html`) er fortsatt en
 egen side; lenken tilbake derfra peker på Prices. Gasspriser er ikke med.
 
+**Gas** (`drawPriceGas`) viser månedlige gasspriser fra
+`data/gas_prices.json`, hentet av `fetch_gas.py` (eget steg i arbeidsflyten,
+`continue-on-error`): norsk eksportpris = SSBs eksportverdi / eksportvolum for
+naturgass i gassform (tabell 11008, HS 27112100), IMFs «Natural gas, EU»
+(TTF-basert, via FRED PNGASEUUSDM) og Henry Hub (EIA RNGWHHD med
+`EIA_API_KEY`, ellers FRED MHHNGSP). Norges Banks månedssnitt for USD/NOK og
+EUR/NOK brukes til omregning, og 40 MJ/Sm³ som antatt brennverdi
+(`GAS_MJ_PER_SM3`). Enhet velges med `pu` (EUR/MWh standard, USD/MMBtu,
+NOK/Sm³). Daglige hubpriser (TTF, NBP) er lisensierte og er bevisst ikke med.
+
 **Konstruksjonen av Datert Brent og skjøten.** Petroleumsprisrådets Datert
 Brent for dato *d* er snittet av de **fem neste publiserte Platts Dated
 Brent-noteringene (PCAAS00) etter *d*** — ikke *d* selv — rundet til nærmeste
