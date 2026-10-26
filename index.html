@@ -6287,6 +6287,19 @@ function pptAddChart(pptx, slide, spec, box) {
   const common = {...box, ...font, showLegend: true, legendPos: 'b', valAxisLabelFormatCode: '#,##0',
     valGridLine: {color: 'E3E8EE', size: 0.75}, catGridLine: {style: 'none'}};
 
+  if (spec.kind === 'table') {
+    // Tabell (overlappsmatrisen): første kolonne bredere, resten likt fordelt;
+    // skriften krymper med antall rader så alt får plass på lysbildet.
+    const n = spec.rows.length, cols = spec.rows[0].length;
+    const fs = n <= 11 ? 11 : n <= 16 ? 9 : n <= 21 ? 8 : 6;
+    const first = 1.7, rest = (box.w - first) / (cols - 1);
+    const rowH = Math.min(0.4, box.h / n);
+    const rows = spec.rows.map(r => r.map(c => ({text: c.text, options: {bold: !!c.bold, align: c.align || 'center',
+      ...(c.fill ? {fill: {color: c.fill}} : {}), color: c.color || '1A2332'}})));
+    slide.addTable(rows, {x: box.x, y: box.y, w: box.w, colW: [first].concat(Array(cols - 1).fill(rest)), rowH,
+      fontFace: 'Arial', fontSize: fs, valign: 'middle', margin: 0.02, border: {type: 'solid', pt: 0.5, color: 'E3E8EE'}});
+    return;
+  }
   if (spec.kind === 'scatter') {
     // PptxGenJS vil ha én felles x-rekke. Seriene har ulike x-verdier, så
     // x-ene slås sammen og hullene spennes over (displayBlanksAs: 'span').
@@ -9642,12 +9655,24 @@ function licRenderOverlap() {
       <datalist id="licOvCo">${sortCompanies(licCos).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
     </div>`;
 
+  // Samme matrise som PowerPoint-tabell, med cellefargen blandet mot hvitt.
+  const mix = al => { const k = Math.min(1, al * 0.9); return [206, 15, 105].map(c => Math.round(255 - (255 - c) * k).toString(16).padStart(2, '0')).join('').toUpperCase(); };
+  pptCardSpecs.licOverlap = {kind: 'table',
+    subtitle: pct ? `Share of the row company's licences that the column company also holds · top ${n} companies`
+                  : `Active licences held together · top ${n} companies · the diagonal is the company's total`,
+    rows: [[{text: ''}].concat(cos.map(c => ({text: licShort(c), bold: true})))].concat(cos.map(a => [{text: licShort(a), bold: true, align: 'left'}]
+      .concat(cos.map(b => {
+        const v = (ov[a] || {})[b] || 0, tot = licStats[a].count;
+        if (a === b) return {text: String(tot), bold: true, fill: 'EEF0F3'};
+        const al = pct ? v / tot : Math.sqrt(v / maxOff);
+        return {text: v ? (pct ? Math.round(v / tot * 100) + '%' : String(v)) : '', fill: mix(al), color: al > 0.5 ? 'FFFFFF' : '1A2332'};
+      }))))};
   const head = cos.map(c => `<th class="lc-vh"><span title="${esc(c)}">${esc(licShort(c))}</span></th>`).join('');
   const matrix = `<div class="pf-scroll"><table class="lc-matrix"><thead><tr><th></th>${head}</tr></thead>
     <tbody>${cos.map(a => `<tr><th class="lc-rh" title="${esc(a)}">${esc(licShort(a))}</th>${cos.map(b => cell(a, b)).join('')}</tr>`).join('')}</tbody></table></div>`;
 
   document.getElementById('licBody').innerHTML = `
-    <div class="pf-card"><h3>Portfolio overlap</h3>${matrix}
+    <div class="pf-card" data-ppt-spec="licOverlap"><h3>Portfolio overlap</h3>${matrix}
       <div class="pf-map-note">${pct ? 'Each row shows the share of that company\'s licences that the column company also holds. The matrix is not symmetric.'
         : 'Number of active licences the two companies hold together. The diagonal is the company\'s total.'}
         Click a cell for the shared licences; click a diagonal cell to open the company.</div></div>
