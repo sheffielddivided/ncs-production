@@ -2097,7 +2097,7 @@ function applyHash() {
     if (py) { prF.y0 = +py[1]; prF.y1 = +py[2]; }
     if (q.has('pf')) { prF.sel = q.get('pf') ? q.get('pf').split(SEP) : []; prF.selSet = true; }
     prF.bm = q.get('pm') === '1';
-    if (['usdmmbtu', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
+    if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
   }
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
@@ -2675,7 +2675,10 @@ function drawPriceHeatmap() {
 const GAS_MJ_PER_SM3 = 40;
 const GAS_MMBTU_PER_SM3 = GAS_MJ_PER_SM3 / 1055.056;    // 1 MMBtu = 1 055,056 MJ
 const GAS_MWH_PER_SM3 = GAS_MJ_PER_SM3 / 3600;          // 1 MWh = 3 600 MJ
-const GAS_UNITS = [['eurmwh', 'EUR/MWh'], ['usdmmbtu', 'USD/MMBtu'], ['noksm3', 'NOK/Sm³']];
+const GAS_UNITS = [['eurmwh', 'EUR/MWh'], ['usdmmbtu', 'USD/MMBtu'], ['usdboe', 'USD/boe'], ['noksm3', 'NOK/Sm³']];
+// USD/boe bruker Sodirs omregning, som resten av appen: 1 000 Sm³ gass =
+// 1 Sm³ o.e. = BBL_PER_SM3 fat, altså om lag 159 Sm³ gass per fat o.e.
+const GAS_BOE_PER_SM3 = BBL_PER_SM3 / 1000;
 let gasData = null;
 
 function gasRows() {
@@ -2700,6 +2703,7 @@ function gasConvert(r, kind) {
   if (noksm3 == null) return null;
   if (u === 'noksm3') return noksm3;
   if (u === 'usdmmbtu') return r.usd ? noksm3 / r.usd / GAS_MMBTU_PER_SM3 : null;
+  if (u === 'usdboe') return r.usd ? noksm3 / r.usd / GAS_BOE_PER_SM3 : null;
   return r.eur ? noksm3 / r.eur / GAS_MWH_PER_SM3 : null;
 }
 
@@ -2740,7 +2744,7 @@ function drawPriceGas() {
   setChartTitle('Gas prices', `Monthly · ${unit} · ${prF.y0}–${prF.y1}`);
   setInfo(`<strong>Latest Norwegian export price:</strong> ${last ? `${f2(gasConvert(last, 'no'))} ${unit} (${last.m}), ${f1(last.sm3 / 1e9)} bn Sm³ exported` : '—'} &nbsp;|&nbsp; ` +
     `<strong>Norwegian export price</strong> = export value / export volume of natural gas in gaseous state (HS 27112100), i.e. what Norwegian gas was actually sold for, including long-term contracts &nbsp;|&nbsp; ` +
-    `<strong>Conversion:</strong> monthly average exchange rates from Norges Bank; energy content assumed ${GAS_MJ_PER_SM3} MJ/Sm³ (gross), so converted figures are approximate &nbsp;|&nbsp; ` +
+    `<strong>Conversion:</strong> monthly average exchange rates from Norges Bank; energy content assumed ${GAS_MJ_PER_SM3} MJ/Sm³ (gross), so converted figures are approximate; USD/boe uses Sodir's oil-equivalent convention (1 000 Sm³ gas = 1 Sm³ o.e. = ${BBL_PER_SM3} bbl, about ${Math.round(1 / GAS_BOE_PER_SM3)} Sm³ per boe), which makes it directly comparable with Brent in $/bbl &nbsp;|&nbsp; ` +
     `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank. Daily European hub prices (TTF, NBP) are licensed and not shown`);
 }
 
