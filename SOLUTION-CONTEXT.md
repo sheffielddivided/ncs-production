@@ -1123,7 +1123,7 @@ slik at den kan merkes manuelt.
 #### NCS-modusen
 
 Hele sokkelen samlet, uten utvalg (velgerknappen er skjult, `body.ncs`).
-Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`, `nf`).
+Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`, `nf`, `ne`).
 
 | Fane | Funksjon | Hva som tegnes |
 |---|---|---|
@@ -1136,6 +1136,19 @@ Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`
 | Water | `drawNcsWater` | Olje og produsert vann per år (bbl/d) og vannkuttet, vann / (vann + olje). Starter ved første år med rapportert vann (2000). Tabell: de største vannprodusentene siste hele år |
 | Creaming | `drawNcsCreaming` | Creaming-kurve: samlet funnvolum mot samlet antall wildcats, år for år (`nc=year` gir funnvolum per funnår med wildcats som linje). Volum: feltenes utvinnbare volum på feltets funnår pluss betingede ressurser i funn på funnåret. Total eller per havområde (`na=1`) |
 | Investments | `drawNcsInvestments` | Investeringer per år og havområde (nominelt), og forventede framtidige investeringer per felt (faste kroner) |
+
+**Economy** (`drawNcsEconomy`) bruker SSB-data fra `data/ssb_petroleum.json`,
+hentet av `fetch_ssb.py` (eget steg i arbeidsflyten, `continue-on-error`).
+Tre tabeller fra SSBs åpne PxWeb-API: 07840 (sysselsatte, lønnskostnader,
+produksjonsverdi, bearbeidingsverdi og investeringer per næring 06 / 09.1 /
+49.500, fra 1965), 04170 (påløpte investeringer per art fra 1985) og 08050
+(investeringsundersøkelsens anslag per år og runde). Veksler `ne`:
+`employment` (sysselsatte per næring, stiplet linje ved bruddet i
+tjenesteserien 2008–2009, og nøkkeltall siste år), `investments` (påløpt per
+art, med siste anslag for de kommende årene som blekere søyler) og `survey`
+(hvordan anslaget for hvert år utviklet seg gjennom rundene). Undersøkelsen
+fyller ikke-publiserte anslag med 0; de behandles som manglende. Alt i
+løpende kroner, kilde SSB (CC BY 4.0).
 
 Havområdet hentes fra feltfaktaene (`ncsArea`); felt uten område havner under
 «Other».

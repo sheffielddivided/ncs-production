@@ -1987,6 +1987,7 @@ function applyHash() {
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     ncsF.crArea = q.get('na') === '1';
     if (q.get('nf') === 'timeline') ncsF.fl = 'timeline';
+    if (['investments', 'survey'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
   }
   if (topMode === 'companies') {
     cmpExplWildcat = q.get('cw') === '1';
@@ -2266,16 +2267,18 @@ const NCS_TABS = [
   {id:'creaming',    label:'Creaming'},
   {id:'companies',   label:'Companies'},
   {id:'investments', label:'Investments'},
+  {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
 // prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · wild: bare wildcats
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn)
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'timeline'
+// · ec: 'employment' | 'investments' | 'survey'
 const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, year: '', rank: 'res', all: false,
-                            cr: 'curve', crArea: false, fl: 'rank'});
+                            cr: 'curve', crArea: false, fl: 'rank', ec: 'employment'});
 let ncsF = ncsDefaults();
 const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['year', 'ny'], ['rank', 'nk'],
-                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf']];
+                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['ec', 'ne']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
 // Havområdene, i samme farger som i Licences. Felt uten område i
@@ -2317,6 +2320,7 @@ async function refreshNcs() {
   const v = ncsSubView;
   if (v === 'production' || v === 'fields' || v === 'water') await loadProdForFields(ncsFieldIds());
   else if (v === 'creaming') await Promise.all([loadExploration(), loadFieldReserves(), loadDiscoveries()]);
+  else if (v === 'economy') await loadSsb();
   else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
   else if (v === 'exploration') await loadExploration();
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries()]);
@@ -2333,6 +2337,7 @@ function drawNcs() {
   else if (v === 'creaming') drawNcsCreaming();
   else if (v === 'fields') drawNcsFields();
   else if (v === 'water') drawNcsWater();
+  else if (v === 'economy') drawNcsEconomy();
   else drawNcsProduction();
 }
 
@@ -2905,6 +2910,176 @@ function drawNcsWater() {
         <td>${n0(toBd(f.wat, currentYear - 1))}</td><td>${n0(toBd(f.liq, currentYear - 1))}</td>
         <td>${(f.wat / (f.wat + f.liq) * 100).toFixed(0)} %</td></tr>`).join('')}</tbody>
     </table>`);
+}
+
+// ── NCS: ECONOMY (SSB) ──
+// Nøkkeltall fra SSB, i data/ssb_petroleum.json (fetch_ssb.py): sysselsetting
+// og hovedtall per næring (07840), påløpte investeringer per art (04170) og
+// investeringsundersøkelsens anslag (08050). Alt i løpende kroner. SSBs
+// investeringer dekker mer enn Sodirs investeringer per felt i
+// Investments-fanen — leting, landanlegg, nedstengning og rørtransport — og
+// er samlet inn på en annen måte, så tallene er ikke like.
+let ssbData = null, ssbLoading = null;
+function loadSsb() {
+  if (ssbData) return Promise.resolve();
+  if (ssbLoading) return ssbLoading;
+  ssbLoading = fetchBundle('ssb_petroleum').then(b => { ssbData = b || {}; });
+  return ssbLoading;
+}
+const SSB_NACE = [['06', 'Extraction of oil and gas'], ['09.1', 'Services incidental to extraction'], ['49.500', 'Pipeline transport']];
+const SSB_INV = [['11', 'Exploration'], ['121', 'Field development'], ['122', 'Fields in operation'],
+                 ['123', 'Onshore activities'], ['124', 'Shutdown and removal'], ['2', 'Pipeline transport']];
+const SSB_POINTS = {'2': 'Feb, year before', '5': 'May, year before', '8': 'Aug, year before', '11': 'Nov, year before',
+                    '14': 'Feb', '17': 'May', '20': 'Aug', '23': 'Nov', '99': 'Accrued'};
+const SSB_COLORS = ['rgba(0,48,87,0.85)', 'rgba(73,147,180,0.85)', 'rgba(232,201,66,0.9)', 'rgba(0,179,115,0.85)',
+                    'rgba(206,15,105,0.75)', 'rgba(154,165,177,0.9)'];
+// Undersøkelsen fyller ikke-publiserte anslag med 0.
+const ssbV = v => (v == null || v === 0 ? null : v);
+
+// Siste publiserte anslag for et år: høyeste anslagstidspunkt med verdi.
+function ssbLatestEstimate(typeKey, yi) {
+  const s = ssbData.survey, vals = s.values[typeKey] || {};
+  for (let i = s.points.length - 1; i >= 0; i--) {
+    const v = ssbV((vals[s.points[i]] || [])[yi]);
+    if (v != null) return {v, point: s.points[i]};
+  }
+  return null;
+}
+
+function ssbChart(labels, datasets, yTitle, opts = {}) {
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: opts.type || 'bar', data: {labels, datasets},
+    plugins: opts.plugins || [],
+    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: ctx => ctx.parsed.y == null ? null : ` ${ctx.dataset.label}: ${opts.fmt ? opts.fmt(ctx.parsed.y) : ctx.parsed.y.toLocaleString('en')}`,
+        footer: opts.footer || (() => '')}}},
+      scales: {
+        x: {stacked: opts.type !== 'line', ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+        y: {stacked: opts.type !== 'line', beginAtZero: true, title: {display: true, text: yTitle, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}},
+      }},
+  });
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+function drawNcsEconomy() {
+  if (!ssbData || !ssbData.main) { setChartEmpty('SSB data is not available.'); setInfo(''); return; }
+  setProfile(''); setChartTable('');
+  const toggle = ncsPills('ec', [['employment', 'Employment'], ['investments', 'Investments'], ['survey', 'Investment estimates']]);
+  if (ncsF.ec === 'investments') drawSsbInvestments(toggle);
+  else if (ncsF.ec === 'survey') drawSsbSurvey(toggle);
+  else drawSsbEmployment(toggle);
+}
+
+function drawSsbEmployment(toggle) {
+  const m = ssbData.main, ser = m.series;
+  const first = m.years.findIndex((y, i) => SSB_NACE.some(([k]) => (ser[k].Sysselsatte[i] || 0) > 0));
+  const years = m.years.slice(first), labels = years.map(String);
+  const datasets = SSB_NACE.map(([k, l], i) => ({label: l, data: years.map((y, j) => ser[k].Sysselsatte[first + j] ?? null),
+    backgroundColor: SSB_COLORS[i], borderWidth: 0, stack: 's'}));
+  const total = j => datasets.reduce((t, d) => t + (d.data[j] || 0), 0);
+  // Bruddet i tjenesteserien 2008–2009 (endret avgrensning hos SSB) markeres
+  // med en stiplet linje.
+  const breakAt = labels.indexOf('2009');
+  const breakLine = {id: 'ssbBreak', afterDatasetsDraw(c) {
+    if (breakAt < 0) return;
+    const x = (c.scales.x.getPixelForValue(breakAt - 1) + c.scales.x.getPixelForValue(breakAt)) / 2, {top, bottom} = c.chartArea, g = c.ctx;
+    g.save(); g.strokeStyle = '#9aa5b1'; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke();
+    g.fillStyle = '#6b7785'; g.font = '10px sans-serif'; g.fillText('series break', x + 4, top + 10); g.restore();
+  }};
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${SSB_NACE.map(([, l], i) => `<div class="legend-item"><div class="legend-dot" style="background:${SSB_COLORS[i]}"></div>${l}</div>`).join('')}</div>`;
+  ssbChart(labels, datasets, 'employed persons', {plugins: [breakLine],
+    footer: items => `Total: ${total(items[0].dataIndex).toLocaleString('en')}`});
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = datasets.map(d => ({label: d.label + ', employed', data: d.data.map(v => v ?? '')}));
+
+  // Nøkkeltall siste år per næring.
+  const li = m.years.length - 1, ly = m.years[li];
+  const n0 = v => v == null ? '—' : Math.round(v).toLocaleString('en');
+  const chg = (a, b) => a == null || !b ? '' : ` <small>${a >= b ? '+' : ''}${((a / b - 1) * 100).toFixed(1)} %</small>`;
+  const sumK = (c, i) => SSB_NACE.reduce((t, [k]) => t + (ser[k][c][i] || 0), 0);
+  const ROWS = [['Sysselsatte', 'Employed persons', v => n0(v)], ['Lonnskostnader', 'Wage costs', nokBn],
+                ['Bruttoproduksjon', 'Gross value of production', nokBn], ['Bearbeidingverdi', 'Value added', nokBn],
+                ['Investeringer', 'Investments', nokBn]];
+  const cell = (c, i, f, k) => { const v = k ? ser[k][c][i] : sumK(c, i), p = k ? ser[k][c][i - 1] : sumK(c, i - 1); return v == null ? '—' : f(v) + chg(v, p); };
+  const wagePer = (k) => { const w = k ? ser[k].Lonnskostnader[li] : sumK('Lonnskostnader', li), e = k ? ser[k].Sysselsatte[li] : sumK('Sysselsatte', li); return e ? `NOK ${Math.round(w / e * 1000).toLocaleString('en')}k` : '—'; };
+  setChartTable(`
+    <table class="res-table">
+      <caption>Key figures ${ly} · change from ${ly - 1} · current prices</caption>
+      <thead><tr><th></th>${SSB_NACE.map(([, l]) => `<th>${l}</th>`).join('')}<th>Total</th></tr></thead>
+      <tbody>${ROWS.map(([c, l, f]) => `<tr><td>${l}</td>${SSB_NACE.map(([k]) => `<td>${cell(c, li, f, k)}</td>`).join('')}<td>${cell(c, li, f, null)}</td></tr>`).join('')}
+        <tr><td>Wage costs per employed person</td>${SSB_NACE.map(([k]) => `<td>${wagePer(k)}</td>`).join('')}<td>${wagePer(null)}</td></tr></tbody>
+    </table>`);
+  setChartTitle('Norwegian Continental Shelf · Employment', `Employed persons by industry, ${years[0]}–${ly} · source: SSB`);
+  setInfo(`<strong>Source:</strong> Statistics Norway (SSB), table 07840 &nbsp;|&nbsp; <strong>Scope:</strong> employed persons in the three industries only — oil and gas extraction, services incidental to extraction, and pipeline transport. The wider supplier industry (yards, engineering, equipment) is not included &nbsp;|&nbsp; <strong>Series break:</strong> services incidental to extraction rise from ${n0(ser['09.1'].Sysselsatte[m.years.indexOf(2008)])} to ${n0(ser['09.1'].Sysselsatte[m.years.indexOf(2009)])} from 2008 to 2009, which reflects a change in how SSB delimits the industry rather than actual growth &nbsp;|&nbsp; Amounts in current prices`);
+}
+
+function drawSsbInvestments(toggle) {
+  const inv = ssbData.invest, s = ssbData.survey;
+  const lastY = inv.years[inv.years.length - 1];
+  // Prognoseår: år etter siste påløpte tall der undersøkelsen har et anslag.
+  const fc = s.years.map((y, i) => ({y, i})).filter(({y, i}) => y > lastY && ssbLatestEstimate('0', i));
+  const labels = inv.years.map(String).concat(fc.map(f => `${f.y}e`));
+  const nAct = inv.years.length;
+  const datasets = SSB_INV.map(([k, l], i) => ({label: l, stack: 's', borderWidth: 0,
+    data: inv.years.map((y, j) => inv.values[k][j] == null ? null : +(inv.values[k][j] / 1000).toFixed(2))
+      .concat(fc.map(f => { const e = ssbLatestEstimate(k, f.i); return e ? +(e.v / 1000).toFixed(2) : null; })),
+    backgroundColor: ctx => ctx.dataIndex >= nAct ? SSB_COLORS[i].replace(/[\d.]+\)$/, '0.4)') : SSB_COLORS[i]}));
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${SSB_INV.map(([, l], i) => `<div class="legend-item"><div class="legend-dot" style="background:${SSB_COLORS[i]}"></div>${l}</div>`).join('')}</div>
+    <div class="pf-map-note">Pale bars marked «e» are estimates from SSB's investment survey.</div>`;
+  ssbChart(labels, datasets, 'NOK bn', {fmt: v => `NOK ${v.toLocaleString('en', {maximumFractionDigits: 1})} bn`,
+    footer: items => `Total: NOK ${items.reduce((t, it) => t + (it.parsed.y || 0), 0).toLocaleString('en', {maximumFractionDigits: 1})} bn`});
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = datasets.map(d => ({label: d.label + ', NOK bn', data: d.data.map(v => v ?? '')}));
+
+  const tot = inv.values['0'], li = inv.years.length - 1;
+  const pct = (a, b) => `${a >= b ? '+' : ''}${((a / b - 1) * 100).toFixed(1)} %`;
+  let prev = tot[li];
+  const rows = fc.map(f => {
+    const e = ssbLatestEstimate('0', f.i), surveyYear = +e.point >= 14 ? f.y : f.y - 1;
+    const r = `<tr><td>${f.y}</td><td>${nokBn(e.v)}</td><td>${SSB_POINTS[e.point].replace(', year before', '')} ${surveyYear}</td><td>${pct(e.v, prev)}</td></tr>`;
+    prev = e.v; return r;
+  }).join('');
+  setChartTable(`
+    <table class="res-table">
+      <caption>Accrued investments ${lastY} and the latest survey estimates · current prices · early estimates usually rise as projects are approved (see «Investment estimates»)</caption>
+      <thead><tr><th>Year</th><th>Investments</th><th>Basis</th><th>Change from year before</th></tr></thead>
+      <tbody><tr><td>${lastY}</td><td>${nokBn(tot[li])}</td><td>Accrued</td><td>${pct(tot[li], tot[li - 1])}</td></tr>${rows}</tbody>
+    </table>`);
+  setChartTitle('Norwegian Continental Shelf · Investments (SSB)', `Oil and gas extraction and pipeline transport, by type · NOK bn`);
+  setInfo(`<strong>Source:</strong> Statistics Norway (SSB), table 04170 (accrued, ${inv.years[0]}–${lastY}) and 08050 (investment survey estimates) &nbsp;|&nbsp; <strong>Scope:</strong> exploration, field development, fields in operation, onshore activities, shutdown and removal, and pipeline transport. This is wider than Sodir's per-field investments in the Investments tab, and collected differently, so the figures differ &nbsp;|&nbsp; Current prices`);
+}
+
+function drawSsbSurvey(toggle) {
+  const s = ssbData.survey, vals = s.values['0'];
+  // De siste åtte årene, hvert som en linje gjennom undersøkelsesrundene.
+  const idx = s.years.map((y, i) => i).filter(i => s.points.some(p => ssbV(vals[p][i]) != null)).slice(-8);
+  const labels = s.points.map(p => SSB_POINTS[p]);
+  const pal = PALETTE.map(p => p[0]);
+  const datasets = idx.map((i, n) => ({label: String(s.years[i]), data: s.points.map(p => { const v = ssbV(vals[p][i]); return v == null ? null : +(v / 1000).toFixed(1); }),
+    borderColor: pal[n % pal.length], backgroundColor: pal[n % pal.length], borderWidth: n === idx.length - 1 || n === idx.length - 2 ? 2.5 : 1.5,
+    pointRadius: 3, tension: 0.15, spanGaps: false}));
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}"></div>${d.label}</div>`).join('')}</div>
+    <div class="pf-map-note">Each line is one year's investments as estimated in SSB's quarterly survey, from February the year before to the accrued figure.</div>`;
+  ssbChart(labels, datasets, 'NOK bn', {type: 'line', fmt: v => `NOK ${v.toLocaleString('en', {maximumFractionDigits: 1})} bn`});
+  lastLabels = labels; lastXTitle = 'Survey';
+  lastDatasets = datasets.map(d => ({label: d.label + ', NOK bn', data: d.data.map(v => v ?? '')}));
+  const n1 = v => (v / 1000).toLocaleString('en', {maximumFractionDigits: 1});
+  setChartTable(`
+    <table class="res-table">
+      <caption>Estimates by survey round · NOK bn · current prices</caption>
+      <thead><tr><th>Year</th>${s.points.map(p => `<th>${SSB_POINTS[p]}</th>`).join('')}</tr></thead>
+      <tbody>${idx.slice().reverse().map(i => `<tr><td>${s.years[i]}</td>${s.points.map(p => { const v = ssbV(vals[p][i]); return `<td>${v == null ? '—' : n1(v)}</td>`; }).join('')}</tr>`).join('')}</tbody>
+    </table>`);
+  setChartTitle('Norwegian Continental Shelf · Investment estimates', 'How each year\'s investments were estimated in SSB\'s survey · NOK bn');
+  setInfo(`<strong>Source:</strong> Statistics Norway (SSB), table 08050, investment survey for oil and gas extraction and pipeline transport &nbsp;|&nbsp; Estimates typically rise through the survey rounds as projects are approved and added &nbsp;|&nbsp; Current prices`);
 }
 
 // ── NCS: COMPANIES ──
