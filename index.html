@@ -3242,7 +3242,7 @@ function drawFieldProfile() {
 }
 
 // ── INVESTERINGER ────────────────────────────────────────────────────────────
-// Kort i felt- og hubprofilen. To tall fra Sodir som ikke kan legges sammen:
+// Kort i felt-, hub- og selskapsprofilen. To tall fra Sodir som ikke kan legges sammen:
 // historiske investeringer per år i nominelle kroner, og anslaget for
 // gjenstående framtidige investeringer i faste kroner for et gitt år. Det
 // første vises som søyler, det andre som nøkkeltall ved siden av.
@@ -3256,69 +3256,104 @@ function invLastYear() {
   if (invLast === null) invLast = b ? Math.max(0, ...Object.values(b.fields).flatMap(r => r.map(x => x[0]))) : 0;
   return invLast;
 }
-// Sodirs anslag kan være svakt negativt (Tyrving: −23 MNOK); under 50 MNOK
-// vises som 0.0, så det ikke står «-0.0».
-const bnok = v => (Math.abs(v) < 50 ? 0 : v / 1000).toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+// Beløp skrives «NOK 45.8 bn». Sodirs anslag kan være svakt negativt
+// (Tyrving: −23 MNOK); under 50 MNOK vises som 0.0, så det ikke står «-0.0».
+const bnNum = v => (Math.abs(v) < 50 ? 0 : v / 1000).toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+const nokBn = v => `NOK ${bnNum(v)} bn`;
 
-function investmentCard(ids, nameOf) {
+// ids: feltene kortet dekker. Uten opts.company er tallene brutto og gruppert
+// per felt (feltprofilen har bare ett). Med opts.company er de
+// egenandelsjustert og gruppert per hub, som produksjonsgrafen i
+// selskapsprofilen: historikken med andelen midt i hvert år, slik at kjøp og
+// salg slår inn fra det året de skjedde, og det framtidige anslaget med
+// dagens andel.
+function investmentCard(ids, nameOf, opts = {}) {
   const b = bundle.field_investments;
   if (!b) return '';
-  const per = ids.map(id => {
+  const cmp = opts.company;
+  const now = new Date();
+  const groups = {};
+  ids.forEach(id => {
     const rows = b.fields[String(id)] || [];
     const exp = b.expected[String(id)] || null;
-    return {id, name: nameOf(id), rows, exp, total: rows.reduce((t, r) => t + r[1], 0)};
-  }).filter(h => h.rows.length || h.exp);
+    if (!rows.length && !exp) return;
+    const key = cmp ? hubNameOf(id) : String(id);
+    const g = groups[key] = groups[key] || {
+      name: cmp ? key : nameOf(id),
+      link: cmp ? `openHubProfile(${esc(jsStr(key))})` : `openFieldProfile(${id})`,
+      byYear: {}, total: 0, exp: 0, hasExp: false, fixYears: new Set(),
+    };
+    rows.forEach(([y, v]) => {
+      const f = cmp ? getShare(id, new Date(Date.UTC(y, 6, 1)), cmp) / 100 : 1;
+      if (!f) return;
+      g.byYear[y] = (g.byYear[y] || 0) + v * f;
+      g.total += v * f;
+    });
+    if (exp) {
+      const f = cmp ? getShare(id, now, cmp) / 100 : 1;
+      if (f) { g.exp += exp[0] * f; g.hasExp = true; g.fixYears.add(exp[1]); }
+    }
+  });
+  // Rader som rundes til 0.0 på begge tall (en liten andel i et lite felt)
+  // tilfører ingenting og faller bort.
+  const per = Object.values(groups).filter(g => Math.abs(g.total) >= 50 || Math.abs(g.exp) >= 50
+                                              || (!cmp && (g.total || g.hasExp)));
   if (!per.length) return '';
 
   const last = invLastYear();
-  const years = per.flatMap(h => h.rows.map(r => r[0]));
-  const total = per.reduce((t, h) => t + h.total, 0);
-  const withExp = per.filter(h => h.exp);
-  const expSum = withExp.reduce((t, h) => t + h.exp[0], 0);
-  const fixYears = [...new Set(withExp.map(h => h.exp[1]))].sort();
+  const years = per.flatMap(g => Object.keys(g.byYear).map(Number));
+  const total = per.reduce((t, g) => t + g.total, 0);
+  const withExp = per.filter(g => g.hasExp);
+  const expSum = withExp.reduce((t, g) => t + g.exp, 0);
+  const fixYears = [...new Set(withExp.flatMap(g => [...g.fixYears]))].sort();
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
 
   let chart = '', legend = '', peak = '';
   if (years.length) {
     const y0 = Math.min(...years), y1 = Math.max(last, ...years);
-    // Én serie for et felt; for en hub én per medlemsfelt, eldst først, så
-    // søylene viser når hver utbygging kom.
-    const withRows = per.filter(h => h.rows.length).sort((a, c) => a.rows[0][0] - c.rows[0][0]);
-    const series = withRows.map((h, i) => ({
-      label: h.name,
+    // Felt og huber: eldst først, så søylene viser når hver utbygging kom.
+    // Selskap: størst først, som produksjonsgrafen over.
+    const first = g => Math.min(...Object.keys(g.byYear).map(Number));
+    const withRows = per.filter(g => g.total)
+      .sort((a, c) => cmp ? c.total - a.total : first(a) - first(c));
+    const series = withRows.map((g, i) => ({
+      label: g.name,
       color: per.length === 1 ? 'rgba(0,48,87,0.8)' : PALETTE[i % PALETTE.length][0],
-      vals: Object.fromEntries(h.rows.map(r => [r[0], +(r[1] / 1000).toFixed(2)])),
+      vals: Object.fromEntries(Object.entries(g.byYear).map(([y, v]) => [y, +(v / 1000).toFixed(2)])),
     }));
-    chart = licYearChart(y0, y1, series, 'bn NOK');
+    chart = licYearChart(y0, y1, series, v => `NOK ${v} bn`);
     if (series.length > 1) legend = `<div class="ex-legend">${series.map(s =>
       `<span class="ex-leg"><span class="ex-dot" style="background:${s.color}"></span>${esc(s.label)}</span>`).join('')}</div>`;
     const byYear = {};
-    per.forEach(h => h.rows.forEach(([y, v]) => { byYear[y] = (byYear[y] || 0) + v; }));
+    per.forEach(g => Object.entries(g.byYear).forEach(([y, v]) => { byYear[y] = (byYear[y] || 0) + v; }));
     const [py, pv] = Object.entries(byYear).sort((a, c) => c[1] - a[1])[0];
-    peak = `${py} · ${bnok(pv)} bn NOK`;
+    peak = `${py} · ${nokBn(pv)}`;
   }
 
-  // Tabell per felt for huber med mer enn ett felt.
+  // Tabell per felt (hub) eller per hub (selskap) når det er mer enn én rad.
+  const head = cmp ? 'Hub' : 'Field';
   const table = per.length > 1 ? `
     <div class="pf-scroll"><table class="res-table">
-      <thead><tr><th>Field</th><th>Invested to date, bn NOK</th><th>Expected future, bn NOK</th></tr></thead>
-      <tbody>${per.slice().sort((a, c) => (c.total + (c.exp ? c.exp[0] : 0)) - (a.total + (a.exp ? a.exp[0] : 0))).map(h => `
-        <tr><td><a class="row-link" href="#" onclick="openFieldProfile(${h.id});return false;">${esc(h.name)}</a></td>
-          <td>${h.total ? bnok(h.total) : '—'}</td><td>${h.exp ? bnok(h.exp[0]) : '—'}</td></tr>`).join('')}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td>${bnok(total)}</td><td>${withExp.length ? bnok(expSum) : '—'}</td></tr></tfoot>
+      <thead><tr><th>${head}</th><th>Invested to date, NOK bn</th><th>Expected future, NOK bn</th></tr></thead>
+      <tbody>${per.slice().sort((a, c) => (c.total + c.exp) - (a.total + a.exp)).map(g => `
+        <tr><td><a class="row-link" href="#" onclick="${g.link};return false;">${esc(g.name)}</a></td>
+          <td>${g.total ? bnNum(g.total) : '—'}</td><td>${g.hasExp ? bnNum(g.exp) : '—'}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td>${bnNum(total)}</td><td>${withExp.length ? bnNum(expSum) : '—'}</td></tr></tfoot>
     </table></div>` : '';
 
   const fixTxt = fixYears.join('/');
-  return `<div class="pf-card pf-wide"><h3>Investments</h3>
+  const noun = cmp ? 'company' : ids.length > 1 ? 'hub' : 'field';
+  return `<div class="pf-card pf-wide"><h3>Investments${cmp ? ', equity-adjusted' : ''}</h3>
     <div class="pf-facts">
-      ${fact('Invested to date', years.length ? `${bnok(total)} bn NOK` : '')}
+      ${fact('Invested to date', years.length ? nokBn(total) : '')}
       ${fact('Period', years.length ? `${Math.min(...years)}–${Math.max(...years)}` : '')}
       ${fact('Peak year', peak)}
-      ${fact('Expected future investments', withExp.length ? `${bnok(expSum)} bn NOK${fixTxt ? ` (${fixTxt} NOK)` : ''}` : '')}
+      ${fact('Expected future investments', withExp.length ? `${nokBn(expSum)}${fixTxt ? ` (fixed ${fixTxt} prices)` : ''}` : '')}
     </div>
-    ${chart ? `<div class="pf-map-note">Annual investments, bn NOK (nominal)</div>${chart}` : ''}${legend}${table}
+    ${chart ? `<div class="pf-map-note">Annual investments, NOK bn (nominal)</div>${chart}` : ''}${legend}${table}
     <div class="pf-map-note">Annual investments as reported to Sodir, in nominal NOK, through ${last}.
-      ${withExp.length ? `Expected future investments are Sodir's estimate of the remaining investments, in fixed ${fixTxt} NOK. The two use different price bases and are kept apart rather than added up.` : 'Sodir has no estimate of future investments for this ' + (ids.length > 1 ? 'hub.' : 'field.')}
+      ${cmp ? `Each field's investments are multiplied by ${esc(cmp)}'s licence share in the middle of each year; the expected future figure uses today's share.` : ''}
+      ${withExp.length ? `Expected future investments are Sodir's estimate of the remaining investments, in fixed ${fixTxt} prices. The two use different price bases and are kept apart rather than added up.` : `Sodir has no estimate of future investments for this ${noun}.`}
       Source: Sodir FactPages.</div></div>`;
 }
 
@@ -4474,6 +4509,7 @@ function drawCompanyProfile() {
     </div>
     ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
+    ${investmentCard(ids, fieldNameOf, {company: name})}
     ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
     ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
@@ -7723,7 +7759,7 @@ function licYearChart(y0, y1, series, unit) {
       const h = v * sc, x = L + i * bw + bw * 0.12;
       const yy = s.neg ? b : a - h;
       bars += `<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${(bw * 0.76).toFixed(1)}" height="${h.toFixed(1)}" fill="${s.color}">` +
-              `<title>${y} · ${s.label}: ${v} ${unit}</title></rect>`;
+              `<title>${y} · ${s.label}: ${typeof unit === 'function' ? unit(v) : v + ' ' + unit}</title></rect>`;
       if (s.neg) b += h; else a -= h;
     });
   });
