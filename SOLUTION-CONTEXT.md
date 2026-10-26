@@ -1925,6 +1925,16 @@ sluttdato den siste. Detaljvisningen har en tabell over grenene. Riggfanen
 bruker brønnbanene, ikke gruppene, siden et sidesteg kan bores av en annen
 rigg enn hovedhullet.
 
+**Investeringer per felt:** `data/field_investments.json` (bygget av
+`build_field_investments()`) har årlige historiske investeringer per felt fra
+årsradene i produksjonsprofilene (lag 7300, `prfInvestmentsMillNOK`, nominelle
+MNOK; nullår utelatt) og Sodirs anslag for gjenstående framtidige investeringer
+(lag 7107, `fldInvestmentExpected` i faste kroner for `fldInvExpFixYear`).
+Felt- og hubprofilen viser dem i kortet «Investments» (`investmentCard`):
+søyler per år (for huber stablet per medlemsfelt, med tabell per felt) og det
+framtidige anslaget som eget nøkkeltall, ikke i grafen, siden prisgrunnlaget er
+et annet.
+
 **Riggfakta:** `data/rig_facts.json` (bygget av `build_rig_facts()`) har
 Sodirs innretningsdata for alle flyttbare innretninger og de faste som borer
 (boring blant funksjonene, eller navnet står som rigg i brønndataene): type
