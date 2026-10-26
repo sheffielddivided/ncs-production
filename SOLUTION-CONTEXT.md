@@ -1120,6 +1120,20 @@ slik at den kan merkes manuelt.
 
 **Fire av hub-visningene er feltvisninger med hubens medlemsfelt.**
 
+#### Prices-modusen
+
+Normprisene for olje, tidligere den frittstående siden `normpris.html`, som
+nå bare sender videre til `index.html#m=prices`. Data fra
+`data/normpris_brent.json` og `data/normpris_diff.json` (bygget av
+`fetch_normpris.py` fra regnearkene i `data/normpris-raw/`, egen
+arbeidsflyt). Tre faner: **Dated Brent** (daglig eller månedssnitt, `pm=1`),
+**Differentials** (månedlige differensialer for opptil åtte felt, med
+favoritter lagret i nettleseren under samme nøkkel som den gamle siden) og
+**Heatmap** (alle felt og måneder, blått over Brent og oransje under).
+Periode (`py=2023-2026`) og feltutvalg (`pf`) deles mellom fanene og ligger
+i lenken. Korrelasjonsstudien (`normpris-korrelasjon.html`) er fortsatt en
+egen side; lenken tilbake derfra peker på Prices. Gasspriser er ikke med.
+
 #### PowerPoint-eksport
 
 «Download PPT» (`downloadPpt`) lager en .pptx med grafen som ekte
