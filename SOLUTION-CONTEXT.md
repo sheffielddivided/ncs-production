@@ -1120,6 +1120,22 @@ slik at den kan merkes manuelt.
 
 **Fire av hub-visningene er feltvisninger med hubens medlemsfelt.**
 
+#### PowerPoint-eksport
+
+«Download PPT» (`downloadPpt`) lager en .pptx med grafen som ekte
+PowerPoint-graf med innebygde data, via PptxGenJS 3.12.0 fra jsDelivr (ikke
+på cdnjs), som lastes ved første klikk. En nettleser kan bare legge tekst,
+HTML og PNG på utklippstavlen, så en innlimbar Office-graf er ikke mulig;
+fila er veien dit, og grafen forblir ekte når den kopieres videre.
+`pptSpecFromChart` leser Chart.js-instansen som vises: stablede eller
+side-om-side søyler, linjer, kombinasjoner med høyreakse (`yAxisID: 'y1'`)
+og punktgraf (creaming-kurven, der x-verdiene slås sammen og hull spennes
+over). Skriptbare farger (uthevet år, bleke prognoser) får full farge.
+Visninger uten Chart.js setter `pptSpec` selv (rangeringene i NCS);
+`drawChart` nullstiller den. Knappen følger Excel-knappens tilstand via en
+MutationObserver, og er skjult i Exploration og Licences. Lysbildet er 16:9
+med tittel, undertittel og kildelinje (Sodir eller SSB etter infofeltet).
+
 #### NCS-modusen
 
 Hele sokkelen samlet, uten utvalg (velgerknappen er skjult, `body.ncs`).
