@@ -146,7 +146,10 @@ def main():
     sources.setdefault('hh', 'FRED')
     payload = {'columns': cols, 'rows': rows, 'sources': sources}
     text = json.dumps(payload, separators=(',', ':')) + '\n'
-    if old and json.dumps(old.get('rows')) == json.dumps(rows):
+    # Uendret bare når både tallene og kildemerkene er like; ellers ville et
+    # bytte fra FRED til EIA med identiske tall (FRED publiserer EIAs serie)
+    # aldri blitt synlig i fila.
+    if old and json.dumps(old.get('rows')) == json.dumps(rows) and old.get('sources') == sources:
         print('  = gas_prices.json uendret')
         return 0
     with open(OUT, 'w', encoding='utf-8') as fh:
