@@ -5142,12 +5142,11 @@ function havtilCard(fieldId) {
     </li>`;
   };
   const first = items.slice(0, HV_SHOW), rest = items.slice(HV_SHOW);
-  const oldest = b.items.reduce((m, it) => it.kind !== 'news' && it.date < m ? it.date : m, '9999');
   return `<div class="pf-card"><h3>Havtil · inspections and consents</h3>
     <ul class="hv-list">${first.map(row).join('')}</ul>
     ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} more</summary>
       <ul class="hv-list">${rest.map(row).join('')}</ul></details>` : ''}
-    <div class="pf-map-note">Source: Norwegian Ocean Industry Authority (Havtil). Cases from ${esc(oldest)} onwards, linked to the field by name in the title, summary or consent details.</div>
+    <div class="pf-map-note">Source: Norwegian Ocean Industry Authority (Havtil; the Petroleum Safety Authority before 2024). Cases mainly from 2014 onwards, linked to the field by name in the title, summary or consent details.</div>
   </div>`;
 }
 

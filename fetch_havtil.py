@@ -329,7 +329,8 @@ class Matcher:
         op = (item.get('facts') or {}).get('operator')
         for p in parts + ([op] if op else []):
             c = self.company(p)
-            if c and c not in out:
+            # «Equinor» fra tittelen og «Equinor Energy» fra Operatør-feltet er samme selskap.
+            if c and not any(c == o or c.startswith(o + ' ') for o in out):
                 out.append(c)
         return out
 
