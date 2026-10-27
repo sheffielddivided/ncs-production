@@ -1,4 +1,4 @@
-# SOLUTION-CONTEXT — NCS Production (Norge)
+# SOLUTION-CONTEXT — NCS Insights (Norge)
 
 Teknisk referansedokument skrevet for å kunne slå denne løsningen sammen med
 søsterløsninger for andre land. Målet er at datainnsamlingen kan reimplementeres
