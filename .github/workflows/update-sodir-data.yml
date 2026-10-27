@@ -57,6 +57,12 @@ jobs:
         timeout-minutes: 5
         run: python fetch_cpi.py
 
+      # Siste produksjonsmeldinger fra Sodirs RSS-feed, lenket fra NCS → Production.
+      - name: Hent produksjonsmeldinger (Sodir RSS)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_news.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB
