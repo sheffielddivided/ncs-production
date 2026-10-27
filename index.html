@@ -2535,26 +2535,43 @@ function loadPrices() {
 // dato, så forlengelsen er sammenlignbar; små avvik mellom spot og Dated Brent
 // er ventet. De siste dagene har ikke fem noteringer etter seg ennå og vises
 // som rå EIA-dagspriser (halen).
+//
+// Serien skjøtes også bakover (head): Petroleumsprisrådets tall starter
+// 1.1.2011, og EIA-serien hentes fra 1990. Kontrollert mot rådets tall for
+// 2011–2026: typisk avvik 0,17 $/fat per dag (median), 0,18 $/fat i
+// månedssnitt, uten systematisk skjevhet (−0,08 $/fat i snitt).
 function priceSplice() {
+  if (priceData._sp) return priceData._sp;
   const e = priceData.eia, rows = priceData.brent.rows;
-  const lastP = rows[rows.length - 1][0];
-  if (!e || !e.rows || !e.rows.length) return {lastP, fit: [], tail: [], src: ''};
+  const firstP = rows[0][0], lastP = rows[rows.length - 1][0];
+  if (!e || !e.rows || !e.rows.length) return (priceData._sp = {firstP, lastP, head: [], fit: [], tail: [], src: ''});
   const q = e.rows.filter(r => r[1] != null);
+  // Snittet av de fem neste noteringene etter dato d; j er første notering etter d.
+  const five = j => (j >= 0 && j + 5 <= q.length) ? +(q.slice(j, j + 5).reduce((t, r) => t + r[1], 0) / 5).toFixed(2) : null;
+  const head = [];
+  let j = 0;
+  for (let d = q[0][0]; d < firstP; d = addDays(d, 1)) {
+    while (j < q.length && q[j][0] <= d) j++;
+    const v = five(j);
+    if (v != null) head.push([d, v]);
+  }
   const fit = [];
-  let j = q.findIndex(r => r[0] > lastP);
+  j = q.findIndex(r => r[0] > lastP);
   for (let d = addDays(lastP, 1); j >= 0; d = addDays(d, 1)) {
     while (j < q.length && q[j][0] <= d) j++;
-    if (j + 5 > q.length) break;
-    fit.push([d, +(q.slice(j, j + 5).reduce((t, r) => t + r[1], 0) / 5).toFixed(2)]);
+    const v = five(j);
+    if (v == null) break;
+    fit.push([d, v]);
   }
   const lastFit = fit.length ? fit[fit.length - 1][0] : lastP;
-  return {lastP, fit, tail: q.filter(r => r[0] > lastFit), src: e.source || 'EIA'};
+  return (priceData._sp = {firstP, lastP, head, fit, tail: q.filter(r => r[0] > lastFit), src: e.source || 'EIA'});
 }
 
 function priceYears() {
   const d = priceData.diff, b = priceData.brent;
   const g = priceData.gas ? priceData.gas.rows.map(r => +r[0].slice(0, 4)) : [];
-  return [...new Set(d.months.map(m => +m.slice(0, 4)).concat(b.rows.map(r => +r[0].slice(0, 4)), g))].sort((a, c) => a - c);
+  const e = priceData.eia && priceData.eia.rows ? priceData.eia.rows.map(r => +r[0].slice(0, 4)) : [];
+  return [...new Set(d.months.map(m => +m.slice(0, 4)).concat(b.rows.map(r => +r[0].slice(0, 4)), g, e))].sort((a, c) => a - c);
 }
 function priceMonths() { return priceData.diff.months.filter(m => { const y = +m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; }); }
 
@@ -2679,20 +2696,22 @@ function drawPriceBrent() {
   const sp = priceSplice();
   const inP = d => { const y = +d.slice(0, 4); return y >= prF.y0 && y <= prF.y1; };
   const base = priceData.brent.rows.filter(r => inP(r[0]));
-  const fit = sp.fit.filter(r => inP(r[0])), tail = sp.tail.filter(r => inP(r[0]));
+  // Skjøten i begge ender tegnes som én serie: EIA før 2011 og etter rådets siste dato.
+  const fit = sp.head.concat(sp.fit).filter(r => inP(r[0])), tail = sp.tail.filter(r => inP(r[0]));
   const lastBase = priceData.brent.rows[priceData.brent.rows.length - 1];
   let labels, dBase, dFit, dTail;
   if (prF.bm) {
     // Månedssnitt av den sammenskjøtte dagsserien. Måneder med skjøtedager
-    // hører til forlengelsen; halen er for kort til et månedssnitt og utelates.
+    // hører til skjøten; halen er for kort til et månedssnitt og utelates.
+    // Skjøten tar med nabomåneden fra rådets serie, så linjene møtes.
     const acc = {}, ext = new Set();
     base.forEach(([d, v]) => { (acc[d.slice(0, 7)] = acc[d.slice(0, 7)] || []).push(v); });
     fit.forEach(([d, v]) => { (acc[d.slice(0, 7)] = acc[d.slice(0, 7)] || []).push(v); ext.add(d.slice(0, 7)); });
     labels = Object.keys(acc).sort();
     const avg = m => +(acc[m].reduce((a, b) => a + b, 0) / acc[m].length).toFixed(2);
-    const firstExt = labels.findIndex(m => ext.has(m));
-    dBase = labels.map((m, i) => (firstExt < 0 || i < firstExt ? avg(m) : null));
-    dFit = labels.map((m, i) => (firstExt >= 0 && i >= firstExt - 1 ? avg(m) : null));
+    const isExt = i => ext.has(labels[i]);
+    dBase = labels.map((m, i) => (isExt(i) ? null : avg(m)));
+    dFit = labels.map((m, i) => (isExt(i) || (i > 0 && isExt(i - 1)) || (i < labels.length - 1 && isExt(i + 1)) ? avg(m) : null));
     dTail = labels.map(() => null);
   } else {
     const all = new Map();
@@ -2704,7 +2723,7 @@ function drawPriceBrent() {
     // siste punkt av forlengelsen.
     const lastFitD = fit.length ? fit[fit.length - 1][0] : null;
     dBase = labels.map(d => all.get(d).b ?? null);
-    dFit = labels.map(d => all.get(d).f ?? (fit.length && d === sp.lastP ? all.get(d).b ?? null : null));
+    dFit = labels.map(d => all.get(d).f ?? (fit.length && (d === sp.lastP || d === sp.firstP) ? all.get(d).b ?? null : null));
     dTail = labels.map(d => all.get(d).t ?? (tail.length && d === (lastFitD || sp.lastP) ? (all.get(d).f ?? all.get(d).b ?? null) : null));
   }
   // Realvisning: alle tre linjene realjusteres med amerikansk KPI, og den
@@ -2716,8 +2735,12 @@ function drawPriceBrent() {
     dBase = re(dBase); dFit = re(dFit); dTail = re(dTail);
   }
   const C = 'rgba(0,48,87,0.9)', F = 'rgba(232,110,30,0.95)', T = 'rgba(232,110,30,0.6)';
-  const datasets = [{label: 'Dated Brent (Petroleum Price Board)' + (prF.real ? ', real' : ''), data: dBase, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0}];
-  if (dFit.some(v => v != null)) datasets.push({label: `Extension: ${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average`, data: dFit, borderColor: F, backgroundColor: F, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0});
+  const datasets = [];
+  if (dBase.some(v => v != null)) datasets.push({label: 'Dated Brent (Petroleum Price Board)' + (prF.real ? ', real' : ''), data: dBase, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0});
+  // Forklaringen nevner bare de skjøtene som faktisk er med i perioden.
+  const when = [fit.some(r => r[0] < sp.firstP) ? `before ${sp.firstP.slice(0, 4)}` : '',
+                fit.some(r => r[0] > sp.lastP) ? 'after the Board\'s latest date' : ''].filter(Boolean).join(' and ');
+  if (dFit.some(v => v != null)) datasets.push({label: `${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average${when ? ', ' + when : ''}`, data: dFit, borderColor: F, backgroundColor: F, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0});
   if (dTail.some(v => v != null)) datasets.push({label: 'Latest EIA daily quotes (not averaged)', data: dTail, borderColor: T, backgroundColor: T, borderWidth: 2, borderDash: [4, 3], pointRadius: 0, tension: 0});
   if (nominal) datasets.push({label: 'Nominal', data: nominal, borderColor: 'rgba(0,48,87,0.25)', backgroundColor: 'rgba(0,48,87,0.25)', borderWidth: 1.5, pointRadius: 0, tension: 0});
   document.getElementById('chartArea').innerHTML = `${priceBar()}
@@ -2734,7 +2757,7 @@ function drawPriceBrent() {
     (lastFit ? ` &nbsp;|&nbsp; <strong>Extended to ${fmtD(lastFit[0])}:</strong> ${lastFit[1].toFixed(2)} $/bbl` : '') +
     (lastTail ? ` &nbsp;|&nbsp; <strong>Latest EIA quote:</strong> ${lastTail[1].toFixed(2)} $/bbl on ${fmtD(lastTail[0])}` : '') +
     ` &nbsp;|&nbsp; <strong>Period${prF.real ? ' (real)' : ''}:</strong> low ${Math.min(...vals).toFixed(2)}, high ${Math.max(...vals).toFixed(2)} $/bbl` +
-    ` &nbsp;|&nbsp; <strong>Construction:</strong> the Board's Dated Brent for a date is the average of the next five published Platts Dated Brent quotes after that date, rounded to 0.05. The orange extension applies the same rule to EIA's Brent spot price (series RBRTE) and is preliminary; small differences between spot and Dated Brent are expected. The dashed tail is EIA's latest daily quotes, which do not yet have five quotes after them` +
+    ` &nbsp;|&nbsp; <strong>Construction:</strong> the Board's Dated Brent for a date is the average of the next five published Platts Dated Brent quotes after that date, rounded to 0.05. The Board's series starts on ${fmtD(sp.firstP)}. The orange line applies the same rule to EIA's Brent spot price (series RBRTE) before that date, back to 1990, and after the Board's latest date, where it is preliminary; over 2011–2026, where both exist, it is typically within 0.2 $/bbl of the Board's figure. The dashed tail is EIA's latest daily quotes, which do not yet have five quotes after them` +
     ` &nbsp;|&nbsp; ${PRICE_SRC}; U.S. Energy Information Administration (EIA)`);
 }
 
@@ -2877,7 +2900,8 @@ const OG_MAX = 200;   // øvre grense på begge akser; høyere verdier telles i 
 
 function brentMonthly() {
   const acc = {};
-  priceData.brent.rows.concat(priceSplice().fit).forEach(([d, v]) => { (acc[d.slice(0, 7)] = acc[d.slice(0, 7)] || []).push(v); });
+  const sp = priceSplice();
+  sp.head.concat(priceData.brent.rows, sp.fit).forEach(([d, v]) => { (acc[d.slice(0, 7)] = acc[d.slice(0, 7)] || []).push(v); });
   return Object.fromEntries(Object.entries(acc).map(([m, a]) => [m, a.reduce((t, v) => t + v, 0) / a.length]));
 }
 

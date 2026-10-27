@@ -59,7 +59,7 @@ Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
 | `fetch_gas.py` | Henter månedlige gasspriser (SSB eksportpris, IMF Europa, Henry Hub, Norges Bank-kurser) til `data/gas_prices.json` |
 | `fetch_cpi.py` | Henter konsumprisindekser (US CPI-U, euroområdets HICP, SSBs KPI) til `data/cpi.json`, realprisene i Prices |
-| `fetch_eia.py` | Henter daglig Brent spot (EIA RBRTE, ev. FRED) til `data/brent_eia.json`, skjøten av Datert Brent |
+| `fetch_eia.py` | Henter daglig Brent spot fra 1990 (EIA RBRTE, ev. FRED) til `data/brent_eia.json`. Skjøter Datert Brent bakover før 2011 og framover etter Petroleumsprisrådets siste dato |
 | `fetch_normpris.py` | Bygger `data/normpris_*.json` fra xlsx-filene |
 | `data/normpris_brent.json` | Daglig Datert Brent, $/fat |
 | `data/normpris_diff.json` | Månedlige normpris-differensialer per felt, $/fat |
