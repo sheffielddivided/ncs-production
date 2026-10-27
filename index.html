@@ -125,9 +125,9 @@
     .np-ramp{width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#f1f3f6,#003057);}
     .og-table td{text-align:center;min-width:34px;}
     .og-table th,.og-table td{padding:1px 3px;line-height:1.25;}
-    .og-scroll{max-height:640px;}
-    .og-table tfoot th{position:sticky;bottom:0;background:#fff;z-index:2;}
-    .og-table tfoot th:first-child{left:0;z-index:3;}
+    /* Tellerutenettet er høyst 20 × 20 ruter og skal vises helt, uten rulling.
+       Bare på smale skjermer, der 20 kolonner ikke får plass, ruller det sidelengs. */
+    .np-scroll.og-scroll{max-height:none;overflow-y:visible;overflow-x:auto;}
     .og-table td.e{background:#f5f6f8;}
     .og-table .vl{border-left:3px solid #1a2332;}
     .og-table .hl{border-bottom:3px solid #1a2332;}
@@ -2872,7 +2872,8 @@ function drawPriceGas() {
 // Sodirs o.e.-omregning, så 1 USD/boe gass har samme energiinnhold som 1
 // $/fat olje. Med Real valgt realjusteres begge med amerikansk KPI.
 const OG_GAS = [['no', 'Norwegian export price'], ['eu', 'Europe (IMF)'], ['hh', 'Henry Hub']];
-const OG_BIN = 5;   // intervallbredde i tellerutenettet, USD/boe
+const OG_BIN = 10;    // intervallbredde i tellerutenettet, USD/boe
+const OG_MAX = 200;   // øvre grense på begge akser; høyere verdier telles i øverste intervall
 
 function brentMonthly() {
   const acc = {};
@@ -2972,9 +2973,12 @@ function drawPriceOilGas() {
 
   // Tellerutenett: antall måneder per kombinasjon av olje- og gasspris i
   // intervaller på OG_BIN USD/boe. De tykke linjene ligger på intervallgrensen
-  // nærmest medianen langs hver akse, og deler månedene omtrent i to.
+  // nærmest medianen langs hver akse, og deler månedene omtrent i to. Aksene
+  // stopper på OG_MAX; måneder over det (gassen i 2022) havner i det øverste
+  // intervallet, som merkes «190+».
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-  const bin = v => Math.floor(v / OG_BIN) * OG_BIN;
+  const TOP = OG_MAX - OG_BIN;
+  const bin = v => Math.min(Math.floor(v / OG_BIN) * OG_BIN, TOP);
   const range = (a, b) => { const out = []; for (let v = a; v <= b; v += OG_BIN) out.push(v); return out; };
   const xb = range(bin(Math.min(...pts.map(p => p.x))), bin(Math.max(...pts.map(p => p.x))));
   const yb = range(bin(Math.min(...pts.map(p => p.y))), bin(Math.max(...pts.map(p => p.y)))).reverse();
@@ -2983,23 +2987,20 @@ function drawPriceOilGas() {
   const max = Math.max(...Object.values(cnt));
   const shade = c => { const t = Math.sqrt(c / max); return [241, 243, 246].map((v, i) => Math.round(v + ([0, 48, 87][i] - v) * t)); };
   const hex = rgb => rgb.map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
-  const lbl = v => `${v}–${v + OG_BIN}`;
+  const lbl = v => v === TOP ? `${v}+` : `${v}–${v + OG_BIN}`;
   const body = yb.map(y => `<tr><th scope="row" class="${y === hEdge ? 'hl' : ''}">${lbl(y)}</th>${xb.map(x => {
     const c = cnt[x + '|' + y], cls = [x === vEdge ? 'vl' : '', y === hEdge ? 'hl' : ''];
     if (!c) return `<td class="e ${cls.join(' ')}"></td>`;
     const bg = shade(c);
     return `<td class="${cls.join(' ')}" style="background:rgb(${bg});color:${Math.sqrt(c / max) > 0.45 ? '#fff' : '#1a2332'}" title="Brent ${lbl(x)}, gas ${lbl(y)} USD/boe: ${c} month${c === 1 ? '' : 's'} (${months[x + '|' + y].join(', ')})">${c}</td>`;
   }).join('')}</tr>`).join('');
-  const foot = xb.map(x => `<th class="${x === vEdge ? 'vl' : ''}">${x}–<br>${x + OG_BIN}</th>`).join('');
+  const foot = xb.map(x => `<th class="${x === vEdge ? 'vl' : ''}">${x === TOP ? `${x}+` : `${x}–<br>${x + OG_BIN}`}</th>`).join('');
   document.getElementById('chartArea').innerHTML = `${priceBar(pills)}
     <div class="np-legend"><span>Fewer months</span><span class="np-ramp"></span><span>More (max ${max})</span>
       <span>· thick lines: interval edges nearest the median, Brent ${vEdge} and gas ${hEdge} USD/boe</span></div>
     <div class="np-scroll og-scroll" tabindex="0"><table class="np-table og-table">
       <tbody>${body}</tbody>
       <tfoot><tr><th>Gas ↑ / Brent →</th>${foot}</tr></tfoot></table></div>`;
-  // Rull til den vannrette medianlinjen, der de fleste månedene ligger.
-  const sc = document.querySelector('.og-scroll'), hr = sc.querySelector('tbody th.hl');
-  if (hr) sc.scrollTop = Math.max(0, hr.offsetTop - sc.clientHeight / 2);
   lastLabels = yb.map(lbl); lastXTitle = 'Gas, USD/boe';
   lastDatasets = xb.map(x => ({label: `Brent ${lbl(x)} USD/bbl, months`, data: yb.map(y => cnt[x + '|' + y] || 0)}));
   // PowerPoint-tabell med de samme tykke skillelinjene.
@@ -3010,7 +3011,7 @@ function drawPriceOilGas() {
     return {text: c ? String(c) : '', fill: c ? hex(shade(c)) : 'F5F6F8', color: c && Math.sqrt(c / max) > 0.45 ? 'FFFFFF' : '1A2332', border: bord(x, y)};
   }))).concat([[{text: 'Gas ↑ / Brent →', bold: true}].concat(xb.map(x => ({text: lbl(x), bold: true, border: bord(x, null)})))])};
   setChartTable(quadTable);
-  setInfo((prF.real ? cpiNote('USD') + ' &nbsp;|&nbsp; ' : '') + `<strong>Count grid:</strong> number of months in each combination of Brent (columns) and ${gName} (rows), ${OG_BIN} USD/boe intervals; hover a cell for the months &nbsp;|&nbsp; ` +
+  setInfo((prF.real ? cpiNote('USD') + ' &nbsp;|&nbsp; ' : '') + `<strong>Count grid:</strong> number of months in each combination of Brent (columns) and ${gName} (rows), ${OG_BIN} USD/boe intervals up to ${OG_MAX}, higher values counted in the top interval (${TOP}+); hover a cell for the months &nbsp;|&nbsp; ` +
     `<strong>Median:</strong> Brent ${f2(xMed)}, gas ${f2(yMed)} USD/boe; the thick lines are at the nearest interval edges &nbsp;|&nbsp; <strong>Trend:</strong> ${fitTxt} &nbsp;|&nbsp; ${convTxt} &nbsp;|&nbsp; ${srcTxt}`);
 }
 
