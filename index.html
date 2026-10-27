@@ -678,7 +678,7 @@ const bundle = { fields:null, production:null, licensees:null, reserves:null, re
                  discovery_descriptions:null, discovery_outlines:null,
                  field_profile:null, field_descriptions:null, field_outlines:null, coastline:null,
                  facilities:null, licences:null, companies:null,
-                 meta:null, hubs:null, sodir_news:null, havtil:null };
+                 meta:null, hubs:null, sodir_news:null };
 
 async function fetchBundle(name) {
   try {
@@ -695,7 +695,7 @@ async function loadBundles() {
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
                  'field_investments','field_operators',
                  'licences','companies',
-                 'meta','hubs','sodir_news','havtil'];
+                 'meta','hubs','sodir_news'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   const gen = bundle.meta && bundle.meta.generated;
@@ -5101,14 +5101,28 @@ function drawFieldProfile() {
 
 // ── HAVTIL ───────────────────────────────────────────────────────────────────
 // Tilsynsrapporter, samtykker, granskinger og pålegg fra Havindustritilsynet,
-// koblet til felt i fetch_havtil.py (data/havtil.json). Arkivet bygges opp fra
-// Havtils RSS-feed og går derfor bare noen måneder bakover til å begynne med.
+// koblet til felt i fetch_havtil.py (data/havtil.json). Arkivet går tilbake til
+// 2012-2014 og er stort nok til at det lastes først når en feltprofil åpnes.
+// Kortet tegnes da i en plassholder, hvis samme felt fortsatt vises.
+let havtilData = null, havtilLoading = null;
+function loadHavtil() {
+  if (havtilData) return Promise.resolve();
+  if (!havtilLoading) havtilLoading = fetchBundle('havtil').then(b => { havtilData = b || {}; });
+  return havtilLoading;
+}
 const HV_KIND = {inspection: 'Inspection', consent: 'Consent', investigation: 'Investigation',
                  notice: 'Order / notice', news: 'News'};
 const HV_SHOW = 6;
 function havtilCard(fieldId) {
-  const b = bundle.havtil;
-  if (!b || !b.items) return '';
+  if (!havtilData) {
+    loadHavtil().then(() => {
+      const slot = document.getElementById('hvSlot');
+      if (slot && +slot.dataset.field === fieldId) slot.outerHTML = havtilCard(fieldId);
+    });
+    return `<div id="hvSlot" data-field="${fieldId}"></div>`;
+  }
+  const b = havtilData;
+  if (!b.items) return '';
   const items = b.items.filter(it => it.fields && it.fields.includes(fieldId));
   if (!items.length) return '';
   const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -5128,12 +5142,11 @@ function havtilCard(fieldId) {
     </li>`;
   };
   const first = items.slice(0, HV_SHOW), rest = items.slice(HV_SHOW);
-  const oldest = b.items.reduce((m, it) => it.kind !== 'news' && it.date < m ? it.date : m, '9999');
   return `<div class="pf-card"><h3>Havtil · inspections and consents</h3>
     <ul class="hv-list">${first.map(row).join('')}</ul>
     ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} more</summary>
       <ul class="hv-list">${rest.map(row).join('')}</ul></details>` : ''}
-    <div class="pf-map-note">Source: Norwegian Ocean Industry Authority (Havtil). Cases from ${esc(oldest)} onwards, linked to the field by name in the title, summary or consent details.</div>
+    <div class="pf-map-note">Source: Norwegian Ocean Industry Authority (Havtil; the Petroleum Safety Authority before 2024). Cases mainly from 2014 onwards, linked to the field by name in the title, summary or consent details.</div>
   </div>`;
 }
 
