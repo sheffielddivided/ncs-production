@@ -381,6 +381,7 @@
 
     .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
     .info-box strong{color:#1a2332;}
+    .info-box .news{display:block;margin-top:6px;padding-top:6px;border-top:1px solid #eeabcb;}
 
     .dl-row{padding:0 12px 8px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
     .share-btn{border-color:var(--blue);color:var(--blue);}
@@ -667,7 +668,7 @@ const bundle = { fields:null, production:null, licensees:null, reserves:null, re
                  discovery_descriptions:null, discovery_outlines:null,
                  field_profile:null, field_descriptions:null, field_outlines:null, coastline:null,
                  facilities:null, licences:null, companies:null,
-                 meta:null, hubs:null };
+                 meta:null, hubs:null, sodir_news:null };
 
 async function fetchBundle(name) {
   try {
@@ -684,7 +685,7 @@ async function loadBundles() {
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
                  'field_investments','field_operators',
                  'licences','companies',
-                 'meta','hubs'];
+                 'meta','hubs','sodir_news'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   const gen = bundle.meta && bundle.meta.generated;
@@ -3067,10 +3068,19 @@ function drawNcsProduction() {
     .filter(d => hasAnyValue(d.data));
   setChartTitle('Norwegian Continental Shelf · Production',
     byArea ? 'Oil equivalents by sea area · boe/day' : `Oil${showWater ? ', gas & water' : ' & gas'} · boe/day`);
-  setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Series:</strong> ${byArea ? 'Net OE per sea area' : 'Oil (incl. NGL and condensate), Gas' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields (e.g. test production from discoveries) is not included`);
+  setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Series:</strong> ${byArea ? 'Net OE per sea area' : 'Oil (incl. NGL and condensate), Gas' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields (e.g. test production from discoveries) is not included${ncsNewsLink()}`);
   if (!labels.length || !datasets.length) { setChartEmpty('No data for the selected period.'); }
   else renderChart(labels, datasets, series.filter(s => datasets.some(d => d.label === s.label)), 'boe/day');
   ncsToggleAbove(ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area']]));
+}
+
+// Lenke til Sodirs siste månedlige produksjonsmelding (data/sodir_news.json,
+// fra RSS-feeden via fetch_news.py). Foreløpige tall, ofte en måned foran
+// feltdataene i grafen.
+function ncsNewsLink() {
+  const n = bundle.sodir_news && bundle.sodir_news.items && bundle.sodir_news.items[0];
+  if (!n || !/^https:\/\/www\.sodir\.no\//.test(n.link)) return '';
+  return `<span class="news"><strong>Latest from Sodir (${esc(n.date)}):</strong> <a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)} ↗</a>${n.description ? ` — ${esc(n.description)}` : ''}</span>`;
 }
 
 // ── NCS: RESERVES ──
