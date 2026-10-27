@@ -201,6 +201,21 @@
       min-width:130px;flex:1 1 140px;outline:none;}
     .ex-in:focus{border-color:var(--blue);}
     .ex-sum{font-size:0.76rem;color:var(--muted);padding:0 2px 8px;}
+    /* Søkeliste: felt med egen nedtrekksliste. Viser hele listen ved klikk og
+       filtrerer mens man skriver (se pickerHtml). */
+    .cb{position:relative;flex:1 1 180px;min-width:150px;}
+    .cb .ex-in{width:100%;min-width:0;}
+    .cb-list{display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:95;min-width:100%;width:max-content;
+      max-width:min(440px,calc(100vw - 24px));max-height:320px;overflow-y:auto;background:#fff;border:1px solid var(--border);
+      border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.15);padding:4px 0;}
+    .cb.open .cb-list{display:block;}
+    .cb-opt{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 10px;font-size:0.8rem;
+      color:#1a2332;cursor:pointer;}
+    .cb-opt small{color:var(--muted);font-size:0.68rem;white-space:nowrap;}
+    .cb-opt.on{background:var(--light);}
+    .cb-opt.cur{font-weight:700;}
+    .cb-opt mark{background:none;color:var(--blue);font-weight:700;}
+    .cb-none{padding:8px 10px;font-size:0.76rem;color:var(--muted);}
     .ex-slot:empty{display:none;}
     .ex-slot .ex-bar{background:none;box-shadow:none;border-radius:0;padding:0;margin:0 0 10px;}
     .ex-sum strong{color:#1a2332;}
@@ -7872,6 +7887,7 @@ const EXPL_TABS = [
 ];
 let explSubView = 'wells';
 let explWells = [], explOwners = [], explCompanies = [];
+let explWellCount = {};   // selskap -> antall brønner som operatør eller partner
 let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
@@ -8008,6 +8024,7 @@ function loadExploration() {
         if (n) count[n] = (count[n] || 0) + 1;
       }));
       explCompanies = Object.keys(count);   // rekkefølgen settes ved tegning, se explRenderBar
+      explWellCount = count;
     }
     explLoaded = true;
   });
@@ -8071,9 +8088,9 @@ function explRenderBar() {
       <button class="grp-btn" onclick="explReset()">Reset</button>
     </div>` : ''}
       ${explSubView === 'fleet' ? '' : `${f.lic ? `<button class="grp-btn active" onclick="explSet('lic', '', true)" title="Remove the licence filter">Licence ${esc(f.lic)} ✕</button>` : ''}
-      <input class="ex-in" type="search" list="exCompanyList" placeholder="Company…" value="${esc(f.company)}"
-             oninput="explSet('company', this.value)" aria-label="Filter by company"/>
-      <datalist id="exCompanyList">${sortCompanies(explCompanies).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      ${pickerHtml({id: 'explCo', value: f.company, placeholder: 'Company…', label: 'Filter by company', allowEmpty: true,
+        items: sortCompanies(explCompanies).map(n => ({v: n, sub: `${explWellCount[n]} ${explWellCount[n] === 1 ? 'well' : 'wells'}`})),
+        pick: v => explSet('company', v, true)})}
       <select class="year-select" onchange="explSet('role', this.value)" aria-label="Company role">
         ${opt('any', f.role, 'Partner or operator')}${opt('operator', f.role, 'Operator only')}
       </select>
@@ -8101,6 +8118,117 @@ function explRenderBar() {
       <label class="ex-chk"><input type="checkbox" ${f.aisOnly ? 'checked' : ''} onchange="explSet('aisOnly', this.checked)"> Port calls &amp; other stays</label>` : ''}
       <button class="grp-btn" onclick="explReset()">Reset</button>`}
     </div>`);
+}
+
+// ── Søkeliste ───────────────────────────────────────────────────────────────
+// Erstatter nettleserens datalist i filterlinjene. Den viste bare treff på det
+// som allerede sto i feltet, så man måtte tømme feltet for å se de andre
+// valgene, og den oppførte seg ulikt fra nettleser til nettleser. Her vises hele
+// listen ved klikk, teksten markeres så man kan skrive rett over, og listen
+// filtreres mens man skriver — treff i starten av navnet først. Piltaster,
+// Enter og Escape virker. Valgene ligger i cbReg, ikke i markupen, så
+// filterlinjen kan tegnes på nytt uten å bygge listen i DOM-en.
+//
+// opts: {id, value, placeholder, label, items: [{v, sub}], pick: v => …,
+//        allowEmpty: tomt felt betyr «alle» og sendes til pick('')}
+const cbReg = {};
+const CB_MAX = 200;   // flere vises ikke på en gang; skriv for å snevre inn
+function pickerHtml(o) {
+  cbReg[o.id] = o;
+  return `<div class="cb" data-cb="${esc(o.id)}">
+    <input class="ex-in cb-in" type="search" value="${esc(o.value || '')}" placeholder="${esc(o.placeholder || '')}"
+      aria-label="${esc(o.label || o.placeholder || '')}" role="combobox" aria-autocomplete="list" aria-expanded="false"
+      autocomplete="off" onfocus="cbOpen(this)" onclick="cbOpen(this)" oninput="cbFilter(this, true)"
+      onkeydown="cbKey(event, this)" onblur="cbBlur(this)"/>
+    <div class="cb-list" role="listbox"></div></div>`;
+}
+const cbOf = el => cbReg[el.closest('.cb').dataset.cb];
+function cbOpen(inp) {
+  const box = inp.closest('.cb');
+  if (box.classList.contains('open')) return;
+  box.classList.add('open');
+  inp.setAttribute('aria-expanded', 'true');
+  inp.select();
+  cbFilter(inp, false);
+}
+// typed: brukeren har skrevet. Før det vises hele listen med dagens valg markert.
+function cbFilter(inp, typed) {
+  const o = cbOf(inp), box = inp.closest('.cb'), list = box.querySelector('.cb-list');
+  if (typed) box.dataset.typed = '1'; else delete box.dataset.typed;
+  const q = box.dataset.typed ? inp.value.trim().toLowerCase() : '';
+  let hits = o.items;
+  if (q) {
+    const pre = [], mid = [];
+    o.items.forEach(it => {
+      const k = String(it.v).toLowerCase().indexOf(q);
+      if (k === 0) pre.push(it); else if (k > 0) mid.push(it);
+    });
+    hits = pre.concat(mid);
+  }
+  const mark = v => {
+    if (!q) return esc(v);
+    const k = String(v).toLowerCase().indexOf(q);
+    return esc(v.slice(0, k)) + '<mark>' + esc(v.slice(k, k + q.length)) + '</mark>' + esc(v.slice(k + q.length));
+  };
+  box._hits = hits.slice(0, CB_MAX);
+  box._on = q && hits.length ? 0 : box._hits.findIndex(it => it.v === o.value);
+  list.innerHTML = box._hits.length
+    ? box._hits.map((it, i) => `<div class="cb-opt${i === box._on ? ' on' : ''}${it.v === o.value ? ' cur' : ''}" role="option"
+        onmousedown="event.preventDefault();cbPick(this.closest('.cb').querySelector('input'), ${i})"><span>${mark(it.v)}</span>${
+        it.sub ? `<small>${esc(it.sub)}</small>` : ''}</div>`).join('')
+      + (hits.length > CB_MAX ? `<div class="cb-none">${hits.length - CB_MAX} more — type to narrow down</div>` : '')
+    : '<div class="cb-none">No matches</div>';
+  cbScroll(box);
+}
+function cbScroll(box) {
+  const el = box.querySelectorAll('.cb-opt')[box._on];
+  if (el) el.scrollIntoView({block: 'nearest'});
+}
+function cbKey(e, inp) {
+  const box = inp.closest('.cb');
+  if (!box.classList.contains('open')) { if (e.key === 'ArrowDown') cbOpen(inp); return; }
+  const n = (box._hits || []).length;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!n) return;
+    box._on = e.key === 'ArrowDown' ? Math.min(n - 1, box._on + 1) : Math.max(0, box._on - 1);
+    box.querySelectorAll('.cb-opt').forEach((el, i) => el.classList.toggle('on', i === box._on));
+    cbScroll(box);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (!inp.value.trim() && cbOf(inp).allowEmpty) cbPick(inp, -1);
+    else if (box._on >= 0 && n) cbPick(inp, box._on);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();   // søkefelt tømmes ellers av nettleseren
+    inp.value = cbOf(inp).value || '';
+    cbClose(inp);
+    inp.blur();
+  }
+}
+function cbClose(inp) {
+  const box = inp.closest('.cb');
+  if (!box) return;
+  box.classList.remove('open');
+  delete box.dataset.typed;
+  inp.setAttribute('aria-expanded', 'false');
+}
+// i = -1: tomt felt, «alle».
+function cbPick(inp, i) {
+  const o = cbOf(inp), box = inp.closest('.cb');
+  const v = i < 0 ? '' : box._hits[i].v;
+  inp.value = v;
+  cbClose(inp);
+  inp.blur();
+  if (v !== (o.value || '')) { o.value = v; o.pick(v); }
+}
+// Uten valg settes forrige verdi tilbake. Et tomt felt nullstiller filteret der
+// det er lov.
+function cbBlur(inp) {
+  if (!inp.isConnected) return;
+  const o = cbOf(inp);
+  if (!inp.value.trim() && o.allowEmpty && o.value) { cbPick(inp, -1); return; }
+  inp.value = o.value || '';
+  cbClose(inp);
 }
 
 // ── Filterlinjen i kortet ────────────────────────────────────────────────────
@@ -9843,21 +9971,21 @@ function licRenderBar() {
   if (licSubView === 'company' || licSubView === 'map') {
     setBar('licBar', `
       <div class="ex-bar">
-        <input class="ex-in" type="search" list="licCoList" placeholder="Company…" value="${esc(f.company)}"
-               onchange="licPick(this.value)" aria-label="Company"/>
-        <datalist id="licCoList">${licCoOptions()}</datalist>
+        ${pickerHtml({id: 'licCo', value: f.company, placeholder: 'Company…', label: 'Company',
+          items: licCoOptions(), pick: licPick})}
       </div>`);
     return;
   }
   if (licSubView === 'licence') {
     // Alle lisenser noensinne når historikken er lastet, ellers de aktive.
-    const names = licAll.length ? licAll.map(l => l.name) : licList.map(l => l.name);
+    const names = (licAll.length ? licAll : licList).slice()
+      .sort((a, b) => a.name.localeCompare(b.name, 'en', {numeric: true}));
     setBar('licBar', `
       <div class="ex-bar">
-        <input class="ex-in" type="search" list="licLicList" placeholder="Licence, e.g. 050 or 1185 S…" value="${esc(f.lic)}"
-               onchange="licPickLicence(this.value)" aria-label="Licence"/>
-        <datalist id="licLicList">${[...new Set(names)].sort((a, b) => a.localeCompare(b, 'en', {numeric: true}))
-          .map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+        ${pickerHtml({id: 'licLic', value: f.lic, placeholder: 'Licence, e.g. 050 or 1185 S…', label: 'Licence',
+          items: names.map(l => ({v: l.name, sub: [licSeaOf(l.area || l.sea)?.label, l.active === 0 ? 'ended' : 'active', l.operator]
+            .filter(Boolean).join(' · ')})),
+          pick: licPickLicence})}
       </div>`);
     return;
   }
@@ -9874,7 +10002,7 @@ function licCoOptions() {
   // bare finnes i historikken (kun Map kan vise dem).
   const hist = licHist ? licHist.companies.filter(n => !licStats[n]).sort((a, b) => a.localeCompare(b, 'en')) : [];
   return [...sortCompanies(licCos), ...(licSubView === 'map' ? hist : [])]
-    .map(n => `<option value="${esc(n)}">`).join('');
+    .map(n => ({v: n, sub: licStats[n] ? `${licStats[n].count} licences` : 'historic'}));
 }
 
 function licPick(name) {
@@ -10470,9 +10598,9 @@ function licRenderTxBar() {
     <div class="ex-bar">
       <div class="pill-group"><button class="pill-btn${f.txLevel === 'group' ? ' active' : ''}" onclick="licTxSet('txLevel','group',true)">Concerns</button>
         <button class="pill-btn${f.txLevel === 'entity' ? ' active' : ''}" onclick="licTxSet('txLevel','entity',true)">Legal entities</button></div>
-      <input class="ex-in" type="search" list="licTxCo" placeholder="Company…" value="${esc(f.company)}"
-             onchange="licTxSet('company', this.value, true)" aria-label="Company"/>
-      <datalist id="licTxCo">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      ${pickerHtml({id: 'licTxCo', value: f.company, placeholder: 'Company…', label: 'Company', allowEmpty: true,
+        items: names.map(n => ({v: n, sub: `${cnt[n]} ${cnt[n] === 1 ? 'deal' : 'deals'}`})),
+        pick: v => licTxSet('company', v, true)})}
       <select class="year-select" onchange="licTxSet('txRole', this.value)" aria-label="Role" ${f.company ? '' : 'disabled'}>
         ${opt('any', f.txRole, 'Buyer or seller')}${opt('buy', f.txRole, 'Buyer only')}${opt('sell', f.txRole, 'Seller only')}
       </select>
@@ -10832,6 +10960,7 @@ function licRenderOverlap() {
   const n = Math.min(+f.ovn || 15, licCos.length);
   const cos = licCos.slice().sort((a, b) => licStats[b].count - licStats[a].count || a.localeCompare(b, 'en')).slice(0, n);
   const pct = f.ovm === 'pct';
+  const ovItems = sortCompanies(licCos).map(c => ({v: c, sub: `${licStats[c].count} licences`}));
   const maxOff = Math.max(1, ...cos.flatMap(a => cos.filter(b => b !== a).map(b => (ov[a] || {})[b] || 0)));
   const cell = (a, b) => {
     const v = (ov[a] || {})[b] || 0, tot = licStats[a].count;
@@ -10851,9 +10980,10 @@ function licRenderOverlap() {
         <button class="pill-btn${pct ? ' active' : ''}" onclick="licOvSet('ovm','pct')">% of row company</button></div>
       <select class="year-select" onchange="licOvSet('ovn', this.value)" aria-label="Companies shown">
         ${[10, 15, 20, 30].map(k => opt(k, f.ovn, 'Top ' + k)).join('')}</select>
-      <input class="ex-in" list="licOvCo" placeholder="Compare: company A…" value="${esc(f.ova)}" onchange="licOvPair(this.value, licF.ovb)" aria-label="Company A"/>
-      <input class="ex-in" list="licOvCo" placeholder="…with company B" value="${esc(f.ovb)}" onchange="licOvPair(licF.ova, this.value)" aria-label="Company B"/>
-      <datalist id="licOvCo">${sortCompanies(licCos).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      ${pickerHtml({id: 'licOvA', value: f.ova, placeholder: 'Compare: company A…', label: 'Company A', allowEmpty: true,
+        items: ovItems, pick: v => licOvPair(v, licF.ovb)})}
+      ${pickerHtml({id: 'licOvB', value: f.ovb, placeholder: '…with company B', label: 'Company B', allowEmpty: true,
+        items: ovItems, pick: v => licOvPair(licF.ova, v)})}
     </div>`);
 
   // Samme matrise som PowerPoint-tabell, med cellefargen blandet mot hvitt.
