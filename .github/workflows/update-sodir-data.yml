@@ -63,6 +63,13 @@ jobs:
         timeout-minutes: 5
         run: python fetch_news.py
 
+      # Tilsynssaker fra Havtil (RSS + saksider), koblet til felt for
+      # sakslista i feltprofilen. Arkivet i data/havtil.json bare vokser.
+      - name: Hent tilsynssaker (Havtil)
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python fetch_havtil.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB

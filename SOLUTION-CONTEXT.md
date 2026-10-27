@@ -2579,6 +2579,14 @@ navngis. Lisensen gir ingen garanti for at dataene er korrekte eller komplette.
 > **Merk forbeholdet om tredjepartsrettigheter** i sitatet over. Det er ikke
 > vurdert i denne løsningen.
 
+### Havtil
+
+Tilsynssakene i feltprofilen (`fetch_havtil.py`, `data/havtil.json`) kommer
+fra Havindustritilsynet. Ifølge Havtils nettsted kan materialet gjenbrukes
+gratis i alle formater og medier, under forutsetning av at Havtil krediteres.
+Kortet i feltprofilen oppgir Havtil som kilde, og hver sak lenker til saken
+hos Havtil.
+
 ### Attribusjon som vises i dag
 
 1. **I appen**, nederst på siden (`index.html:327`):
