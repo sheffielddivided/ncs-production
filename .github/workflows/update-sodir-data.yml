@@ -63,8 +63,9 @@ jobs:
         timeout-minutes: 5
         run: python fetch_news.py
 
-      # Tilsynssaker fra Havtil (RSS + saksider), koblet til felt for
-      # sakslista i feltprofilen. Arkivet i data/havtil.json bare vokser.
+      # Tilsynssaker fra Havtil (RSS, første listeside og saksider), koblet
+      # til felt for sakslista i feltprofilen. Arkivet i data/havtil.json bare
+      # vokser. Sakssidene leses innenfor et tidsbudsjett på 7 minutter.
       - name: Hent tilsynssaker (Havtil)
         continue-on-error: true
         timeout-minutes: 10

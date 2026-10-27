@@ -3,17 +3,25 @@ Henter tilsynssaker fra Havindustritilsynet (Havtil) og indekserer dem per
 felt og selskap. Skriver data/havtil.json til sakslista i feltprofilen.
 
     pip install requests
-    python fetch_havtil.py
+    python fetch_havtil.py              # daglig: feed + første listeside
+    python fetch_havtil.py --backfill   # én gang: alle listesidene, uten tidsgrense
 
-Kilde: RSS-feeden https://www.havtil.no/rss/sistenytt/. Den har bare tittel,
-lenke, ingress og dato, og tilsynssakene i den går bare noen måneder bakover.
-Derfor:
+Kilder:
+  · RSS-feeden https://www.havtil.no/rss/sistenytt/. Den har bare tittel,
+    lenke, ingress og dato, og tilsynssakene i den går bare noen måneder
+    bakover.
+  · Listesidene per sakstype (/tilsyn/tilsynsrapporter/?p=N osv.), som går
+    tilbake til 2012-2014. Den daglige kjøringen leser første side som
+    sikkerhetsnett; --backfill leser alle.
 
-  · Saken leses fra sakssiden første gang den dukker opp: antall avvik og
-    forbedringspunkter, rapport-PDF, kategori, og for samtykker feltene
-    Operatør, Utvinningsløyve, Brønnamn og Innretning.
-  · Alt legges i et arkiv som bare vokser. En sak som faller ut av feeden
-    beholdes.
+Saken leses fra sakssiden første gang den dukker opp: antall avvik og
+forbedringspunkter, rapport-PDF, kategori, og for samtykker feltene
+Operatør, Utvinningsløyve, Brønnamn og Innretning. Eldre samtykker (før
+ca. 2020) har ikke disse feltene; der hentes brønn og utvinningstillatelse fra
+teksten. Sakssidene leses innenfor et tidsbudsjett; resten tas neste kjøring.
+
+Alt legges i et arkiv som bare vokser. En sak som faller ut av feeden
+beholdes.
 
 Sakstyper (fra lenkens sti):
   inspection     /tilsyn/tilsynsrapporter/
@@ -51,7 +59,8 @@ import re
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -61,8 +70,9 @@ OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 OUT = os.path.join(OUT_DIR, 'havtil.json')
 ALIASES = os.path.join(OUT_DIR, 'havtil_aliases.json')
 RETRIES = 3
-MAX_PAGES = 250          # saksider per kjøring; resten tas neste gang
-PAUSE = 0.5              # sekunder mellom sakssidene
+MAX_SECONDS = 420        # tidsbudsjett for sakssidene i daglig kjøring; resten tas neste gang
+PAUSE = 0.5              # sekunder mellom sidene
+OSLO = ZoneInfo('Europe/Oslo')
 
 KINDS = {
     'tilsyn/tilsynsrapporter': 'inspection',
@@ -135,7 +145,59 @@ def feed_items():
     return out
 
 
-def parse_page(text):
+def list_page(section, page):
+    """Sakene på én listeside. Tom liste når sidene er brukt opp."""
+    text = get(f'{SITE}/{section}/?p={page}')
+    out = []
+    for li in text.split('<li itemscope')[1:]:
+        li = li.split('</a>', 1)[0]     # hele kortet ligger i én lenke
+        href = re.search(r'<a class="pcard" href="(/' + re.escape(section) + r'/\d{4}/[^"]+)"', li)
+        when = re.search(r'datetime="([^"]+)"', li)
+        title = re.search(r'pcard-title">(.*?)</div>', li, re.S)
+        if not (href and when and title):
+            continue
+        try:
+            date = datetime.fromisoformat(when.group(1).replace('Z', '+00:00')).astimezone(OSLO).date().isoformat()
+        except ValueError:
+            continue
+        desc = re.search(r'pcard-text">(.*?)</div>', li, re.S)
+        tags = [clean(t) for t in re.findall(r'<li class="list-inline-item">(.*?)</li>', li, re.S)]
+        item = {'id': html.unescape(href.group(1).rstrip('/')) + '/', 'kind': KINDS[section], 'date': date,
+                'title': clean(title.group(1)), 'desc': clean(desc.group(1) if desc else '')}
+        if any(tags):
+            item['tags'] = [t for t in tags if t]
+        out.append(item)
+    return out
+
+
+def list_items(full):
+    """Første listeside per sakstype, eller alle med full=True."""
+    out = []
+    for section, kind in KINDS.items():
+        if kind not in DETAIL_KINDS:
+            continue
+        page = 1
+        while True:
+            try:
+                got = list_page(section, page)
+            except Exception as exc:  # noqa: BLE001
+                print(f'  ! {section} side {page}: {exc}')
+                break
+            out += got
+            if not full or not got:
+                break
+            page += 1
+            time.sleep(PAUSE)
+        if full:
+            print(f'  {section}: {page - 1} sider')
+    return out
+
+
+WELL = re.compile(r'(?<![\d/])\d{1,4}/\d{1,2}-\d{1,3}(?:\s?[A-Z]{1,2}\b)?')
+LICENCE = re.compile(r'utvinnings(?:løyve|tillatelse)\s+(?:nr\.?\s*)?(\d{1,4}(?:\s?[A-Z]{1,2}\b)?)', re.I)
+
+
+def parse_page(text, kind=None):
     """Det som står på saksiden utover feeden."""
     d = {}
     body = re.search(r'class="clearfix article-body"(.*?)(?:<footer|$)', text, re.S)
@@ -149,6 +211,17 @@ def parse_page(text):
         key = FACTS.get(clean(label).lower())
         if key and clean(value) and key not in facts:
             facts[key] = clean(value)
+    if kind == 'consent':
+        # Eldre samtykker er skrevet som løpende tekst.
+        prose = clean(body)
+        if 'wells' not in facts:
+            wells = list(dict.fromkeys(WELL.findall(prose)))
+            if wells:
+                facts['wells'] = ', '.join(wells)
+        if 'licence' not in facts:
+            m = LICENCE.search(prose)
+            if m:
+                facts['licence'] = m.group(1)
     if facts:
         d['facts'] = facts
     plain = clean(text)
@@ -264,9 +337,10 @@ class Matcher:
 # ── KJØRING ──────────────────────────────────────────────────────────────────
 
 def main():
+    backfill = '--backfill' in sys.argv
     old = load_json(OUT, {})
     archive = {it['id']: it for it in old.get('items', [])}
-    raw_keys = ('id', 'kind', 'date', 'title', 'desc', 'tags', 'facts', 'nonconf', 'improve', 'pdf', 'detail')
+    raw_keys = ('id', 'kind', 'date', 'title', 'desc', 'tags', 'facts', 'nonconf', 'improve', 'pdf', 'detail', 'tries')
     archive = {k: {x: v[x] for x in raw_keys if x in v} for k, v in archive.items()}
 
     try:
@@ -279,21 +353,31 @@ def main():
     aliases = load_json(ALIASES, {})
     match = Matcher(aliases)
 
-    for it in fresh:
+    # Listesidene først, feeden sist: der begge har saken, vinner feeden.
+    for it in list_items(backfill) + fresh:
         prev = archive.get(it['id'], {})
         archive[it['id']] = {**prev, **it}
 
     # Sakssidene for tilsynssaker som ikke er lest ennå.
     todo = [it for it in archive.values() if it['kind'] in DETAIL_KINDS and not it.get('detail')]
     todo.sort(key=lambda x: x['date'], reverse=True)
-    read = 0
-    for it in todo[:MAX_PAGES]:
+    read, t0 = 0, time.time()
+    for it in todo:
+        if not backfill and time.time() - t0 > MAX_SECONDS:
+            break
         try:
-            it.update(parse_page(get(SITE + it['id'])))
+            it.update(parse_page(get(SITE + it['id']), it['kind']))
             it['detail'] = True
             read += 1
         except Exception as exc:  # noqa: BLE001
+            # En side som feiler tre kjøringer på rad, gis opp, så den ikke
+            # spiser tidsbudsjettet for alltid.
+            it['tries'] = it.get('tries', 0) + 1
+            if it['tries'] >= 3:
+                it['detail'] = True
             print(f'  ! {it["id"]}: {exc}')
+        if backfill and read % 100 == 0:
+            print(f'  {read}/{len(todo)} saksider', flush=True)
         time.sleep(PAUSE)
 
     items = []
