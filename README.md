@@ -42,10 +42,10 @@ statiske JSON-filer i dette repoet.
 | `data/licences.json` | Aktive utvinningstillatelser (lag 3000) |
 | `data/licence_outlines.json` | Forenklede lisensomriss til Licences-kartene. Lastes først når Licences åpnes |
 | `data/licence_baa.json` | Hvilke forretningsavtaleområder (BAA) hver lisens inngår i (lag 3301) |
-| `data/licence_all.json` | Alle 1 813 lisenser noensinne, med runde, areal og status — til Rounds. Lastes lazy |
-| `data/licence_history.json` | Eierandeler og operatører med full historikk (lag 3007/3008) — til Rounds og Map. Lastes lazy |
-| `data/licence_transfers.json` | Overdragelser (lag 3003), parret selger→kjøper — til Transactions og Map. Lastes lazy |
-| `data/licence_areas.json` | Lisensenes areal og omriss over tid (lag 3002) — til Rounds og Map. Lastes lazy |
+| `data/licence_all.json` | Alle 1 813 lisenser noensinne, med runde, areal og status — til Rounds og lisensprofilen. Lastes lazy |
+| `data/licence_history.json` | Eierandeler og operatører med full historikk (lag 3007/3008) — til Rounds, Map og lisensprofilen. Lastes lazy |
+| `data/licence_transfers.json` | Overdragelser (lag 3003), parret selger→kjøper — til Transactions, Map og lisensprofilen. Lastes lazy |
+| `data/licence_areas.json` | Lisensenes areal og omriss over tid (lag 3002) — til Rounds, Map og lisensprofilen. Lastes lazy |
 | `data/companies.json` | Selskapsfakta (lag 1200) — konsern, orgnr., roller |
 | `data/coastline.json` | Kystlinje til profilkartet — Natural Earth, bygget én gang |
 | `make_coastline.py` | Engangsscript som bygger `data/coastline.json` |
