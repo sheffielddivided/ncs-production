@@ -1191,6 +1191,15 @@ dato (oransje linje); mot Rådets serie gir det median avvik 0,24 $/fat
 (2020–2026), mot 1,34 for rå dagspriser. De siste dagene, som ennå ikke har
 fem noteringer etter seg, vises som rå EIA-dagspriser (stiplet hale).
 
+Rådets serie starter 1.1.2011. EIA-serien hentes fra 1990 (EIA har den fra
+20.5.1987; 1990 er valgt fordi KPI-seriene starter der), og `priceSplice`
+skjøter også bakover med samme regel (`head`), for hver kalenderdag fra første
+EIA-notering til 31.12.2010. Kontrollert mot Rådets tall for alle 5 660 dager
+2011–2026: median avvik 0,17 $/fat, snitt −0,08 $/fat (ingen systematisk
+skjevhet), 95 % innenfor 0,88 $/fat; i månedssnitt 0,18 $/fat. Begge skjøtene
+tegnes som samme oransje serie, og de inngår i månedssnittet Oil vs gas
+bruker, som dermed går tilbake til 2000 der gassprisene starter.
+
 #### PowerPoint-eksport
 
 «Download PPT» (`downloadPpt`) lager en .pptx med grafen som ekte

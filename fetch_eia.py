@@ -1,8 +1,9 @@
 """
 Henter daglig Brent spotpris (EIA-serie RBRTE, «Europe Brent Spot Price FOB»)
-og skriver den til data/brent_eia.json. Brukes til å skjøte Datert Brent-
-serien i Prices, som fra Petroleumsprisrådet kommer med flere måneders
-forsinkelse.
+og skriver den til data/brent_eia.json fra 1990. Brukes til å skjøte Datert
+Brent-serien i Prices i begge ender: framover, fordi Petroleumsprisrådets tall
+kommer med flere måneders forsinkelse, og bakover, fordi de starter i 2011.
+1990 er valgt fordi KPI-seriene (realpriser) starter der; EIA har tall fra 1987.
 
 Kilde: U.S. Energy Information Administration (EIA), offentlig data. Krever
 API-nøkkel i miljøvariabelen EIA_API_KEY (GitHub-hemmelighet med samme navn).
@@ -27,7 +28,7 @@ import time
 import requests
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'brent_eia.json')
-START = '2020-01-01'   # nok historikk til å kontrollere mot Datert Brent
+START = '1990-01-01'   # skjøtes bakover før Petroleumsprisrådets første dato (2011), og framover
 RETRIES = 4
 
 
