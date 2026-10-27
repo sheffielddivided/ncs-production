@@ -313,6 +313,16 @@
     .pf-desc h4{margin:10px 0 3px;font-size:0.72rem;color:var(--navy);}
     .pf-desc h4:first-child{margin-top:0;}
     .pf-desc p{margin:0;font-size:0.73rem;line-height:1.55;color:#2f2f2f;}
+    .hv-list{list-style:none;margin:0;padding:0;}
+    .hv-item{padding:7px 0;border-top:1px solid var(--border);font-size:0.73rem;line-height:1.45;}
+    .hv-item:first-child{border-top:0;padding-top:0;}
+    .hv-meta{display:block;font-size:0.64rem;color:var(--muted);margin-bottom:1px;}
+    .hv-kind{display:inline-block;margin-right:6px;padding:0 6px;border-radius:9px;background:var(--light);
+      border:1px solid #eeabcb;font-size:0.58rem;color:#1a2332;text-transform:uppercase;letter-spacing:0.04em;}
+    .hv-item a{color:#1a2332;text-decoration:underline;text-decoration-color:var(--blue);text-underline-offset:2px;}
+    .hv-item a:hover,.hv-item a:focus-visible{color:var(--blue);}
+    .hv-res{display:block;font-size:0.66rem;color:var(--muted);margin-top:1px;}
+    .hv-more summary{cursor:pointer;font-size:0.7rem;color:var(--blue);margin-top:7px;}
 
     /* Brede skjermer: kortene i to spalter som flyter, ikke et rutenett.
        Kortene er svært ulike i høyde, og et rutenett ville låst dem parvis og
@@ -668,7 +678,7 @@ const bundle = { fields:null, production:null, licensees:null, reserves:null, re
                  discovery_descriptions:null, discovery_outlines:null,
                  field_profile:null, field_descriptions:null, field_outlines:null, coastline:null,
                  facilities:null, licences:null, companies:null,
-                 meta:null, hubs:null, sodir_news:null };
+                 meta:null, hubs:null, sodir_news:null, havtil:null };
 
 async function fetchBundle(name) {
   try {
@@ -685,7 +695,7 @@ async function loadBundles() {
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
                  'field_investments','field_operators',
                  'licences','companies',
-                 'meta','hubs','sodir_news'];
+                 'meta','hubs','sodir_news','havtil'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   const gen = bundle.meta && bundle.meta.generated;
@@ -5083,9 +5093,48 @@ function drawFieldProfile() {
     ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${investmentCard([id], () => name)}
     ${(() => { const o = profileOwnership(id, p.operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
+    ${havtilCard(id)}
     ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
       descs.map(d => `<h4>${esc(d.heading)}</h4><p>${esc(d.text)}</p>`).join('')}</div>` : ''}
   `);
+}
+
+// ── HAVTIL ───────────────────────────────────────────────────────────────────
+// Tilsynsrapporter, samtykker, granskinger og pålegg fra Havindustritilsynet,
+// koblet til felt i fetch_havtil.py (data/havtil.json). Arkivet bygges opp fra
+// Havtils RSS-feed og går derfor bare noen måneder bakover til å begynne med.
+const HV_KIND = {inspection: 'Inspection', consent: 'Consent', investigation: 'Investigation',
+                 notice: 'Order / notice', news: 'News'};
+const HV_SHOW = 6;
+function havtilCard(fieldId) {
+  const b = bundle.havtil;
+  if (!b || !b.items) return '';
+  const items = b.items.filter(it => it.fields && it.fields.includes(fieldId));
+  if (!items.length) return '';
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const row = it => {
+    const res = [];
+    if (it.nonconf != null) res.push(count(it.nonconf, 'nonconformity', 'nonconformities'));
+    if (it.improve != null) res.push(count(it.improve, 'improvement point', 'improvement points'));
+    const f = it.facts || {};
+    if (f.facility && it.kind === 'consent') res.push(`Facility: ${esc(f.facility)}`);
+    if (f.wells) res.push(`Wells: ${esc(f.wells)}`);
+    const safe = u => /^https:\/\/www\.havtil\.no\//.test(u || '');
+    return `<li class="hv-item">
+      <span class="hv-meta"><span class="hv-kind">${HV_KIND[it.kind] || esc(it.kind)}</span>${esc(it.date)}</span>
+      <a href="https://www.havtil.no${esc(it.id)}" target="_blank" rel="noopener">${esc(it.title)} ↗</a>
+      ${res.length || safe(it.pdf) ? `<span class="hv-res">${res.join(' · ')}${
+        safe(it.pdf) ? `${res.length ? ' · ' : ''}<a href="${esc(it.pdf)}" target="_blank" rel="noopener">Report (PDF)</a>` : ''}</span>` : ''}
+    </li>`;
+  };
+  const first = items.slice(0, HV_SHOW), rest = items.slice(HV_SHOW);
+  const oldest = b.items.reduce((m, it) => it.kind !== 'news' && it.date < m ? it.date : m, '9999');
+  return `<div class="pf-card"><h3>Havtil · inspections and consents</h3>
+    <ul class="hv-list">${first.map(row).join('')}</ul>
+    ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} more</summary>
+      <ul class="hv-list">${rest.map(row).join('')}</ul></details>` : ''}
+    <div class="pf-map-note">Source: Norwegian Ocean Industry Authority (Havtil). Cases from ${esc(oldest)} onwards, linked to the field by name in the title, summary or consent details.</div>
+  </div>`;
 }
 
 // ── INVESTERINGER ────────────────────────────────────────────────────────────

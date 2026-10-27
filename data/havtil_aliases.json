@@ -1,0 +1,16 @@
+{
+  "note": "Vedlikeholdes for hånd. fields: navn Havtil bruker -> feltnavn i Sodir. companies: gammelt eller annet navn -> navnet som vises. ignore: sak-id -> feltnavn som ikke skal kobles til saken. Leses av fetch_havtil.py.",
+  "fields": {
+    "Yggdrasil": ["HUGIN", "MUNIN", "FULLA"],
+    "Statfjord satellittfelt": ["STATFJORD NORD", "STATFJORD ØST", "SYGNA"]
+  },
+  "companies": {
+    "Statoil": "Equinor",
+    "Statoil Petroleum": "Equinor",
+    "Det norske oljeselskap": "Aker BP",
+    "Det norske": "Aker BP",
+    "OKEA": "Okea",
+    "Harbour": "Harbour Energy"
+  },
+  "ignore": {}
+}
