@@ -253,6 +253,7 @@
     .nw-postponed{background:#fdeedd;color:#9a5a00;border-color:#f3cf9f;}
     .nw-cancelled{background:#f3e8e8;color:#8a3030;border-color:#e2c4c4;}
     .nw-rig{background:#dbe7f1;color:#2f5f82;border-color:#b8c4d2;}
+    .nw-havtil{background:#e6e4f6;color:#45399a;border-color:#c9c3ec;}
     .nw-from{color:var(--muted);}
     .ex-scroll{overflow-x:auto;}
     .ex-gantt{min-width:760px;width:100%;height:auto;display:block;}
@@ -5115,19 +5116,41 @@ const HV_KIND = {inspection: 'Inspection', consent: 'Consent', investigation: 'I
 const HV_SHOW = 6;
 const HV_SOURCE = 'Source: Norwegian Ocean Industry Authority (Havtil; the Petroleum Safety Authority before 2024). Cases mainly from 2014 onwards';
 // Kortet tegnes straks dataene finnes; ellers en plassholder som byttes ut når
-// de kommer, hvis den samme profilen fortsatt vises.
+// de kommer, hvis den samme profilen fortsatt vises. Brønn- og riggprofilen
+// ligger over de andre profilene, så det kan finnes flere plassholdere samtidig.
 function havtilLazy(key, render) {
   if (havtilData) return render();
   loadHavtil().then(() => {
-    const slot = document.getElementById('hvSlot');
-    if (slot && slot.dataset.key === key) slot.outerHTML = render();
+    document.querySelectorAll('.hv-slot').forEach(slot => { if (slot.dataset.key === key) slot.outerHTML = render(); });
   });
-  return `<div id="hvSlot" data-key="${esc(key)}"></div>`;
+  return `<div class="hv-slot" data-key="${esc(key)}"></div>`;
 }
+const HV_FIELD_NOTE = 'linked to the field by name in the title, summary or consent details';
 function havtilCard(fieldId) {
   return havtilLazy(`f${fieldId}`, () => havtilList(
-    (havtilData.items || []).filter(it => it.fields && it.fields.includes(fieldId)),
-    'linked to the field by name in the title, summary or consent details'));
+    (havtilData.items || []).filter(it => it.fields && it.fields.includes(fieldId)), HV_FIELD_NOTE));
+}
+function havtilHubCard(hubName, ids) {
+  const set = new Set(ids);
+  return havtilLazy(`h${hubName}`, () => havtilList(
+    (havtilData.items || []).filter(it => (it.fields || []).some(f => set.has(f))),
+    HV_FIELD_NOTE.replace('the field', 'a field in the hub')));
+}
+// Brønnprofilen: samtykker og andre saker som nevner en av brønnbanene.
+// Mellomrom telles ikke med, så «25/7-15 S» og «25/7-15S» er samme brønn.
+const hvWellKey = n => String(n || '').replace(/\s+/g, '').toUpperCase();
+function havtilWellCard(w) {
+  const names = new Set([w.name, w.well, ...w.branches.map(b => b.name)].filter(Boolean).map(hvWellKey));
+  return havtilLazy(`w${w.id}`, () => havtilList(
+    (havtilData.items || []).filter(it => (it.wells || []).some(n => names.has(hvWellKey(n)))),
+    'linked to the well by wellbore name in the consent'));
+}
+// Riggprofilen: navnet slik Sodir skriver det (COSLInnovator, DEEPSEA YANTAI).
+function havtilRigCard(name) {
+  const key = hvWellKey(name);
+  return havtilLazy(`r${name}`, () => havtilList(
+    (havtilData.items || []).filter(it => (it.rigs || []).some(r => hvWellKey(r) === key)),
+    'linked to the rig by name in the title, summary or consent details'));
 }
 // Selskapsprofilen: alle saker for konsernet, så Statoil-sakene kommer med hos
 // Equinor og Det norske hos Aker BP. Havtil-navnet er koblet til en juridisk
@@ -5576,6 +5599,7 @@ function drawHubProfile() {
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card"><h3>Fields</h3>${t}</div>` : ''; })()}
     ${(() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${investmentCard(ids, nameOf)}
+    ${havtilHubCard(hubName, ids)}
     ${(() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })()}
     ${conns.length ? `<div class="pf-card pf-desc"><h3>How it is connected</h3>${
       conns.map(c => `<h4>${esc(c.name)}</h4><p>${esc(c.text)}</p>`).join('')}</div>` : ''}
@@ -8885,6 +8909,7 @@ function openWell(id, quiet) {
       ${fact('Main area', tc(w.area))}${fact('Part of field', tc(w.field))}${fact('Discovery', w.discovery)}
       ${fact('Drill permit', w.permit)}
     </div></div>
+    ${havtilWellCard(w)}
     ${sameLic.length ? `<div class="pf-card"><h3>Other wells in licence ${esc(w.licence)}</h3>
       <table class="res-table ex-table"><tbody>${sameLic.slice(0, 8).map(o => `
         <tr class="ex-row" onclick="openWell(${o.id})"><td class="ex-name"><strong>${esc(o.title)}</strong>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</td>
@@ -9143,6 +9168,7 @@ const NEWS_TYPES = {
   done: {label: 'Completed', group: 'wells'}, plan: {label: 'Planned', group: 'wells'},
   postponed: {label: 'Postponed', group: 'wells'}, cancelled: {label: 'Removed', group: 'wells'},
   rig: {label: 'Rig', group: 'rigs'},
+  havtil: {label: 'Havtil', group: 'havtil'},
 };
 
 function newsLine(e) {
@@ -9158,6 +9184,8 @@ function newsLine(e) {
     case 'discovery': return `<strong>${esc(explDiscoveryLabel(e.dn) || title)}</strong> discovery · ${bit(tc(e.c), op, rig)}`;
     case 'postponed': return `<strong>${esc(title)}</strong> postponed · spud ${esc(fmtShort(e.frm))} → ${esc(fmtShort(e.to))}`;
     case 'cancelled': return `<strong>${esc(title)}</strong> is no longer in Sodir's plans`;
+    case 'havtil': return `<strong>${esc(e.n)}</strong> · ${bit(HV_KIND[e.k] || e.k,
+      e.nc != null && `${e.nc} ${e.nc === 1 ? 'nonconformity' : 'nonconformities'}`)}`;
     case 'rig': return `<strong>${esc(e.r)}</strong> ${e.k === 'port' ? 'arrived in' : 'moved to'} ${esc(stayName(e.k, e.p))}${
       e.pp && e.pp !== e.p ? ` <span class="nw-from">from ${esc(stayName(e.pk, e.pp))}</span>` : ''}`;
   }
@@ -9185,17 +9213,19 @@ async function explRenderNews() {
   shown.forEach(e => {
     if (e.d !== day) { day = e.d; html += `<div class="nw-day">${fmtShort(day)}</div>`; }
     const click = e.t === 'rig' ? `openRigProfile(${esc(JSON.stringify(e.r))}, false, ${e.f})`
+                : e.t === 'havtil' && /^\/[\w\-\/]+\/$/.test(e.u || '') ? `window.open('https://www.havtil.no${e.u}', '_blank', 'noopener')`
                 : e.w != null && explById[e.w] ? `openWell(${e.w})` : '';
     html += `<div class="nw-row${click ? ' nw-click' : ''}"${click ? ` onclick="${click}"` : ''}>
       <span class="nw-t nw-${e.t}">${NEWS_TYPES[e.t].label}</span><span class="nw-txt">${newsLine(e)}</span></div>`;
   });
   box.innerHTML = `
     <div class="ex-sum"><strong>${list.length}</strong> changes${changesData.length ? ` since ${fmtShort(changesData[changesData.length - 1].d)}` : ''}</div>
-    <div class="grp-row">${chip('all', 'All')}${chip('discoveries', 'Discoveries')}${chip('wells', 'Wells')}${chip('rigs', 'Rigs')}</div>
+    <div class="grp-row">${chip('all', 'All')}${chip('discoveries', 'Discoveries')}${chip('wells', 'Wells')}${chip('rigs', 'Rigs')}${chip('havtil', 'Havtil')}</div>
     <div class="pf-card">${html || '<div class="pf-map-note">Nothing new matches the filters yet. The log is filled by the daily data run.</div>'}
       ${list.length > newsShown ? `<button class="grp-btn ex-more" onclick="newsShown+=60;explRenderNews()">Show more (${list.length - newsShown} older)</button>` : ''}
       <div class="pf-map-note">Detected by comparing each daily data run with the previous one; the first entries are dated from the wells' own start
-        and completion dates. Rig moves come from AIS stays.</div></div>`;
+        and completion dates. Rig moves come from AIS stays. Havtil entries are new inspection reports, consents, investigations and
+        orders from the Norwegian Ocean Industry Authority; they open on havtil.no.</div></div>`;
 }
 
 // ── Riggprofil med avspilling ────────────────────────────────────────────────
@@ -9222,6 +9252,7 @@ async function openRigProfile(name, quiet, seekMin) {
       <div class="wd-head"><div><h2>${esc(name)}</h2><div class="wd-sub">Rig</div></div>
         <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button></div>
       ${rigFactsCard(name)}
+      ${havtilRigCard(name)}
       <div class="pf-card"><p class="wd-lead">No AIS history for this rig. It has no matching AIS identity in data/rig_ais.json,
         or it has not been seen in Norwegian waters in the period.</p></div>
       <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
@@ -9321,6 +9352,7 @@ function rigBuild(reset) {
     </div>
     <div class="pf-card"><h3>Destinations in the period · ${rg.stays.length}</h3>
       <div class="rg-stays" id="rgStays">${rigStaysHtml()}</div></div>
+    ${havtilRigCard(name)}
     <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
   rg.svg = document.getElementById('rgSvg');
   rg.view = {x: 0, y: 0, w: RG_W};

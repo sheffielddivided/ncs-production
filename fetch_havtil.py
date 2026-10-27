@@ -51,8 +51,21 @@ lisensdataene (concernKey i index.html), så Statoil og Equinor, Det norske og
 Aker BP osv. havner sammen uten egne alias her. Navn som ikke finnes i
 companies.json tas ikke med.
 
+Rigg: navnene på flyttbare innretninger i rig_facts.json letes etter i tittel,
+ingress og samtykkets Innretning-felt, uten hensyn til store/små bokstaver og
+med valgfritt mellomrom mellom delene, så «COSL Innovator» og «COSLInnovator»
+begge blir COSLInnovator (rigs). Riggnavn som også er felt- eller
+innretningsnavn (kranfartøyet BALDER) tas ikke med, og navn på ett ord må stå
+med stor forbokstav, så «flotell» i løpende tekst ikke blir FLOTELL.
+
+Brønn: brønnbanenavn (25/7-15 S) fra samtykkets Brønnamn-felt, tittel og
+ingress (wells). Exploration kobler dem til letebrønnene.
+
 Koblingene regnes ut på nytt hver kjøring fra de lagrede rådataene, så
 rettelser i data/havtil_aliases.json virker bakover.
+
+Nye saker de siste 60 dagene legges også i data/changes.json (type havtil),
+som Exploration viser i News.
 
 Havtils materiale kan gjenbrukes fritt når Havtil krediteres.
 """
@@ -65,10 +78,12 @@ import re
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
+
+import changes
 
 FEED = 'https://www.havtil.no/rss/sistenytt/'
 SITE = 'https://www.havtil.no'
@@ -252,6 +267,29 @@ def name_pattern(name):
     return re.compile(r'(?<!\w)' + r'[\s\-]+'.join(part(w) for w in words) + r'(?!\w)')
 
 
+RIG_SKIP = {'FLOTELL'}     # vanlig ord, ikke en bestemt rigg
+
+
+def rig_pattern(name):
+    """«COSLInnovator» og «DEEPSEA YANTAI» som mønstre med valgfritt mellomrom mellom delene."""
+    parts = re.findall(r'[A-ZÆØÅ]+(?=[A-ZÆØÅ][a-zæøå])|[A-ZÆØÅ]?[a-zæøå]+|[A-ZÆØÅ]+|\d+', name)
+    if sum(len(x) for x in parts) < 4 or name.upper() in RIG_SKIP:
+        return None
+    if len(parts) == 1:
+        # Ett ord: stor forbokstav, resten uten hensyn til store/små.
+        w = parts[0]
+        return re.compile(r'(?<!\w)' + re.escape(w[0].upper()) + f'(?i:{re.escape(w[1:])})' + r'(?!\w)')
+    return re.compile(r'(?<!\w)' + r'[\s\-]?'.join(re.escape(x) for x in parts) + r'(?!\w)', re.I)
+
+
+def wells_in(text):
+    """Brønnbanenavn i teksten, uten dubletter (25/7-15 S og 25/7-15S er samme)."""
+    out = {}
+    for w in WELL.findall(text or ''):
+        out.setdefault(w.replace(' ', ''), ' '.join(w.split()))
+    return list(out.values())
+
+
 def in_name(text, start, end):
     """Står treffet inntil et ord med stor forbokstav, som i et personnavn?"""
     before = re.search(r'(\w+)\s+$', text[:start])
@@ -298,6 +336,26 @@ class Matcher:
             if short:
                 self.companies.setdefault(short, []).append(c)
         self.ignore = {k: set(v) for k, v in (aliases.get('ignore') or {}).items()}
+        self.rigs = []
+        taken = set(by_name) | {(f['name'] or '').upper() for f in table('facilities')}
+        for r in table('rig_facts'):
+            p = None if r.get('fixed') or r['name'].upper() in taken else rig_pattern(r['name'])
+            if p:
+                self.rigs.append((len(r['name']), p, r['name']))
+        self.rigs.sort(key=lambda x: -x[0])
+
+    def rigs_of(self, item):
+        found = []
+        for text in (item['title'], item.get('desc', ''), (item.get('facts') or {}).get('facility', '')):
+            taken = []
+            for _, pat, name in self.rigs:
+                for m in pat.finditer(text):
+                    if any(m.start() < b and a < m.end() for a, b in taken):
+                        continue
+                    taken.append((m.start(), m.end()))
+                    if name not in found:
+                        found.append(name)
+        return found
 
     def fields(self, item):
         found = {}     # felt-id -> kilde
@@ -359,6 +417,27 @@ class Matcher:
 
 # ── KJØRING ──────────────────────────────────────────────────────────────────
 
+NEWS_DAYS = 60
+
+
+def news_events(items, known):
+    """Nye saker til News (changes.json). Første gang: alle saker de siste 60 dagene."""
+    since = (datetime.now(OSLO).date() - timedelta(days=NEWS_DAYS)).isoformat()
+    seeded = any(e.get('t') == 'havtil' for e in changes.load())
+    events = []
+    for it in items:
+        if it['date'] < since or (seeded and it['id'] in known):
+            continue
+        e = {'id': 'havtil|' + it['id'], 'd': it['date'], 't': 'havtil', 'k': it['kind'], 'n': it['title'], 'u': it['id']}
+        if it['companies']:
+            e['op'] = ', '.join(it['companies'])
+        if it.get('nonconf') is not None:
+            e['nc'] = it['nonconf']
+        events.append(e)
+    if events or not seeded:
+        changes.merge(events)
+
+
 def main():
     backfill = '--backfill' in sys.argv
     old = load_json(OUT, {})
@@ -412,11 +491,19 @@ def main():
         if facs:
             out['facilities'] = facs
         out['companies'], out['cmp'] = match.companies_of(it)
+        rigs = match.rigs_of(it)
+        if rigs:
+            out['rigs'] = rigs
+        wells = wells_in(' '.join([(it.get('facts') or {}).get('wells', ''), it['title'], it.get('desc', '')]))
+        if wells:
+            out['wells'] = wells
         # Fagstoff tas bare med når det gjelder et bestemt felt.
         if it['kind'] == 'news' and not out['fields']:
             continue
         items.append(out)
     items.sort(key=lambda x: (x['date'], x['id']), reverse=True)
+
+    news_events(items, {it['id'] for it in old.get('items', [])})
 
     payload = {
         'source': FEED,
