@@ -1,10 +1,15 @@
-# ncs-production
+# NCS Insights
 
-Webapp som viser produksjonshistorikk på norsk sokkel (Norwegian Continental
-Shelf) som stablede søylediagram i boe/dag, per felt eller per selskap.
+Repo: `ncs-production`.
 
-Data hentes fra Sokkeldirektoratets (Sodir) åpne FactMaps-API og lagres som
-statiske JSON-filer i dette repoet.
+Webapp for norsk sokkel (Norwegian Continental Shelf): produksjon, reserver og
+ressurser per felt, hub, funn og selskap, med profiler for felt, huber, funn,
+selskaper, lisenser, brønner og rigger. I tillegg leting, rigger, lisenser og
+overdragelser, normpriser og gasspriser.
+
+Hovedkilden er Sokkeldirektoratets (Sodir) åpne FactMaps-API. I tillegg brukes
+Havtil, Kystverkets AIS, SSB, Petroleumsprisrådet, EIA, FRED/IMF, Norges Bank og
+Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
 
 **Live:** https://sheffielddivided.github.io/ncs-production/
 
