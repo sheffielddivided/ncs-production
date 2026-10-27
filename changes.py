@@ -1,7 +1,8 @@
 """
 Endringslogg: hva som er nytt siden forrige datakjøring.
 
-Brukes av fetch_sodir.py (brønner) og fetch_rigs.py (rigger) og skriver
+Brukes av fetch_sodir.py (brønner), fetch_rigs.py (rigger) og fetch_havtil.py
+(tilsynssaker) og skriver
 data/changes.json, som Exploration viser i fanen News.
 
 Hver hendelse har en stabil id, så en ny kjøring samme dag ikke dobler dem:
@@ -14,6 +15,7 @@ Typene er
     postponed  planlagt start er flyttet med minst en uke
     cancelled  planlagt brønn er borte fra Sodirs data
     rig        en rigg har kommet til et nytt sted (AIS)
+    havtil     ny tilsynsrapport, samtykke, gransking eller pålegg fra Havtil
 
 Første gang fila lages, fylles den også ut fra datoene i dataene selv (starter og
 avslutninger siste 30 dager), ellers ville den vært tom til noe skjer.
