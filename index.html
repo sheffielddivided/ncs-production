@@ -153,8 +153,6 @@
     .lc-ax{font-size:10px;fill:#828282;}
     .lc-ax-sel{fill:#ce0f69;font-weight:700;}
     .lc-rb{cursor:pointer;}
-    .lc-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-    @media(max-width:700px){.lc-two{grid-template-columns:1fr;}}
     .lc-bg-pos{background:#3fa7a0;} .lc-bg-neg{background:#ce0f69;}
     .lc-pos{color:#1f8a82;font-weight:700;} .lc-neg{color:#ce0f69;font-weight:700;}
     .lc-matrix{border-collapse:separate;border-spacing:2px;font-size:0.7rem;margin:0 auto;}
@@ -225,7 +223,6 @@
     .ex-disc[open] summary{margin-bottom:8px;}
     .ex-chk{display:inline-flex;align-items:center;gap:5px;font-size:0.78rem;color:#44505f;cursor:pointer;}
     .ex-rig-link{cursor:pointer;} .ex-rig-link:hover{fill:var(--blue);text-decoration:underline;}
-    .rig-link{color:var(--blue);font-weight:700;text-decoration:none;} .rig-link:hover{text-decoration:underline;}
     .rg-map{cursor:default;background:#eef3f8;}
     .rg-date{fill:#1a2332;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;}
     .rg-lbl{font-size:9px;vector-effect:non-scaling-stroke;stroke-width:2.5px;}
@@ -260,7 +257,6 @@
     .ex-ax{font-size:10px;fill:#828282;}
     .ex-rig{font-size:11px;font-weight:600;fill:#1a2332;}
     .ex-bar-t{font-size:10px;pointer-events:none;}
-    .ex-table td a{color:var(--blue);font-weight:600;text-decoration:none;}
     .wd-overlay{position:fixed;inset:0;background:rgba(26,16,24,0.5);z-index:300;display:none;
       overflow-y:auto;overscroll-behavior:contain;}
     .wd-overlay.open{display:block;}
@@ -364,9 +360,10 @@
     .res-table tr.total-row td{border-top:2px solid var(--border);}
     /* Funnavn som lenker til profilen. Arver radens farge og vekt, slik at
        raden ser ut som før, og markeres med understreking. */
-    .row-link{color:inherit;font:inherit;text-decoration:underline;
+    .row-link,.rig-link,.ex-table td a,.info-box a,.pf-map-note a{color:inherit;font:inherit;text-decoration:underline;
       text-decoration-color:var(--blue);text-underline-offset:2px;cursor:pointer;}
-    .row-link:hover,.row-link:focus-visible{color:var(--blue);}
+    .row-link:hover,.row-link:focus-visible,.rig-link:hover,.ex-table td a:hover,
+    .info-box a:hover,.pf-map-note a:hover{color:var(--blue);}
     /* Liten knapp inne i en tabellrad, til hopp videre til en profil. */
     .row-btn{margin-left:8px;padding:1px 8px;border:1px solid var(--border);
       border-radius:9px;background:#fff;font-size:0.62rem;font-weight:600;
@@ -4534,6 +4531,35 @@ const profileBtn = (name, fn) =>
   ` <button class="row-btn" onclick="${fn}(${esc(jsStr(name))})"` +
   ` title="Open the profile for ${esc(name)}">Profile</button>`;
 
+// Navn som lenker til detaljsiden sin: felt, hub, selskap, funn. Brukes i
+// faktaark, tabeller og eierkaker overalt i appen, slik at et navn alltid kan
+// klikkes videre — og ser likt ut — uansett hvor det står. Finnes det ingen
+// profil å gå til, blir navnet stående som ren tekst.
+const rowLink = (label, call, title) =>
+  `<a class="row-link" href="#" title="${esc(title || `Open the profile for ${label}`)}"` +
+  ` onclick="event.stopPropagation();${call};return false;">${esc(label)}</a>`;
+const fieldByName = name => name ? allFields.find(f => f.name === String(name).toUpperCase()) : null;
+function fieldLink(idOrName, label) {
+  const f = typeof idOrName === 'number' ? allFields.find(x => x.id === idOrName) : fieldByName(idOrName);
+  if (!f) return esc(label ?? idOrName ?? '');
+  return rowLink(label ?? f.name, `openFieldProfile(${f.id})`);
+}
+function hubLink(name) {
+  if (!name || !allHubs.some(h => h.name === name)) return esc(name ?? '');
+  return rowLink(name, `openHubProfile(${esc(jsStr(name))})`);
+}
+const isKnownCompany = name => !!name && (allCompanies.includes(name) || !!companyRow(name));
+function companyLink(name) {
+  if (!isKnownCompany(name)) return esc(name ?? '');
+  return rowLink(name, `openCompanyProfile(${esc(jsStr(name))})`);
+}
+function discoveryLink(id, label) {
+  if (!allDiscoveries.some(d => d.id === id)) return esc(label ?? '');
+  return rowLink(label, `openDiscoveryProfile(${id})`);
+}
+// Faktarute der verdien allerede er HTML (typisk en lenke over).
+const factHtml = (k, html) => html ? `<div class="pf-fact"><span>${k}</span><strong>${html}</strong></div>` : '';
+
 function profileRow(id) {
   const b = bundle.field_profile;
   if (!b) return null;
@@ -4969,7 +4995,7 @@ function ownershipPie(parts, operator, label) {
     const isOp = operator && p.name === operator;
     return `<div class="pf-own-row">
       <span class="pf-own-dot" style="background:${colorOf(p, i)}"></span>
-      <span class="pf-own-name">${esc(p.name)}${isOp ? '<span class="pf-op-tag">Operator</span>' : ''}</span>
+      <span class="pf-own-name">${p.color ? esc(p.name) : companyLink(p.name)}${isOp ? '<span class="pf-op-tag">Operator</span>' : ''}</span>
       <span class="pf-own-pct">${p.share.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')} %</span>
     </div>`;
   }).join('');
@@ -5081,12 +5107,12 @@ function drawFieldProfile() {
         ${fact('Discovered', p.discoveryYear)}
         ${fact('Discovery well', p.wellbore)}
         ${fact('Production start', p.productionStart ? fmtDate(p.productionStart) : '')}
-        ${fact('Operator', p.operator)}
+        ${factHtml('Operator', p.operator && companyLink(p.operator))}
         ${fact('Status', p.status)}
         ${fact('Hydrocarbons', p.hc)}
         ${fact('Main area', p.area)}
         ${fact('Supply base', p.supplyBase)}
-        ${fact('Hub', hub && hub !== name ? hub : '')}
+        ${factHtml('Hub', hub && hub !== name ? hubLink(hub) : '')}
       </div>
     </div>
     ${fieldPhoto(id, name)}
@@ -5361,7 +5387,7 @@ function hubFacilityTable(facs, fieldName) {
         <th>Phase</th><th>Start</th><th>Depth&nbsp;m</th></tr></thead>
       <tbody>${rows.map(f => `
         <tr class="${isGone(f) ? 'fac-gone' : ''}">
-          <td>${esc(f.name)}</td><td>${esc(fieldName(f.fieldId))}</td>
+          <td>${esc(f.name)}</td><td>${fieldLink(f.fieldId, fieldName(f.fieldId))}</td>
           <td>${esc(f.kind || '—')}</td><td class="fac-fn">${esc(f.functions || '—')}</td>
           <td>${esc(f.phase || '—')}</td><td>${yr(f.startup)}</td><td>${dep(f.waterDepth)}</td>
         </tr>`).join('')}</tbody>
@@ -5460,10 +5486,9 @@ function hubMemberTable(ids) {
       <thead><tr><th>Field</th><th>Discovered</th><th>On stream</th><th>Status</th>
         <th>Operator</th><th>Remaining</th></tr></thead>
       <tbody>${rows.map(r => `
-        <tr><td><a class="row-link" href="#" title="Open the profile for ${esc(r.name)}"` +
-          ` onclick="openFieldProfile(${r.id});return false;">${esc(r.name)}</a></td>
+        <tr><td>${fieldLink(r.id, r.name)}</td>
           <td>${r.discovered || '—'}</td><td>${r.start ? fmtDate(r.start) : '—'}</td>
-          <td>${esc(r.status || '—')}</td><td>${esc(r.operator || '—')}</td>
+          <td>${esc(r.status || '—')}</td><td>${r.operator ? companyLink(r.operator) : '—'}</td>
           <td>${r.rem === null ? '—' : mmboe(r.rem)}</td></tr>`).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td></td>
         <td>${mmboe(totRem)}</td></tr></tfoot>
@@ -5478,7 +5503,7 @@ function hubConnections(ids) {
   ids.forEach(id => {
     const t = fieldDescriptions(id).find(d => d.heading === 'Transport');
     if (!t) return;
-    out.push({name: allFields.find(f => f.id === id)?.name || String(id), text: t.text});
+    out.push({id, name: allFields.find(f => f.id === id)?.name || String(id), text: t.text});
   });
   out.sort((a, b) => a.name.localeCompare(b.name, 'en'));
   return out;
@@ -5586,7 +5611,7 @@ function drawHubProfile() {
       <h3>Key facts</h3>
       <div class="pf-facts">
         ${fact('Fields', ids.length)}
-        ${fact(opNames.length > 1 ? 'Operators' : 'Operator', opNames.join(', '))}
+        ${factHtml(opNames.length > 1 ? 'Operators' : 'Operator', opNames.map(companyLink).join(', '))}
         ${fact('Main area', area)}
         ${fact('First production', starts.length ? fmtDate(Math.min(...starts)) : '')}
         ${fact('Field status', statusLine)}
@@ -5602,7 +5627,7 @@ function drawHubProfile() {
     ${havtilHubCard(hubName, ids)}
     ${(() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })()}
     ${conns.length ? `<div class="pf-card pf-desc"><h3>How it is connected</h3>${
-      conns.map(c => `<h4>${esc(c.name)}</h4><p>${esc(c.text)}</p>`).join('')}</div>` : ''}
+      conns.map(c => `<h4>${fieldLink(c.id, c.name)}</h4><p>${esc(c.text)}</p>`).join('')}</div>` : ''}
     ${(() => { const t = hubFacilityTable(facs, nameOf); return t ? `<div class="pf-card pf-wide"><h3>Installations</h3>${t}</div>` : ''; })()}
   `);
 }
@@ -5914,7 +5939,7 @@ function drawDiscoveriesMaturity() {
   renderChart(names, datasets, legend, 'million boe', {xTitle:'Company', allTicks:true});
 
   const groups = names.map(n => ({
-    name: n, vals: CONTINGENT_RC.map(rc => totals[n][rc] || 0),
+    name: n, company: n, vals: CONTINGENT_RC.map(rc => totals[n][rc] || 0),
   }));
   setChartTable(periodTableHtml(groups, CONTINGENT_RC.map(rc => `${rc} · ${RC_LABEL[rc]}`),
     'Company', 'Contingent resources by resource class · million boe · equity-adjusted', 1));
@@ -6017,56 +6042,52 @@ function scrollToTop() {
 
 // Fra selskapsnavnet i fargeforklaringen under «OE per company» til
 // selskapets egen profil.
+// Felles hopp til en profil fra hvor som helst i appen: lukker brønn- og
+// riggpanelet, gir NCS tilbake perioden den lånte, og bytter hovedside.
+// Profilene kan åpnes fra alle hovedsidene, så dette må gjøres likt hver gang.
+function openProfileIn(mode, setup) {
+  if (document.getElementById('wdOverlay').classList.contains('open')) closeWell();
+  if (topMode !== mode) {
+    if (topMode === 'ncs') ncsLeavePeriod();
+    topMode = mode;
+  }
+  setup();
+  syncModeButtons();
+  renderViewTabs();
+  updateFab();
+  if (sheetOpen) renderList();
+  refresh();
+  scrollToTop();
+}
+
+// Fra selskapsnavnet i en tabell, et faktaark eller en eierkake til
+// selskapets egen profil.
 function openCompanyProfile(name) {
-  topMode = 'companies';
-  companySubView = 'profile';
-  selectedCompanyNames = new Set([name]);
-  document.getElementById('modeBtnHubs').classList.remove('active');
-  document.getElementById('modeBtnFields').classList.remove('active');
-  document.getElementById('modeBtnDiscoveries').classList.remove('active');
-  document.getElementById('modeBtnCompanies').classList.add('active');
-  renderViewTabs();
-  updateFab();
-  if (sheetOpen) renderCompanyList();
-  refresh();
-  scrollToTop();
+  openProfileIn('companies', () => {
+    companySubView = 'profile';
+    selectedCompanyNames = new Set([name]);
+  });
 }
 
-// Fra hubnavnet i «OE per hub»-tabellen til hubens egen profil.
 function openHubProfile(name) {
-  topMode = 'hubs';
-  hubSubView = 'profile';
-  selectedHubNames = new Set([name]);
-  syncModeButtons();
-  renderViewTabs();
-  updateFab();
-  if (sheetOpen) renderHubList();
-  refresh();
-  scrollToTop();
+  openProfileIn('hubs', () => {
+    hubSubView = 'profile';
+    selectedHubNames = new Set([name]);
+  });
 }
 
-// Fra feltnavnet i hubprofilens feltliste til feltets egen profil.
 function openFieldProfile(id) {
-  topMode = 'fields';
-  fieldSubView = 'profile';
-  selectedFieldIds = new Set([id]);
-  syncModeButtons();
-  renderViewTabs();
-  updateFab();
-  if (sheetOpen) renderFieldList();
-  refresh();
-  scrollToTop();
+  openProfileIn('fields', () => {
+    fieldSubView = 'profile';
+    selectedFieldIds = new Set([id]);
+  });
 }
 
-// Hopper fra et funnavn i tabellene til funnets profil.
 function openDiscoveryProfile(id) {
-  selectedDiscoveryIds = new Set([id]);
-  discoverySubView = 'profile';
-  renderViewTabs();
-  updateFab();
-  if (sheetOpen) renderDiscoveryList();
-  refresh();
-  scrollToTop();
+  openProfileIn('discoveries', () => {
+    selectedDiscoveryIds = new Set([id]);
+    discoverySubView = 'profile';
+  });
 }
 
 function drawDiscoveryProfile() {
@@ -6107,11 +6128,11 @@ function drawDiscoveryProfile() {
         ${fact('Discovery wellbore', d.wellbore)}
         ${fact('Status', d.status)}
         ${fact('Hydrocarbons', d.hc)}
-        ${fact('Operator', d.operator)}
+        ${factHtml('Operator', d.operator && companyLink(d.operator))}
         ${fact(ownerLabel, d.owner)}
         ${fact('Main area', d.area)}
-        ${fact('Part of field', d.field)}
-        ${fact('Resources booked under', d.inclIn)}
+        ${factHtml('Part of field', d.field && fieldLink(d.field, d.field))}
+        ${factHtml('Resources booked under', d.inclIn && fieldLink(d.inclIn, d.inclIn))}
       </div>
     </div>
     ${(() => { const m = discoveryMap(d.id); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
@@ -6242,14 +6263,12 @@ function companyPortfolio(name, holdings) {
       <thead><tr><th>Hub / field</th><th>Share</th><th>Status</th>
         <th>Operator</th><th>Remaining</th></tr></thead>
       <tbody>${groups.map(g => `
-        <tr class="hub-row"><td>${esc(g.hub)}</td><td>${pct(g.pct, g.exact)}</td>
+        <tr class="hub-row"><td>${hubLink(g.hub)}</td><td>${pct(g.pct, g.exact)}</td>
           <td></td><td></td><td>${vol(g.oe)}</td></tr>` +
         g.fields.map(r => `
-        <tr class="field-row"><td><a class="row-link" href="#"` +
-          ` title="Open the profile for ${esc(r.name)}"` +
-          ` onclick="openFieldProfile(${r.id});return false;">${esc(r.name)}</a></td>
+        <tr class="field-row"><td>${fieldLink(r.id, r.name)}</td>
           <td>${pct(r.share, true)}</td><td>${esc(r.status || '—')}</td>
-          <td>${r.operator === name ? '<span class="pf-op-tag">Operator</span>' : esc(r.operator || '—')}</td>
+          <td>${r.operator === name ? '<span class="pf-op-tag">Operator</span>' : r.operator ? companyLink(r.operator) : '—'}</td>
           <td>${r.hasRes ? vol(r.rem) : '—'}</td></tr>`).join('')).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td>
         <td>${vol(tot)}</td></tr></tfoot>
@@ -6308,19 +6327,13 @@ function buildLicenceRows(name) {
 function licenceTableHtml(rows) {
   if (!rows.length) return '';
   const {key, dir} = licenceSort;
-  const known = new Set(allDiscoveries.map(d => d.id));
   // Infokolonnen: feltet lisensen eier først, deretter funnene i den. Lange
   // lister kuttes — PL 050 har 26 funn — og hele listen ligger i title.
   const info = r => {
     const parts = [];
-    r.fields.forEach(f => parts.push(
-      `<a class="row-link" href="#" title="Open the profile for ${esc(f.name)}"` +
-      ` onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a>`));
+    r.fields.forEach(f => parts.push(fieldLink(f.id, f.name)));
     const ds = r.discoveries;
-    ds.slice(0, 3).forEach(d => parts.push(known.has(d.id)
-      ? `<a class="row-link" href="#" title="Open the profile for ${esc(d.name)}"` +
-        ` onclick="openDiscoveryProfile(${d.id});return false;">${esc(d.name)}</a>`
-      : esc(d.name)));
+    ds.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, d.name)));
     if (ds.length > 3) parts.push(`<span class="lic-more">+${ds.length - 3} more</span>`);
     return parts.join(', ');
   };
@@ -6351,7 +6364,7 @@ function licenceTableHtml(rows) {
       <thead><tr>${head}</tr></thead>
       <tbody>${sorted.map(r => `
         <tr><td>${esc(r.name)}</td><td>${esc(r.area || '—')}</td>
-          <td>${esc(r.phase || '—')}</td><td>${esc(r.operator || '—')}</td>
+          <td>${esc(r.phase || '—')}</td><td>${r.operator ? companyLink(r.operator) : '—'}</td>
           <td>${pct(r.share)}</td><td>${yr(r.validTo)}</td>
           <td class="lic-info">${info(r)}</td></tr>`).join('')}</tbody>
     </table></div>
@@ -6454,7 +6467,7 @@ function drawCompanyProfile() {
     <div class="pf-card">
       <h3>Key facts</h3>
       <div class="pf-facts">
-        ${fact('Group', c.group && c.group !== name ? c.group : '')}
+        ${factHtml('Group', c.group && c.group !== name ? companyLink(c.group) : '')}
         ${fact('Organisation number', c.orgNumber)}
         ${fact('Registered in', c.nation === 'NO' ? 'Norway' : c.nation)}
         ${fact('Fields held', holdings.length || '')}
@@ -6469,7 +6482,8 @@ function drawCompanyProfile() {
     ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
     ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
-      <div id="licenceBox">${licenceTableHtml(licenceRows)}</div></div>` : ''}
+      <div id="licenceBox">${licenceTableHtml(licenceRows)}</div>
+      <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licences →</button></div></div>` : ''}
   `);
   explLinkCard('company', name);
 }
@@ -6573,17 +6587,15 @@ function periodTableHtml(groups, periods, headLabel, caption, decimals = 0) {
   const totals = periods.map((_, i) => groups.reduce((t, g) => t + g.vals[i], 0));
   const cells = vals => vals.map(v => `<td>${n(v)}</td>`).join('');
 
-  const btn = g => g.hub
-    ? ` <button class="row-btn" onclick="openHubProfile(${esc(jsStr(g.hub))})"` +
-      ` title="Open the profile for ${esc(g.hub)}">Profile</button>`
-    : '';
-
+  // Gruppen er en hub eller et selskap, radene under er felt — alle lenker
+  // til profilen sin, som i resten av appen.
+  const head = g => g.hub ? hubLink(g.hub) : g.company ? companyLink(g.company) : esc(g.name);
   const body = groups.map(g => {
     const kids = (g.children || []);
     const single = kids.length === 1 && kids[0].name === g.name;
     const rows = single ? '' : kids
-      .map(c => `<tr class="field-row"><td>${esc(c.name)}</td>${cells(c.vals)}</tr>`).join('');
-    return `<tr class="hub-row"><td>${esc(g.name)}${btn(g)}</td>${cells(g.vals)}</tr>${rows}`;
+      .map(c => `<tr class="field-row"><td>${c.id ? fieldLink(c.id, c.name) : esc(c.name)}</td>${cells(c.vals)}</tr>`).join('');
+    return `<tr class="hub-row"><td>${head(g)}</td>${cells(g.vals)}</tr>${rows}`;
   }).join('');
 
   return `
@@ -6605,11 +6617,11 @@ function renderHubPeriodTable(series, companies, qMap, periods) {
   const groups = series.map(s => {
     const vals = periods.map(lbl => equityOe(s.ids, lbl, qMap, companies));
     const children = s.ids.map(id => ({
-      name: allFields.find(f => f.id === id)?.name || `Field ${id}`,
+      id, name: allFields.find(f => f.id === id)?.name || `Field ${id}`,
       vals: periods.map(lbl => equityOe([id], lbl, qMap, companies)),
     })).filter(c => c.vals.some(v => v > 0))
        .sort((a, b) => b.vals[last] - a.vals[last]);
-    // Knappen settes bare når huben faktisk finnes å navigere til.
+    // Lenken settes bare når huben faktisk finnes å navigere til.
     // Gruppenavnet faller tilbake på `Field <id>` for felt som ikke er i
     // feltlisten, og et slikt navn er ingen hub.
     const real = allHubs.some(h => h.name === s.hub);
@@ -6708,6 +6720,7 @@ function reserveTableHtml(groups, headLabel, caption, opts = {}) {
   const nm = r => r.discoveryId ? link(r, `openDiscoveryProfile(${r.discoveryId})`)
     : r.fieldId ? link(r, `openFieldProfile(${r.fieldId})`)
     : r.company ? link(r, `openCompanyProfile(${esc(jsStr(r.company))})`)
+    : r.hub ? link(r, `openHubProfile(${esc(jsStr(r.hub))})`)
     : esc(r.name);
 
   const body = groups.map(g => {
@@ -6758,9 +6771,10 @@ function renderReserveTableByHub(series, companies, year) {
     if (v.oe <= 0) return;
     const fname = allFields.find(f => f.id === s.id)?.name || String(s.id);
     const hub = hubOfField[s.id] || fname;
-    const h = hubs[hub] = hubs[hub] || {name:hub, liq:0, gas:0, oe:0, children:[]};
+    const h = hubs[hub] = hubs[hub] || {name:hub, ...(allHubs.some(x => x.name === hub) ? {hub} : {}),
+                                        liq:0, gas:0, oe:0, children:[]};
     h.liq += v.liq; h.gas += v.gas; h.oe += v.oe;
-    h.children.push({name:fname, share:{pct: share*100, exact:true}, ...v});
+    h.children.push({name:fname, fieldId:s.id, share:{pct: share*100, exact:true}, ...v});
   });
 
   // Hubraden får selskapenes beregnede andel av HELE huben: equity-justert OE
@@ -8085,8 +8099,8 @@ function explRenderList() {
       <td class="ex-l">${explResultCell(w)}</td>
       <td class="ex-l">${esc(w.licence) || '—'}</td>
       <td class="ex-l">${esc(tc(w.purpose))}</td>
-      <td class="ex-l">${esc(w.operator) || '—'}</td>
-      <td class="ex-l"${w.rigs.length > 1 ? ` title="${esc(w.rigs.join(', '))}"` : ''}>${esc(w.rig) || '—'}${w.rigs.length > 1 ? ` <small>+${w.rigs.length - 1} more</small>` : ''}</td>
+      <td class="ex-l">${w.operator ? companyLink(w.operator) : '—'}</td>
+      <td class="ex-l"${w.rigs.length > 1 ? ` title="${esc(w.rigs.join(', '))}"` : ''}>${w.rig ? rigLink(w.rig) : '—'}${w.rigs.length > 1 ? ` <small>+${w.rigs.length - 1} more</small>` : ''}</td>
       <td>${w.state === 'planned' ? `<span class="ex-est"${w.overdue ? ' title="The planned start date has passed"' : ''}>${fmtShort(w.planned)}${w.overdue ? ' ⚠' : ''}</span>` : fmtShort(w.entry)}</td>
       <td>${w.end ? fmtShort(w.end) : '—'}</td>
     </tr>`).join('');
@@ -8587,11 +8601,11 @@ function openDevWell(id) {
           : g.noEnd || g.maybe ? ' Sodir reports completion dates with a delay, so the end of the bar on the rig schedule is an estimate.' : ''}</p>
       <div class="ex-btns">
         <a class="ex-btn" href="https://factpages.sodir.no/wellbore/pageview/development/all/${g.items[0].id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>
-        ${fld ? `<button class="ex-btn" onclick="closeWell();openFieldProfile(${fld.id})">Field profile →</button>` : ''}
+        ${fld ? `<button class="ex-btn" onclick="openFieldProfile(${fld.id})">Field profile →</button>` : ''}
       </div>
     </div>
     <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
-      ${fact('Field', tc(g.field))}${fact('Operator', g.operator)}${fact('Rig', g.rig)}${fact('Rig type', tc(g.rigType))}
+      ${factHtml('Field', g.field && fieldLink(g.field, tc(g.field)))}${factHtml('Operator', g.operator && companyLink(g.operator))}${factHtml('Rig', g.rig && rigLink(g.rig))}${fact('Rig type', tc(g.rigType))}
       ${fact('Rig kind', g.items[0].fixed ? 'Fixed platform' : 'Mobile')}${fact('Shown from', fmtShort(g.start))}
       ${fact('Shown to', g.maybe ? 'ongoing?' : fmtShort(g.end))}${fact('Sodir first start', fmtShort(g.start0))}${fact('Wellbores', n)}
     </div></div>
@@ -8888,6 +8902,18 @@ function openWell(id, quiet) {
       <div class="ex-btns">${links}</div>
       ${w.pressUrl ? `<div class="pf-map-note">Sodir does not allow its pages to be embedded, so the press release opens on sodir.no.</div>` : ''}
     </div>
+    <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
+      ${fact('Well', w.well || w.name)}${fact('Wellbores', w.branches.length > 1 ? w.branches.length : '')}${fact('Purpose', tc(w.purpose))}${fact('Status', STATE_LABEL[w.state])}
+      ${fact('Result', w.resKey ? tc(w.content) : '')}${factHtml('Operator', w.operator && companyLink(w.operator))}${fact('Licence', w.licence)}
+      ${factHtml(w.rigs.length > 1 ? 'Rigs' : 'Rig', w.rigs.map(rigLink).join(', '))}${fact('Rig type', tc(w.rigType))}
+      ${fact(w.state === 'planned' ? 'Planned start' : 'Started', fmtShort(w.start))}${fact('Completed', w.end ? fmtShort(w.end) : '')}
+      ${fact('Drilling days', w.days)}${fact('Water depth', num(w.waterDepth, 'm'))}${fact('Total depth', num(w.td, 'm'))}
+      ${fact('Formation at TD', tc(w.formationAtTd))}${fact('Age at TD', tc(w.ageAtTd))}
+      ${fact('HC formation', tc(w.hcFormation))}${fact('HC age', tc(w.hcAge))}
+      ${fact('Main area', tc(w.area))}${factHtml('Part of field', w.field && fieldLink(w.field, tc(w.field)))}
+      ${factHtml('Discovery', w.discovery && (w.discoveryId ? discoveryLink(w.discoveryId, w.discovery) : esc(w.discovery)))}
+      ${fact('Drill permit', w.permit)}
+    </div></div>
     ${(() => { const m = explDetailMap(w); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     <div class="pf-card"><h3>Ownership</h3>${own}</div>
     ${w.branches.length > 1 ? `<div class="pf-card"><h3>Wellbores</h3><div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
@@ -8895,20 +8921,9 @@ function openWell(id, quiet) {
       ${w.branches.map(b => `<tr><td class="ex-l"><a href="https://factpages.sodir.no/wellbore/pageview/exploration/all/${b.id}" target="_blank" rel="noopener">${esc(b.name)} ↗</a></td>
         <td class="ex-l">${esc(tc(b.purpose))}</td>
         <td class="ex-l">${b.state === 'completed' ? explResultCell(b) : STATE_LABEL[b.state]}</td>
-        <td class="ex-l">${esc(b.rig) || '—'}</td><td>${fmtShort(b.start)}</td><td>${b.end ? fmtShort(b.end) : '—'}</td>
+        <td class="ex-l">${b.rig ? rigLink(b.rig) : '—'}</td><td>${fmtShort(b.start)}</td><td>${b.end ? fmtShort(b.end) : '—'}</td>
         <td>${b.td ? Math.round(b.td).toLocaleString('en') + ' m' : '—'}</td></tr>`).join('')}
       </tbody></table></div></div>` : ''}
-    <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
-      ${fact('Well', w.well || w.name)}${fact('Wellbores', w.branches.length > 1 ? w.branches.length : '')}${fact('Purpose', tc(w.purpose))}${fact('Status', STATE_LABEL[w.state])}
-      ${fact('Result', w.resKey ? tc(w.content) : '')}${fact('Operator', w.operator)}${fact('Licence', w.licence)}
-      ${fact(w.rigs.length > 1 ? 'Rigs' : 'Rig', w.rigs.join(', '))}${fact('Rig type', tc(w.rigType))}
-      ${fact(w.state === 'planned' ? 'Planned start' : 'Started', fmtShort(w.start))}${fact('Completed', w.end ? fmtShort(w.end) : '')}
-      ${fact('Drilling days', w.days)}${fact('Water depth', num(w.waterDepth, 'm'))}${fact('Total depth', num(w.td, 'm'))}
-      ${fact('Formation at TD', tc(w.formationAtTd))}${fact('Age at TD', tc(w.ageAtTd))}
-      ${fact('HC formation', tc(w.hcFormation))}${fact('HC age', tc(w.hcAge))}
-      ${fact('Main area', tc(w.area))}${fact('Part of field', tc(w.field))}${fact('Discovery', w.discovery)}
-      ${fact('Drill permit', w.permit)}
-    </div></div>
     ${havtilWellCard(w)}
     ${sameLic.length ? `<div class="pf-card"><h3>Other wells in licence ${esc(w.licence)}</h3>
       <table class="res-table ex-table"><tbody>${sameLic.slice(0, 8).map(o => `
@@ -8973,10 +8988,10 @@ function rigFactsCard(name) {
   const f = rigFacts && rigFacts[String(name).toUpperCase()];
   if (!f) return `<div class="pf-card"><div class="pf-map-note">No facility record for this rig in Sodir's data.</div></div>`;
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
-  return `<div class="pf-card"><h3>Facts</h3>
+  return `<div class="pf-card"><h3>Key facts</h3>
     <div class="pf-facts">
       ${fact('Type', tc(f.kind))}${fact('Kind', f.fixed ? 'Fixed platform' : 'Mobile unit (MODU)')}
-      ${fact(f.fixed ? 'Operator' : 'Responsible company', f.company)}
+      ${factHtml(f.fixed ? 'Operator' : 'Responsible company', f.company && companyLink(f.company))}
       ${fact('In service', f.inService ? fmtShort(f.inService) : '')}
       ${fact('Phase', f.phase && f.phase !== 'IN SERVICE' ? tc(f.phase) : '')}${fact('Flag', f.nation)}
     </div>
@@ -8997,9 +9012,11 @@ const fmtDur = mins => {
   const h = mins / 60;
   return h < 36 ? `${Math.max(1, Math.round(h))} h` : `${Math.round(h / 24)} d`;
 };
-const rigLink = name => hasRigAis(name)
-  ? `<a href="#" class="rig-link" onclick="openRigProfile(${esc(JSON.stringify(name))});return false">${esc(name)}</a>`
-  : esc(name);
+// Riggprofilen finnes for alle rigger — uten AIS viser den fakta og Havtil-saker —
+// så navnet lenker alltid, også før AIS-dataene er lastet.
+const rigLink = name => name
+  ? `<a href="#" class="rig-link" onclick="event.stopPropagation();openRigProfile(${esc(JSON.stringify(name))});return false">${esc(name)}</a>`
+  : '';
 
 // Tilstand ut fra AIS: på lokasjon, i fart, ved kai eller åpent hav, og «gammel»
 // når siste melding er over tre dager.
@@ -9481,27 +9498,19 @@ function syncModeButtons() {
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
 }
 
-function explOpenDiscovery(id) { closeWell(); topMode = 'discoveries'; syncModeButtons(); openDiscoveryProfile(id); }
-function explOpenCompany(name) {
-  closeWell();
-  topMode = 'companies';
-  companySubView = 'profile';
-  selectedCompanyNames = new Set([name]);
-  syncModeButtons(); renderViewTabs(); updateFab(); refresh(); scrollToTop();
-}
+const explOpenDiscovery = id => openDiscoveryProfile(id);
+const explOpenCompany = name => openCompanyProfile(name);
 
 // Fra funn- og selskapsprofilene til brønnene deres.
 function openExplorationWell(id) {
-  topMode = 'exploration';
-  explF.open = id;
-  syncModeButtons(); renderViewTabs(); updateFab(); refresh(); scrollToTop();
+  openProfileIn('exploration', () => { explF.open = id; });
 }
 function openExplorationFor(company) {
-  explF = {...explDefaults(), company, from: '', open: null};
-  explLimit = 100;
-  explSubView = 'wells';
-  topMode = 'exploration';
-  syncModeButtons(); renderViewTabs(); updateFab(); refresh(); scrollToTop();
+  openProfileIn('exploration', () => {
+    explF = {...explDefaults(), company, from: '', open: null};
+    explLimit = 100;
+    explSubView = 'wells';
+  });
 }
 
 // Kort nederst i funn- og selskapsprofilene. Brønndataene lastes først her, så
@@ -9732,6 +9741,15 @@ function licPick(name) {
   licRenderBody();
 }
 
+// Fra selskapsprofilen til selskapets side i Licences.
+function openLicencesFor(name) {
+  openProfileIn('licences', () => {
+    licF.company = name;
+    licF.rowsAll = false;
+    licSubView = 'company';
+  });
+}
+
 function licOpenCompany(name) {
   licF.company = name;
   licF.rowsAll = false;
@@ -9888,13 +9906,9 @@ function licRenderCompany() {
     const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'en', {numeric: true});
     return (d || a.name.localeCompare(b.name, 'en', {numeric: true})) * dir;
   });
-  const known = new Set(allDiscoveries.map(d => d.id));
   const info = r => {
-    const parts = r.fields.map(f => `<a class="row-link" href="#" title="Open the profile for ${esc(f.name)}"` +
-      ` onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a>`);
-    r.discoveries.slice(0, 3).forEach(d => parts.push(known.has(d.id)
-      ? `<a class="row-link" href="#" onclick="openDiscoveryProfile(${d.id});return false;">${esc(d.name)}</a>`
-      : esc(d.name)));
+    const parts = r.fields.map(f => fieldLink(f.id, f.name));
+    r.discoveries.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, d.name)));
     if (r.discoveries.length > 3) parts.push(`<span class="lic-more">+${r.discoveries.length - 3} more</span>`);
     const baa = r.baas.map(b => `<span class="lc-baa" title="${esc(tc(b.kind))}">${esc(b.name)}</span>`).join(' ');
     return [parts.join(', '), baa].filter(Boolean).join('<br>');
@@ -10572,10 +10586,9 @@ function licOverlapDetail(a, b) {
     note: `<span class="ex-dot" style="background:${COL.a}"></span>${esc(licShort(a))} operates · <span class="ex-dot" style="background:${COL.b}"></span>${esc(licShort(b))} operates · ` +
           `<span class="ex-dot" style="background:${COL.o}"></span>another operator. Other licences in grey. Coastline: Natural Earth · outlines: Sodir`,
   }) : '';
-  const known = new Set(allDiscoveries.map(d => d.id));
   const info = l => {
-    const parts = l.fields.map(f => `<a class="row-link" href="#" onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a>`);
-    l.discoveries.slice(0, 2).forEach(d => parts.push(known.has(d.id) ? `<a class="row-link" href="#" onclick="openDiscoveryProfile(${d.id});return false;">${esc(d.name)}</a>` : esc(d.name)));
+    const parts = l.fields.map(f => fieldLink(f.id, f.name));
+    l.discoveries.slice(0, 2).forEach(d => parts.push(discoveryLink(d.id, d.name)));
     return [parts.join(', '), l.baas.map(x => `<span class="lc-baa">${esc(x.name)}</span>`).join(' ')].filter(Boolean).join('<br>');
   };
   const rows = shared.slice().sort((x, y) => y.km2 - x.km2);
