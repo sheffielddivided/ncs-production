@@ -42,8 +42,14 @@ Lengste navn vinner: «Oseberg Sør» gir ikke også Oseberg. Hver kobling lagre
 hvor den ble funnet (title, desc, facts, alias).
 
 Selskap: delen av tittelen før første tankestrek, delt på «/», «,» og «og»,
-og samtykkets Operatør-felt. Bare navn som finnes i companies.json eller i
-aliasfila tas med, uten AS/ASA/Norge o.l.
+og samtykkets Operatør-felt. Hvert navn kobles til én juridisk enhet i
+companies.json (cmp), og vises slik Havtil skrev det, uten AS/ASA/Norge o.l.
+(companies). Passer navnet flere enheter, velges den som er aktiv på sokkelen
+og har roller der (rettighetshaver, operatør), så «Equinor» blir Equinor
+Energy AS. Frontend grupperer enhetene i konsern med samme logikk som
+lisensdataene (concernKey i index.html), så Statoil og Equinor, Det norske og
+Aker BP osv. havner sammen uten egne alias her. Navn som ikke finnes i
+companies.json tas ikke med.
 
 Koblingene regnes ut på nytt hver kjøring fra de lagrede rådataene, så
 rettelser i data/havtil_aliases.json virker bakover.
@@ -285,7 +291,12 @@ class Matcher:
         self.names.sort(key=lambda x: -x[0])
 
         self.renames = {k.lower(): v for k, v in (aliases.get('companies') or {}).items()}
-        self.companies = {short_company(c['name']).lower() for c in table('companies')} - {''}
+        self.companies = {}
+        self.legal = {c['name'] for c in table('companies')}
+        for c in table('companies'):
+            short = short_company(c['name']).lower()
+            if short:
+                self.companies.setdefault(short, []).append(c)
         self.ignore = {k: set(v) for k, v in (aliases.get('ignore') or {}).items()}
 
     def fields(self, item):
@@ -311,18 +322,29 @@ class Matcher:
         return found, facs
 
     def company(self, part):
+        """(navn som vist, juridisk enhet i companies.json), eller None."""
         part = re.sub(r'^(varsel om pålegg til|pålegg til|sut-tilsyn)\s*', '', part.strip(), flags=re.I)
         name = short_company(part)
+        if name.lower() in self.renames:
+            name = self.renames[name.lower()]
+            # Et alias kan peke rett på en juridisk enhet, der kortnavnet er tvetydig
+            # (to ulike selskaper har hett «Det norske oljeselskap»).
+            if name in self.legal:
+                return short_company(name), name
         low = name.lower()
         if not low:
             return None
-        if low in self.renames:
-            return self.renames[low]
-        if low in self.companies or any(c.startswith(low + ' ') for c in self.companies):
-            return name
-        return None
+        cands = [(0, c) for c in self.companies.get(low, [])]
+        cands += [(1, c) for k, v in self.companies.items() if k.startswith(low + ' ') for c in v]
+        if not cands:
+            return None
+        roles = ('licensee', 'licenceOper', 'facilityOper', 'tufOper', 'baaOper')
+        rank = lambda x: (-(x[1].get('activeNcs') or 0), -any(x[1].get(r) for r in roles), x[0],
+                          '(old' in x[1]['name'], len(x[1]['name']))
+        return name, min(cands, key=rank)[1]['name']
 
     def companies_of(self, item):
+        """To lister i samme rekkefølge: navnene slik de vises, og juridisk enhet."""
         out = []
         head = re.split(r'\s[–—-]\s', item['title'], maxsplit=1)
         parts = re.split(r'/|,|\s+og\s+|\s+and\s+', head[0]) if len(head) > 1 else []
@@ -330,9 +352,9 @@ class Matcher:
         for p in parts + ([op] if op else []):
             c = self.company(p)
             # «Equinor» fra tittelen og «Equinor Energy» fra Operatør-feltet er samme selskap.
-            if c and not any(c == o or c.startswith(o + ' ') for o in out):
+            if c and c[1] not in (o[1] for o in out):
                 out.append(c)
-        return out
+        return [c[0] for c in out], [c[1] for c in out]
 
 
 # ── KJØRING ──────────────────────────────────────────────────────────────────
@@ -389,7 +411,7 @@ def main():
         out['fieldSrc'] = [found[f] for f in out['fields']]
         if facs:
             out['facilities'] = facs
-        out['companies'] = match.companies_of(it)
+        out['companies'], out['cmp'] = match.companies_of(it)
         # Fagstoff tas bare med når det gjelder et bestemt felt.
         if it['kind'] == 'news' and not out['fields']:
             continue

@@ -5113,17 +5113,39 @@ function loadHavtil() {
 const HV_KIND = {inspection: 'Inspection', consent: 'Consent', investigation: 'Investigation',
                  notice: 'Order / notice', news: 'News'};
 const HV_SHOW = 6;
+const HV_SOURCE = 'Source: Norwegian Ocean Industry Authority (Havtil; the Petroleum Safety Authority before 2024). Cases mainly from 2014 onwards';
+// Kortet tegnes straks dataene finnes; ellers en plassholder som byttes ut når
+// de kommer, hvis den samme profilen fortsatt vises.
+function havtilLazy(key, render) {
+  if (havtilData) return render();
+  loadHavtil().then(() => {
+    const slot = document.getElementById('hvSlot');
+    if (slot && slot.dataset.key === key) slot.outerHTML = render();
+  });
+  return `<div id="hvSlot" data-key="${esc(key)}"></div>`;
+}
 function havtilCard(fieldId) {
-  if (!havtilData) {
-    loadHavtil().then(() => {
-      const slot = document.getElementById('hvSlot');
-      if (slot && +slot.dataset.field === fieldId) slot.outerHTML = havtilCard(fieldId);
-    });
-    return `<div id="hvSlot" data-field="${fieldId}"></div>`;
-  }
-  const b = havtilData;
-  if (!b.items) return '';
-  const items = b.items.filter(it => it.fields && it.fields.includes(fieldId));
+  return havtilLazy(`f${fieldId}`, () => havtilList(
+    (havtilData.items || []).filter(it => it.fields && it.fields.includes(fieldId)),
+    'linked to the field by name in the title, summary or consent details'));
+}
+// Selskapsprofilen: alle saker for konsernet, så Statoil-sakene kommer med hos
+// Equinor og Det norske hos Aker BP. Havtil-navnet er koblet til en juridisk
+// enhet i fetch_havtil.py (cmp); konsernet er det samme som i Licences.
+function havtilCompanyCard(name) {
+  return havtilLazy(`c${name}`, () => {
+    const key = concernKey(name);
+    const items = (havtilData.items || []).filter(it => (it.cmp || []).some(c => concernKey(c) === key));
+    const n = k => items.filter(it => it.kind === k).length;
+    const parts = [[n('inspection'), 'inspection', 'inspections'], [n('consent'), 'consent', 'consents'],
+                   [n('investigation'), 'investigation', 'investigations'], [n('notice'), 'order / notice', 'orders / notices']]
+      .filter(([c]) => c).map(([c, one, many]) => `${c} ${c === 1 ? one : many}`);
+    return havtilList(items,
+      'linked to the company by the name in the title or the consent\'s operator, grouped by corporate group as in Licences',
+      parts.length ? `<div class="pf-map-note" style="margin:0 0 8px">${parts.join(' · ')}</div>` : '');
+  });
+}
+function havtilList(items, linkNote, intro = '') {
   if (!items.length) return '';
   const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const row = it => {
@@ -5142,11 +5164,11 @@ function havtilCard(fieldId) {
     </li>`;
   };
   const first = items.slice(0, HV_SHOW), rest = items.slice(HV_SHOW);
-  return `<div class="pf-card"><h3>Havtil · inspections and consents</h3>
+  return `<div class="pf-card"><h3>Havtil · inspections and consents</h3>${intro}
     <ul class="hv-list">${first.map(row).join('')}</ul>
     ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} more</summary>
       <ul class="hv-list">${rest.map(row).join('')}</ul></details>` : ''}
-    <div class="pf-map-note">Source: Norwegian Ocean Industry Authority (Havtil; the Petroleum Safety Authority before 2024). Cases mainly from 2014 onwards, linked to the field by name in the title, summary or consent details.</div>
+    <div class="pf-map-note">${HV_SOURCE}, ${linkNote}.</div>
   </div>`;
 }
 
@@ -6419,6 +6441,7 @@ function drawCompanyProfile() {
     ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
     ${investmentCard(ids, fieldNameOf, {company: name})}
+    ${havtilCompanyCard(name)}
     ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
     ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
@@ -10003,7 +10026,23 @@ const licKindOf = id => LIC_KINDS.find(k => k.id === id);
 // og visningsnavnet hentes fra det største aktive selskapet i konsernet.
 const LIC_GROUP_ALIAS = {'STATOIL': 'EQUINOR ENERGY', 'AKER': 'AKER BP', 'DET NORSKE': 'AKER BP',
   'VÅR ENERGI': 'VÅR', 'DEA NORGE': 'WINTERSHALL', 'DEA': 'WINTERSHALL', 'SPIRIT ENERGY': 'SPIRIT',
-  'NEPTUNE E&P': 'NEPTUNE ENERGY', 'DNO NORTH SEA': 'DNO NORGE', 'ELF': 'TOTAL', 'MOBIL': 'EXXONMOBIL'};
+  'NEPTUNE E&P': 'NEPTUNE ENERGY', 'DNO NORTH SEA': 'DNO NORGE', 'ELF': 'TOTAL', 'MOBIL': 'EXXONMOBIL',
+  'ESSO': 'EXXONMOBIL'};
+// Nøkkelen alene trenger ikke lisensdataene og brukes også av Havtil-kortet i
+// selskapsprofilen. Navnene i licConcern avhenger av licStats og bygges først
+// når Licences har lastet.
+let concernKeys = null;
+function concernKey(name) {
+  if (!concernKeys) {
+    concernKeys = {};
+    const cb = bundle.companies;
+    if (cb) {
+      const i = Object.fromEntries(cb.columns.map((c, k) => [c, k]));
+      cb.rows.forEach(r => { concernKeys[r[i.name]] = LIC_GROUP_ALIAS[r[i.group]] || r[i.group] || r[i.name]; });
+    }
+  }
+  return concernKeys[name] || String(name || '').toUpperCase();
+}
 let licConMap = null;
 function licConcern(name) {
   if (!licConMap) {
@@ -10013,7 +10052,7 @@ function licConcern(name) {
     if (cb) {
       const i = Object.fromEntries(cb.columns.map((c, k) => [c, k]));
       cb.rows.forEach(r => {
-        const key = LIC_GROUP_ALIAS[r[i.group]] || r[i.group] || r[i.name];
+        const key = concernKey(r[i.name]);
         licConMap[r[i.name]] = key;
         const n = licStats[r[i.name]] ? licStats[r[i.name]].count : 0;
         if (n && (!lab[key] || n > lab[key][0])) lab[key] = [n, licShort(r[i.name])];
