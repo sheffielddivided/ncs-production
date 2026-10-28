@@ -1050,11 +1050,21 @@ også fra adressefeltet.
 ### Delbar lenke
 
 Hele visningstilstanden ligger i **hash-delen** av adressen, og adressefeltet
-oppdateres fortløpende med `history.replaceState` (`syncUrl`,
-`index.html:1627-1629`, kalt fra `refresh`, `setWater` og
-`setHubReserveGrouping`). Hash er valgt fordi GitHub Pages serverer samme fil
-uansett sti, og fordi hash aldri sendes til serveren. `replaceState` framfor
-`pushState` gjør at hver justering ikke fyller nettleserhistorikken.
+oppdateres fortløpende av `syncUrl` (kalt fra `refresh` og ved hver
+filterendring). Hash er valgt fordi GitHub Pages serverer samme fil uansett
+sti, og fordi hash aldri sendes til serveren.
+
+**Tilbake-knappen.** Navigasjon kaller `markNav()` før endringen, og neste
+`syncUrl` bruker da `history.pushState`: bytte av side eller fane, en profil
+(også via lenker og radioknappvalg i listen i profilvisningene), et brønn-
+eller riggpanel, valgt lisens eller selskap i Licences, og tittelklikket.
+Alt annet — periode, filtre, søk, sortering, avkryssing — bruker
+`replaceState`, så hvert tastetrykk ikke blir et steg. Standardvalg som settes
+etter navigasjonen havner i samme steg. `popstate` leser adressen med
+`applyHash` og tegner visningen, som for en delt lenke. Brønn- og
+riggpanelet står i adressen på alle sider (`xw`, `xg`); lukkes det med ×,
+Close, Escape eller klikk utenfor, går appen ett steg tilbake når panelet ble
+åpnet som eget steg, ellers lukkes det på stedet (delt lenke).
 
 ```
 #m=companies&v=oe_per_hub&p=quarterly&y=2015-2026&c=Aker+BP+ASA%7EA%2FS+Norske+Shell

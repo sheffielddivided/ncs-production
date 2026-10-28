@@ -1407,6 +1407,7 @@ function renderViewTabs() {
 }
 
 function setSubView(v) {
+  markNav();
   if (topMode === 'fields') { fieldSubView = v; syncFieldSelection(); }
   else if (topMode === 'hubs') { hubSubView = v; syncHubSelection(); }
   else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
@@ -1499,6 +1500,7 @@ function ncsLeavePeriod() {
 
 function switchMode(m) {
   if (topMode === m) return;
+  markNav();
   if (topMode === 'ncs') ncsLeavePeriod();
   if (m === 'ncs') ncsEnterPeriod();
   topMode = m;
@@ -1588,6 +1590,7 @@ function toggleDiscovery(id, item, cb) {
   // klikk velger det funnet og fravelger det forrige. De tre andre fanene
   // viser hele porteføljen og krysser av som før.
   if (discoveryProfileMode()) {
+    markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedDiscoveryIds = new Set([id]);
     renderDiscoveryList();
     updateFab();
@@ -1631,6 +1634,7 @@ function renderHubList() {
 function toggleHub(name, item, cb) {
   // Hubprofilen viser én hub om gangen, så listen blir en radioknapp.
   if (hubProfileMode()) {
+    markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedHubNames = new Set([name]);
     renderHubList();
     updateFab();
@@ -1693,6 +1697,7 @@ function renderCompanyList() {
 function toggleField(id, item, cb) {
   // Feltprofilen viser ett felt om gangen, så listen blir en radioknapp.
   if (fieldProfileMode()) {
+    markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedFieldIds = new Set([id]);
     renderFieldList();
     updateFab();
@@ -1710,6 +1715,7 @@ function toggleField(id, item, cb) {
 function toggleCompany(name, item, cb) {
   // Som i funnprofilen: ett selskap om gangen, så listen blir en radioknapp.
   if (companySingleMode()) {
+    markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedCompanyNames = new Set([name]);
     renderCompanyList();
     updateFab();
@@ -1931,6 +1937,7 @@ function discoveryPartners(d) {
 // hash. Kalles fra tittelen øverst. Adressen skrives om av refresh() til
 // slutt, så en delt visning man har åpnet blir borte også fra adressefeltet.
 function resetView() {
+  markNav();
   topMode = 'companies';
   ncsPrevPeriod = null;
   fieldSubView = hubSubView = 'oe_per_field';
@@ -1991,8 +1998,9 @@ function resetView() {
 // ── DELBAR LENKE ─────────────────────────────────────────────────────────────
 // Hele visningstilstanden ligger i hash-delen av adressen. Hash fordi
 // GitHub Pages serverer samme fil uansett sti, og fordi den aldri sendes til
-// serveren. Adressen oppdateres med replaceState, så deling fungerer ved å
-// kopiere fra adressefeltet uten at hver justering fyller nettleserhistorikken.
+// serveren. Deling fungerer ved å kopiere fra adressefeltet. Navigasjon legges
+// som nye steg i nettleserhistorikken, justeringer erstatter adressen — se
+// syncUrl og markNav under.
 //
 // Utvalg lagres som felt-ID-er, men som NAVN for huber og selskaper. Navn kan
 // endres — en hub kan døpes om i settings-visningen — og da faller den
@@ -2033,8 +2041,6 @@ function stateToHash() {
     if (!explF.aisOnly) q.set('xo', '0');
     if (explF.fixed) q.set('xf', '1');
     if (!explF.modu) q.set('xm', '0');
-    if (explF.open) q.set('xw', explF.open);
-    if (explF.rig) q.set('xg', explF.rig);
   }
   else if (topMode === 'licences') {
     const dflt = licDefaults();
@@ -2063,13 +2069,61 @@ function stateToHash() {
     if (cmpExplWildcat) q.set('cw', '1');
     if (cmpExplYear) q.set('cy', cmpExplYear);
   }
+  // Brønn- og riggpanelet kan åpnes over alle sidene (fra profilene også).
+  if (explF.open) q.set('xw', explF.open);
+  if (explF.rig) q.set('xg', explF.rig);
   return q.toString();
 }
 
+// ── Historikk ────────────────────────────────────────────────────────────────
+// Hele visningen står i adressen. Navigasjon — bytte av side eller fane, en
+// profil, et brønn- eller riggpanel, en valgt lisens — legges som et nytt steg i
+// nettleserhistorikken (markNav før endringen, pushState i neste syncUrl), så
+// tilbake- og fram-knappen virker. Alt annet — periode, filtre, søk, sortering,
+// avkryssing — erstatter adressen, ellers ville hvert tastetrykk blitt et steg.
+// Standardvalg som settes etter navigasjonen (en lisens, et selskap) havner i
+// samme steg, fordi de kommer som replace etter push.
+let navPending = false, navRestoring = false;
+function markNav() { if (!navRestoring) navPending = true; }
+const overlayOpen = () => document.getElementById('wdOverlay').classList.contains('open');
 function syncUrl() {
-  try { history.replaceState(null, '', '#' + stateToHash()); } catch (e) { /* ikke kritisk */ }
+  const h = '#' + stateToHash();
+  try {
+    if (navPending && h !== location.hash) history.pushState({ov: !!(explF.open || explF.rig)}, '', h);
+    else history.replaceState(history.state, '', h);
+  } catch (e) { /* ikke kritisk */ }
+  navPending = false;
   renderSourceNote();
 }
+
+// Brønn- eller riggpanelet fra adressen. Exploration åpner det selv i
+// refreshExploration; over de andre sidene gjøres det her.
+function openOverlayFromState() {
+  if (topMode === 'exploration') return;
+  if (explF.rig) openRigProfile(explF.rig, true);
+  else if (explF.open) loadExploration().then(() => { if (explF.open) openWell(explF.open, true); });
+}
+
+// Tilbake eller fram: les adressen og tegn visningen, som for en delt lenke.
+window.addEventListener('popstate', async () => {
+  navRestoring = true;
+  navPending = false;
+  try {
+    const wasNcs = topMode === 'ncs';
+    if (sheetOpen) closeSheet();
+    applyHash();
+    if (wasNcs && topMode !== 'ncs') ncsPrevPeriod = null;   // perioden står i adressen
+    syncModeButtons();
+    renderViewTabs();
+    updateFab();
+    if (!explF.open && !explF.rig && overlayOpen()) closeWell(true);
+    const p = refresh();
+    openOverlayFromState();
+    await p;
+  } finally {
+    navRestoring = false;
+  }
+});
 
 // ── KILDER ───────────────────────────────────────────────────────────────────
 // Kildelinjen nederst nevner alle kildene den aktuelle siden bygger på, med
@@ -2187,8 +2241,6 @@ function applyHash() {
     if (g('xo') === '0') explF.aisOnly = false;
     if (g('xf') === '1') explF.fixed = true;
     if (g('xm') === '0') explF.modu = false;
-    if (+g('xw') > 0) explF.open = +g('xw');
-    if (g('xg')) explF.rig = g('xg');
   }
   if (topMode === 'prices') {
     const py = (q.get('py') || '').match(/^(\d{4})-(\d{4})$/);
@@ -2258,6 +2310,8 @@ function applyHash() {
 
   showWater = q.get('w') === '1';
   if (q.get('g') === 'company') hubReserveGrouping = 'company';
+  explF.open = +q.get('xw') > 0 ? +q.get('xw') : null;
+  explF.rig = q.get('xg') || null;
   return true;
 }
 
@@ -6165,7 +6219,8 @@ function scrollToTop() {
 // riggpanelet, gir NCS tilbake perioden den lånte, og bytter hovedside.
 // Profilene kan åpnes fra alle hovedsidene, så dette må gjøres likt hver gang.
 function openProfileIn(mode, setup) {
-  if (document.getElementById('wdOverlay').classList.contains('open')) closeWell();
+  if (overlayOpen()) closeWell(true);
+  markNav();
   if (topMode !== mode) {
     if (topMode === 'ncs') ncsLeavePeriod();
     topMode = mode;
@@ -9145,6 +9200,8 @@ function explDetailMap(w) {
 function openWell(id, quiet) {
   const w = explById[id];
   if (!w) return;
+  if (!quiet) markNav();
+  explF.rig = null;
   explF.open = id;
   if (!quiet) syncUrl();
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
@@ -9211,7 +9268,11 @@ function openWell(id, quiet) {
   document.body.style.overflow = 'hidden';
 }
 
-function closeWell() {
+// fromNav: lukkes som del av en navigasjon eller tilbake-knappen. Ellers (×,
+// Close, Escape, klikk utenfor) går vi ett steg tilbake når panelet ble åpnet som
+// eget steg i historikken, slik at tilbake-knappen ikke åpner det igjen.
+function closeWell(fromNav) {
+  if (!fromNav && history.state && history.state.ov && (explF.open || explF.rig)) { history.back(); return; }
   explF.open = null;
   explF.rig = null;
   rigStop();
@@ -9536,6 +9597,8 @@ async function openRigProfile(name, quiet, seekMin) {
   await loadExploration();
   const data = rigData(name);
   const body = document.getElementById('wdBody');
+  if (!quiet) markNav();
+  explF.open = null;
   explF.rig = name;
   if (!quiet) syncUrl();
   const show = () => {
@@ -10033,6 +10096,7 @@ function licCoOptions() {
 function licPick(name) {
   const ok = licSubView === 'map' ? (licStats[name] || (licHist && licHist.companies.includes(name))) : licStats[name];
   if (!ok) return;
+  markNav();
   licF.company = name;
   licF.rowsAll = false;
   syncUrl();
@@ -10049,6 +10113,7 @@ function openLicencesFor(name) {
 }
 
 function licOpenCompany(name) {
+  markNav();
   licF.company = name;
   licF.rowsAll = false;
   licSubView = 'company';
@@ -10058,6 +10123,7 @@ function licOpenCompany(name) {
 }
 
 function licOpenTab(tab, company) {
+  markNav();
   if (company !== undefined) licF.company = company;
   licSubView = tab;
   renderViewTabs();
@@ -10081,6 +10147,7 @@ function licPickLicence(name) {
   const n = String(name || '').trim().toUpperCase();
   const hit = licAll.find(l => l.name.toUpperCase() === n) || licList.find(l => l.name.toUpperCase() === n);
   if (!hit) return;
+  markNav();
   licF.lic = hit.name;
   syncUrl();
   licRenderBody();
@@ -11352,6 +11419,7 @@ async function init() {
 
   updateFab();
   refresh(); // First render — happens as soon as licensees are loaded
+  openOverlayFromState();
 
   // ── Phase 3: Once reserves arrive, re-sort company list in background ──
   reservesPromise.then(() => {
