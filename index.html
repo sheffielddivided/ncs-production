@@ -2258,10 +2258,10 @@ function applyHash() {
     if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
     ncsF.wild = q.get('nw') === '1';
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
-    if (q.get('nk') === 'all') ncsF.rank = 'all';
+    if (['all', 'prod'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     ncsF.crArea = q.get('na') === '1';
-    if (q.get('nf') === 'timeline') ncsF.fl = 'timeline';
+    if (['rem', 'orig', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
     if (q.get('ns') === 'acc') ncsF.es = 'acc';
   }
@@ -3099,20 +3099,20 @@ function drawPriceOilGas() {
 // vekslere over grafen. Tilstanden ligger i ncsF og i lenken.
 const NCS_TABS = [
   {id:'production',  label:'Production'},
-  {id:'fields',      label:'Fields'},
-  {id:'water',       label:'Water'},
   {id:'reserves',    label:'Reserves'},
+  {id:'fields',      label:'Fields'},
+  {id:'companies',   label:'Companies'},
+  {id:'water',       label:'Water'},
   {id:'replacement', label:'Replacement'},
   {id:'exploration', label:'Exploration'},
   {id:'creaming',    label:'Creaming'},
-  {id:'companies',   label:'Companies'},
   {id:'investments', label:'Investments'},
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
 // prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · wild: bare wildcats
-// · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn)
-// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'timeline'
+// · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
+// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'timeline'
 // · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
 const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', ec: 'employment', es: 'rev'});
@@ -3158,12 +3158,13 @@ function ncsToggleAbove(html) {
 async function refreshNcs() {
   showSpinner();
   const v = ncsSubView;
-  if (v === 'production' || v === 'fields' || v === 'water') await loadProdForFields(ncsFieldIds());
+  if (v === 'production' || v === 'water') await loadProdForFields(ncsFieldIds());
+  else if (v === 'fields') await Promise.all([loadProdForFields(ncsFieldIds()), loadFieldReserves()]);
   else if (v === 'creaming') await Promise.all([loadExploration(), loadFieldReserves(), loadDiscoveries()]);
   else if (v === 'economy') await loadSsb();
   else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
   else if (v === 'exploration') await loadExploration();
-  else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries()]);
+  else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries(), loadProdForFields(ncsFieldIds())]);
   drawChart();
 }
 
@@ -3570,23 +3571,19 @@ function drawNcsCreaming() {
 }
 
 // ── NCS: FIELDS ──
-// Rangering etter produksjon de siste tolv månedene med data, og en
-// tidslinje over felt som kom i produksjon og ble stengt ned. Oppstart er
-// Sodirs produksjonsstart; nedstengt er siste år med produksjon for felt med
-// status «Shut down». Antall producerende felt teller felt med produksjon i
-// året.
+// Rangering etter produksjon de siste tolv månedene med data, etter
+// gjenstående og etter opprinnelige (utvinnbare) reserver i siste
+// reserveårgang, og en tidslinje over felt som kom i produksjon og ble
+// stengt ned. Oppstart er Sodirs produksjonsstart; nedstengt er siste år med
+// produksjon for felt med status «Shut down». Antall producerende felt teller
+// felt med produksjon i året.
 function ncsMonthly(id) {
   return (fieldProdCache[id] || []).map(r => r.attributes).filter(a => a.prfMonth > 0);
 }
 
-function drawNcsFields() {
-  const ids = ncsFieldIds();
-  const toggle = ncsPills('fl', [['rank', 'Ranking'], ['timeline', 'Start-ups & shutdowns']]);
-  setProfile(''); setChartTable('');
-  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-  if (ncsF.fl === 'timeline') return drawNcsFieldTimeline(ids, toggle);
-
-  // Siste måned med rapportert produksjon, og de tolv månedene som ender der.
+// De tolv siste månedene med rapportert produksjon på sokkelen, som
+// månedsindekser (år * 12 + måned - 1), og antall dager i dem.
+function ncsLast12(ids) {
   let last = 0;
   ids.forEach(id => ncsMonthly(id).forEach(a => {
     if ((a.prfPrdOeNetMillSm3 || 0) > 0) last = Math.max(last, a.prfYear * 12 + a.prfMonth - 1);
@@ -3594,50 +3591,89 @@ function drawNcsFields() {
   const first = last - 11;
   let dayCount = 0;
   for (let k = first; k <= last; k++) dayCount += daysInMonth(Math.floor(k / 12), k % 12 + 1);
-  const list = ids.map(id => {
-    let oe = 0, gas = 0;
-    ncsMonthly(id).forEach(a => {
-      const k = a.prfYear * 12 + a.prfMonth - 1;
-      if (k < first || k > last) return;
-      oe += a.prfPrdOeNetMillSm3 || 0; gas += a.prfPrdGasNetBillSm3 || 0;
+  const label = k => `${MONTH_ABBR[k % 12]} ${Math.floor(k / 12)}`;
+  return {first, last, dayCount, span: `${label(first)} – ${label(last)}`};
+}
+
+function drawNcsFields() {
+  const ids = ncsFieldIds();
+  const mode = ncsF.fl;
+  const toggle = ncsPills('fl', [['rank', 'Production'], ['rem', 'Remaining reserves'], ['orig', 'Original reserves'],
+                                 ['timeline', 'Start-ups & shutdowns']]);
+  setProfile(''); setChartTable('');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  if (mode === 'timeline') return drawNcsFieldTimeline(ids, toggle);
+
+  let list, unit, n0, sub, info, note, facts;
+  if (mode === 'rank') {
+    const {first, last, dayCount, span} = ncsLast12(ids);
+    list = ids.map(id => {
+      let oe = 0, gas = 0;
+      ncsMonthly(id).forEach(a => {
+        const k = a.prfYear * 12 + a.prfMonth - 1;
+        if (k < first || k > last) return;
+        oe += a.prfPrdOeNetMillSm3 || 0; gas += a.prfPrdGasNetBillSm3 || 0;
+      });
+      return {id, liq: Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3 / dayCount, gas: gas * 1e6 * BBL_PER_SM3 / dayCount};
     });
-    return {id, name: fieldNameOf(id), area: ncsArea(id),
-      liq: Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3 / dayCount, gas: gas * 1e6 * BBL_PER_SM3 / dayCount};
-  }).map(f => ({...f, total: f.liq + f.gas})).filter(f => f.total >= 1).sort((a, b) => b.total - a.total);
+    unit = 'boe/day'; n0 = v => Math.round(v).toLocaleString('en');
+    sub = `Ranked by production, last 12 months (${span})`;
+    info = `<strong>Ranking:</strong> average net production over the last 12 months with reported data &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`;
+    note = `Average net production ${span}, boe/day, with share of the NCS total.`;
+    facts = [['Producing fields', null], ['Top 10 share', null], ['Fields making half the output', null], ['NCS average', 'boe/day']];
+  } else {
+    // Siste reserveårgang. Væsker er OE minus gass, som i remainingSplit.
+    const orig = mode === 'orig';
+    const vintage = Math.max(...Object.values(fieldReserves || {}).filter(r => r.length).map(r => r[r.length - 1].year));
+    list = Object.entries(fieldReserves || {}).filter(([, rows]) => rows.length).map(([id, rows]) => {
+      const cur = rows[rows.length - 1];
+      if (!orig) return {id: +id, ...remainingSplit(cur, 1)};
+      const gas = cur.raw.fldRecoverableGas || 0;
+      return {id: +id, liq: Math.max(0, cur.recoverableOE - gas) * BBL_PER_SM3, gas: gas * BBL_PER_SM3};
+    });
+    unit = 'million boe'; n0 = v => v.toLocaleString('en', {maximumFractionDigits: v < 10 ? 1 : 0});
+    const what = orig ? 'original recoverable reserves' : 'remaining reserves';
+    sub = `Ranked by ${what}, vintage ${vintage} · million boe`;
+    info = orig
+      ? `<strong>Ranking:</strong> original recoverable reserves (produced plus remaining), Sodir estimate as of 31 Dec ${vintage} &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate &nbsp;|&nbsp; Includes shut-down fields &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`
+      : `<strong>Ranking:</strong> remaining reserves, Sodir estimate as of 31 Dec ${vintage} &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate &nbsp;|&nbsp; Contingent resources in discoveries are not included &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`;
+    note = `${orig ? 'Original recoverable' : 'Remaining'} reserves, vintage ${vintage}, million boe, with share of the NCS total.`;
+    facts = [[orig ? 'Fields' : 'Fields with reserves', null], ['Top 10 share', null],
+             ['Fields holding half the reserves', null], ['NCS total', 'million boe']];
+  }
+  list = list.map(f => ({...f, name: fieldNameOf(f.id), total: f.liq + f.gas}))
+    .filter(f => f.total >= (unit === 'boe/day' ? 1 : 0.05)).sort((a, b) => b.total - a.total);
   const grand = list.reduce((t, f) => t + f.total, 0);
   const top10 = list.slice(0, 10).reduce((t, f) => t + f.total, 0);
   const half = (() => { let acc = 0, n = 0; for (const f of list) { acc += f.total; n++; if (acc >= grand / 2) break; } return n; })();
   const shown = ncsF.all ? list : list.slice(0, 25);
   const max = shown.length ? shown[0].total : 1;
-  const n0 = v => Math.round(v).toLocaleString('en');
-  const mLabel = k => `${MONTH_ABBR[k % 12]} ${Math.floor(k / 12)}`;
+  const factVals = [list.length, `${(top10 / grand * 100).toFixed(0)} %`, half, `${n0(grand)} ${facts[3][1]}`];
   const bars = shown.map((f, i) => `<div class="lc-row" onclick="openFieldProfile(${f.id})" role="link" tabindex="0"
       onkeydown="if(event.key==='Enter')openFieldProfile(${f.id})">
       <div class="lc-name" title="${esc(f.name)}">${i + 1}. <span class="lc-u">${esc(f.name)}</span></div>
       <div class="lc-track" style="width:${(f.total / max * 70).toFixed(1)}%">
-        ${f.liq > 0 ? `<span style="flex:${f.liq};background:${OIL_COLOR}" title="${esc(f.name)} · Oil: ${n0(f.liq)} boe/day"></span>` : ''}
-        ${f.gas > 0 ? `<span style="flex:${f.gas};background:${GAS_COLOR}" title="${esc(f.name)} · Gas: ${n0(f.gas)} boe/day"></span>` : ''}</div>
+        ${f.liq > 0 ? `<span style="flex:${f.liq};background:${OIL_COLOR}" title="${esc(f.name)} · Oil: ${n0(f.liq)} ${unit}"></span>` : ''}
+        ${f.gas > 0 ? `<span style="flex:${f.gas};background:${GAS_COLOR}" title="${esc(f.name)} · Gas: ${n0(f.gas)} ${unit}"></span>` : ''}</div>
       <div class="lc-val">${n0(f.total)} · ${(f.total / grand * 100).toFixed(1)} %</div></div>`).join('');
   document.getElementById('chartArea').innerHTML = `${toggle}
     <div class="pf-facts" style="margin-bottom:10px">
-      <div class="pf-fact"><span>Producing fields</span><strong>${list.length}</strong></div>
-      <div class="pf-fact"><span>Top 10 share</span><strong>${(top10 / grand * 100).toFixed(0)} %</strong></div>
-      <div class="pf-fact"><span>Fields making half the output</span><strong>${half}</strong></div>
-      <div class="pf-fact"><span>NCS average</span><strong>${n0(grand)} boe/day</strong></div>
+      ${facts.map(([l], i) => `<div class="pf-fact"><span>${l}</span><strong>${factVals[i]}</strong></div>`).join('')}
     </div>
     ${bars}
     <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${OIL_COLOR}"></span>Oil</span>
       <span class="ex-leg"><span class="ex-dot" style="background:${GAS_COLOR}"></span>Gas</span>
       <span class="ex-leg">Showing ${shown.length} of ${list.length}
       ${list.length > 25 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 25' : 'show all'}</a>` : ''}</span></div>
-    <div class="pf-map-note">Average net production ${mLabel(first)} – ${mLabel(last)}, boe/day, with share of the NCS total. Click a field for its profile.</div>`;
-  setChartTitle('Norwegian Continental Shelf · Fields', `Ranked by production, last 12 months (${mLabel(first)} – ${mLabel(last)})`);
-  setInfo(`<strong>Ranking:</strong> average net production over the last 12 months with reported data &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+    <div class="pf-map-note">${note} Click a field for its profile.</div>`;
+  setChartTitle('Norwegian Continental Shelf · Fields', sub);
+  setInfo(info);
+  const r = v => unit === 'boe/day' ? Math.round(v) : +v.toFixed(1);
   lastLabels = list.map(f => f.name); lastXTitle = 'Field';
-  lastDatasets = [{label: 'Oil, boe/day', data: list.map(f => Math.round(f.liq))}, {label: 'Gas, boe/day', data: list.map(f => Math.round(f.gas))}];
-  pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(f => f.name), yTitle: 'boe/day',
-    series: [{name: 'Oil', type: 'bar', color: pptHex(OIL_COLOR), values: shown.map(f => Math.round(f.liq))},
-             {name: 'Gas', type: 'bar', color: pptHex(GAS_COLOR), values: shown.map(f => Math.round(f.gas))}]};
+  lastDatasets = [{label: `Oil, ${unit}`, data: list.map(f => r(f.liq))}, {label: `Gas, ${unit}`, data: list.map(f => r(f.gas))}];
+  pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(f => f.name), yTitle: unit,
+    series: [{name: 'Oil', type: 'bar', color: pptHex(OIL_COLOR), values: shown.map(f => r(f.liq))},
+             {name: 'Gas', type: 'bar', color: pptHex(GAS_COLOR), values: shown.map(f => r(f.gas))}]};
   document.getElementById('downloadBtn').disabled = false;
 }
 
@@ -4056,6 +4092,7 @@ function drawSsbShare(toggle) {
 // Andeler som ikke er fordelt på noe selskap — britisk del av felt som deles
 // over grensen — faller utenfor.
 function drawNcsCompanies() {
+  if (ncsF.rank === 'prod') return drawNcsCompaniesProd();
   const now = new Date();
   const res = {};
   const get = n => res[n] = res[n] || {name: n, liq: 0, gas: 0, cr: 0};
@@ -4095,7 +4132,7 @@ function drawNcsCompanies() {
   setProfile('');
   const vintage = Math.max(...Object.values(fieldReserves || {}).filter(r => r.length).map(r => r[r.length - 1].year));
   document.getElementById('chartArea').innerHTML = `
-    ${ncsPills('rank', [['res', 'Reserves'], ['all', 'Reserves + contingent resources']])}
+    ${ncsCompanyPills()}
     ${bars}
     <div class="ex-legend">${SEG.map(([, l, c]) => `<span class="ex-leg"><span class="ex-dot" style="background:${c}"></span>${l}</span>`).join('')}
       <span class="ex-leg">Showing ${shown.length} of ${list.length}
@@ -4107,6 +4144,63 @@ function drawNcsCompanies() {
   lastDatasets = SEG.map(([k, l]) => ({label: l + ', million boe', data: list.map(o => +o[k].toFixed(1))}));
   pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(o => o.name), yTitle: 'million boe',
     series: SEG.map(([k, l, c]) => ({name: l, type: 'bar', color: pptHex(c), values: shown.map(o => +o[k].toFixed(1))}))};
+  document.getElementById('downloadBtn').disabled = false;
+  setChartTable('');
+}
+
+const ncsCompanyPills = () => ncsPills('rank', [['res', 'Reserves'], ['all', 'Reserves + contingent resources'],
+                                                  ['prod', 'Production, last 12 months']]);
+
+// Rangering etter egenandelsjustert produksjon de siste tolv månedene med
+// data. Andelen slås opp midt i hver måned, som i selskapsvisningene, så et
+// eierskifte i perioden fordeles på begge selskapene.
+function drawNcsCompaniesProd() {
+  const ids = ncsFieldIds();
+  const {first, last, dayCount, span} = ncsLast12(ids);
+  const res = {};
+  const get = n => res[n] = res[n] || {name: n, liq: 0, gas: 0};
+  ids.forEach(id => ncsMonthly(id).forEach(a => {
+    const k = a.prfYear * 12 + a.prfMonth - 1;
+    if (k < first || k > last) return;
+    const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
+    if (!(oe > 0) && !(gas > 0)) return;
+    fieldPartners(id, new Date(Date.UTC(a.prfYear, a.prfMonth - 1, 15))).forEach(p => {
+      const f = p.share / 100 * 1e6 * BBL_PER_SM3 / dayCount, o = get(p.name);
+      o.liq += Math.max(0, oe - gas) * f; o.gas += gas * f;
+    });
+  }));
+  const list = Object.values(res).map(o => ({...o, total: o.liq + o.gas}))
+    .filter(o => o.total >= 1).sort((a, b) => b.total - a.total);
+  const grand = list.reduce((t, o) => t + o.total, 0);
+  const shown = ncsF.all ? list : list.slice(0, 20);
+  const max = shown.length ? shown[0].total : 1;
+  const SEG = [['liq', 'Oil', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]];
+  const n = v => Math.round(v).toLocaleString('en');
+  const bars = shown.map((o, i) => {
+    const link = allCompanies.includes(o.name);
+    const open = link ? ` onclick="openCompanyProfile(${esc(jsStr(o.name))})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')openCompanyProfile(${esc(jsStr(o.name))})"` : ' style="cursor:default"';
+    return `<div class="lc-row"${open}>
+      <div class="lc-name" title="${esc(o.name)}">${i + 1}. <span class="lc-u">${esc(o.name)}</span></div>
+      <div class="lc-track" style="width:${(o.total / max * 70).toFixed(1)}%">${SEG.map(([k, l, c]) =>
+        o[k] > 0 ? `<span style="flex:${o[k]};background:${c}" title="${esc(o.name)} · ${l}: ${n(o[k])} boe/day"></span>` : '').join('')}</div>
+      <div class="lc-val">${n(o.total)} · ${(o.total / grand * 100).toFixed(1)} %</div></div>`;
+  }).join('');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  setProfile('');
+  document.getElementById('chartArea').innerHTML = `
+    ${ncsCompanyPills()}
+    ${bars}
+    <div class="ex-legend">${SEG.map(([, l, c]) => `<span class="ex-leg"><span class="ex-dot" style="background:${c}"></span>${l}</span>`).join('')}
+      <span class="ex-leg">Showing ${shown.length} of ${list.length}
+      ${list.length > 20 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 20' : 'show all'}</a>` : ''}</span></div>
+    <div class="pf-map-note">Average net production ${span}, boe/day, with share of the total. Click a company for its profile.</div>`;
+  setChartTitle('Norwegian Continental Shelf · Companies', `Ranked by production, last 12 months (${span}), equity-adjusted · boe/day`);
+  setInfo(`<strong>Ranking:</strong> average net production over the last 12 months with reported data, multiplied by each company's licence share in each month &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate &nbsp;|&nbsp; <strong>Total:</strong> ${n(grand)} boe/day across ${list.length} companies. Cross-border shares held outside Norway are not included`);
+  lastLabels = list.map(o => o.name); lastXTitle = 'Company';
+  lastDatasets = SEG.map(([k, l]) => ({label: l + ', boe/day', data: list.map(o => Math.round(o[k]))}));
+  pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(o => o.name), yTitle: 'boe/day',
+    series: SEG.map(([k, l, c]) => ({name: l, type: 'bar', color: pptHex(c), values: shown.map(o => Math.round(o[k]))}))};
   document.getElementById('downloadBtn').disabled = false;
   setChartTable('');
 }
