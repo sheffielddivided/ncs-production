@@ -759,7 +759,7 @@ let topMode    = 'companies';
 let period     = 'monthly';
 let showWater  = false;
 
-let fieldSubView   = 'oe_per_field';
+let fieldSubView   = 'oilgas';
 let hubSubView     = 'oe_per_field';
 let discoverySubView = 'per_company';
 let companySubView = 'oe_per_hub';
@@ -1351,9 +1351,8 @@ function sortCompanies(names) {
 
 // ── VIEW TABS ────────────────────────────────────────────────────────────────
 const FIELD_TABS   = [
-  {id:'oe_per_field',   label:'Prod per field'},
-  {id:'oe_per_company', label:'Prod per company'},
   {id:'oilgas',         label:'Oil & Gas'},
+  {id:'oe_per_company', label:'Prod per company'},
   {id:'reserves',       label:'Reserves'},
   {id:'profile',        label:'Profile'},
 ];
@@ -1530,10 +1529,10 @@ function updateFab() {
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
   const onePick = discoveryProfileMode() || companySingleMode()
-               || fieldProfileMode() || hubProfileMode();
+               || fieldSingleMode() || hubProfileMode();
   document.getElementById('sheetTitle').textContent =
     onePick ? `Select a ${noun}` : `Select ${nounP}`;
-  // «Select all» og «Clear all» gir ingen mening i profilvisningene, der bare
+  // «Select all» og «Clear all» gir ingen mening i Fields og profilvisningene, der bare
   // ett felt, én hub, ett funn eller ett selskap kan velges.
   document.getElementById('sheetActions').style.display = onePick ? 'none' : '';
 }
@@ -1653,7 +1652,7 @@ function renderFieldList() {
   const el = document.getElementById('checkList');
   if (!filteredFields.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
-  const single = fieldProfileMode();
+  const single = fieldSingleMode();
   filteredFields.forEach(f => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedFieldIds.has(f.id) ? ' checked' : '');
@@ -1695,8 +1694,8 @@ function renderCompanyList() {
 }
 
 function toggleField(id, item, cb) {
-  // Feltprofilen viser ett felt om gangen, så listen blir en radioknapp.
-  if (fieldProfileMode()) {
+  // Fields viser ett felt om gangen, så listen blir en radioknapp.
+  if (fieldSingleMode()) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedFieldIds = new Set([id]);
     renderFieldList();
@@ -1870,18 +1869,21 @@ function companySingleMode() {
   return topMode === 'companies' && (companySubView === 'profile' || companySubView === 'operated');
 }
 
-function fieldProfileMode() {
-  return topMode === 'fields' && fieldSubView === 'profile';
+// Fields viser ett felt om gangen i alle fanene; sammenstilling av flere
+// felt gjøres i Hubs og Companies.
+function fieldSingleMode() {
+  return topMode === 'fields';
 }
 
 function hubProfileMode() {
   return topMode === 'hubs' && hubSubView === 'profile';
 }
 
-// Felt- og hubprofilen viser én forekomst om gangen. Er flere valgt ved
-// overgangen til profilen, beholdes den første i listens rekkefølge.
+// Fields og hubprofilen viser én forekomst om gangen. Er flere valgt ved
+// overgangen (eller i en eldre delt lenke), beholdes den første i listens
+// rekkefølge.
 function syncFieldSelection() {
-  if (!fieldProfileMode() || selectedFieldIds.size <= 1) return;
+  if (!fieldSingleMode() || selectedFieldIds.size <= 1) return;
   const pick = allFields.find(f => selectedFieldIds.has(f.id))?.id
             ?? [...selectedFieldIds][0];
   selectedFieldIds = new Set([pick]);
@@ -1940,7 +1942,8 @@ function resetView() {
   markNav();
   topMode = 'companies';
   ncsPrevPeriod = null;
-  fieldSubView = hubSubView = 'oe_per_field';
+  fieldSubView = 'oilgas';
+  hubSubView = 'oe_per_field';
   companySubView = 'oe_per_hub';
   discoverySubView = 'per_company';
   hubReserveGrouping = 'field';
@@ -2292,6 +2295,7 @@ function applyHash() {
     const known = new Set(allFields.map(f => f.id));
     selectedFieldIds = new Set(
       (q.get('f') || '').split(',').map(Number).filter(id => known.has(id)));
+    syncFieldSelection();
   }
   if (q.has('h')) {
     const known = new Set(allHubs.map(h => h.name));
