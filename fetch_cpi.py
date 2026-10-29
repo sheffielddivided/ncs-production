@@ -7,6 +7,7 @@ skriver dem til data/cpi.json.
 - EUR: euroområdets harmoniserte KPI, HICP alle varer (Eurostat
   prc_hicp_minr, 2025=100). CC BY 4.0.
 - NOK: KPI, historisk serie (SSB tabell 14710, 2025=100). CC BY 4.0.
+  Fra 1970, så NCS / Investments kan regnes om til faste kroner.
 
 Indeksnivået er det kildene oppgir; appen bruker bare forholdet mellom
 måneder, med siste observasjon som basis. Mangler en måned midt i en serie
@@ -28,6 +29,7 @@ import requests
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'cpi.json')
 START = '1990-01'
+START_NOK = '1970-01'
 RETRIES = 4
 
 
@@ -69,7 +71,7 @@ def no():
     out = {}
     for t, v in zip(times, d['value']):
         m = t.replace('M', '-')
-        if v is not None and m >= START:
+        if v is not None and m >= START_NOK:
             out[m] = float(v)
     return out
 
