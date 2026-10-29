@@ -2264,6 +2264,7 @@ function applyHash() {
     if (['rem', 'orig', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
     if (q.get('ns') === 'acc') ncsF.es = 'acc';
+    if (q.get('ni') === 'real') ncsF.inv = 'real';
   }
   if (topMode === 'companies') {
     cmpExplWildcat = q.get('cw') === '1';
@@ -3114,11 +3115,12 @@ let ncsSubView = 'production';
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'timeline'
 // · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
+// · inv: 'nom' | 'real' (investeringer i faste kroner)
 const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, year: '', rank: 'res', all: false,
-                            cr: 'curve', crArea: false, fl: 'rank', ec: 'employment', es: 'rev'});
+                            cr: 'curve', crArea: false, fl: 'rank', ec: 'employment', es: 'rev', inv: 'nom'});
 let ncsF = ncsDefaults();
 const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['year', 'ny'], ['rank', 'nk'],
-                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['ec', 'ne'], ['es', 'ns']];
+                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['ec', 'ne'], ['es', 'ns'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
 // Havområdene, i samme farger som i Licences. Felt uten område i
@@ -3164,6 +3166,7 @@ async function refreshNcs() {
   else if (v === 'economy') await loadSsb();
   else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
   else if (v === 'exploration') await loadExploration();
+  else if (v === 'investments') { if (!ncsCpi) ncsCpi = await fetchBundle('cpi'); }
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries(), loadProdForFields(ncsFieldIds())]);
   drawChart();
 }
@@ -4206,16 +4209,40 @@ function drawNcsCompaniesProd() {
 }
 
 // ── NCS: INVESTMENTS ──
-// Historiske investeringer per år og havområde (nominelle kroner), og
-// Sodirs anslag for framtidige investeringer per felt (faste kroner).
+// Historiske investeringer per år og havområde, og Sodirs anslag for
+// framtidige investeringer per felt (faste kroner). Nominelt eller i faste
+// kroner: årsbeløpet × KPI(basisår) / KPI(året), med årssnitt av norsk KPI
+// (data/cpi.json). Basisåret er siste hele KPI-år, og de framtidige
+// investeringene regnes om fra sitt prisår til det samme, så alle tallene får
+// felles prisbasis.
+let ncsCpi = null;
+
+// {base, f(y)}: basisår og faktor fra år y til basisårets kroner, eller null
+// uten KPI. f gir null for år uten hel KPI-serie.
+function ncsRealFactor() {
+  const s = ncsCpi && ncsCpi.series && ncsCpi.series.NOK;
+  if (!s) return null;
+  const avg = {}, cnt = {};
+  Object.entries(s).forEach(([m, v]) => { const y = +m.slice(0, 4); avg[y] = (avg[y] || 0) + v; cnt[y] = (cnt[y] || 0) + 1; });
+  const full = Object.keys(cnt).map(Number).filter(y => cnt[y] === 12).sort((x, y) => x - y);
+  if (!full.length) return null;
+  const base = full[full.length - 1];
+  const idx = y => cnt[y] === 12 ? avg[y] / 12 : null;
+  return {base, f: y => idx(y) ? idx(base) / idx(y) : null};
+}
+
 function drawNcsInvestments() {
   const b = bundle.field_investments;
   if (!b) { setChartEmpty('No investment data available.'); setInfo(''); return; }
+  const rf = ncsRealFactor();
+  const real = ncsF.inv === 'real' && !!rf;
+  // Nominelle årsbeløp blir faste kroner; år uten KPI står som nominelle.
+  const adj = (v, y) => real ? v * (rf.f(y) || 1) : v;
   const areas = ncsAreas();
   const per = {};
   Object.entries(b.fields).forEach(([id, rows]) => {
     const area = ncsArea(+id);
-    rows.forEach(([y, v]) => { (per[y] = per[y] || {})[area] = (per[y][area] || 0) + v; });
+    rows.forEach(([y, v]) => { (per[y] = per[y] || {})[area] = (per[y][area] || 0) + adj(v, y); });
   });
   const years = Object.keys(per).map(Number).sort((a, c) => a - c);
   const labels = [];
@@ -4223,19 +4250,28 @@ function drawNcsInvestments() {
   const datasets = areas.map(z => ({label: z.label, data: labels.map(y => +(((per[y] || {})[z.key] || 0) / 1000).toFixed(2)),
     backgroundColor: rgba(z.color, 0.85), borderWidth: 0, stack: 's'})).filter(d => hasAnyValue(d.data));
   const legend = areas.filter(z => datasets.some(d => d.label === z.label)).map(z => ({label: z.label, color: rgba(z.color, 0.85)}));
-  renderChart(labels, datasets, legend, 'NOK bn', {xTitle: 'Year'});
+  renderChart(labels, datasets, legend, real ? `NOK bn (${rf.base} prices)` : 'NOK bn', {xTitle: 'Year'});
+  if (rf) ncsToggleAbove(ncsPills('inv', [['nom', 'Nominal'], ['real', `Real (${rf.base} NOK)`]]));
 
-  const total = Object.values(b.fields).reduce((t, rows) => t + rows.reduce((s, r) => s + r[1], 0), 0);
-  const exp = Object.entries(b.expected).map(([id, [v, fix]]) => ({id: +id, name: fieldNameOf(+id), v, fix,
-    hist: (b.fields[id] || []).reduce((s, r) => s + r[1], 0)})).filter(f => Math.abs(f.v) >= 50).sort((a, c) => c.v - a.v);
+  const histOf = rows => rows.reduce((s, [y, v]) => s + adj(v, y), 0);
+  const total = Object.values(b.fields).reduce((t, rows) => t + histOf(rows), 0);
+  // Framtidige investeringer er i faste kroner for prisåret fix; i real-visning
+  // flyttes de til basisåret.
+  const expAdj = (v, fix) => real && rf.f(fix) ? v * rf.f(fix) : v;
+  const exp = Object.entries(b.expected).map(([id, [v, fix]]) => ({id: +id, name: fieldNameOf(+id), v: expAdj(v, fix), fix,
+    hist: histOf(b.fields[id] || [])})).filter(f => Math.abs(f.v) >= 50).sort((a, c) => c.v - a.v);
   const expSum = exp.reduce((t, f) => t + f.v, 0);
   const fix = [...new Set(exp.map(f => f.fix))].sort().join('/');
-  setChartTitle('Norwegian Continental Shelf · Investments', 'By sea area · NOK bn (nominal)');
-  setInfo(`<strong>Invested ${labels[0]}–${labels[labels.length - 1]}:</strong> ${nokBn(total)} (nominal) &nbsp;|&nbsp; <strong>Expected future investments:</strong> ${nokBn(expSum)} in fixed ${fix} prices, ${exp.length} fields &nbsp;|&nbsp; <strong>Basis:</strong> Investments reported to Sodir per field; the two figures use different price bases and are kept apart`);
+  const histBasis = real ? `fixed ${rf.base} prices` : 'nominal';
+  const expBasis = real ? `fixed ${rf.base} prices` : `fixed ${fix} prices`;
+  setChartTitle('Norwegian Continental Shelf · Investments', `By sea area · NOK bn (${real ? `real, ${rf.base} prices` : 'nominal'})`);
+  setInfo(`<strong>Invested ${labels[0]}–${labels[labels.length - 1]}:</strong> ${nokBn(total)} (${histBasis}) &nbsp;|&nbsp; <strong>Expected future investments:</strong> ${nokBn(expSum)} in ${expBasis}, ${exp.length} fields &nbsp;|&nbsp; ` +
+    (real ? `<strong>Real:</strong> nominal amount × CPI ${rf.base} / CPI in the year, annual averages of the Norwegian CPI (SSB); Sodir's estimates in fixed ${fix} prices are moved to ${rf.base} the same way &nbsp;|&nbsp; <strong>Basis:</strong> Investments reported to Sodir per field`
+          : `<strong>Basis:</strong> Investments reported to Sodir per field; the two figures use different price bases and are kept apart`));
   setChartTable(`
     <table class="res-table">
-      <caption>Expected future investments per field · fixed ${fix} prices · NOK bn</caption>
-      <thead><tr><th>Field</th><th>Sea area</th><th>Expected future</th><th>Share</th><th>Invested to date (nominal)</th></tr></thead>
+      <caption>Expected future investments per field · ${expBasis} · NOK bn</caption>
+      <thead><tr><th>Field</th><th>Sea area</th><th>Expected future</th><th>Share</th><th>Invested to date (${histBasis.replace('fixed ', '')})</th></tr></thead>
       <tbody>${exp.slice(0, 25).map(f => `<tr><td><a class="row-link" href="#" onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a></td>
         <td>${(LIC_SEAS.find(z => z.key === ncsArea(f.id)) || {label: 'Other'}).label}</td>
         <td>${bnNum(f.v)}</td><td>${(f.v / expSum * 100).toFixed(1)} %</td><td>${f.hist ? bnNum(f.hist) : '—'}</td></tr>`).join('')}</tbody>
