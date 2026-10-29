@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-26",
+  "updated": "2026-10-29",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -186,10 +186,6 @@
     "3392471": {
       "hub": "Alvheim area",
       "auto": false
-    },
-    "3420717": {
-      "hub": "SLEIPNER ØST",
-      "auto": true
     },
     "3437650": {
       "hub": "Ula area",
