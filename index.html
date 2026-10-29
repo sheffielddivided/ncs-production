@@ -1095,6 +1095,39 @@ function getShare(fieldId, date, companyName) {
 
 function hasAnyValue(arr) { return arr.some(v => v > 0); }
 
+// ── SORTERING ETTER PRODUKSJON ───────────────────────────────────────────────
+// Felt- og hublistene i velgeren sorteres synkende på produksjon (netto o.e.)
+// i siste måned med rapportert produksjon på sokkelen. Felt uten produksjon
+// den måneden kommer etter, sist produserende først, deretter alfabetisk.
+let latestProdCache = null;
+function latestProd() {
+  if (latestProdCache) return latestProdCache;
+  const fields = (bundle.production && bundle.production.fields) || {};
+  const last = {}, byField = {};
+  let top = 0;
+  Object.entries(fields).forEach(([id, rows]) => rows.forEach(([y, m, , , oe]) => {
+    if (!(m > 0) || !(oe > 0)) return;
+    const k = y * 12 + m - 1;
+    if (k > (last[id] || 0)) last[id] = k;
+    if (k > top) top = k;
+  }));
+  Object.entries(fields).forEach(([id, rows]) => {
+    const r = rows.find(([y, m]) => y * 12 + m - 1 === top);
+    byField[id] = {v: r ? r[4] || 0 : 0, last: last[id] || 0};
+  });
+  return latestProdCache = byField;
+}
+function sortByLatestProd(list, ids, name) {
+  const lp = latestProd();
+  const key = o => ids(o).reduce((t, id) => {
+    const p = lp[id] || {v: 0, last: 0};
+    return {v: t.v + p.v, last: Math.max(t.last, p.last)};
+  }, {v: 0, last: 0});
+  return list.map(o => ({o, k: key(o)}))
+    .sort((a, b) => b.k.v - a.k.v || b.k.last - a.k.last || name(a.o).localeCompare(name(b.o), 'en'))
+    .map(x => x.o);
+}
+
 // ── HUBS ─────────────────────────────────────────────────────────────────────
 // Bygges av allFields + data/hubs.json. Må kjøres etter loadFields().
 function buildHubs() {
@@ -1107,9 +1140,8 @@ function buildHubs() {
     hubOfField[f.id] = h;
     (byHub[h] = byHub[h] || []).push(f.id);
   });
-  allHubs = Object.keys(byHub)
-    .sort((a,b) => a.localeCompare(b,'en'))
-    .map(name => ({name, fieldIds: byHub[name]}));
+  allHubs = sortByLatestProd(Object.keys(byHub).map(name => ({name, fieldIds: byHub[name]})),
+                             h => h.fieldIds, h => h.name);
   filteredHubs = allHubs;
 }
 
@@ -1145,14 +1177,13 @@ async function loadFields() {
     });
     allFields = features.map(f => ({id:f.attributes.fldNpdidField, name:f.attributes.fldName}));
   }
-  allFields.sort((a,b) => a.name.localeCompare(b.name,'en'));
-
   const TRIAL_PROD_FIELDS = [
     { id: 17196400, name: '16/1-12 TROLDHAUGEN', trialProd: true },
   ];
   TRIAL_PROD_FIELDS.forEach(tp => {
     if (!allFields.find(f => f.id === tp.id)) allFields.push(tp);
   });
+  allFields = sortByLatestProd(allFields, f => [f.id], f => f.name);
 
   filteredFields = allFields;
   const js = allFields.find(f => f.name === 'JOHAN SVERDRUP');
@@ -11592,18 +11623,7 @@ async function init() {
   //    arrive — no need to wait for reserves (only used for sorting the list)
   await licPromise;
 
-  // Re-sort fields with Aker BP at top
-  const akerBpFieldIds = new Set(
-    allLicRecords.filter(r=>r.cmpLongName==='Aker BP ASA').map(r=>r.fldNpdidField)
-  );
-  Object.entries(TRIAL_PROD_OWNERSHIP).forEach(([id, owners]) => {
-    if (owners['Aker BP ASA'] > 0) akerBpFieldIds.add(+id);
-  });
-  allFields.sort((a,b) => {
-    const aA = akerBpFieldIds.has(a.id), aB = akerBpFieldIds.has(b.id);
-    if (aA !== aB) return aA ? -1 : 1;
-    return a.name.localeCompare(b.name,'en');
-  });
+  // Feltlisten er sortert etter produksjon i loadFields (sortByLatestProd).
   filteredFields = allFields;
 
   selectedCompanyNames.add('Aker BP ASA');
