@@ -498,16 +498,19 @@
       .bottom-sheet{ max-width:1100px; margin:0 auto; border-radius:18px 18px 0 0; }
     }
 
-    /* Companies på brede skjermer: velgeren er en nedtrekksmeny i
-       kontrollfeltet i stedet for den flytende knappen og bunnarket. Menyen
-       er det samme arket (samme liste og logikk), plassert under knappen av
-       openSheet. Bredden må stemme med CMP_DD_MQ i skriptet. */
-    #cmpPickRow{display:none;}
-    .cmp-dd-btn{min-width:240px;max-width:420px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
-    .cmp-dd-btn[aria-expanded="true"]{border-color:var(--blue);}
+    /* Fields, Hubs, Companies og Discoveries / Profile på brede skjermer:
+       velgeren er en nedtrekksmeny i kontrollfeltet i stedet for den flytende
+       knappen og bunnarket. Menyen er det samme arket (samme liste og logikk),
+       plassert under knappen av openSheet. Bredden må stemme med PICK_DD_MQ i
+       skriptet. De øvrige funnfanene viser hele porteføljen og har ingen
+       velger (body.no-pick). */
+    #pickRow{display:none;}
+    body.no-pick .select-fab{display:none !important;}
+    .pick-dd-btn{min-width:240px;max-width:420px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+    .pick-dd-btn[aria-expanded="true"]{border-color:var(--blue);}
     @media (min-width: 900px) {
-      body.cmp #cmpPickRow{display:flex;}
-      body.cmp .select-fab{display:none !important;}
+      body.dd-pick #pickRow{display:flex;}
+      body.dd-pick .select-fab{display:none !important;}
     }
     .sheet-overlay.dd{background:transparent;}
     .bottom-sheet.dd{right:auto;bottom:auto;margin:0;width:380px;max-width:calc(100vw - 32px);max-height:min(70vh,560px);
@@ -545,9 +548,9 @@
       <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Prices</button>
     </div>
   </div>
-  <div class="ctrl-row" id="cmpPickRow">
-    <span class="ctrl-label">Company</span>
-    <button class="year-select cmp-dd-btn" id="cmpDdBtn" onclick="toggleSheet()" aria-haspopup="listbox" aria-expanded="false">Select companies</button>
+  <div class="ctrl-row" id="pickRow">
+    <span class="ctrl-label" id="pickLabel">Company</span>
+    <button class="year-select pick-dd-btn" id="pickBtn" onclick="toggleSheet()" aria-haspopup="listbox" aria-expanded="false">Select companies</button>
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">Show</span>
@@ -1413,7 +1416,8 @@ function renderViewTabs() {
   document.body.classList.toggle('lic', topMode === 'licences');
   document.body.classList.toggle('ncs', topMode === 'ncs');
   document.body.classList.toggle('prices', topMode === 'prices');
-  document.body.classList.toggle('cmp', topMode === 'companies');
+  document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
+  document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -1432,7 +1436,7 @@ function setSubView(v) {
   markNav();
   if (topMode === 'fields') { fieldSubView = v; syncFieldSelection(); }
   else if (topMode === 'hubs') { hubSubView = v; syncHubSelection(); }
-  else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(true); }
+  else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(); }
   else if (topMode === 'exploration') explSubView = v;
   else if (topMode === 'licences') licSubView = v;
   else if (topMode === 'ncs') ncsSubView = v;
@@ -1528,7 +1532,7 @@ function switchMode(m) {
   topMode = m;
   syncModeButtons();
   if (sheetOpen) closeSheet();
-  if (m === 'discoveries') syncDiscoverySelection(true);
+  if (m === 'discoveries') syncDiscoverySelection();
   if (m === 'companies') syncCompanySelection();
   if (m === 'fields') syncFieldSelection();
   if (m === 'hubs') syncHubSelection();
@@ -1558,22 +1562,24 @@ function updateFab() {
   // «Select all» og «Clear all» gir ingen mening i Fields og profilvisningene, der bare
   // ett felt, én hub, ett funn eller ett selskap kan velges.
   document.getElementById('sheetActions').style.display = onePick ? 'none' : '';
-  if (topMode === 'companies') {
-    const pick = allCompanies.filter(n => selectedCompanyNames.has(n));
-    if (pick.length < count) pick.push(...[...selectedCompanyNames].filter(n => !pick.includes(n)));
-    const btn = document.getElementById('cmpDdBtn');
-    btn.textContent = !count ? (onePick ? 'Select a company' : 'Select companies')
-      : count === 1 ? pick[0] : `${pick[0]} + ${count - 1} more`;
-    btn.title = pick.join(', ');
-  }
+  // Nedtrekksknappen: de valgte navnene i listens rekkefølge.
+  const pick = topMode === 'fields' ? allFields.filter(f => selectedFieldIds.has(f.id)).map(f => f.name)
+             : topMode === 'hubs' ? allHubs.filter(h => selectedHubNames.has(h.name)).map(h => h.name)
+             : topMode === 'discoveries' ? allDiscoveries.filter(d => selectedDiscoveryIds.has(d.id)).map(d => d.name)
+             : allCompanies.filter(n => selectedCompanyNames.has(n));
+  if (topMode === 'companies' && pick.length < count) pick.push(...[...selectedCompanyNames].filter(n => !pick.includes(n)));
+  const btn = document.getElementById('pickBtn');
+  document.getElementById('pickLabel').textContent = noun;
+  btn.textContent = !pick.length ? (onePick ? `Select a ${noun}` : `Select ${nounP}`)
+    : pick.length === 1 ? pick[0] : `${pick[0]} + ${pick.length - 1} more`;
+  btn.title = pick.join(', ');
 }
 
-// Companies på brede skjermer: arket vises som en nedtrekksmeny under
-// knappen i kontrollfeltet (se CSS for #cmpPickRow). Smale skjermer og de
-// andre modusene bruker bunnarket som før.
-const CMP_DD_MQ = window.matchMedia('(min-width: 900px)');
-const sheetAsDropdown = () => topMode === 'companies' && CMP_DD_MQ.matches;
-CMP_DD_MQ.addEventListener('change', () => { if (sheetOpen) closeSheet(); });
+// Brede skjermer: arket vises som en nedtrekksmeny under knappen i
+// kontrollfeltet (se CSS for #pickRow). Smale skjermer bruker bunnarket.
+const PICK_DD_MQ = window.matchMedia('(min-width: 900px)');
+const sheetAsDropdown = () => document.body.classList.contains('dd-pick') && PICK_DD_MQ.matches;
+PICK_DD_MQ.addEventListener('change', () => { if (sheetOpen) closeSheet(); });
 
 function toggleSheet() { sheetOpen ? closeSheet() : openSheet(); }
 function openSheet() {
@@ -1583,10 +1589,10 @@ function openSheet() {
   sheet.classList.add('open');   // før plasseringen: menyen har ingen bredde før den vises
   document.getElementById('sheetOverlay').classList.toggle('dd', dd);
   if (dd) {
-    const r = document.getElementById('cmpDdBtn').getBoundingClientRect();
+    const r = document.getElementById('pickBtn').getBoundingClientRect();
     sheet.style.top = `${r.bottom + 4}px`;
     sheet.style.left = `${Math.max(16, Math.min(r.left, window.innerWidth - sheet.offsetWidth - 16))}px`;
-    document.getElementById('cmpDdBtn').setAttribute('aria-expanded', 'true');
+    document.getElementById('pickBtn').setAttribute('aria-expanded', 'true');
   } else {
     sheet.style.top = sheet.style.left = '';
   }
@@ -1599,7 +1605,7 @@ function closeSheet() {
   sheetOpen = false;
   document.getElementById('bottomSheet').classList.remove('open');
   document.getElementById('sheetOverlay').classList.remove('open');
-  document.getElementById('cmpDdBtn').setAttribute('aria-expanded', 'false');
+  document.getElementById('pickBtn').setAttribute('aria-expanded', 'false');
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetOpen) closeSheet(); });
@@ -1644,6 +1650,7 @@ function toggleDiscovery(id, item, cb) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedDiscoveryIds = new Set([id]);
     renderDiscoveryList();
+    if (sheetAsDropdown()) closeSheet();   // ett valg, så menyen har gjort jobben
     updateFab();
     refresh();
     return;
@@ -1688,6 +1695,7 @@ function toggleHub(name, item, cb) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedHubNames = new Set([name]);
     renderHubList();
+    if (sheetAsDropdown()) closeSheet();   // ett valg, så menyen har gjort jobben
     updateFab();
     refresh();
     return;
@@ -1751,6 +1759,7 @@ function toggleField(id, item, cb) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedFieldIds = new Set([id]);
     renderFieldList();
+    if (sheetAsDropdown()) closeSheet();   // ett valg, så menyen har gjort jobben
     updateFab();
     refresh();
     return;
@@ -1964,9 +1973,9 @@ function syncCompanySelection() {
 // viser nøyaktig ett funn. Dette setter utvalget etter hvilken fane som er
 // aktiv, og kalles ved fanebytte, modusbytte og når funnlisten er lastet.
 //
-// Innenfor en fane står utvalget fritt: «Clear all» og avkryssingen i listen
-// virker som før, og overstyres ikke før man bytter fane.
-function syncDiscoverySelection(force) {
+// Listevisningene har ingen velger, så utvalget der er alltid alle funn —
+// også fra en eldre delt lenke med et håndplukket utvalg.
+function syncDiscoverySelection() {
   if (!allDiscoveries.length) return;
   if (discoverySubView === 'profile') {
     if (selectedDiscoveryIds.size === 1) return;
@@ -1975,9 +1984,7 @@ function syncDiscoverySelection(force) {
     // det største av alle.
     const pick = allDiscoveries.find(d => selectedDiscoveryIds.has(d.id)) || allDiscoveries[0];
     selectedDiscoveryIds = new Set([pick.id]);
-  } else if (force || !selectedDiscoveryIds.size) {
-    // force ved fanebytte; uten den beholdes et utvalg fra en delt lenke ved
-    // sidelasting, slik at en lenke til et håndplukket utvalg fortsatt virker.
+  } else if (selectedDiscoveryIds.size !== allDiscoveries.length) {
     selectedDiscoveryIds = new Set(allDiscoveries.map(d => d.id));
   }
 }
