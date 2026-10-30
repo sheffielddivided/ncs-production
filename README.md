@@ -1,4 +1,4 @@
-# NCS Insights
+# NCS Insight
 
 Repo: `ncs-production`.
 
