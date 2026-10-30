@@ -1,4 +1,4 @@
-# SOLUTION-CONTEXT — NCS Insights (Norge)
+# SOLUTION-CONTEXT — NCS Insight (Norge)
 
 Teknisk referansedokument skrevet for å kunne slå denne løsningen sammen med
 søsterløsninger for andre land. Målet er at datainnsamlingen kan reimplementeres
