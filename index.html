@@ -5888,11 +5888,14 @@ const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].u
 //
 // Prognose, fra 1.1. i inneværende år, med CF_INFL årlig inflasjon fra
 // OPEX_BASE:
-// · produksjon per felt fra fjorårets produksjon: flat så lenge gjenværende
-//   reserver (siste anslag) er mer enn CF_PLATEAU ganger årsraten, deretter
-//   CF_DECLINE årlig fall til reservene er produsert. Uten fallet ville en
-//   stor reservebase som Troll aldri blitt produsert ut. Felt med reserver,
-//   men uten produksjon i fjor, starter om tre år med raten R/8.
+// · produksjon per felt: eksponentielt fall fra fjorårets produksjon P til
+//   gjenværende reserver R (siste anslag) er produsert. Levetiden er ukjent,
+//   så fallraten utledes av P og R: d = k·P / (R + k·P) med k = 1 − CF_CUTOFF.
+//   Da er summen av hele fallkurven R / k, og R er nådd når årsraten har
+//   falt til CF_CUTOFF av første prognoseår (P·(1−d)) – feltet stenges ved
+//   en tidel av dagens nivå. Formelen d = k·P/R alene virker bare når R er
+//   mer enn rundt ni års produksjon; ellers når kurven aldri R. Felt med
+//   reserver, men uten produksjon i fjor, starter om tre år som om P var R/8.
 // · inntekter: scenarioprisen (OPEX_BASE-dollar per fat) for alle fat o.e.,
 //   også gass og NGL
 // · opex som i historikken
@@ -5904,7 +5907,7 @@ const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].u
 // NPV per 1.1. i inneværende år med midtårskonvensjon. Etter skatt er
 // kontantstrømmen ganget med 1 − CF_TAX (flat skatt på alt, også underskudd).
 const OPEX_USD = 10, OPEX_BASE = 2026;
-const CF_INFL = 0.025, CF_DECLINE = 0.10, CF_PLATEAU = 5, CF_CAPEX_SPLIT = [0.4, 0.3, 0.2, 0.1];
+const CF_INFL = 0.025, CF_CUTOFF = 0.10, CF_CAPEX_SPLIT = [0.4, 0.3, 0.2, 0.1];
 const CF_ABEX = 0.05, CF_TAX = 0.78, CF_RATES = [0.07, 0.10], CF_PRICES = [60, 80, 100];
 let hubCfPrice = 60, hubCfChart = null;
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
@@ -5952,8 +5955,9 @@ function hubCashFlow(ids, price) {
       : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
     let rate = lastBoe, y = y0;
     if (!(rate > 0) && R > 0) { rate = R / 8; y = y0 + 3; }
-    for (let k = 0; R > 0 && rate > 0 && k < 80; k++, y++) {
-      if (R <= CF_PLATEAU * rate) rate *= 1 - CF_DECLINE;
+    const kf = 1 - CF_CUTOFF, d = rate > 0 ? kf * rate / (R + kf * rate) : 0;
+    for (let k = 0; R > 0 && rate > 0 && k < 100; k++, y++) {
+      rate *= 1 - d;
       // Siste rest tas med i året før, så halen ikke blir noen få fat.
       const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
       R -= q;
@@ -6053,9 +6057,10 @@ function hubCashFlowCard(ids) {
       average rate; opex a flat USD ${OPEX_USD} per boe in ${OPEX_BASE} money, deflated with the US CPI; liquids sold at
       Brent and gas at the World Bank's European gas price (TTF in recent years), ${GAS_MJ_PER_SM3} MJ/Sm³.
       ${cf.hasForecast ? `<strong>Forecast</strong> (from ${y0}, ${Math.round(CF_INFL * 1000) / 10} % inflation from ${OPEX_BASE}):
-      each field from last year's production, flat while the remaining reserves (latest Sodir estimate) exceed
-      ${CF_PLATEAU} years of output, then declining ${Math.round(CF_DECLINE * 100)} % a year until they are produced;
-      fields with reserves but no production last year start in ${y0 + 3}. All boe, gas and NGL included, sold at the
+      each field declines exponentially from last year's production (P) until its remaining reserves (R, latest
+      Sodir estimate) are produced, at an annual rate of ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P), so the field
+      shuts in when output has fallen to ${Math.round(CF_CUTOFF * 100)} % of the first forecast year;
+      fields with reserves but no production last year start in ${y0 + 3} as if P were R/8. All boe, gas and NGL included, sold at the
       scenario oil price in ${OPEX_BASE} dollars. Opex as in the history. Sodir's expected future investments spread
       ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} % over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length},
       the first years without reported figures; amounts before ${y0} are sunk and not in the NPV. Abandonment
