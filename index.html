@@ -504,6 +504,13 @@
        øvrige funnfanene viser hele porteføljen og har ingen velger
        (body.no-pick). */
     #pickRow{display:none;}
+    /* Kontantstrømkortet i hubprofilen: grafen til venstre, NPV-tabellen til
+       høyre; under hverandre på smale skjermer. */
+    .cf-wrap{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;}
+    .cf-chart{flex:1 1 520px;min-width:0;}
+    .cf-npv{flex:0 1 380px;min-width:0;overflow-x:auto;}
+    .cf-npv .res-table caption{text-align:left;}
+    .cf-npv .res-table th, .cf-npv .res-table td{white-space:nowrap;padding-left:6px;padding-right:6px;}
     #pickSlot{display:flex;flex:0 1 380px;min-width:240px;}
     #pickSlot .cb-in{font-weight:600;}
     body.no-pick .select-fab{display:none !important;}
@@ -5893,7 +5900,7 @@ const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].u
 // kontantstrømmen ganget med 1 − CF_TAX (flat skatt på alt, også underskudd).
 const OPEX_USD = 10, OPEX_BASE = 2026;
 const CF_INFL = 0.025, CF_DECLINE = 0.10, CF_PLATEAU = 5, CF_CAPEX_SPLIT = [0.4, 0.3, 0.2, 0.1];
-const CF_ABEX = 0.05, CF_TAX = 0.78, CF_RATES = [0.07, 0.10], CF_PRICES = [60, 100];
+const CF_ABEX = 0.05, CF_TAX = 0.78, CF_RATES = [0.07, 0.10], CF_PRICES = [60, 80, 100];
 let hubCfPrice = 60, hubCfChart = null;
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
 function hubCfSet(v) { hubCfPrice = v; drawChart(); }
@@ -6000,22 +6007,22 @@ function hubCashFlowCard(ids) {
   const low = rows.reduce((m, r) => r.acc < m.acc ? r : m, rows[0]);
   const payback = rows.find((r, i) => i && rows[i - 1].acc < 0 && r.acc >= 0);
   const fact = (k, v) => `<div class="pf-fact"><span>${k}</span><strong>${v}</strong></div>`;
-  // NPV-tabellen viser begge scenariene; grafen det valgte.
-  const both = CF_PRICES.map(p => ({p, cf: p === hubCfPrice ? cf : hubCashFlow(ids, p)}));
-  const resBoe = cf.reserves;
-  const cell = v => `<td>${n1(v)}</td>`;
-  const perBoe = v => `<td>${resBoe > 1e6 ? (v * 1e9 / resBoe).toFixed(2) : '—'}</td>`;
-  const npvRow = (label, k, tax) => `<tr><td>${label}</td>${both.map(b => cell(b.cf.npv[k] * tax) + perBoe(b.cf.npv[k] * tax)).join('')}</tr>`;
+  // NPV etter skatt for alle scenariene, én rad per oljepris; grafen viser
+  // det valgte scenariet, som er uthevet i tabellen.
+  const all = CF_PRICES.map(p => ({p, cf: p === hubCfPrice ? cf : hubCashFlow(ids, p)}));
+  const resBoe = cf.reserves, tax = 1 - CF_TAX;
+  const perBoe = v => resBoe > 1e6 ? (v * 1e9 / resBoe).toFixed(2) : '—';
+  const pct = r => `${Math.round(r * 100)} %`;
   const npvTable = cf.hasForecast ? `
-    <div class="pf-scroll"><table class="res-table">
-      <caption>NPV as at 1 January ${y0} · USD bn and USD per barrel of remaining reserves (${n1(resBoe / 1e6)} million boe at end-${y0 - 1})</caption>
-      <thead><tr><th></th>${CF_PRICES.map(p => `<th>USD ${p}/bbl, total</th><th>USD ${p}/bbl, per boe</th>`).join('')}</tr></thead>
-      <tbody>
-        ${CF_RATES.map((r, k) => npvRow(`Pre-tax, ${Math.round(r * 100)} %`, k, 1)).join('')}
-        ${CF_RATES.map((r, k) => npvRow(`After tax (${Math.round(CF_TAX * 100)} %), ${Math.round(r * 100)} %`, k, 1 - CF_TAX)).join('')}
-      </tbody>
-    </table></div>` : '';
-  return `<div class="pf-card pf-wide"><h3>Simulated cash flow</h3>
+    <div class="cf-npv"><table class="res-table">
+      <caption>NPV after tax (${pct(CF_TAX)}) as at 1 January ${y0}</caption>
+      <thead><tr><th rowspan="2">Oil price</th>${CF_RATES.map(r => `<th colspan="2">${pct(r)}</th>`).join('')}</tr>
+        <tr>${CF_RATES.map(() => '<th>USD bn</th><th>USD/boe</th>').join('')}</tr></thead>
+      <tbody>${all.map(a => `<tr${a.p === hubCfPrice ? ' class="total-row"' : ''}><td>USD ${a.p}</td>${CF_RATES.map((r, k) =>
+        `<td>${n1(a.cf.npv[k] * tax)}</td><td>${perBoe(a.cf.npv[k] * tax)}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+    <div class="pf-map-note">Per barrel of remaining reserves at end-${y0 - 1}: ${n1(resBoe / 1e6)} million boe.</div></div>` : '';
+  return `<div class="pf-card pf-wide" data-ppt-spec="hubCf"><h3>Simulated cash flow</h3>
     ${cf.hasForecast ? `<div class="pill-group" style="margin-bottom:10px;width:max-content">${CF_PRICES.map(p =>
       `<button class="pill-btn${p === hubCfPrice ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div>` : ''}
     <div class="pf-facts">
@@ -6026,12 +6033,16 @@ function hubCashFlowCard(ids) {
       ${cf.abex ? fact('Abandonment', `USD ${n1(cf.abex.usd)} bn (${cf.abex.year})`) : ''}
       ${cf.hasForecast ? fact(`Cumulative, ${rows[rows.length - 1].y}`, `USD ${n1(rows[rows.length - 1].acc)} bn`) : ''}
     </div>
-    <div class="chart-container" style="height:340px"><canvas id="hubCfCanvas"></canvas></div>
-    <div class="legend-row">${CF_SERIES.filter(([k]) => rows.some(r => r[k])).map(([, l, c]) =>
-      `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
-      <div class="legend-item"><div class="legend-dot" style="background:${CF_LINE}"></div>Cumulative (right axis)</div>
-      ${cf.hasForecast ? '<div class="legend-item">Hatched bars and dashed line: forecast</div>' : ''}</div>
-    ${npvTable}
+    <div class="cf-wrap">
+      <div class="cf-chart">
+        <div class="chart-container" style="height:340px"><canvas id="hubCfCanvas"></canvas></div>
+        <div class="legend-row">${CF_SERIES.filter(([k]) => rows.some(r => r[k])).map(([, l, c]) =>
+          `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
+          <div class="legend-item"><div class="legend-dot" style="background:${CF_LINE}"></div>Cumulative (right axis)</div>
+          ${cf.hasForecast ? '<div class="legend-item">Hatched bars and dashed line: forecast</div>' : ''}</div>
+      </div>
+      ${npvTable}
+    </div>
     <div class="pf-map-note">A simplified, pre-tax cash flow in nominal USD bn for 100 % of the hub; the cumulative line is
       undiscounted. <strong>History</strong> (to ${y0 - 1}): capex as reported to Sodir, converted from NOK at each year's
       average rate; opex a flat USD ${OPEX_USD} per boe in ${OPEX_BASE} money, deflated with the US CPI; liquids sold at
@@ -6075,6 +6086,14 @@ function drawHubCashFlow(ids) {
   });
   const firstFc = cf.rows.findIndex(r => r.y >= cf.y0);
   const fmt = v => `USD ${v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})} bn`;
+  // «+ PPT» i kortet: samme graf som ekte PowerPoint-graf. Skraveringen
+  // følger ikke med; undertittelen sier hvor prognosen starter.
+  pptCardSpecs.hubCf = {kind: 'cat', dir: 'col', stacked: true, labels,
+    subtitle: `Simulated cash flow, USD bn (nominal) · oil price USD ${hubCfPrice} · forecast from ${cf.y0}`,
+    yTitle: 'USD bn per year', y1Title: 'cumulative, USD bn',
+    series: CF_SERIES.filter(([k]) => cf.rows.some(r => r[k])).map(([k, name, color]) =>
+      ({name, type: 'bar', color: pptHex(color), values: cf.rows.map(r => +r[k].toFixed(3))}))
+      .concat([{name: 'Cumulative', type: 'line', secondary: true, color: pptHex(CF_LINE), values: cf.rows.map(r => +r.acc.toFixed(3))}])};
   hubCfChart = new Chart(ctx, {
     data: {labels, datasets: [
       {type: 'line', label: 'Cumulative', data: cf.rows.map(r => +r.acc.toFixed(3)), yAxisID: 'y1',
@@ -6115,10 +6134,10 @@ function drawHubInstallations() {
   setChartNone();
   setChartTitle(hubName, `Installations · ${live.length} in place, ${facs.length - live.length} removed`);
   setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Installations:</strong> ${facs.length} (${live.filter(f => f.surface).length} surface and ${live.filter(f => !f.surface).length} subsea in place) &nbsp;|&nbsp; <strong>Source:</strong> Sodir layer 6000`);
-  const m = hubMap(ids, facs);
+  const m = hubMap(ids, facs, {h: 330});
   const t = hubFacilityTable(facs, fieldNameOf);
   setProfile(!facs.length ? '<div class="pf-card pf-wide"><div class="pf-map-note">Sodir lists no installations for this hub.</div></div>' : `
-    ${m ? `<div class="pf-card pf-wide"><h3>Map</h3><div style="max-width:640px;margin:0 auto">${m}</div></div>` : ''}
+    ${m ? `<div class="pf-card pf-wide"><h3>Map</h3>${m}</div>` : ''}
     ${t ? `<div class="pf-card pf-wide"><h3>Installations</h3>${t}</div>` : ''}`);
 }
 
@@ -6184,7 +6203,7 @@ function hubFacilityTable(facs, fieldName) {
         <th>Phase</th><th>Start</th><th>Depth&nbsp;m</th></tr></thead>
       <tbody>${rows.map(f => `
         <tr class="${isGone(f) ? 'fac-gone' : ''}">
-          <td>${esc(f.name)}</td><td>${fieldLink(f.fieldId, fieldName(f.fieldId))}</td>
+          <td><a class="row-link" href="https://factpages.sodir.no/facility/pageview/fixed/all/${f.id}" target="_blank" rel="noopener">${esc(f.name)} ↗</a></td><td>${fieldLink(f.fieldId, fieldName(f.fieldId))}</td>
           <td>${esc(f.kind || '—')}</td><td class="fac-fn">${esc(f.functions || '—')}</td>
           <td>${esc(f.phase || '—')}</td><td>${yr(f.startup)}</td><td>${dep(f.waterDepth)}</td>
         </tr>`).join('')}</tbody>
@@ -6194,7 +6213,7 @@ function hubFacilityTable(facs, fieldName) {
       installations. Source: Sodir layer 6000.</div>`;
 }
 
-function hubMap(ids, facs) {
+function hubMap(ids, facs, opts = {}) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   if (!outlines) return '';
   const member = new Set(ids);
@@ -6202,7 +6221,7 @@ function hubMap(ids, facs) {
   if (!ownItems.length) return '';
   const net = hubNetwork(ids, facs || [], outlines);
   return outlineMap(ownItems, {
-    label: 'Map of the hub', h: 560, pad: 1.8,
+    label: 'Map of the hub', h: opts.h || 560, pad: 1.8,
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(member), discoveryLayer()],
     overlay: net.svg,
@@ -6590,6 +6609,7 @@ function drawHubProfile() {
   const conns = hubConnections(ids);
 
   setProfile(`
+    ${hubCashFlowCard(ids)}
     <div class="pf-card">
       <h3>Key facts</h3>
       <div class="pf-facts">
@@ -6603,9 +6623,7 @@ function drawHubProfile() {
         ${fact('Hub assignment', auto ? `${auto} of ${ids.length} machine-suggested` : 'Confirmed')}
       </div>
     </div>
-    ${(() => { const m = hubMap(ids, facs); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
-    ${hubCashFlowCard(ids)}
     ${(() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${investmentCard(ids, nameOf)}
     ${(() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })()}
