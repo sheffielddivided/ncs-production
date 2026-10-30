@@ -28,7 +28,7 @@ jobs:
           python-version: '3.12'
 
       - name: Installer avhengigheter
-        run: pip install requests
+        run: pip install requests openpyxl
 
       - name: Hent data fra Sodir
         run: python fetch_sodir.py
@@ -56,6 +56,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
         run: python fetch_cpi.py
+
+      # Årlige prisbaner fra 1970 (Brent og europeisk gass fra Verdensbanken,
+      # USD/NOK og amerikansk KPI fra FRED) til kontantstrømmen i hubprofilen.
+      - name: Hent prisbaner (Verdensbanken, FRED)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_price_history.py
 
       # Siste produksjonsmeldinger fra Sodirs RSS-feed, lenket fra NCS → Production.
       - name: Hent produksjonsmeldinger (Sodir RSS)
