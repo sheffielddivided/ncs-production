@@ -28,7 +28,6 @@
     .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;display:block;
       background:none;border:0;padding:0;margin:0;color:inherit;font-family:inherit;
       text-align:left;cursor:pointer;}
-    .topbar-sub{font-size:0.7rem;opacity:0.65;margin-top:1px;}
     .mode-switcher{display:flex;flex-wrap:wrap;max-width:100%;background:var(--light);border-radius:8px;padding:3px;gap:2px;}
     .mode-btn{padding:6px 14px;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;background:none;color:var(--muted);transition:all 0.15s;letter-spacing:0.01em;}
     .mode-btn.active{background:var(--blue);color:#fff;}
@@ -519,7 +518,6 @@
 <div class="topbar">
   <div>
     <button class="topbar-title" onclick="resetView()" title="Reset all selections">NCS Insight</button>
-    <div class="topbar-sub">Norwegian Continental Shelf</div>
   </div>
   <button class="settings-btn" id="settingsBtn" onclick="openHubSettings()" title="Rediger huber" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1413,7 +1411,9 @@ const HUB_TABS     = [
   {id:'oe_per_company', label:'Prod per company'},
   {id:'oilgas',         label:'Oil & Gas'},
   {id:'reserves',       label:'Reserves'},
-  {id:'profile',       label:'Profile'},
+  {id:'profile',        label:'Profile'},
+  {id:'installations',  label:'Installations'},
+  {id:'havtil',         label:'Havtil'},
 ];
 const DISCOVERY_TABS = [
   {id:'per_discovery', label:'Resources'},
@@ -2476,10 +2476,12 @@ async function refreshHubs() {
   // Profilen trenger alle tre: grafen bruker produksjonen, volumkortet
   // reservene og kakediagrammet eierandelene.
   if (hubSubView === 'profile') {
-    await Promise.all([loadProdForFields(ids), loadFieldReserves(), loadLicForFields(ids)]);
+    await Promise.all([loadProdForFields(ids), loadFieldReserves(), loadLicForFields(ids), loadPriceHistory()]);
     drawChart();
     return;
   }
+  if (hubSubView === 'installations') { drawChart(); return; }
+  if (hubSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
   await loadProdForFields(ids);
   if (hubSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -2614,6 +2616,8 @@ function drawChart() {
     else if (hubSubView === 'oe_per_company') drawFieldsOePerCompany(opts);
     else if (hubSubView === 'reserves') drawFieldsReserves(opts);
     else if (hubSubView === 'profile')  drawHubProfile();
+    else if (hubSubView === 'installations') drawHubInstallations();
+    else if (hubSubView === 'havtil') drawHubHavtil();
     else drawFieldsOePerField(opts);
   } else if (topMode === 'ncs') {
     drawNcs();
@@ -4733,6 +4737,8 @@ function isReservesView() {
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
+      || (topMode === 'hubs'      && hubSubView     === 'installations')
+      || (topMode === 'hubs'      && hubSubView     === 'havtil')
       || (topMode === 'companies' && companySubView === 'profile')
       || (topMode === 'companies' && companySubView === 'reserves')
       || (topMode === 'companies' && companySubView === 'exploration');
@@ -5111,6 +5117,9 @@ function outlineMap(ownItems, opts = {}) {
   };
   const wellDots = (opts.wells || []).map(w => wellDot(w, false)).join('') +
                    (opts.ownWell ? wellDot(opts.ownWell, true) : '');
+  // Fritt tegnelag over omrissene (hubens installasjoner og koblinger). Får
+  // projeksjonen og tegner selv.
+  const overlay = opts.overlay ? opts.overlay(px, py) : '';
 
   // Oversiktskartet legger beslag på sitt hjørne, så ingen etikett havner
   // under det.
@@ -5159,6 +5168,7 @@ function outlineMap(ownItems, opts = {}) {
       ${land.length ? `<path d="${path(land, 3)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>` : ''}
       ${back}
       ${ownPaths}
+      ${overlay}
       ${wellDots}
       ${labels}${inset}
     </svg>
@@ -5738,6 +5748,172 @@ function investmentCard(ids, nameOf, opts = {}) {
       Source: Sodir FactPages.</div></div>`;
 }
 
+// ── PRISBANER ────────────────────────────────────────────────────────────────
+// Årlige priser fra 1970 (data/price_history.json, fetch_price_history.py):
+// Brent og europeisk gasspris fra Verdensbanken, USD/NOK og amerikansk KPI
+// fra FRED. Siste år kan være et delår (snitt av de månedene som finnes).
+let priceHist = null;
+async function loadPriceHistory() {
+  if (priceHist) return;
+  const b = await fetchBundle('price_history');
+  const byYear = {};
+  if (b && b.rows) b.rows.forEach(r => { byYear[r[0]] = Object.fromEntries(b.columns.map((c, i) => [c, r[i]])); });
+  priceHist = {byYear, partial: (b && b.partial) || null};
+}
+const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].usdnok) || null;
+
+// ── HUBS: KONTANTSTRØM ───────────────────────────────────────────────────────
+// Sjablongmessig kontantstrøm før skatt, nominelle USD:
+// · capex: Sodirs investeringer per år (NOK) til årssnittkurs
+// · opex: OPEX_USD per fat o.e. i OPEX_BASE-kroneverdi, deflatert bakover med
+//   amerikansk KPI
+// · inntekter: væske (olje, NGL, kondensat) til Brent, gass til europeisk
+//   gasspris med GAS_MMBTU_PER_SM3
+// Akkumulert kontantstrøm er en enkel sum av de nominelle årstallene.
+const OPEX_USD = 10, OPEX_BASE = 2026;
+let hubCfChart = null;
+function hubCashFlow(ids) {
+  const ph = priceHist && priceHist.byYear;
+  if (!ph || !Object.keys(ph).length) return null;
+  const base = (ph[OPEX_BASE] || ph[Math.max(...Object.keys(ph).map(Number))]).uscpi;
+  const inv = bundle.field_investments;
+  const per = {}, gaps = new Set();
+  const get = y => per[y] = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0};
+  ids.forEach(id => {
+    ((inv && inv.fields[String(id)]) || []).forEach(([y, v]) => {
+      const fx = usdnokOf(y);
+      if (!fx) { gaps.add(y); return; }
+      get(y).capex -= v / fx / 1000;                       // MNOK -> USD bn
+    });
+    annualProduction(id).annual.forEach(a => {
+      const y = a.prfYear, p = ph[y];
+      if (!p || p.brent == null || p.gas == null || !p.uscpi) { gaps.add(y); return; }
+      const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
+      const r = get(y);
+      r.liq += Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3 * p.brent / 1e9;
+      r.gas += gas * 1e9 * GAS_MMBTU_PER_SM3 * p.gas / 1e9;
+      r.opex -= oe * 1e6 * BBL_PER_SM3 * OPEX_USD * p.uscpi / base / 1e9;
+    });
+  });
+  const ys = Object.keys(per).map(Number);
+  if (!ys.length) return null;
+  const years = [];
+  for (let y = Math.min(...ys); y <= Math.max(...ys); y++) years.push(y);
+  let acc = 0;
+  const rows = years.map(y => {
+    const r = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0};
+    const net = r.liq + r.gas + r.capex + r.opex;
+    acc += net;
+    return {y, ...r, net, acc};
+  });
+  return {rows, gaps: [...gaps].sort()};
+}
+
+function hubCashFlowCard(ids) {
+  const cf = hubCashFlow(ids);
+  if (!cf) return '';
+  const {rows} = cf;
+  const n1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const tot = k => rows.reduce((t, r) => t + r[k], 0);
+  const low = rows.reduce((m, r) => r.acc < m.acc ? r : m, rows[0]);
+  // Tilbakebetalt: første år der akkumulert kontantstrøm går fra negativ til
+  // null eller positiv.
+  const payback = rows.find((r, i) => i && rows[i - 1].acc < 0 && r.acc >= 0);
+  const last = rows[rows.length - 1];
+  const part = priceHist.partial && priceHist.partial.year === last.y ? priceHist.partial : null;
+  const fact = (k, v) => `<div class="pf-fact"><span>${k}</span><strong>${v}</strong></div>`;
+  return `<div class="pf-card pf-wide"><h3>Simulated cash flow</h3>
+    <div class="pf-facts">
+      ${fact('Revenue', `USD ${n1(tot('liq') + tot('gas'))} bn`)}
+      ${fact('Capex', `USD ${n1(-tot('capex'))} bn`)}
+      ${fact('Opex', `USD ${n1(-tot('opex'))} bn`)}
+      ${fact(`Cumulative, ${last.y}`, `USD ${n1(last.acc)} bn`)}
+      ${fact('Maximum exposure', low.acc < 0 ? `USD ${n1(-low.acc)} bn (${low.y})` : '—')}
+      ${fact('Payback', payback ? String(payback.y) : low.acc < 0 && last.acc < 0 ? 'Not yet' : '—')}
+    </div>
+    <div class="chart-container" style="height:320px"><canvas id="hubCfCanvas"></canvas></div>
+    <div class="legend-row">${[['Revenue, liquids', OIL_COLOR], ['Revenue, gas', GAS_COLOR], ['Capex', CF_CAPEX],
+      ['Opex', CF_OPEX], ['Cumulative (right axis)', CF_LINE]]
+      .map(([l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>
+    <div class="pf-map-note">A simplified, undiscounted pre-tax cash flow in nominal USD bn, 100 % of the hub.
+      <strong>Capex:</strong> investments reported to Sodir, converted from NOK at each year's average rate.
+      <strong>Opex:</strong> a flat USD ${OPEX_USD} per boe produced in ${OPEX_BASE} money, deflated to earlier
+      years with the US CPI. <strong>Revenue:</strong> liquids (oil, NGL and condensate) at Brent, gas at the World
+      Bank's European natural gas price (TTF in recent years), with ${GAS_MJ_PER_SM3} MJ/Sm³.
+      Tariffs, taxes, abandonment and future years are not included${part ? `; ${part.year} covers the months
+      reported so far, priced at the average for ${part.months} months` : ''}.
+      Prices: World Bank Pink Sheet; exchange rates and CPI: FRED.${cf.gaps.length ? ` No prices for ${cf.gaps.join(', ')}.` : ''}</div>
+  </div>`;
+}
+const CF_CAPEX = 'rgba(26,35,50,0.85)', CF_OPEX = 'rgba(154,165,177,0.9)', CF_LINE = '#e36b2f';
+
+function drawHubCashFlow(ids) {
+  if (hubCfChart) { hubCfChart.destroy(); hubCfChart = null; }
+  const el = document.getElementById('hubCfCanvas');
+  const cf = el && hubCashFlow(ids);
+  if (!cf) return;
+  const labels = cf.rows.map(r => String(r.y));
+  const bar = (label, k, color) => ({type: 'bar', label, data: cf.rows.map(r => +r[k].toFixed(3)),
+    backgroundColor: color, borderWidth: 0, stack: 's', order: 1});
+  const fmt = v => `USD ${v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})} bn`;
+  hubCfChart = new Chart(el.getContext('2d'), {
+    data: {labels, datasets: [
+      {type: 'line', label: 'Cumulative', data: cf.rows.map(r => +r.acc.toFixed(3)), yAxisID: 'y1',
+       borderColor: CF_LINE, backgroundColor: CF_LINE, borderWidth: 2, pointRadius: 0, tension: 0.15, order: 0},
+      bar('Revenue, liquids', 'liq', OIL_COLOR), bar('Revenue, gas', 'gas', GAS_COLOR),
+      bar('Capex', 'capex', CF_CAPEX), bar('Opex', 'opex', CF_OPEX),
+    ]},
+    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: ctx => ctx.parsed.y ? ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` : null,
+        afterBody: items => [`Net: ${fmt(cf.rows[items[0].dataIndex].net)}`]}}},
+      scales: {
+        x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+        y: {stacked: true, title: {display: true, text: 'USD bn per year', color: '#4a5568', font: {size: 10}},
+            ticks: {font: {size: 9}}},
+        y1: {position: 'right', title: {display: true, text: 'cumulative, USD bn', color: CF_LINE, font: {size: 10}},
+             ticks: {font: {size: 9}}, grid: {display: false}},
+      }},
+  });
+}
+
+// ── HUBS: INSTALLATIONS OG HAVTIL ────────────────────────────────────────────
+function hubSingle() {
+  const names = [...selectedHubNames];
+  if (names.length === 1) return names[0];
+  setChartEmpty('Select a hub.');
+  setInfo('');
+  return null;
+}
+
+function drawHubInstallations() {
+  const hubName = hubSingle();
+  if (!hubName) return;
+  const ids = hubFieldIds([hubName]);
+  const facs = hubFacilities(ids);
+  const live = facs.filter(f => !isGone(f));
+  setChartNone();
+  setChartTitle(hubName, `Installations · ${live.length} in place, ${facs.length - live.length} removed`);
+  setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Installations:</strong> ${facs.length} (${live.filter(f => f.surface).length} surface and ${live.filter(f => !f.surface).length} subsea in place) &nbsp;|&nbsp; <strong>Source:</strong> Sodir layer 6000`);
+  const m = hubMap(ids, facs);
+  const t = hubFacilityTable(facs, fieldNameOf);
+  setProfile(!facs.length ? '<div class="pf-card pf-wide"><div class="pf-map-note">Sodir lists no installations for this hub.</div></div>' : `
+    ${m ? `<div class="pf-card pf-wide"><h3>Map</h3><div style="max-width:640px;margin:0 auto">${m}</div></div>` : ''}
+    ${t ? `<div class="pf-card pf-wide"><h3>Installations</h3>${t}</div>` : ''}`);
+}
+
+function drawHubHavtil() {
+  const hubName = hubSingle();
+  if (!hubName) return;
+  const ids = hubFieldIds([hubName]);
+  setChartNone();
+  setChartTitle(hubName, 'Havtil · inspections, consents and investigations');
+  setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Source:</strong> Norwegian Ocean Industry Authority (Havtil), cases linked to the hub's fields`);
+  const card = havtilHubCard(hubName, ids);
+  setProfile(card ? card.replace('class="pf-card"', 'class="pf-card pf-wide"')
+    : '<div class="pf-card pf-wide"><div class="pf-map-note">No Havtil cases are linked to the fields in this hub.</div></div>');
+}
+
 // ── HUBS: PROFILE ────────────────────────────────────────────────────────────
 // Faktaark for én hub. Det som gjør en hub til en hub er det delte
 // prosessanlegget, så innretningene fra lag 6000 bærer visningen: de står på
@@ -5798,19 +5974,70 @@ function hubFacilityTable(facs, fieldName) {
       installations. Source: Sodir layer 6000.</div>`;
 }
 
-function hubMap(ids) {
+function hubMap(ids, facs) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   if (!outlines) return '';
   const member = new Set(ids);
   const ownItems = outlineItems(outlines, fieldNameOf, id => member.has(id));
   if (!ownItems.length) return '';
+  const net = hubNetwork(ids, facs || [], outlines);
   return outlineMap(ownItems, {
-    label: 'Map of the hub',
-    fill: OIL_COLOR, stroke: '#8e0a48',
+    label: 'Map of the hub', h: 560, pad: 1.8,
+    fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(member), discoveryLayer()],
+    overlay: net.svg,
     note: 'Member fields in colour, other fields in grey, discoveries in pale green. '
-        + 'Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
+        + (net.n ? `Surface installations as dark squares, subsea installations as rings. Lines are a
+           simplified picture of the infield flowlines: each subsea installation is drawn to the nearest
+           surface installation on its own field, or else to the nearest processing installation in the hub;
+           dashed lines tie satellite fields without listed subsea installations to the hub. The routes
+           are schematic, not the actual pipelines. ` : '')
+        + 'Coastline: Natural Earth · outlines and installations: Sodir',
   });
+}
+
+// Hubens installasjoner som kartlag, med skjematiske infield-ledninger.
+// Sodir oppgir ikke hvor en subseainstallasjon er koblet inn, så koblingen
+// simuleres: til nærmeste overflateinnretning på samme felt, ellers til
+// nærmeste prosessanlegg i huben, ellers til nærmeste overflateinnretning i
+// huben. Satellittfelt uten egne subseainstallasjoner trekkes fra midten av
+// omrisset til nærmeste prosessanlegg. Fjernede innretninger er ikke med.
+function hubNetwork(ids, facs, outlines) {
+  const live = facs.filter(f => !isGone(f) && f.lon != null && f.lat != null);
+  if (!live.length) return {n: 0, svg: () => ''};
+  const surface = live.filter(f => f.surface), subsea = live.filter(f => !f.surface);
+  const hosts = surface.filter(isProcessing);
+  const kx = Math.cos(live[0].lat * Math.PI / 180);
+  const d2 = (a, b) => ((a.lon - b.lon) * kx) ** 2 + (a.lat - b.lat) ** 2;
+  const nearest = (p, list) => list.reduce((best, f) => !best || d2(p, f) < d2(p, best) ? f : best, null);
+  const links = [];
+  subsea.forEach(f => {
+    const own = surface.filter(x => x.fieldId === f.fieldId);
+    const to = nearest(f, own.length ? own : hosts.length ? hosts : surface);
+    if (to) links.push({a: f, b: to, dash: false});
+  });
+  // Midtpunktet i feltets største ring.
+  const centre = id => {
+    const rings = outlines[id] || [];
+    const big = rings.reduce((m, r) => r.length > (m ? m.length : 0) ? r : m, null);
+    if (!big) return null;
+    const n = big.length;
+    return {lon: big.reduce((t, p) => t + p[0], 0) / n, lat: big.reduce((t, p) => t + p[1], 0) / n};
+  };
+  const anchors = hosts.length ? hosts : surface;
+  ids.forEach(id => {
+    if (live.some(f => f.fieldId === id)) return;
+    const c = centre(id), to = c && nearest(c, anchors);
+    if (to) links.push({a: c, b: to, dash: true});
+  });
+  const svg = (px, py) => {
+    const line = l => `<line x1="${px(l.a.lon).toFixed(1)}" y1="${py(l.a.lat).toFixed(1)}" x2="${px(l.b.lon).toFixed(1)}" y2="${py(l.b.lat).toFixed(1)}"`
+      + ` stroke="#1a2332" stroke-width="${l.dash ? 1.4 : 1}" stroke-opacity="0.75"${l.dash ? ' stroke-dasharray="4 3"' : ''}/>`;
+    const sub = f => `<circle cx="${px(f.lon).toFixed(1)}" cy="${py(f.lat).toFixed(1)}" r="2.6" fill="#fff" stroke="#1a2332" stroke-width="1.1"><title>${esc(f.name)} · ${esc(f.kind || 'subsea')}</title></circle>`;
+    const top = f => `<rect x="${(px(f.lon) - 4).toFixed(1)}" y="${(py(f.lat) - 4).toFixed(1)}" width="8" height="8" fill="${isProcessing(f) ? '#1a2332' : '#5b6675'}" stroke="#fff" stroke-width="1"><title>${esc(f.name)} · ${esc(f.kind || 'surface')}</title></rect>`;
+    return links.map(line).join('') + subsea.map(sub).join('') + surface.map(top).join('');
+  };
+  return {n: live.length, svg};
 }
 
 // Siste tilgjengelige reserveanslag per medlemsfelt, summert. Årgangen kan
@@ -5867,33 +6094,69 @@ function hubOwnership(ids, operator) {
        Each field's latest estimate, weighted by the current licence interests.</div>`;
 }
 
+// Felttabellen i hubprofilen. Opprinnelig tilstedeværende og EUR
+// (utvinningsgrad: opprinnelig utvinnbart / opprinnelig tilstedeværende, som
+// i volumtabellen) fra siste reserveanslag. Investeringene regnes om til USD
+// år for år med årssnittkursen; Sodirs anslag for framtidige investeringer er
+// i faste kroner for et prisår og regnes om med det årets kurs.
+function inplaceOf(raw) {
+  return (raw.fldInplaceOil || 0) + (raw.fldInplaceAssLiquid || 0)
+       + (raw.fldInplaceAssGas || 0) + (raw.fldInplaceFreeGas || 0);
+}
+function investUsd(id) {
+  const b = bundle.field_investments;
+  if (!b) return {hist: null, exp: null};
+  const rows = b.fields[String(id)] || [], exp = b.expected[String(id)];
+  let hist = 0, ok = rows.length > 0;
+  rows.forEach(([y, v]) => { const fx = usdnokOf(y); if (fx) hist += v / fx; else ok = false; });
+  const fxe = exp ? usdnokOf(exp[1]) : null;
+  return {hist: ok ? hist : null, exp: exp && fxe ? exp[0] / fxe : null};   // MUSD
+}
 function hubMemberTable(ids) {
   const rows = ids.map(id => {
     const p = profileRow(id) || {};
     const res = (fieldReserves && fieldReserves[id]) || [];
     const cur = res.length ? res[res.length - 1] : null;
+    const ip = cur ? inplaceOf(cur.raw || {}) : 0;
+    const inv = investUsd(id);
     return {
       id, name: allFields.find(f => f.id === id)?.name || String(id),
       discovered: p.discoveryYear, start: p.productionStart,
       status: p.status, operator: p.operator,
       rem: cur ? (cur.remainingOE || 0) : null,
+      rec: cur ? (cur.recoverableOE || 0) : null,
+      ip: ip > 0 ? ip : null, inv: inv.hist, exp: inv.exp,
     };
   }).sort((a, b) => (b.rem || 0) - (a.rem || 0) || a.name.localeCompare(b.name, 'en'));
   if (!rows.length) return '';
-  const totRem = rows.reduce((t, r) => t + (r.rem || 0), 0);
+  const sum = k => rows.reduce((t, r) => t + (r[k] || 0), 0);
+  const eur = (rec, ip) => ip > 0 && rec > 0 && rec <= ip ? (rec / ip * 100).toFixed(0) + ' %' : '—';
+  const usd = v => v == null ? '—' : (Math.abs(v) < 50 ? 0 : v / 1000).toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const ipRec = rows.filter(r => r.ip && r.rec);
+  const hasFx = !!(priceHist && Object.keys(priceHist.byYear).length);
   return `
     <div class="pf-scroll"><table class="res-table">
-      <caption>${rows.length} fields · remaining reserves in million boe</caption>
+      <caption>${rows.length} fields · volumes in million boe · investments in USD bn</caption>
       <thead><tr><th>Field</th><th>Discovered</th><th>On stream</th><th>Status</th>
-        <th>Operator</th><th>Remaining</th></tr></thead>
+        <th>Operator</th><th>Original in place</th><th>EUR</th><th>Remaining</th>
+        ${hasFx ? '<th>Invested to date</th><th>Expected future</th>' : ''}</tr></thead>
       <tbody>${rows.map(r => `
         <tr><td>${fieldLink(r.id, r.name)}</td>
           <td>${r.discovered || '—'}</td><td>${r.start ? fmtDate(r.start) : '—'}</td>
           <td>${esc(r.status || '—')}</td><td>${r.operator ? companyLink(r.operator) : '—'}</td>
-          <td>${r.rem === null ? '—' : mmboe(r.rem)}</td></tr>`).join('')}</tbody>
+          <td>${r.ip ? mmboe(r.ip) : '—'}</td><td>${eur(r.rec, r.ip)}</td>
+          <td>${r.rem === null ? '—' : mmboe(r.rem)}</td>
+          ${hasFx ? `<td>${usd(r.inv)}</td><td>${usd(r.exp)}</td>` : ''}</tr>`).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td></td>
-        <td>${mmboe(totRem)}</td></tr></tfoot>
-    </table></div>`;
+        <td>${mmboe(sum('ip'))}</td>
+        <td>${eur(ipRec.reduce((t, r) => t + r.rec, 0), ipRec.reduce((t, r) => t + r.ip, 0))}</td>
+        <td>${mmboe(sum('rem'))}</td>
+        ${hasFx ? `<td>${usd(sum('inv'))}</td><td>${usd(sum('exp'))}</td>` : ''}</tr></tfoot>
+    </table></div>
+    <div class="pf-map-note">Original in place and EUR (expected ultimate recovery: original recoverable
+      as a share of original in place) from each field's latest Sodir estimate.${hasFx ? ` Investments
+      are Sodir's figures in NOK, converted to USD at each year's average exchange rate; expected future
+      investments are in fixed prices for Sodir's price year and converted at that year's rate.` : ''}</div>`;
 }
 
 // Transport-avsnittene fra Sodirs feltbeskrivelser. Det er nettopp disse
@@ -6021,16 +6284,16 @@ function drawHubProfile() {
         ${fact('Hub assignment', auto ? `${auto} of ${ids.length} machine-suggested` : 'Confirmed')}
       </div>
     </div>
-    ${(() => { const m = hubMap(ids); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
-    ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card"><h3>Fields</h3>${t}</div>` : ''; })()}
+    ${(() => { const m = hubMap(ids, facs); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
+    ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
+    ${hubCashFlowCard(ids)}
     ${(() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${investmentCard(ids, nameOf)}
-    ${havtilHubCard(hubName, ids)}
     ${(() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })()}
     ${conns.length ? `<div class="pf-card pf-desc"><h3>How it is connected</h3>${
       conns.map(c => `<h4>${fieldLink(c.id, c.name)}</h4><p>${esc(c.text)}</p>`).join('')}</div>` : ''}
-    ${(() => { const t = hubFacilityTable(facs, nameOf); return t ? `<div class="pf-card pf-wide"><h3>Installations</h3>${t}</div>` : ''; })()}
   `);
+  drawHubCashFlow(ids);
 }
 
 // ── FIELDS: OE PER COMPANY ───────────────────────────────────────────────────
