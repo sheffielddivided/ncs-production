@@ -5888,14 +5888,18 @@ const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].u
 //
 // Prognose, fra 1.1. i inneværende år, med CF_INFL årlig inflasjon fra
 // OPEX_BASE:
-// · produksjon per felt: eksponentielt fall fra fjorårets produksjon P til
-//   gjenværende reserver R (siste anslag) er produsert. Levetiden er ukjent,
-//   så fallraten utledes av P og R: d = k·P / (R + k·P) med k = 1 − CF_CUTOFF.
-//   Da er summen av hele fallkurven R / k, og R er nådd når årsraten har
-//   falt til CF_CUTOFF av første prognoseår (P·(1−d)) – feltet stenges ved
-//   en tidel av dagens nivå. Formelen d = k·P/R alene virker bare når R er
-//   mer enn rundt ni års produksjon; ellers når kurven aldri R. Felt med
-//   reserver, men uten produksjon i fjor, starter om tre år som om P var R/8.
+// · produksjon på hubnivå: feltene produserer gjennom hubens anlegg, så det er
+//   hubens levetid som avgjør når feltene stenger, ikke omvendt. Eksponentielt
+//   fall fra hubens samlede produksjon i fjor (P) til hubens gjenværende
+//   reserver (R, sum av feltenes siste anslag) er produsert. Levetiden er
+//   ukjent, så fallraten utledes av P og R: d = k·P / (R + k·P) med
+//   k = 1 − CF_CUTOFF. Da er summen av hele fallkurven R / k, og R er nådd når
+//   årsraten har falt til CF_CUTOFF av første prognoseår – huben stenges ved en
+//   tidel av dagens nivå. (d = k·P/R alene når aldri R når reservene er under
+//   rundt ni års produksjon.) Hubens produksjon fordeles på feltene etter
+//   andelen av reservene, så hvert felt produserer nøyaktig sine reserver og
+//   alle stenger med huben. En hub uten produksjon i fjor starter om tre år
+//   som om P var R/8.
 // · inntekter: scenarioprisen (OPEX_BASE-dollar per fat) for alle fat o.e.,
 //   også gass og NGL
 // · opex som i historikken
@@ -5913,37 +5917,44 @@ let hubCfPrice = 60, hubCfChart = null;
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
 function hubCfSet(v) { hubCfPrice = v; drawChart(); }
 
-// Produksjonsprognosen for ett felt, i fat o.e. per år fra inneværende år:
-// {R, liqShare, rows: [[år, fat]]}. lastBoe/lastLiq er fjorårets produksjon
-// (totalt og væske). Brukes både av kontantstrømmen og produksjonsgrafen i
-// hubprofilen, så de viser de samme tallene.
-function cfFieldForecast(id, lastBoe, lastLiq) {
+// Produksjonsprognosen for huben, i fat o.e. per år fra inneværende år:
+// {R, perField: {id: {liqShare, rows: [[år, fat]]}}}. Brukes både av
+// kontantstrømmen og produksjonsgrafen i hubprofilen, så de viser de samme
+// tallene.
+function cfHubForecast(ids) {
   const y0 = currentYear;
-  if (lastBoe == null) {
-    lastBoe = lastLiq = 0;
+  let P = 0, R0 = 0;
+  const fields = ids.map(id => {
+    let boe = 0, liq = 0;
     annualProduction(id).annual.forEach(a => {
       if (a.prfYear !== y0 - 1) return;
       const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
-      lastBoe = oe * 1e6 * BBL_PER_SM3; lastLiq = Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3;
+      boe = oe * 1e6 * BBL_PER_SM3; liq = Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3;
     });
-  }
-  const res = (fieldReserves && fieldReserves[id]) || [];
-  const cur = res.length ? res[res.length - 1] : null;
-  const R0 = cur ? Math.max(0, cur.remainingOE || 0) * 1e6 * BBL_PER_SM3 : 0;
-  const liqShare = lastBoe > 0 ? lastLiq / lastBoe
-    : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
-  let R = R0, rate = lastBoe, y = y0;
+    const res = (fieldReserves && fieldReserves[id]) || [];
+    const cur = res.length ? res[res.length - 1] : null;
+    const R = cur ? Math.max(0, cur.remainingOE || 0) * 1e6 * BBL_PER_SM3 : 0;
+    const liqShare = boe > 0 ? liq / boe
+      : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
+    P += boe; R0 += R;
+    return {id, R, liqShare};
+  });
+  const hub = [];
+  let R = R0, rate = P, y = y0;
   if (!(rate > 0) && R > 0) { rate = R / 8; y = y0 + 3; }
   const kf = 1 - CF_CUTOFF, d = rate > 0 ? kf * rate / (R + kf * rate) : 0;
-  const rows = [];
   for (let k = 0; R > 0 && rate > 0 && k < 100; k++, y++) {
     rate *= 1 - d;
     // Siste rest tas med i året før, så halen ikke blir noen få fat.
     const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
     R -= q;
-    rows.push([y, q]);
+    hub.push([y, q]);
   }
-  return {R: R0, liqShare, rows};
+  const perField = {};
+  fields.forEach(f => {
+    perField[f.id] = {liqShare: f.liqShare, rows: R0 > 0 && f.R > 0 ? hub.map(([yy, q]) => [yy, q * f.R / R0]) : []};
+  });
+  return {R: R0, perField, hub};
 }
 
 function hubCashFlow(ids, price) {
@@ -5956,7 +5967,8 @@ function hubCashFlow(ids, price) {
   const y0 = currentYear, lastInv = invLastYear();
   const per = {}, gaps = new Set();
   const get = y => per[y] = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0, abex: 0, fc: {}};
-  let histCapex = 0, lastProd = 0, reserves = 0;
+  let histCapex = 0, lastProd = 0;
+  const fcHub = cfHubForecast(ids), reserves = fcHub.R;
   ids.forEach(id => {
     ((inv && inv.fields[String(id)]) || []).forEach(([y, v]) => {
       const fx = usdnokOf(y);
@@ -5964,14 +5976,12 @@ function hubCashFlow(ids, price) {
       get(y).capex -= v / fx / 1000;                       // MNOK -> USD bn
       histCapex += v / fx / 1000;
     });
-    let lastBoe = 0, lastLiq = 0;
     annualProduction(id).annual.forEach(a => {
       const y = a.prfYear;
       if (y >= y0) return;                                  // inneværende år er prognose
       const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
       const boe = oe * 1e6 * BBL_PER_SM3, liq = Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3;
       if (boe > 0) lastProd = Math.max(lastProd, y);
-      if (y === y0 - 1) { lastBoe = boe; lastLiq = liq; }
       const p = ph[y];
       if (!p || p.brent == null || p.gas == null || !p.uscpi) { gaps.add(y); return; }
       const r = get(y);
@@ -5980,8 +5990,7 @@ function hubCashFlow(ids, price) {
       r.opex -= boe * OPEX_USD * p.uscpi / base / 1e9;
     });
     // Produksjonsprognosen.
-    const fc = cfFieldForecast(id, lastBoe, lastLiq);
-    reserves += fc.R;
+    const fc = fcHub.perField[id];
     const liqShare = fc.liqShare;
     fc.rows.forEach(([y, q]) => {
       const r = get(y), f = cfInfl(y);
@@ -6080,10 +6089,11 @@ function hubCashFlowCard(ids) {
       average rate; opex a flat USD ${OPEX_USD} per boe in ${OPEX_BASE} money, deflated with the US CPI; liquids sold at
       Brent and gas at the World Bank's European gas price (TTF in recent years), ${GAS_MJ_PER_SM3} MJ/Sm³.
       ${cf.hasForecast ? `<strong>Forecast</strong> (from ${y0}, ${Math.round(CF_INFL * 1000) / 10} % inflation from ${OPEX_BASE}):
-      each field declines exponentially from last year's production (P) until its remaining reserves (R, latest
-      Sodir estimate) are produced, at an annual rate of ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P), so the field
-      shuts in when output has fallen to ${Math.round(CF_CUTOFF * 100)} % of the first forecast year;
-      fields with reserves but no production last year start in ${y0 + 3} as if P were R/8. All boe, gas and NGL included, sold at the
+      the hub as a whole declines exponentially from last year's production (P) until its remaining reserves
+      (R, sum of the fields' latest Sodir estimates) are produced, at an annual rate of ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P),
+      so the hub shuts in when output has fallen to ${Math.round(CF_CUTOFF * 100)} % of the first forecast year. The hub's
+      output is split between the fields by their share of the reserves, so every field produces its reserves and
+      closes with the hub. A hub with no production last year starts in ${y0 + 3} as if P were R/8. All boe, gas and NGL included, sold at the
       scenario oil price in ${OPEX_BASE} dollars. Opex as in the history. Sodir's expected future investments spread
       ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} % over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length},
       the first years without reported figures; amounts before ${y0} are sunk and not in the NPV. Abandonment
@@ -6603,10 +6613,11 @@ function drawHubProfile() {
 
   // Grafen: hele den årlige historikken, én serie per medlemsfelt. Den viser
   // når hver tilknytning kom på, noe periodevelgerens vindu skjuler. Med
-  // prognose (cfFieldForecast, samme som kontantstrømmen) går historikken til
+  // prognose (cfHubForecast, samme som kontantstrømmen) går historikken til
   // og med i fjor og prognosen fra i år, skravert.
   const y0 = currentYear;
-  const perField = ids.map(id => ({id, name: nameOf(id), ...annualProduction(id), fc: cfFieldForecast(id).rows}))
+  const fcHub = cfHubForecast(ids);
+  const perField = ids.map(id => ({id, name: nameOf(id), ...annualProduction(id), fc: fcHub.perField[id].rows}))
                       .filter(s => s.annual.length || s.fc.length);
   const hasFc = perField.some(s => s.fc.length);
   if (hasFc) perField.forEach(s => { s.annual = s.annual.filter(a => a.prfYear < y0); });
@@ -6716,7 +6727,7 @@ function drawHubProfile() {
     </div>`, companies)}
     ${hubCashFlowCard(ids)}
     <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
-      <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above (exponential decline from last year's production until the remaining reserves are produced).` : ''} Source: Sodir FactPages.</div></div>
+      <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above (the hub declines from last year's production until its remaining reserves are produced, split between the fields by their share of the reserves).` : ''} Source: Sodir FactPages.</div></div>
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
     ${row2(volumes, investmentCard(ids, nameOf, {compact: true}))}
   `);
