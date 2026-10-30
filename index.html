@@ -6618,9 +6618,15 @@ function drawHubProfile() {
       </div>
     </div>`, companies)}
     ${hubCashFlowCard(ids)}
+    <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
+      <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}. Source: Sodir FactPages.</div></div>
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
     ${row2(volumes, investmentCard(ids, nameOf, {compact: true}))}
   `);
+  // Produksjonsgrafen er tegnet i grafområdet øverst (renderChart, så Excel og
+  // «Add to PPT» virker som før) og flyttes ned i sitt kort under kontantstrømmen.
+  const slot = document.getElementById('hubProdSlot'), top = document.getElementById('chartArea');
+  while (top.firstChild) slot.appendChild(top.firstChild);
   drawHubCashFlow(ids);
 }
 
