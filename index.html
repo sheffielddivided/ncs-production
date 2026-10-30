@@ -395,6 +395,10 @@
     /* Innretningstabellen har sju kolonner og er for bred for en halv spalte.
        Den legges over begge, nederst, der den ikke bryter flyten for de andre. */
     .pf-card.pf-wide{column-span:all;}
+    /* Rad med to kort side om side og lik høyde (hubprofilen). */
+    .pf-row2{column-span:all;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+    .pf-row2 > .pf-card{margin:0;min-width:0;}
+    @media (max-width: 899px){ .pf-row2{grid-template-columns:1fr;} }
     /* Lisenstabellen: klikkbare overskrifter, og en infokolonne som får bryte. */
     .lic-th{cursor:pointer;user-select:none;white-space:nowrap;}
     .lic-th:hover{color:var(--blue);}
@@ -5832,7 +5836,8 @@ function investmentCard(ids, nameOf, opts = {}) {
 
   // Tabell per felt (hub) eller per hub (selskap) når det er mer enn én rad.
   const head = cmp ? 'Hub' : 'Field';
-  const table = per.length > 1 ? `
+  // opts.compact: kortet står i halv bredde ved siden av et annet, uten tabellen.
+  const table = per.length > 1 && !opts.compact ? `
     <div class="pf-scroll"><table class="res-table">
       <thead><tr><th>${head}</th><th>Invested to date, NOK bn</th><th>Expected future, NOK bn</th></tr></thead>
       <tbody>${per.slice().sort((a, c) => (c.total + c.exp) - (a.total + a.exp)).map(g => `
@@ -5843,7 +5848,7 @@ function investmentCard(ids, nameOf, opts = {}) {
 
   const fixTxt = fixYears.join('/');
   const noun = cmp ? 'company' : ids.length > 1 ? 'hub' : 'field';
-  return `<div class="pf-card pf-wide"><h3>Investments${cmp ? ', equity-adjusted' : ''}</h3>
+  return `<div class="pf-card${opts.compact ? '' : ' pf-wide'}"><h3>Investments${cmp ? ', equity-adjusted' : ''}</h3>
     <div class="pf-facts">
       ${fact('Invested to date', years.length ? nokBn(total) : '')}
       ${fact('Period', years.length ? `${Math.min(...years)}–${Math.max(...years)}` : '')}
@@ -6497,20 +6502,6 @@ function hubMemberTable(ids) {
       investments are in fixed prices for Sodir's price year and converted at that year's rate.` : ''}</div>`;
 }
 
-// Transport-avsnittene fra Sodirs feltbeskrivelser. Det er nettopp disse
-// seed_hubs.py leser for å foreslå hub-tilhørighet, så de forklarer hvorfor
-// feltene henger sammen.
-function hubConnections(ids) {
-  const out = [];
-  ids.forEach(id => {
-    const t = fieldDescriptions(id).find(d => d.heading === 'Transport');
-    if (!t) return;
-    out.push({id, name: allFields.find(f => f.id === id)?.name || String(id), text: t.text});
-  });
-  out.sort((a, b) => a.name.localeCompare(b.name, 'en'));
-  return out;
-}
-
 function drawHubProfile() {
   const names = [...selectedHubNames];
   if (names.length !== 1) {
@@ -6606,11 +6597,14 @@ function drawHubProfile() {
   const auto = ids.filter(id => assign[String(id)] && assign[String(id)].auto).length;
 
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
-  const conns = hubConnections(ids);
+  // Fast oppsett i rader (pf-row2): to kort side om side med lik høyde, og
+  // kortene i full bredde mellom radene.
+  const companies = (() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })();
+  const volumes = (() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })();
+  const row2 = (a, b) => a && b ? `<div class="pf-row2">${a}${b}</div>` : (a || b).replace('class="pf-card', 'class="pf-card pf-wide');
 
   setProfile(`
-    ${hubCashFlowCard(ids)}
-    <div class="pf-card">
+    ${row2(`<div class="pf-card">
       <h3>Key facts</h3>
       <div class="pf-facts">
         ${fact('Fields', ids.length)}
@@ -6622,13 +6616,10 @@ function drawHubProfile() {
         ${fact('Installations', facs.length ? `${facs.length}, ${facs.filter(isGone).length} removed` : '')}
         ${fact('Hub assignment', auto ? `${auto} of ${ids.length} machine-suggested` : 'Confirmed')}
       </div>
-    </div>
+    </div>`, companies)}
+    ${hubCashFlowCard(ids)}
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
-    ${(() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
-    ${investmentCard(ids, nameOf)}
-    ${(() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })()}
-    ${conns.length ? `<div class="pf-card pf-desc"><h3>How it is connected</h3>${
-      conns.map(c => `<h4>${fieldLink(c.id, c.name)}</h4><p>${esc(c.text)}</p>`).join('')}</div>` : ''}
+    ${row2(volumes, investmentCard(ids, nameOf, {compact: true}))}
   `);
   drawHubCashFlow(ids);
 }
