@@ -499,25 +499,19 @@
     }
 
     /* Fields, Hubs, Companies og Discoveries / Profile på brede skjermer:
-       velgeren er en nedtrekksmeny i kontrollfeltet i stedet for den flytende
-       knappen og bunnarket. Menyen er det samme arket (samme liste og logikk),
-       plassert under knappen av openSheet. Bredden må stemme med PICK_DD_MQ i
-       skriptet. De øvrige funnfanene viser hele porteføljen og har ingen
-       velger (body.no-pick). */
+       velgeren er et søkefelt med nedtrekksliste i kontrollfeltet (samme
+       komponent som i Exploration, pickerHtml) i stedet for den flytende
+       knappen og bunnarket. Bredden må stemme med PICK_DD_MQ i skriptet. De
+       øvrige funnfanene viser hele porteføljen og har ingen velger
+       (body.no-pick). */
     #pickRow{display:none;}
+    #pickSlot{display:flex;flex:0 1 380px;min-width:240px;}
+    #pickSlot .cb-in{font-weight:600;}
     body.no-pick .select-fab{display:none !important;}
-    .pick-dd-btn{min-width:240px;max-width:420px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
-    .pick-dd-btn[aria-expanded="true"]{border-color:var(--blue);}
     @media (min-width: 900px) {
       body.dd-pick #pickRow{display:flex;}
       body.dd-pick .select-fab{display:none !important;}
     }
-    .sheet-overlay.dd{background:transparent;}
-    .bottom-sheet.dd{right:auto;bottom:auto;margin:0;width:380px;max-width:calc(100vw - 32px);max-height:min(70vh,560px);
-      border-radius:10px;border:1px solid var(--border);box-shadow:0 8px 28px rgba(0,0,0,0.18);transform:none;transition:none;}
-    .bottom-sheet.dd:not(.open){display:none;}
-    .bottom-sheet.dd .sheet-handle, .bottom-sheet.dd .sheet-bottom-pad{display:none;}
-    .bottom-sheet.dd .sheet-header{padding:8px 12px 6px;}
   </style>
 </head>
 <body>
@@ -550,7 +544,7 @@
   </div>
   <div class="ctrl-row" id="pickRow">
     <span class="ctrl-label" id="pickLabel">Company</span>
-    <button class="year-select pick-dd-btn" id="pickBtn" onclick="toggleSheet()" aria-haspopup="listbox" aria-expanded="false">Select companies</button>
+    <div id="pickSlot"></div>
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">Show</span>
@@ -1099,10 +1093,11 @@ function hasAnyValue(arr) { return arr.some(v => v > 0); }
 // Felt- og hublistene i velgeren sorteres synkende på produksjon (netto o.e.)
 // i siste måned med rapportert produksjon på sokkelen. Felt uten produksjon
 // den måneden kommer etter, sist produserende først, deretter alfabetisk.
-let latestProdCache = null;
+let latestProdCache = null, latestProdDays = 30;
 function latestProd() {
   if (latestProdCache) return latestProdCache;
-  const fields = (bundle.production && bundle.production.fields) || {};
+  if (!bundle.production) return {};   // ikke lastet ennå; ingenting bufres
+  const fields = bundle.production.fields;
   const last = {}, byField = {};
   let top = 0;
   Object.entries(fields).forEach(([id, rows]) => rows.forEach(([y, m, , , oe]) => {
@@ -1111,6 +1106,7 @@ function latestProd() {
     if (k > (last[id] || 0)) last[id] = k;
     if (k > top) top = k;
   }));
+  latestProdDays = daysInMonth(Math.floor(top / 12), top % 12 + 1);
   Object.entries(fields).forEach(([id, rows]) => {
     const r = rows.find(([y, m]) => y * 12 + m - 1 === top);
     byField[id] = {v: r ? r[4] || 0 : 0, last: last[id] || 0};
@@ -1587,56 +1583,69 @@ function updateFab() {
   document.getElementById('fabLabel').textContent =
     count ? `${count} ${count>1?nounP:noun} selected` : `Select ${nounP}`;
   const onePick = discoveryProfileMode() || companySingleMode()
-               || fieldSingleMode() || hubProfileMode();
+               || fieldSingleMode() || hubSingleMode();
   document.getElementById('sheetTitle').textContent =
     onePick ? `Select a ${noun}` : `Select ${nounP}`;
   // «Select all» og «Clear all» gir ingen mening i Fields og profilvisningene, der bare
   // ett felt, én hub, ett funn eller ett selskap kan velges.
   document.getElementById('sheetActions').style.display = onePick ? 'none' : '';
-  // Nedtrekksknappen: de valgte navnene i listens rekkefølge.
-  const pick = topMode === 'fields' ? allFields.filter(f => selectedFieldIds.has(f.id)).map(f => f.name)
-             : topMode === 'hubs' ? allHubs.filter(h => selectedHubNames.has(h.name)).map(h => h.name)
-             : topMode === 'discoveries' ? allDiscoveries.filter(d => selectedDiscoveryIds.has(d.id)).map(d => d.name)
-             : allCompanies.filter(n => selectedCompanyNames.has(n));
-  if (topMode === 'companies' && pick.length < count) pick.push(...[...selectedCompanyNames].filter(n => !pick.includes(n)));
-  const btn = document.getElementById('pickBtn');
   document.getElementById('pickLabel').textContent = noun;
-  btn.textContent = !pick.length ? (onePick ? `Select a ${noun}` : `Select ${nounP}`)
-    : pick.length === 1 ? pick[0] : `${pick[0]} + ${pick.length - 1} more`;
-  btn.title = pick.join(', ');
+  renderPicker(noun, nounP);
 }
 
-// Brede skjermer: arket vises som en nedtrekksmeny under knappen i
-// kontrollfeltet (se CSS for #pickRow). Smale skjermer bruker bunnarket.
+// Søkefeltet i kontrollfeltet på brede skjermer. Ett valg om gangen; listen
+// har samme rekkefølge som bunnarket. Tegnes ikke på nytt mens det er i bruk.
+function renderPicker(noun, nounP) {
+  const slot = document.getElementById('pickSlot');
+  if (!document.body.classList.contains('dd-pick') || slot.contains(document.activeElement)) return;
+  const lp = latestProd();   // før fmt: setter latestProdDays
+  const fmt = v => v > 0 ? `${Math.round(v * 1e6 * BBL_PER_SM3 / latestProdDays).toLocaleString('en')} boe/d` : '';
+  const prodOf = ids => ids.reduce((t, id) => t + ((lp[id] || {}).v || 0), 0);
+  let items, value, pick;
+  if (topMode === 'fields') {
+    items = allFields.map(f => ({v: f.name, sub: fmt(prodOf([f.id]))}));
+    value = (allFields.find(f => selectedFieldIds.has(f.id)) || {}).name;
+    pick = v => { const f = allFields.find(x => x.name === v); if (f) pickOne(() => { selectedFieldIds = new Set([f.id]); }); };
+  } else if (topMode === 'hubs') {
+    items = allHubs.map(h => ({v: h.name, sub: fmt(prodOf(h.fieldIds))}));
+    value = (allHubs.find(h => selectedHubNames.has(h.name)) || {}).name;
+    pick = v => pickOne(() => { selectedHubNames = new Set([v]); });
+  } else if (topMode === 'discoveries') {
+    items = allDiscoveries.map(d => ({v: d.name}));
+    value = (allDiscoveries.find(d => selectedDiscoveryIds.has(d.id)) || {}).name;
+    pick = v => { const d = allDiscoveries.find(x => x.name === v); if (d) pickOne(() => { selectedDiscoveryIds = new Set([d.id]); }); };
+  } else {
+    items = allCompanies.map(n => ({v: n}));
+    value = allCompanies.find(n => selectedCompanyNames.has(n)) || [...selectedCompanyNames][0];
+    pick = v => pickOne(() => { selectedCompanyNames = new Set([v]); });
+  }
+  slot.innerHTML = pickerHtml({id: 'topPick', value: value || '', placeholder: `Search ${nounP}…`,
+    label: `Select a ${noun}`, items, pick});
+}
+function pickOne(set) {
+  markNav();   // et annet felt, en annen hub osv. er et nytt steg
+  set();
+  updateFab();
+  refresh();
+}
+
+// Brede skjermer bruker søkefeltet i kontrollfeltet (se CSS for #pickRow), smale
+// bunnarket. Bytter skjermen bredde mens arket er åpent, lukkes det.
 const PICK_DD_MQ = window.matchMedia('(min-width: 900px)');
-const sheetAsDropdown = () => document.body.classList.contains('dd-pick') && PICK_DD_MQ.matches;
-PICK_DD_MQ.addEventListener('change', () => { if (sheetOpen) closeSheet(); });
+PICK_DD_MQ.addEventListener('change', () => { if (sheetOpen) closeSheet(); updateFab(); });
 
 function toggleSheet() { sheetOpen ? closeSheet() : openSheet(); }
 function openSheet() {
   sheetOpen = true;
-  const sheet = document.getElementById('bottomSheet'), dd = sheetAsDropdown();
-  sheet.classList.toggle('dd', dd);
-  sheet.classList.add('open');   // før plasseringen: menyen har ingen bredde før den vises
-  document.getElementById('sheetOverlay').classList.toggle('dd', dd);
-  if (dd) {
-    const r = document.getElementById('pickBtn').getBoundingClientRect();
-    sheet.style.top = `${r.bottom + 4}px`;
-    sheet.style.left = `${Math.max(16, Math.min(r.left, window.innerWidth - sheet.offsetWidth - 16))}px`;
-    document.getElementById('pickBtn').setAttribute('aria-expanded', 'true');
-  } else {
-    sheet.style.top = sheet.style.left = '';
-  }
+  document.getElementById('bottomSheet').classList.add('open');
   document.getElementById('sheetOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   renderList();
-  if (dd) document.getElementById('listSearch').focus();
 }
 function closeSheet() {
   sheetOpen = false;
   document.getElementById('bottomSheet').classList.remove('open');
   document.getElementById('sheetOverlay').classList.remove('open');
-  document.getElementById('pickBtn').setAttribute('aria-expanded', 'false');
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetOpen) closeSheet(); });
@@ -1681,7 +1690,6 @@ function toggleDiscovery(id, item, cb) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedDiscoveryIds = new Set([id]);
     renderDiscoveryList();
-    if (sheetAsDropdown()) closeSheet();   // ett valg, så menyen har gjort jobben
     updateFab();
     refresh();
     return;
@@ -1698,7 +1706,7 @@ function renderHubList() {
   const el = document.getElementById('checkList');
   if (!filteredHubs.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
-  const single = hubProfileMode();
+  const single = hubSingleMode();
   filteredHubs.forEach(h => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedHubNames.has(h.name) ? ' checked' : '');
@@ -1722,11 +1730,10 @@ function renderHubList() {
 
 function toggleHub(name, item, cb) {
   // Hubprofilen viser én hub om gangen, så listen blir en radioknapp.
-  if (hubProfileMode()) {
+  if (hubSingleMode()) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedHubNames = new Set([name]);
     renderHubList();
-    if (sheetAsDropdown()) closeSheet();   // ett valg, så menyen har gjort jobben
     updateFab();
     refresh();
     return;
@@ -1790,7 +1797,6 @@ function toggleField(id, item, cb) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedFieldIds = new Set([id]);
     renderFieldList();
-    if (sheetAsDropdown()) closeSheet();   // ett valg, så menyen har gjort jobben
     updateFab();
     refresh();
     return;
@@ -1809,7 +1815,6 @@ function toggleCompany(name, item, cb) {
     markNav();   // et annet felt, en annen hub osv. er et nytt steg
     selectedCompanyNames = new Set([name]);
     renderCompanyList();
-    if (sheetAsDropdown()) closeSheet();   // ett valg, så menyen har gjort jobben
     updateFab();
     refresh();
     return;
@@ -1957,24 +1962,21 @@ function companyProfileMode() {
   return topMode === 'companies' && companySubView === 'profile';
 }
 
-// Visningene der bare ett selskap kan velges: profilen og Operated.
+// Fields, Hubs og Companies viser én forekomst om gangen i alle fanene.
 function companySingleMode() {
-  return topMode === 'companies' && (companySubView === 'profile' || companySubView === 'operated');
+  return topMode === 'companies';
 }
 
-// Fields viser ett felt om gangen i alle fanene; sammenstilling av flere
-// felt gjøres i Hubs og Companies.
 function fieldSingleMode() {
   return topMode === 'fields';
 }
 
-function hubProfileMode() {
-  return topMode === 'hubs' && hubSubView === 'profile';
+function hubSingleMode() {
+  return topMode === 'hubs';
 }
 
-// Fields og hubprofilen viser én forekomst om gangen. Er flere valgt ved
-// overgangen (eller i en eldre delt lenke), beholdes den første i listens
-// rekkefølge.
+// Er flere valgt ved overgangen (eller i en eldre delt lenke), beholdes den
+// første i listens rekkefølge.
 function syncFieldSelection() {
   if (!fieldSingleMode() || selectedFieldIds.size <= 1) return;
   const pick = allFields.find(f => selectedFieldIds.has(f.id))?.id
@@ -1983,15 +1985,14 @@ function syncFieldSelection() {
 }
 
 function syncHubSelection() {
-  if (!hubProfileMode() || selectedHubNames.size <= 1) return;
+  if (!hubSingleMode() || selectedHubNames.size <= 1) return;
   const pick = allHubs.find(h => selectedHubNames.has(h.name))?.name
             ?? [...selectedHubNames][0];
   selectedHubNames = new Set([pick]);
 }
 
-// Profilen viser ett selskap om gangen. Er flere valgt, beholdes det første —
-// selskapslisten er sortert med Aker BP øverst og deretter synkende reserver,
-// så det er det største av de valgte.
+// Selskapslisten er sortert med Aker BP øverst og deretter synkende reserver,
+// så det første av de valgte er det største.
 function syncCompanySelection() {
   if (!companySingleMode() || selectedCompanyNames.size <= 1) return;
   const pick = allCompanies.find(n => selectedCompanyNames.has(n))
@@ -2392,10 +2393,12 @@ function applyHash() {
     const known = new Set(allHubs.map(h => h.name));
     selectedHubNames = new Set(
       (q.get('h') || '').split(SEP).filter(nm => known.has(nm)));
+    syncHubSelection();
   }
   if (q.has('c')) {
     selectedCompanyNames = new Set(
       (q.get('c') || '').split(SEP).filter(Boolean));
+    syncCompanySelection();
   }
   // Funn-ID-ene kan ikke valideres her — listen bygges først når
   // loadDiscoveries har kjørt. Ukjente ID-er faller bort ved tegning.
@@ -11640,6 +11643,7 @@ async function init() {
     allCompanies = sortCompanies(allCompanies);
     filteredCompanies = allCompanies;
     if (sheetOpen && topMode === 'companies') renderCompanyList();
+    if (topMode === 'companies') updateFab();   // søkefeltets liste får samme rekkefølge
     // Exploration bruker samme rekkefølge, og kan være åpnet før reservene kom.
     if (topMode === 'exploration' && explLoaded && explWells.length) explRenderBar();
   });
