@@ -5015,7 +5015,9 @@ function outlineMap(ownItems, opts = {}) {
   const PAD = opts.pad || 3;
   const own = ownItems.flatMap(it => it.rings);
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-  own.forEach(r => r.forEach(([x, y]) => {
+  // opts.extra: punkter utenfor omrisset som skal med i utsnittet
+  // (vertsinnretningen et satellittfelt er koblet til).
+  own.concat(opts.extra ? [opts.extra] : []).forEach(r => r.forEach(([x, y]) => {
     x0 = Math.min(x0, x); x1 = Math.max(x1, x);
     y0 = Math.min(y0, y); y1 = Math.max(y1, y);
   }));
@@ -5281,16 +5283,25 @@ function fieldLayer(skip) {
           fill: '#cbd6e2', stroke: '#b2bfcd'};
 }
 
+// Feltkartet: kvadratisk, med feltets installasjoner og koblingen videre til
+// vertsinnretningen, regnet ut i hubnettet (hubNetwork) og filtrert til feltet.
 function profileMap(id) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   const own = outlines && outlines[id];
   if (!own) return '';
+  const ids = hubFieldIds([hubOfField[id] || fieldNameOf(id)]);
+  const net = hubNetwork(ids.includes(id) ? ids : [id], hubFacilities(ids.includes(id) ? ids : [id]), outlines, id);
   return outlineMap([{name: fieldNameOf(id), rings: own}], {
-    label: 'Map of the field',
-    fill: OIL_COLOR, stroke: '#8e0a48',
+    label: 'Map of the field', h: 560, pad: 2.2,
+    fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(new Set([id])), discoveryLayer()],
+    overlay: net.svg, extra: net.extent,
     note: 'Fields in grey, discoveries in pale green, the subject in colour. '
-        + 'Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
+        + (net.n ? `Surface installations as dark squares, subsea installations as rings. Lines show how the
+           field is tied in, following the route in Sodir's field description where it names one, and the
+           satellites tied directly to the field's own installations; straight lines, not the actual
+           pipeline routes. ` : '')
+        + 'Coastline: Natural Earth · outlines and installations: Sodir',
   });
 }
 
@@ -5527,7 +5538,7 @@ function drawFieldProfile() {
       <div class="lc-links">${factPageBtn('field', id)}</div>
     </div>
     ${fieldPhoto(id, name)}
-    ${profileMap(id) ? `<div class="pf-card"><h3>Location</h3>${profileMap(id)}</div>` : ''}
+    ${(() => { const m = profileMap(id); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${investmentCard([id], () => name)}
     ${(() => { const o = profileOwnership(id, p.operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
@@ -6069,9 +6080,13 @@ function satelliteRoute(id, ids, surface) {
 // samme felt, ellers til nærmeste prosessanlegg i huben, ellers til nærmeste
 // overflateinnretning. Satellittfelt uten egne subseainstallasjoner trekkes
 // stiplet fra midten av omrisset. Fjernede innretninger er ikke med.
-function hubNetwork(ids, facs, outlines) {
+//
+// focus (et felt-id) filtrerer til det ene feltet: dets egne installasjoner,
+// kjeden videre til vertsinnretningen (Skogul -> Vilje -> Alvheim FPSO) og
+// satellittene som er koblet direkte til feltets installasjoner.
+function hubNetwork(ids, facs, outlines, focus) {
   const live = facs.filter(f => !isGone(f) && f.lon != null && f.lat != null);
-  if (!live.length) return {n: 0, svg: () => ''};
+  if (!live.length) return {n: 0, svg: () => '', extent: []};
   const surface = live.filter(f => f.surface), subsea = live.filter(f => !f.surface);
   const hosts = surface.filter(isProcessing);
   const kx = Math.cos(live[0].lat * Math.PI / 180);
@@ -6105,16 +6120,34 @@ function hubNetwork(ids, facs, outlines) {
   ids.forEach(id => {
     if (live.some(f => f.fieldId === id)) return;
     const c = centre(id), to = c && (routed(c, id) || nearest(c, anchors));
-    if (to) links.push({a: c, b: to, dash: true});
+    if (to) links.push({a: c, b: to, dash: true, field: id});
   });
+  let shown = links, pts = live;
+  if (focus != null) {
+    const keep = new Set(live.filter(f => f.fieldId === focus));
+    const used = new Set(links.filter(l => l.field === focus));
+    used.forEach(l => keep.add(l.b));
+    for (let grew = true; grew;) {
+      grew = false;
+      links.forEach(l => { if (!used.has(l) && keep.has(l.a)) { used.add(l); keep.add(l.b); grew = true; } });
+    }
+    links.forEach(l => { if (!used.has(l) && keep.has(l.b) && l.b.fieldId === focus) { used.add(l); keep.add(l.a); } });
+    shown = [...used];
+    pts = live.filter(f => keep.has(f));
+  }
+  const ptsSurface = pts.filter(f => f.surface), ptsSubsea = pts.filter(f => !f.surface);
+  const extent = shown.flatMap(l => [[l.a.lon, l.a.lat], [l.b.lon, l.b.lat]]).concat(pts.map(f => [f.lon, f.lat]));
   const svg = (px, py) => {
     const line = l => `<line x1="${px(l.a.lon).toFixed(1)}" y1="${py(l.a.lat).toFixed(1)}" x2="${px(l.b.lon).toFixed(1)}" y2="${py(l.b.lat).toFixed(1)}"`
       + ` stroke="#1a2332" stroke-width="${l.dash ? 1.4 : 1}" stroke-opacity="0.75"${l.dash ? ' stroke-dasharray="4 3"' : ''}/>`;
     const sub = f => `<circle cx="${px(f.lon).toFixed(1)}" cy="${py(f.lat).toFixed(1)}" r="2.6" fill="#fff" stroke="#1a2332" stroke-width="1.1"><title>${esc(f.name)} · ${esc(f.kind || 'subsea')}</title></circle>`;
     const top = f => `<rect x="${(px(f.lon) - 4).toFixed(1)}" y="${(py(f.lat) - 4).toFixed(1)}" width="8" height="8" fill="${isProcessing(f) ? '#1a2332' : '#5b6675'}" stroke="#fff" stroke-width="1"><title>${esc(f.name)} · ${esc(f.kind || 'surface')}</title></rect>`;
-    return links.map(line).join('') + subsea.map(sub).join('') + surface.map(top).join('');
+    // I feltkartet: navnet på vertsinnretningen når den står på et annet felt.
+    const host = f => focus == null || f.fieldId === focus ? '' :
+      `<text class="pf-lbl" x="${(px(f.lon) + 7).toFixed(1)}" y="${(py(f.lat) + 3).toFixed(1)}" style="text-anchor:start">${esc(f.name)}</text>`;
+    return shown.map(line).join('') + ptsSubsea.map(sub).join('') + ptsSurface.map(top).join('') + ptsSurface.map(host).join('');
   };
-  return {n: live.length, svg};
+  return {n: pts.length, svg, extent};
 }
 
 // Siste tilgjengelige reserveanslag per medlemsfelt, summert. Årgangen kan
