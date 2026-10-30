@@ -587,6 +587,39 @@ def build_facilities():
             'rows': out}
 
 
+# Alle bronnbaner som horer til et felt, til Installations-fanen i Hubs:
+# tabellen og prikkene pa kartet. Posisjonen er bronnens overflateposisjon
+# (wlbNsDecDeg/wlbEwDecDeg), sa bronner boret fra samme plattform eller
+# template faller oppa hverandre. dev skiller utviklingsbronner fra
+# letebronner, som har ulik adresse i FactPages.
+def build_field_wells():
+    rows = fetch_layer(
+        WELL_LAYER,
+        'wlbNpdidWellbore,wlbWellboreName,fldNpdidField,wlbPurpose,wlbStatus,wlbContent,'
+        'wlbEntryDate,wlbCompletionDate,wlbTotalDepth,wlbDrillingFacility,'
+        'wlbNsDecDeg,wlbEwDecDeg,wlbFactPageUrl',
+        'fldNpdidField IS NOT NULL',
+    )
+    out = []
+    for r in rows:
+        wid, fld = as_int(r.get('wlbNpdidWellbore')), as_int(r.get('fldNpdidField'))
+        name = _clean(r.get('wlbWellboreName'))
+        if wid is None or fld is None or not name:
+            continue
+        lat, lon = num(r.get('wlbNsDecDeg')), num(r.get('wlbEwDecDeg'))
+        out.append([
+            wid, name, fld, _clean(r.get('wlbPurpose')), _clean(r.get('wlbStatus')),
+            _clean(r.get('wlbContent')), _day(r.get('wlbEntryDate')), _day(r.get('wlbCompletionDate')),
+            num(r.get('wlbTotalDepth')), _clean(r.get('wlbDrillingFacility')),
+            round(lon, 4) if lon is not None else None, round(lat, 4) if lat is not None else None,
+            1 if '/development/' in (r.get('wlbFactPageUrl') or '') else 0,
+        ])
+    out.sort(key=lambda x: (x[2], x[1]))
+    return {'columns': ['id', 'name', 'fieldId', 'purpose', 'status', 'content', 'entry',
+                        'completion', 'totalDepth', 'rig', 'lon', 'lat', 'dev'],
+            'rows': out}
+
+
 # Utvinningstillatelser til selskapsprofilens lisenstabell. Bare de aktive:
 # de 540 aktive lisensene er nayaktig de som har gjeldende rettighetshavere i
 # lag 3007, sa de inaktive 1 273 ville aldri blitt vist. cmpLongName er
@@ -1198,6 +1231,7 @@ def main():
         ('field_outlines.json', 'feltomriss', build_field_outlines),
         ('field_investments.json', 'investeringer per felt', build_field_investments),
         ('facilities.json', 'innretninger', build_facilities),
+        ('field_wells.json', 'bronner per felt', build_field_wells),
         ('licences.json', 'utvinningstillatelser', build_licences),
         ('licence_outlines.json', 'lisensomriss', build_licence_outlines),
         ('licence_baa.json', 'lisens-BAA-kobling', build_licence_baa),

@@ -2492,7 +2492,7 @@ async function refreshHubs() {
     drawChart();
     return;
   }
-  if (hubSubView === 'installations') { drawChart(); return; }
+  if (hubSubView === 'installations') { await loadFieldWells(); drawChart(); return; }
   if (hubSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
   await loadProdForFields(ids);
   if (hubSubView === 'oe_per_company') await loadLicForFields(ids);
@@ -6139,11 +6139,53 @@ function drawHubInstallations() {
   setChartNone();
   setChartTitle(hubName, `Installations · ${live.length} in place, ${facs.length - live.length} removed`);
   setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Installations:</strong> ${facs.length} (${live.filter(f => f.surface).length} surface and ${live.filter(f => !f.surface).length} subsea in place) &nbsp;|&nbsp; <strong>Source:</strong> Sodir layer 6000`);
-  const m = hubMap(ids, facs, {h: 330});
+  const wells = hubWells(ids);
+  const m = hubMap(ids, facs, {h: 330, wells});
   const t = hubFacilityTable(facs, fieldNameOf);
-  setProfile(!facs.length ? '<div class="pf-card pf-wide"><div class="pf-map-note">Sodir lists no installations for this hub.</div></div>' : `
+  const wt = hubWellTable(wells);
+  setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Installations:</strong> ${facs.length} (${live.filter(f => f.surface).length} surface and ${live.filter(f => !f.surface).length} subsea in place) &nbsp;|&nbsp; <strong>Wellbores:</strong> ${wells.length} &nbsp;|&nbsp; <strong>Source:</strong> Sodir layers 6000 and 5000`);
+  setProfile(!facs.length && !wells.length ? '<div class="pf-card pf-wide"><div class="pf-map-note">Sodir lists no installations or wells for this hub.</div></div>' : `
     ${m ? `<div class="pf-card pf-wide"><h3>Map</h3>${m}</div>` : ''}
-    ${t ? `<div class="pf-card pf-wide"><h3>Installations</h3>${t}</div>` : ''}`);
+    ${t ? `<div class="pf-card pf-wide"><h3>Installations</h3>${t}</div>` : ''}
+    ${wt ? `<div class="pf-card pf-wide"><h3>Wells</h3>${wt}</div>` : ''}`);
+}
+
+// Alle brønnbaner på hubens felt (data/field_wells.json, lag 5000). Filen er
+// stor nok til at den lastes først når Installations åpnes.
+let fieldWellsData = null;
+async function loadFieldWells() {
+  if (!fieldWellsData) fieldWellsData = (await fetchBundle('field_wells')) || {columns: [], rows: []};
+}
+function hubWells(ids) {
+  const b = fieldWellsData;
+  if (!b || !b.rows.length) return [];
+  const i = Object.fromEntries(b.columns.map((c, k) => [c, k])), want = new Set(ids);
+  return b.rows.filter(r => want.has(r[i.fieldId]))
+    .map(r => Object.fromEntries(b.columns.map((c, k) => [c, r[k]])));
+}
+const WELL_SHOW = 50;
+function hubWellTable(wells) {
+  if (!wells.length) return '';
+  const rows = wells.slice().sort((a, b) => (b.entry || '').localeCompare(a.entry || '') || a.name.localeCompare(b.name, 'en'));
+  const n = k => wells.filter(w => w.purpose === k).length;
+  const cap = (t = '') => t ? t.charAt(0) + t.slice(1).toLowerCase() : '—';
+  const row = w => `<tr>
+      <td><a class="row-link" href="https://factpages.sodir.no/wellbore/pageview/${w.dev ? 'development' : 'exploration'}/all/${w.id}" target="_blank" rel="noopener">${esc(w.name)} ↗</a></td>
+      <td>${fieldLink(w.fieldId, fieldNameOf(w.fieldId))}</td><td>${esc(cap(w.purpose))}</td><td>${esc(w.status || '—')}</td>
+      <td>${esc(cap(w.content))}</td><td>${w.entry || '—'}</td><td>${w.completion || '—'}</td>
+      <td>${w.totalDepth > 0 ? Math.round(w.totalDepth).toLocaleString('en') : '—'}</td><td>${esc(w.rig || '—')}</td></tr>`;
+  const head = `<thead><tr><th>Wellbore</th><th>Field</th><th>Purpose</th><th>Status</th><th>Content</th>
+      <th>Spudded</th><th>Completed</th><th>Total depth&nbsp;m</th><th>Drilled from</th></tr></thead>`;
+  const first = rows.slice(0, WELL_SHOW), rest = rows.slice(WELL_SHOW);
+  return `
+    <div class="pf-scroll"><table class="res-table">
+      <caption>${wells.length} wellbores · ${n('PRODUCTION')} production, ${n('INJECTION')} injection, ${n('OBSERVATION')} observation, ${wells.filter(w => !w.dev).length} exploration · newest first</caption>
+      ${head}<tbody>${first.map(row).join('')}</tbody>
+    </table></div>
+    ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} more</summary>
+      <div class="pf-scroll"><table class="res-table">${head}<tbody>${rest.map(row).join('')}</tbody></table></div></details>` : ''}
+    <div class="pf-map-note">All wellbores Sodir links to the hub's fields, including sidetracks and exploration wells
+      drilled on the fields. Names link to Sodir FactPages. Source: Sodir layer 5000.</div>`;
 }
 
 function drawHubHavtil() {
@@ -6225,12 +6267,25 @@ function hubMap(ids, facs, opts = {}) {
   const ownItems = outlineItems(outlines, fieldNameOf, id => member.has(id));
   if (!ownItems.length) return '';
   const net = hubNetwork(ids, facs || [], outlines);
+  // opts.wells: brønnene som svarte prikker over installasjonene (de fleste er
+  // boret fra en template eller plattform og ville ellers ligget skjult). Mange
+  // brønner er boret fra samme sted; like punkter tegnes bare én gang.
+  const wellDots = (px, py) => {
+    const seen = new Set();
+    return (opts.wells || []).filter(w => w.lon != null && w.lat != null).map(w => {
+      const x = px(w.lon).toFixed(1), y = py(w.lat).toFixed(1), k = x + ',' + y;
+      if (seen.has(k)) return '';
+      seen.add(k);
+      return `<circle cx="${x}" cy="${y}" r="1.7" fill="#000" fill-opacity="0.85"/>`;
+    }).join('');
+  };
   return outlineMap(ownItems, {
     label: 'Map of the hub', h: opts.h || 560, pad: 1.8,
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(member), discoveryLayer()],
-    overlay: net.svg,
+    overlay: (px, py) => net.svg(px, py) + wellDots(px, py),
     note: 'Member fields in colour, other fields in grey, discoveries in pale green. '
+        + (opts.wells && opts.wells.length ? 'Wells as black dots, at their surface location. ' : '')
         + (net.n ? `Surface installations as dark squares, subsea installations as rings. Lines are a
            simplified picture of the infield flowlines. Satellite fields follow the route in Sodir's field
            description where it names one (via another subsea field, or to a named host installation);
