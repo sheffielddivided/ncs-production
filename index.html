@@ -5913,6 +5913,39 @@ let hubCfPrice = 60, hubCfChart = null;
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
 function hubCfSet(v) { hubCfPrice = v; drawChart(); }
 
+// Produksjonsprognosen for ett felt, i fat o.e. per år fra inneværende år:
+// {R, liqShare, rows: [[år, fat]]}. lastBoe/lastLiq er fjorårets produksjon
+// (totalt og væske). Brukes både av kontantstrømmen og produksjonsgrafen i
+// hubprofilen, så de viser de samme tallene.
+function cfFieldForecast(id, lastBoe, lastLiq) {
+  const y0 = currentYear;
+  if (lastBoe == null) {
+    lastBoe = lastLiq = 0;
+    annualProduction(id).annual.forEach(a => {
+      if (a.prfYear !== y0 - 1) return;
+      const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
+      lastBoe = oe * 1e6 * BBL_PER_SM3; lastLiq = Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3;
+    });
+  }
+  const res = (fieldReserves && fieldReserves[id]) || [];
+  const cur = res.length ? res[res.length - 1] : null;
+  const R0 = cur ? Math.max(0, cur.remainingOE || 0) * 1e6 * BBL_PER_SM3 : 0;
+  const liqShare = lastBoe > 0 ? lastLiq / lastBoe
+    : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
+  let R = R0, rate = lastBoe, y = y0;
+  if (!(rate > 0) && R > 0) { rate = R / 8; y = y0 + 3; }
+  const kf = 1 - CF_CUTOFF, d = rate > 0 ? kf * rate / (R + kf * rate) : 0;
+  const rows = [];
+  for (let k = 0; R > 0 && rate > 0 && k < 100; k++, y++) {
+    rate *= 1 - d;
+    // Siste rest tas med i året før, så halen ikke blir noen få fat.
+    const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
+    R -= q;
+    rows.push([y, q]);
+  }
+  return {R: R0, liqShare, rows};
+}
+
 function hubCashFlow(ids, price) {
   const ph = priceHist && priceHist.byYear;
   if (!ph || !Object.keys(ph).length) return null;
@@ -5947,27 +5980,17 @@ function hubCashFlow(ids, price) {
       r.opex -= boe * OPEX_USD * p.uscpi / base / 1e9;
     });
     // Produksjonsprognosen.
-    const res = (fieldReserves && fieldReserves[id]) || [];
-    const cur = res.length ? res[res.length - 1] : null;
-    let R = cur ? Math.max(0, cur.remainingOE || 0) * 1e6 * BBL_PER_SM3 : 0;
-    reserves += R;
-    const liqShare = lastBoe > 0 ? lastLiq / lastBoe
-      : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
-    let rate = lastBoe, y = y0;
-    if (!(rate > 0) && R > 0) { rate = R / 8; y = y0 + 3; }
-    const kf = 1 - CF_CUTOFF, d = rate > 0 ? kf * rate / (R + kf * rate) : 0;
-    for (let k = 0; R > 0 && rate > 0 && k < 100; k++, y++) {
-      rate *= 1 - d;
-      // Siste rest tas med i året før, så halen ikke blir noen få fat.
-      const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
-      R -= q;
+    const fc = cfFieldForecast(id, lastBoe, lastLiq);
+    reserves += fc.R;
+    const liqShare = fc.liqShare;
+    fc.rows.forEach(([y, q]) => {
       const r = get(y), f = cfInfl(y);
       r.fc.liq = r.fc.gas = r.fc.opex = true;
       r.liq += q * liqShare * price * f / 1e9;
       r.gas += q * (1 - liqShare) * price * f / 1e9;
       r.opex -= q * OPEX_USD * f / 1e9;
       lastProd = Math.max(lastProd, y);
-    }
+    });
     // Gjenstående investeringer.
     const exp = inv && inv.expected[String(id)];
     if (exp && exp[0] > 0 && fxNow) {
@@ -6579,14 +6602,19 @@ function drawHubProfile() {
   const profiles = ids.map(id => profileRow(id) || {});
 
   // Grafen: hele den årlige historikken, én serie per medlemsfelt. Den viser
-  // når hver tilknytning kom på, noe periodevelgerens vindu skjuler.
-  const perField = ids.map(id => ({id, name: nameOf(id), ...annualProduction(id)}))
-                      .filter(s => s.annual.length);
+  // når hver tilknytning kom på, noe periodevelgerens vindu skjuler. Med
+  // prognose (cfFieldForecast, samme som kontantstrømmen) går historikken til
+  // og med i fjor og prognosen fra i år, skravert.
+  const y0 = currentYear;
+  const perField = ids.map(id => ({id, name: nameOf(id), ...annualProduction(id), fc: cfFieldForecast(id).rows}))
+                      .filter(s => s.annual.length || s.fc.length);
+  const hasFc = perField.some(s => s.fc.length);
+  if (hasFc) perField.forEach(s => { s.annual = s.annual.filter(a => a.prfYear < y0); });
   // Sammenhengende årsrekke, ikke bare de årene som finnes i radene. Feltene
   // starter på ulike tidspunkt, så de fleste årene er uansett nullfylt for
   // noen av dem — og Sodir mangler årsrader helt for Grane 1997–98, som
   // ellers ville gitt et hopp i aksen.
-  const seen = perField.flatMap(s => s.annual.map(a => a.prfYear));
+  const seen = perField.flatMap(s => s.annual.map(a => a.prfYear).concat(s.fc.map(r => r[0])));
   const years = [];
   if (seen.length) {
     for (let y = Math.min(...seen); y <= Math.max(...seen); y++) years.push(y);
@@ -6594,21 +6622,26 @@ function drawHubProfile() {
   // Sodir publiserer de samme månedene for alle felt, så delårsnotatet hentes
   // fra det feltet som faktisk har data i siste år.
   const lastYear = years[years.length - 1];
-  const partialSrc = perField.find(s => s.isPartial && s.lastYear === lastYear);
+  const partialSrc = hasFc ? null : perField.find(s => s.isPartial && s.lastYear === lastYear);
   const labels = years.map(y => (partialSrc && y === lastYear)
     ? `${y} (${partialSrc.partialNote})` : String(y));
 
   const datasets = [], legend = [];
+  const hatchCtx = document.createElement('canvas').getContext('2d');
+  const first = s => s.annual.length ? s.annual[0].prfYear : s.fc[0][0];
   perField
     .slice()
-    .sort((a, b) => a.annual[0].prfYear - b.annual[0].prfYear)
+    .sort((a, b) => first(a) - first(b))
     .forEach((s, i) => {
       const byYear = {};
       s.annual.forEach(a => { byYear[a.prfYear] = oeBoed(a.prfPrdOeNetMillSm3 || 0, s.daysOf(a)); });
+      s.fc.forEach(([y, q]) => { byYear[y] = q / daysInYear(y); });
       const data = years.map(y => +(byYear[y] || 0).toFixed(0));
       if (!hasAnyValue(data)) return;
-      const color = PALETTE[i % PALETTE.length][0];
-      datasets.push({label: s.name, data, backgroundColor: color, borderWidth: 0, stack: 's'});
+      const color = PALETTE[i % PALETTE.length][0], pat = hasFc ? cfHatch(hatchCtx, color) : null;
+      datasets.push({label: s.name, data, borderWidth: 0, stack: 's', _color: color,
+                     // Etter årstallet, ikke indeksen: renderChart kutter ledende nullår.
+                     backgroundColor: hasFc ? c => +String(c.chart.data.labels[c.dataIndex]).slice(0, 4) >= y0 ? pat : color : color});
       legend.push({label: s.name, color});
     });
 
@@ -6629,6 +6662,10 @@ function drawHubProfile() {
 
   if (datasets.length) {
     renderChart(labels, datasets, legend, 'boe/day', {xTitle:'Year'});
+    // Skraverte stolper kan ikke leses av pptSpecFromChart; grafen gis
+    // seriefargene direkte.
+    pptSpec = {kind: 'cat', dir: 'col', stacked: true, labels: lastLabels, yTitle: 'boe/day',
+      series: lastDatasets.map((d, i) => ({name: d.label, type: 'bar', color: pptHex(datasets[i]._color), values: d.data}))};
   } else {
     setChartEmpty('No production reported for this hub.');
   }
@@ -6679,7 +6716,7 @@ function drawHubProfile() {
     </div>`, companies)}
     ${hubCashFlowCard(ids)}
     <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
-      <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}. Source: Sodir FactPages.</div></div>
+      <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above (exponential decline from last year's production until the remaining reserves are produced).` : ''} Source: Sodir FactPages.</div></div>
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
     ${row2(volumes, investmentCard(ids, nameOf, {compact: true}))}
   `);
