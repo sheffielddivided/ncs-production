@@ -398,6 +398,18 @@
     /* Rad med to kort side om side og lik høyde (hubprofilen). */
     .pf-row2{column-span:all;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
     .pf-row2 > .pf-card{margin:0;min-width:0;}
+    /* Company / Valuation BETA */
+    .val-warn{background:#fff7e6;border:1px solid #f0c36d;color:#5c4300;font-size:0.76rem;line-height:1.45;}
+    .val-warn strong{color:#8a5a00;}
+    .val-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;}
+    .val-big{text-align:right;}
+    .val-big span{display:block;font-size:0.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;}
+    .val-big strong{display:block;font-size:1.7rem;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1.15;}
+    .val-big small{font-size:0.72rem;color:var(--muted);}
+    .val-sub{display:block;font-size:0.66rem;color:var(--muted);margin-top:1px;}
+    .val-ass td, .val-ass th{text-align:left !important;white-space:normal !important;vertical-align:top;}
+    .val-ass td:first-child{font-weight:600;white-space:nowrap !important;}
+    .val-ass td:nth-child(3){color:#44505f;}
     @media (max-width: 899px){ .pf-row2{grid-template-columns:1fr;} }
     /* Lisenstabellen: klikkbare overskrifter, og en infokolonne som får bryte. */
     .lic-th{cursor:pointer;user-select:none;white-space:nowrap;}
@@ -1440,6 +1452,7 @@ const COMPANY_TABS = [
   {id:'reserves',      label:'Reserves'},
   {id:'exploration',   label:'Exploration'},
   {id:'profile',       label:'Profile'},
+  {id:'valuation',     label:'Valuation BETA'},
 ];
 
 function renderViewTabs() {
@@ -2566,6 +2579,13 @@ async function refreshCompanies() {
     drawChart();
     return;
   }
+  // Verdsettelsen prognostiserer hele hubene selskapet er med i, så den
+  // trenger produksjonen for alle felt, ikke bare selskapets.
+  if (companySubView === 'valuation') {
+    await Promise.all([loadProdForFields(ncsFieldIds()), loadFieldReserves(), loadDiscoveries(), loadPriceHistory()]);
+    drawChart();
+    return;
+  }
   await loadProdForFields(relevantIds);
   drawChart();
 }
@@ -2650,6 +2670,7 @@ function drawChart() {
     else if (sv === 'exploration')   drawCompaniesExploration();
     else if (sv === 'operated')      drawCompaniesOperated();
     else if (sv === 'profile')       drawCompanyProfile();
+    else if (sv === 'valuation')     drawCompanyValuation();
   }
 }
 
@@ -4483,6 +4504,350 @@ function drawNcsInvestments() {
     </table>`);
 }
 
+// ── COMPANIES: VALUATION BETA ────────────────────────────────────────────────
+// Grov verdsettelse av et selskaps portefølje med samme sjablongmodell som
+// kontantstrømmen i hubprofilen (se HUBS: KONTANTSTRØM):
+// · hver hub der selskapet har en andel i dag, prognostiseres med
+//   cfHubForecast (hubens levetid styrer feltenes), og hvert felts
+//   kontantstrøm ganges med selskapets andel i feltet i dag
+// · historikken bruker andelen midt i hvert år, som i investeringskortet
+// · fjerning: CF_ABEX av feltets historiske capex, året etter hubens siste
+//   produksjonsår, med dagens andel
+// · funn: VAL_DISC_USD per fat o.e. av selskapets andel av betingede
+//   ressurser i funn (som NCS / Companies), lagt til verdien etter skatt
+// NPV per 1.1. i år med midtårskonvensjon; etter skatt = 22 % av før skatt.
+const VAL_DISC_USD = 3;
+let valChartCf = null, valChartProd = null;
+
+function valShareNow(id, cmp) { return getShare(id, new Date(), cmp) / 100; }
+function valShareMid(id, y, cmp) { return getShare(id, new Date(Date.UTC(y, 6, 1)), cmp) / 100; }
+
+function valCompute(cmp, price) {
+  const ph = priceHist && priceHist.byYear;
+  if (!ph || !Object.keys(ph).length) return null;
+  const phYears = Object.keys(ph).map(Number);
+  const base = (ph[OPEX_BASE] || ph[Math.max(...phYears)]).uscpi;
+  const fxNow = usdnokOf(Math.max(...phYears.filter(y => ph[y].usdnok)));
+  const inv = bundle.field_investments;
+  const y0 = currentYear, lastInv = invLastYear();
+  const per = {};
+  const get = y => per[y] = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0, abex: 0, fc: {}};
+  const prodByHub = {};   // hub -> år -> fat (netto), til produksjonsgrafen
+  const addProd = (hub, y, q) => { (prodByHub[hub] = prodByHub[hub] || {})[y] = ((prodByHub[hub] || {})[y] || 0) + q; };
+  const fieldHistCapex = {};
+  // Historikk: alle felt selskapet har hatt andel i, med andelen det året.
+  getFieldsForCompany(cmp).forEach(id => {
+    let hc = 0;
+    ((inv && inv.fields[String(id)]) || []).forEach(([y, v]) => {
+      const fx = usdnokOf(y);
+      if (!fx) return;
+      hc += v / fx / 1000;
+      const w = valShareMid(id, y, cmp);
+      if (w) get(y).capex -= v / fx / 1000 * w;
+    });
+    fieldHistCapex[id] = hc;
+    annualProduction(id).annual.forEach(a => {
+      const y = a.prfYear, p = ph[y];
+      if (y >= y0 || !p || p.brent == null || p.gas == null || !p.uscpi) return;
+      const w = valShareMid(id, y, cmp);
+      if (!w) return;
+      const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
+      const boe = oe * 1e6 * BBL_PER_SM3, liq = Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3;
+      const r = get(y);
+      r.liq += liq * p.brent / 1e9 * w;
+      r.gas += gas * 1e9 * GAS_MMBTU_PER_SM3 * p.gas / 1e9 * w;
+      r.opex -= boe * OPEX_USD * p.uscpi / base / 1e9 * w;
+      addProd(hubNameOf(id) === 'Other' ? fieldNameOf(id) : hubNameOf(id), y, boe * w);
+    });
+  });
+  // Prognose per hub med dagens andeler.
+  const live = getFieldsForCompany(cmp).filter(id => valShareNow(id, cmp) > 0);
+  // «Other» i hubtabellen er en samlekategori for felt uten felles anlegg, ikke
+  // en hub; feltene der prognostiseres hver for seg.
+  const groupOf = id => hubNameOf(id) === 'Other' ? fieldNameOf(id) : hubNameOf(id);
+  const hubs = [...new Set(live.map(groupOf))].map(name => {
+    const ids = groupOf(live.find(id => groupOf(id) === name)) !== hubNameOf(live.find(id => groupOf(id) === name))
+      ? live.filter(id => groupOf(id) === name)
+      : hubFieldIds([name]).length ? hubFieldIds([name]) : live.filter(id => groupOf(id) === name);
+    const fc = cfHubForecast(ids);
+    const net = {};   // år -> netto kontantstrøm for selskapets andel i huben
+    let reserves = 0, prod = 0, lastProd = 0, shareSum = 0, shareW = 0;
+    ids.forEach(id => {
+      annualProduction(id).annual.forEach(a => {
+        if ((a.prfPrdOeNetMillSm3 || 0) > 0 && a.prfYear < y0) lastProd = Math.max(lastProd, a.prfYear);
+      });
+      (fc.perField[id] || {rows: []}).rows.forEach(([y]) => { lastProd = Math.max(lastProd, y); });
+    });
+    ids.forEach(id => {
+      const s = valShareNow(id, cmp);
+      if (!s) return;
+      const f = fc.perField[id] || {rows: [], liqShare: 1};
+      const R = f.rows.reduce((t, r) => t + r[1], 0);
+      reserves += R * s; shareSum += s * R; shareW += R;
+      annualProduction(id).annual.forEach(a => {
+        if (a.prfYear === y0 - 1) prod += (a.prfPrdOeNetMillSm3 || 0) * 1e6 * BBL_PER_SM3 * s;
+      });
+      f.rows.forEach(([y, q]) => {
+        const r = get(y), k = cfInfl(y);
+        r.fc.liq = r.fc.gas = r.fc.opex = true;
+        const rev = q * price * k / 1e9 * s, opex = q * OPEX_USD * k / 1e9 * s;
+        r.liq += rev * f.liqShare; r.gas += rev * (1 - f.liqShare); r.opex -= opex;
+        net[y] = (net[y] || 0) + rev - opex;
+        addProd(name, y, q * s);
+      });
+      const exp = inv && inv.expected[String(id)];
+      if (exp && exp[0] > 0 && fxNow) {
+        CF_CAPEX_SPLIT.forEach((w, i) => {
+          const yy = lastInv + 1 + i, r = get(yy);
+          const c = exp[0] * w / fxNow / 1000 * Math.pow(1 + CF_INFL, yy - exp[1]) * s;
+          r.fc.capex = true; r.capex -= c;
+          net[yy] = (net[yy] || 0) - c;
+        });
+      }
+      if (lastProd >= y0 - 1 && fieldHistCapex[id] > 0) {
+        const ya = lastProd + 1, r = get(ya), c = CF_ABEX * fieldHistCapex[id] * cfInfl(ya) * s;
+        r.fc.abex = true; r.abex -= c;
+        net[ya] = (net[ya] || 0) - c;
+      }
+    });
+    const npv = CF_RATES.map(rate => Object.entries(net).filter(([y]) => +y >= y0)
+      .reduce((t, [y, v]) => t + v / Math.pow(1 + rate, +y - y0 + 0.5), 0));
+    return {name, ids, reserves, prod, end: lastProd >= y0 ? lastProd : null, npv,
+            share: shareW ? shareSum / shareW : 0};
+  }).filter(h => h.reserves > 0 || h.npv.some(v => Math.abs(v) > 1e-4))
+    .sort((a, b) => b.npv[0] - a.npv[0]);
+  // Funn: selskapets andel av betingede ressurser.
+  const disc = [];
+  (allDiscoveries || []).forEach(d => {
+    const v = discoveryRes[d.id], p = discoveryPartners(d).find(x => x.name === cmp);
+    if (!v || !p || !(p.share > 0)) return;
+    const boe = v.oe * 1e6 * BBL_PER_SM3 * p.share / 100;
+    if (boe > 0) disc.push({id: d.id, name: d.name, share: p.share, boe});
+  });
+  disc.sort((a, b) => b.boe - a.boe);
+  const discBoe = disc.reduce((t, d) => t + d.boe, 0);
+  const ys = Object.keys(per).map(Number);
+  const rows = [];
+  if (ys.length) {
+    let acc = 0;
+    for (let y = Math.min(...ys); y <= Math.max(...ys); y++) {
+      const r = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0, abex: 0, fc: {}};
+      const n = r.liq + r.gas + r.capex + r.opex + r.abex;
+      acc += n;
+      rows.push({y, ...r, net: n, acc});
+    }
+  }
+  const hubNpv = CF_RATES.map((_, k) => hubs.reduce((t, h) => t + h.npv[k], 0));
+  return {rows, hubs, disc, discBoe, discValue: discBoe * VAL_DISC_USD / 1e9, y0, prodByHub,
+          reserves: hubs.reduce((t, h) => t + h.reserves, 0), prod: hubs.reduce((t, h) => t + h.prod, 0), hubNpv};
+}
+
+function drawCompanyValuation() {
+  const cmp = [...selectedCompanyNames][0];
+  if (valChartCf) { valChartCf.destroy(); valChartCf = null; }
+  if (valChartProd) { valChartProd.destroy(); valChartProd = null; }
+  setChartNone();
+  if (!cmp) { setChartEmpty('Select a company.'); setInfo(''); return; }
+  const all = CF_PRICES.map(p => ({p, v: valCompute(cmp, p)}));
+  const v = (all.find(a => a.p === hubCfPrice) || all[0]).v;
+  if (!v) { setChartEmpty('Price data could not be loaded.'); setInfo(''); return; }
+  const tax = 1 - CF_TAX, y0 = v.y0;
+  const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const pct = r => `${Math.round(r * 100)} %`;
+  const total = (vv, k) => vv.hubNpv[k] * tax + vv.discValue;
+  const perBoe = (x, boe) => boe > 1e6 ? n2(x * 1e9 / boe) : '—';
+  const fact = (k, val, sub = '') => `<div class="pf-fact"><span>${k}</span><strong>${val}</strong>${sub ? `<small class="val-sub">${sub}</small>` : ''}</div>`;
+  setChartTitle(`${cmp} · Valuation (beta)`, `Indicative after-tax value of the Norwegian portfolio · oil price USD ${hubCfPrice} · as at 1 January ${y0}`);
+  setInfo(`<strong>Method:</strong> the hub cash flow model applied to ${esc(cmp)}'s equity share of every field it holds today, plus USD ${VAL_DISC_USD} per boe for its share of resources in discoveries &nbsp;|&nbsp; <strong>Sources:</strong> Sodir FactPages; World Bank Pink Sheet; FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
+
+  // Verdikort.
+  const head = `
+    <div class="pf-card pf-wide val-warn" role="note">
+      <strong>Beta · indicative only.</strong> This is a simplified, high-level analysis built on generic, standardised
+      assumptions (flat cost per barrel, a mechanical production decline, a flat tax rate and a fixed value for discoveries).
+      It does not reflect company-specific costs, contracts, tariffs, tax positions, hedging or reserve assessments, and it
+      must not be used for investment or other decisions.
+    </div>
+    <div class="pf-card pf-wide">
+      <div class="val-head">
+        <div><h3>Indicative value, after tax</h3>
+          <div class="pill-group" style="width:max-content">${CF_PRICES.map(p =>
+            `<button class="pill-btn${p === hubCfPrice ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div></div>
+        <div class="val-big"><span>Total at ${pct(CF_RATES[0])}</span><strong>USD ${n1(total(v, 0))} bn</strong>
+          <small>at ${pct(CF_RATES[1])}: USD ${n1(total(v, 1))} bn</small></div>
+      </div>
+      <div class="pf-facts" style="margin-top:12px">
+        ${fact(`Fields in production and development, NPV ${pct(CF_RATES[0])}`, `USD ${n1(v.hubNpv[0] * tax)} bn`, `${perBoe(v.hubNpv[0] * tax, v.reserves)} USD/boe`)}
+        ${fact(`Discoveries, USD ${VAL_DISC_USD}/boe`, `USD ${n1(v.discValue)} bn`, `${n1(v.discBoe / 1e6)} million boe`)}
+        ${fact(`Net reserves, end-${y0 - 1}`, `${n1(v.reserves / 1e6)} million boe`, `${v.hubs.length} hubs`)}
+        ${fact(`Net production ${y0 - 1}`, `${Math.round(v.prod / daysInYear(y0 - 1)).toLocaleString('en')} boe/d`, v.prod > 0 ? `reserve life ${n1(v.reserves / v.prod)} years` : '')}
+      </div>
+    </div>`;
+
+  // Kontantstrøm.
+  const cfCard = `
+    <div class="pf-card pf-wide" data-ppt-spec="valCf"><h3>Equity cash flow, pre-tax</h3>
+      <div class="chart-container" style="height:340px"><canvas id="valCfCanvas"></canvas></div>
+      <div class="legend-row">${CF_SERIES.filter(([k]) => v.rows.some(r => r[k])).map(([, l, c]) =>
+        `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
+        <div class="legend-item"><div class="legend-dot" style="background:${CF_LINE}"></div>Cumulative (right axis)</div>
+        <div class="legend-item">Hatched bars and dashed line: forecast</div></div>
+      <div class="pf-map-note">${esc(cmp)}'s share of each field's cash flow, nominal USD bn. History with the licence share in the
+        middle of each year; forecast from ${y0} with today's shares. The cumulative line is undiscounted.</div>
+    </div>`;
+
+  // Verdi per hub (søyler) og sensitivitet.
+  const shown = v.hubs.slice(0, 15), max = Math.max(...shown.map(h => Math.abs(h.npv[0] * tax)), 1e-9);
+  const bars = shown.map(h => {
+    const x = h.npv[0] * tax;
+    return `<div class="lc-row" onclick="openHubProfile(${esc(jsStr(h.name))})" role="link" tabindex="0">
+      <div class="lc-name" title="${esc(h.name)}"><span class="lc-u">${esc(h.name)}</span></div>
+      <div class="lc-track" style="width:${(Math.abs(x) / max * 62).toFixed(1)}%"><span style="flex:1;background:${x >= 0 ? OIL_COLOR : CF_CAPEX}"></span></div>
+      <div class="lc-val">${n2(x)}</div></div>`;
+  }).join('');
+  const sens = `<table class="res-table">
+      <caption>Total value after tax, USD bn (fields + discoveries)</caption>
+      <thead><tr><th>Oil price</th>${CF_RATES.map(r => `<th>${pct(r)}</th>`).join('')}</tr></thead>
+      <tbody>${all.map(a => `<tr${a.p === hubCfPrice ? ' class="total-row"' : ''}><td>USD ${a.p}</td>${CF_RATES.map((r, k) =>
+        `<td>${n1(total(a.v, k))}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    <table class="res-table" style="margin-top:12px">
+      <caption>Value bridge at USD ${hubCfPrice}, ${pct(CF_RATES[0])}</caption>
+      <tbody>
+        <tr><td>NPV pre-tax, fields</td><td>${n1(v.hubNpv[0])}</td></tr>
+        <tr><td>Tax (${pct(CF_TAX)})</td><td>${n1(-v.hubNpv[0] * CF_TAX)}</td></tr>
+        <tr><td>NPV after tax, fields</td><td>${n1(v.hubNpv[0] * tax)}</td></tr>
+        <tr><td>Discoveries (${n1(v.discBoe / 1e6)} million boe × USD ${VAL_DISC_USD})</td><td>${n1(v.discValue)}</td></tr>
+      </tbody>
+      <tfoot><tr class="total-row"><td>Total, USD bn</td><td>${n1(total(v, 0))}</td></tr></tfoot></table>`;
+  const row = `<div class="pf-row2">
+      <div class="pf-card"><h3>Value by hub, after tax, ${pct(CF_RATES[0])} · USD bn</h3>${bars}
+        ${v.hubs.length > shown.length ? `<div class="pf-map-note">Largest ${shown.length} of ${v.hubs.length} hubs; all are in the table below.</div>` : ''}
+        <div class="pf-map-note">Click a hub for its profile and cash flow.</div></div>
+      <div class="pf-card"><h3>Sensitivity and value bridge</h3>${sens}</div></div>`;
+
+  // Hubtabell.
+  const hubTable = `<div class="pf-card pf-wide"><h3>Hubs</h3><div class="pf-scroll"><table class="res-table">
+      <caption>${esc(cmp)}'s equity share · oil price USD ${hubCfPrice} · after tax</caption>
+      <thead><tr><th>Hub</th><th>Avg. share</th><th>Net reserves, mill boe</th><th>Net prod. ${y0 - 1}, boe/d</th><th>Production to</th>
+        ${CF_RATES.map(r => `<th>NPV ${pct(r)}, USD bn</th>`).join('')}<th>USD/boe, ${pct(CF_RATES[0])}</th></tr></thead>
+      <tbody>${v.hubs.map(h => `<tr><td><a class="row-link" href="#" onclick="openHubProfile(${esc(jsStr(h.name))});return false;">${esc(h.name)}</a></td>
+        <td>${h.share ? (h.share * 100).toFixed(1) + ' %' : '—'}</td><td>${n1(h.reserves / 1e6)}</td>
+        <td>${h.prod ? Math.round(h.prod / daysInYear(y0 - 1)).toLocaleString('en') : '—'}</td><td>${h.end || '—'}</td>
+        ${h.npv.map(x => `<td>${n2(x * tax)}</td>`).join('')}<td>${perBoe(h.npv[0] * tax, h.reserves)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td></td><td>${n1(v.reserves / 1e6)}</td>
+        <td>${Math.round(v.prod / daysInYear(y0 - 1)).toLocaleString('en')}</td><td></td>
+        ${v.hubNpv.map(x => `<td>${n2(x * tax)}</td>`).join('')}<td>${perBoe(v.hubNpv[0] * tax, v.reserves)}</td></tr></tfoot>
+    </table></div>
+    <div class="pf-map-note">Average share is weighted by each field's remaining reserves. Net reserves are the hub forecast's
+      production (the latest Sodir estimate) times today's share.</div></div>`;
+
+  // Netto produksjon per hub.
+  const prodCard = `<div class="pf-card pf-wide" data-ppt-spec="valProd"><h3>Net production profile by hub</h3>
+      <div class="chart-container" style="height:300px"><canvas id="valProdCanvas"></canvas></div>
+      <div class="legend-row" id="valProdLegend"></div>
+      <div class="pf-map-note">${esc(cmp)}'s share of production, boe/day. Hatched from ${y0}: the simulated profile (producing fields
+        decline together per hub; fields under development come on top with ramp-up, plateau and decline; nothing outlives its hub).</div></div>`;
+
+  // Antakelser.
+  const A = [
+    ['Oil price', `USD ${CF_PRICES.join(' / ')} per boe in ${OPEX_BASE} money`, 'All boe, including gas and NGL, at the oil price; escalated with inflation'],
+    ['Inflation', `${(CF_INFL * 100).toFixed(1)} % a year`, `From ${OPEX_BASE}, on prices, opex, capex and abandonment`],
+    ['Operating cost', `USD ${OPEX_USD} per boe in ${OPEX_BASE} money`, 'History deflated with the US CPI'],
+    ['Production, producing fields', `Decline ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year`, `Per hub, from last year's production P until the reserves R are produced; ends at ${Math.round(CF_CUTOFF * 100)} % of the first forecast year`],
+    ['Production, fields under development', `Plateau ${Math.round(CF_PLATEAU_RATE * 100)} % of reserves a year`, `Half a plateau year first, plateau until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced, then the decline above; start-up from Sodir`],
+    ['Remaining capex', `Sodir's expected future investments, ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} %`, `Over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length}; amounts before ${y0} are sunk`],
+    ['Abandonment', `${Math.round(CF_ABEX * 100)} % of historical capex`, 'The year after the hub\'s last production year'],
+    ['Tax', `${Math.round(CF_TAX * 100)} % flat`, 'On all cash flows, including losses'],
+    ['Discounting', CF_RATES.map(pct).join(' and '), `Mid-year, as at 1 January ${y0}`],
+    ['Horizon', `${CF_HORIZON} years`, `Production after ${y0 + CF_HORIZON - 1} is not included`],
+    ['Discoveries', `USD ${VAL_DISC_USD} per boe`, 'Equity share of contingent resources in discoveries; added after tax, not discounted'],
+    ['Ownership', 'Today\'s licence shares', 'Forecast only; history uses the share in each year'],
+    ['Hubs', 'Fields sharing a host facility', 'Production per hub as in the hub profile; fields without a shared facility are valued one by one'],
+    ['Exchange rate', 'Annual average USD/NOK', 'Latest annual average for future capex'],
+  ];
+  const assumptions = `<div class="pf-card pf-wide"><h3>Assumptions</h3><div class="pf-scroll"><table class="res-table val-ass">
+      <thead><tr><th>Item</th><th>Assumption</th><th>Comment</th></tr></thead>
+      <tbody>${A.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody></table></div>
+    <div class="pf-map-note">Not included: tariffs and transport costs, company-specific costs and tax positions, hedging,
+      exploration, acquisitions and divestments after today, and fields outside Norway.</div></div>`;
+
+  // Funn.
+  const discCard = v.disc.length ? `<div class="pf-card pf-wide"><h3>Discoveries</h3><div class="pf-scroll"><table class="res-table">
+      <caption>${v.disc.length} discoveries · ${n1(v.discBoe / 1e6)} million boe net · USD ${VAL_DISC_USD}/boe</caption>
+      <thead><tr><th>Discovery</th><th>Share</th><th>Net resources, mill boe</th><th>Value, USD m</th></tr></thead>
+      <tbody>${v.disc.slice(0, 20).map(d => `<tr><td><a class="row-link" href="#" onclick="openDiscoveryProfile(${d.id});return false;">${esc(d.name)}</a></td>
+        <td>${d.share.toFixed(1)} %</td><td>${n1(d.boe / 1e6)}</td><td>${Math.round(d.boe * VAL_DISC_USD / 1e6).toLocaleString('en')}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total${v.disc.length > 20 ? ` (${v.disc.length})` : ''}</td><td></td><td>${n1(v.discBoe / 1e6)}</td>
+        <td>${Math.round(v.discValue * 1000).toLocaleString('en')}</td></tr></tfoot></table></div></div>` : '';
+
+  setProfile(head + cfCard + row + hubTable + prodCard + assumptions + discCard);
+
+  // Kontantstrømgrafen.
+  const el = document.getElementById('valCfCanvas');
+  if (el && v.rows.length) {
+    const ctx = el.getContext('2d'), labels = v.rows.map(r => String(r.y));
+    const firstFc = v.rows.findIndex(r => r.y >= y0);
+    const bars = CF_SERIES.filter(([k]) => v.rows.some(r => r[k])).map(([k, label, color]) => {
+      const pat = cfHatch(ctx, color);
+      return {type: 'bar', label, data: v.rows.map(r => +r[k].toFixed(3)), stack: 's', order: 1, borderWidth: 0,
+              backgroundColor: v.rows.map(r => r.fc[k] ? pat : color)};
+    });
+    const fmt = x => `USD ${x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})} bn`;
+    valChartCf = new Chart(ctx, {
+      data: {labels, datasets: [
+        {type: 'line', label: 'Cumulative', data: v.rows.map(r => +r.acc.toFixed(3)), yAxisID: 'y1',
+         borderColor: CF_LINE, backgroundColor: CF_LINE, borderWidth: 2, pointRadius: 0, tension: 0.15, order: 0,
+         segment: {borderDash: s => firstFc >= 0 && s.p1DataIndex >= firstFc ? [5, 4] : undefined}}, ...bars]},
+      options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {
+          title: items => `${items[0].label}${v.rows[items[0].dataIndex].y >= y0 ? ' (forecast)' : ''}`,
+          label: c => c.parsed.y ? ` ${c.dataset.label}: ${fmt(c.parsed.y)}` : null,
+          afterBody: items => [`Net: ${fmt(v.rows[items[0].dataIndex].net)}`]}}},
+        scales: {
+          x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+          y: {stacked: true, title: {display: true, text: 'USD bn per year', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}},
+          y1: {position: 'right', title: {display: true, text: 'cumulative, USD bn', color: CF_LINE, font: {size: 10}},
+               ticks: {font: {size: 9}}, grid: {display: false}}}},
+    });
+    pptCardSpecs.valCf = {kind: 'cat', dir: 'col', stacked: true, labels,
+      subtitle: `${cmp} · equity cash flow, USD bn (nominal) · oil price USD ${hubCfPrice} · forecast from ${y0}`,
+      yTitle: 'USD bn per year', y1Title: 'cumulative, USD bn',
+      series: CF_SERIES.filter(([k]) => v.rows.some(r => r[k])).map(([k, name, color]) =>
+        ({name, type: 'bar', color: pptHex(color), values: v.rows.map(r => +r[k].toFixed(3))}))
+        .concat([{name: 'Cumulative', type: 'line', secondary: true, color: pptHex(CF_LINE), values: v.rows.map(r => +r.acc.toFixed(3))}])};
+  }
+
+  // Produksjonsgrafen: de åtte største hubene etter reserver, resten samlet.
+  const pel = document.getElementById('valProdCanvas');
+  const hubYears = Object.values(v.prodByHub).flatMap(o => Object.keys(o).map(Number));
+  if (pel && hubYears.length) {
+    const top = v.hubs.slice().sort((a, b) => b.reserves - a.reserves).slice(0, 8).map(h => h.name);
+    const yrs = [];
+    for (let y = Math.min(...hubYears); y <= Math.max(...hubYears); y++) yrs.push(y);
+    const groups = top.map(n => ({name: n, src: [n]}));
+    const rest = Object.keys(v.prodByHub).filter(n => !top.includes(n));
+    if (rest.length) groups.push({name: 'Remaining hubs', src: rest, rest: true});
+    const ctx = pel.getContext('2d');
+    const ds = groups.map((g, i) => {
+      const color = g.rest ? 'rgba(154,165,177,0.85)' : PALETTE[i % PALETTE.length][0], pat = cfHatch(ctx, color);
+      const data = yrs.map(y => Math.round(g.src.reduce((t, n) => t + ((v.prodByHub[n] || {})[y] || 0), 0) / daysInYear(y)));
+      return {label: g.name, data, stack: 's', borderWidth: 0, _color: color, backgroundColor: yrs.map(y => y >= y0 ? pat : color)};
+    }).filter(d => d.data.some(x => x > 0));
+    valChartProd = new Chart(ctx, {type: 'bar', data: {labels: yrs.map(String), datasets: ds},
+      options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {
+          label: c => c.parsed.y ? ` ${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString('en')} boe/d` : null}}},
+        scales: {x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+                 y: {stacked: true, beginAtZero: true, title: {display: true, text: 'boe/day, net', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}}}}});
+    document.getElementById('valProdLegend').innerHTML = ds.map(d =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${d._color}"></div>${esc(d.label)}</div>`).join('');
+    pptCardSpecs.valProd = {kind: 'cat', dir: 'col', stacked: true, labels: yrs.map(String), yTitle: 'boe/day, net',
+      subtitle: `${cmp} · net production by hub, boe/day · forecast from ${y0}`,
+      series: ds.map(d => ({name: d.label, type: 'bar', color: pptHex(d._color), values: d.data}))};
+  }
+}
+
 // ── COMPANIES: OPERATED ──────────────────────────────────────────────────────
 // Selskapets egenandelsjusterte produksjon delt i operert og partner. Operert
 // er andelen fra felt der selskapet var operatør i perioden, slått opp i
@@ -4843,7 +5208,8 @@ function isReservesView() {
       || (topMode === 'hubs'      && hubSubView     === 'havtil')
       || (topMode === 'companies' && companySubView === 'profile')
       || (topMode === 'companies' && companySubView === 'reserves')
-      || (topMode === 'companies' && companySubView === 'exploration');
+      || (topMode === 'companies' && companySubView === 'exploration')
+      || (topMode === 'companies' && companySubView === 'valuation');
 }
 
 async function loadFieldReserves() {
@@ -5919,6 +6285,9 @@ const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].u
 const OPEX_USD = 10, OPEX_BASE = 2026;
 const CF_INFL = 0.025, CF_CUTOFF = 0.10, CF_CAPEX_SPLIT = [0.4, 0.3, 0.2, 0.1];
 const CF_PLATEAU_RATE = 0.12, CF_PLATEAU_SHARE = 1 / 3;
+// Prognosehorisont i år. Et felt med svært store reserver i forhold til
+// produksjonen ville ellers fått en hale på et århundre.
+const CF_HORIZON = 40;
 const CF_ABEX = 0.05, CF_TAX = 0.78, CF_RATES = [0.07, 0.10], CF_PRICES = [60, 80, 100];
 let hubCfPrice = 80, hubCfChart = null;
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
@@ -5932,7 +6301,7 @@ function hubCfSet(v) { hubCfPrice = v; drawChart(); }
 // Siste rest tas med i året før, så halen ikke blir noen få fat.
 function cfDecline(rate, R, y) {
   const kf = 1 - CF_CUTOFF, d = rate > 0 ? kf * rate / (R + kf * rate) : 0, out = [];
-  for (let k = 0; R > 0 && rate > 0 && k < 100; k++, y++) {
+  for (let k = 0; R > 0 && rate > 0 && y < currentYear + CF_HORIZON; k++, y++) {
     rate *= 1 - d;
     const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
     R -= q;
@@ -5956,7 +6325,7 @@ function cfNewField(R, start) {
   let rem = R, y = start, cum = 0;
   const first = Math.min(0.5 * p, rem);
   out.push([y++, first]); rem -= first; cum += first;
-  while (rem > 0 && cum < CF_PLATEAU_SHARE * R) {
+  while (rem > 0 && cum < CF_PLATEAU_SHARE * R && y < currentYear + CF_HORIZON) {
     const q = Math.min(p, rem);
     out.push([y++, q]); rem -= q; cum += q;
   }
