@@ -5896,10 +5896,16 @@ const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].u
 //   k = 1 − CF_CUTOFF. Da er summen av hele fallkurven R / k, og R er nådd når
 //   årsraten har falt til CF_CUTOFF av første prognoseår – huben stenges ved en
 //   tidel av dagens nivå. (d = k·P/R alene når aldri R når reservene er under
-//   rundt ni års produksjon.) Hubens produksjon fordeles på feltene etter
-//   andelen av reservene, så hvert felt produserer nøyaktig sine reserver og
-//   alle stenger med huben. En hub uten produksjon i fjor starter om tre år
-//   som om P var R/8.
+//   rundt ni års produksjon.) Fallet gjelder feltene som produserte i fjor, og
+//   fordeles på dem etter reserveandel.
+//   Felt under utbygging (reserver, men ingen produksjon i fjor) kommer i
+//   tillegg med egen profil fra oppstartsåret: produksjon i år gir i år,
+//   ellers Sodirs «production is planned to start in YYYY», ellers tre år fram.
+//   Første år halv platårate, så platå på CF_PLATEAU_RATE av reservene per år
+//   til CF_PLATEAU_SHARE av dem er produsert, deretter fall etter samme
+//   formel. Alt stenger senest når huben stenger: året da hubens samlede
+//   reserver (også de nye) ville vært produsert ut med fallet over. En hub der
+//   alle feltene er nye (Yggdrasil), lever så lenge feltene.
 // · inntekter: scenarioprisen (OPEX_BASE-dollar per fat) for alle fat o.e.,
 //   også gass og NGL
 // · opex som i historikken
@@ -5912,6 +5918,7 @@ const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].u
 // kontantstrømmen ganget med 1 − CF_TAX (flat skatt på alt, også underskudd).
 const OPEX_USD = 10, OPEX_BASE = 2026;
 const CF_INFL = 0.025, CF_CUTOFF = 0.10, CF_CAPEX_SPLIT = [0.4, 0.3, 0.2, 0.1];
+const CF_PLATEAU_RATE = 0.12, CF_PLATEAU_SHARE = 1 / 3;
 const CF_ABEX = 0.05, CF_TAX = 0.78, CF_RATES = [0.07, 0.10], CF_PRICES = [60, 80, 100];
 let hubCfPrice = 60, hubCfChart = null;
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
@@ -5921,9 +5928,44 @@ function hubCfSet(v) { hubCfPrice = v; drawChart(); }
 // {R, perField: {id: {liqShare, rows: [[år, fat]]}}}. Brukes både av
 // kontantstrømmen og produksjonsgrafen i hubprofilen, så de viser de samme
 // tallene.
+// Eksponentielt fall fra årsraten rate til R er produsert: [[år, fat]] fra år y.
+// Siste rest tas med i året før, så halen ikke blir noen få fat.
+function cfDecline(rate, R, y) {
+  const kf = 1 - CF_CUTOFF, d = rate > 0 ? kf * rate / (R + kf * rate) : 0, out = [];
+  for (let k = 0; R > 0 && rate > 0 && k < 100; k++, y++) {
+    rate *= 1 - d;
+    const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
+    R -= q;
+    out.push([y, q]);
+  }
+  return out;
+}
+
+// Oppstartsår for et felt under utbygging.
+function cfStartYear(id) {
+  const y0 = currentYear;
+  if (annualProduction(id).annual.some(a => a.prfYear === y0 && (a.prfPrdOeNetMillSm3 || 0) > 0)) return y0;
+  const t = (fieldDescriptions(id).find(d => d.heading === 'Status') || {}).text || '';
+  const m = /(?:production|start-?up)[^.]{0,60}?(?:planned|expected|scheduled|estimated)[^.]{0,40}?(\d{4})/i.exec(t);
+  return m ? Math.max(y0, +m[1]) : y0 + 3;
+}
+
+// Profil for et nytt felt: halvt år én, platå, så fall.
+function cfNewField(R, start) {
+  const p = CF_PLATEAU_RATE * R, out = [];
+  let rem = R, y = start, cum = 0;
+  const first = Math.min(0.5 * p, rem);
+  out.push([y++, first]); rem -= first; cum += first;
+  while (rem > 0 && cum < CF_PLATEAU_SHARE * R) {
+    const q = Math.min(p, rem);
+    out.push([y++, q]); rem -= q; cum += q;
+  }
+  return out.concat(cfDecline(p, rem, y));
+}
+
 function cfHubForecast(ids) {
   const y0 = currentYear;
-  let P = 0, R0 = 0;
+  let P = 0, Rb = 0, R0 = 0;
   const fields = ids.map(id => {
     let boe = 0, liq = 0;
     annualProduction(id).annual.forEach(a => {
@@ -5936,25 +5978,26 @@ function cfHubForecast(ids) {
     const R = cur ? Math.max(0, cur.remainingOE || 0) * 1e6 * BBL_PER_SM3 : 0;
     const liqShare = boe > 0 ? liq / boe
       : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
-    P += boe; R0 += R;
-    return {id, R, liqShare};
+    const isNew = !(boe > 0) && R > 0;
+    if (!isNew) { P += boe; Rb += R; }
+    R0 += R;
+    return {id, R, liqShare, isNew};
   });
-  const hub = [];
-  let R = R0, rate = P, y = y0;
-  if (!(rate > 0) && R > 0) { rate = R / 8; y = y0 + 3; }
-  const kf = 1 - CF_CUTOFF, d = rate > 0 ? kf * rate / (R + kf * rate) : 0;
-  for (let k = 0; R > 0 && rate > 0 && k < 100; k++, y++) {
-    rate *= 1 - d;
-    // Siste rest tas med i året før, så halen ikke blir noen få fat.
-    const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
-    R -= q;
-    hub.push([y, q]);
-  }
-  const perField = {};
+  // Hubens produserende felt, og hubens levetid med alle reservene.
+  const base = P > 0 ? cfDecline(P, Rb, y0) : [];
+  const hubEnd = P > 0 ? Math.max(...cfDecline(P, R0, y0).map(r => r[0])) : Infinity;
+  const perField = {}, starts = {};
   fields.forEach(f => {
-    perField[f.id] = {liqShare: f.liqShare, rows: R0 > 0 && f.R > 0 ? hub.map(([yy, q]) => [yy, q * f.R / R0]) : []};
+    let rows = [];
+    if (f.isNew) {
+      starts[f.id] = cfStartYear(f.id);
+      rows = cfNewField(f.R, starts[f.id]);
+    } else if (Rb > 0 && f.R > 0) {
+      rows = base.map(([yy, q]) => [yy, q * f.R / Rb]);
+    }
+    perField[f.id] = {liqShare: f.liqShare, rows: rows.filter(([yy]) => yy <= hubEnd), start: starts[f.id]};
   });
-  return {R: R0, perField, hub};
+  return {R: R0, perField, hubEnd: isFinite(hubEnd) ? hubEnd : null};
 }
 
 function hubCashFlow(ids, price) {
@@ -6089,11 +6132,13 @@ function hubCashFlowCard(ids) {
       average rate; opex a flat USD ${OPEX_USD} per boe in ${OPEX_BASE} money, deflated with the US CPI; liquids sold at
       Brent and gas at the World Bank's European gas price (TTF in recent years), ${GAS_MJ_PER_SM3} MJ/Sm³.
       ${cf.hasForecast ? `<strong>Forecast</strong> (from ${y0}, ${Math.round(CF_INFL * 1000) / 10} % inflation from ${OPEX_BASE}):
-      the hub as a whole declines exponentially from last year's production (P) until its remaining reserves
-      (R, sum of the fields' latest Sodir estimates) are produced, at an annual rate of ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P),
-      so the hub shuts in when output has fallen to ${Math.round(CF_CUTOFF * 100)} % of the first forecast year. The hub's
-      output is split between the fields by their share of the reserves, so every field produces its reserves and
-      closes with the hub. A hub with no production last year starts in ${y0 + 3} as if P were R/8. All boe, gas and NGL included, sold at the
+      the producing fields decline together from last year's production (P) until their remaining reserves
+      (R, latest Sodir estimates) are produced, at an annual rate of ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P),
+      split between them by their share of the reserves. Fields under development come on top from their start-up
+      year (production this year, otherwise Sodir's planned start-up, otherwise ${y0 + 3}): half a plateau year, then a
+      plateau of ${Math.round(CF_PLATEAU_RATE * 100)} % of their reserves a year until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced,
+      then the same decline. Everything stops at the latest when the hub would have produced all its reserves with
+      that decline, so the hub's life governs the fields'. All boe, gas and NGL included, sold at the
       scenario oil price in ${OPEX_BASE} dollars. Opex as in the history. Sodir's expected future investments spread
       ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} % over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length},
       the first years without reported figures; amounts before ${y0} are sunk and not in the NPV. Abandonment
@@ -6727,7 +6772,7 @@ function drawHubProfile() {
     </div>`, companies)}
     ${hubCashFlowCard(ids)}
     <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
-      <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above (the hub declines from last year's production until its remaining reserves are produced, split between the fields by their share of the reserves).` : ''} Source: Sodir FactPages.</div></div>
+      <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above (producing fields decline together; fields under development come on top from their start-up year with ramp-up, plateau and decline).` : ''} Source: Sodir FactPages.</div></div>
     ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
     ${row2(volumes, investmentCard(ids, nameOf, {compact: true}))}
   `);
