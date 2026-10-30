@@ -2144,7 +2144,7 @@ function stateToHash() {
   else if (topMode === 'prices') {
     if (prF.y0) q.set('py', prF.y0 + '-' + prF.y1);
     if (prF.selSet) q.set('pf', prF.sel.join(SEP));
-    if (prF.bm) q.set('pm', '1');
+    if (prF.ba) q.set('pm', 'y'); else if (prF.bm) q.set('pm', '1');
     if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
     if (prF.real) q.set('pr', '1');
     if (prF.og === 'grid') q.set('po', 'grid');
@@ -2342,6 +2342,7 @@ function applyHash() {
     if (py) { prF.y0 = +py[1]; prF.y1 = +py[2]; }
     if (q.has('pf')) { prF.sel = q.get('pf') ? q.get('pf').split(SEP) : []; prF.selSet = true; }
     prF.bm = q.get('pm') === '1';
+    prF.ba = q.get('pm') === 'y';
     if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
     prF.real = q.get('pr') === '1';
     prF.og = q.get('po') === 'grid' ? 'grid' : 'scatter';
@@ -2663,13 +2664,13 @@ const PRICE_DEFAULT_SEL = ['TROLL', 'JOHAN SVERDRUP', 'EKOFISK', 'OSEBERG'];
 const PRICE_FAV_KEY = 'normpris.favoriteFields.v1';
 const PRICE_SRC = 'Source: Norwegian Petroleum Price Board / Ministry of Energy (regjeringen.no)';
 let priceData = null, priceLoading = null;
-// y0/y1: periode · sel: valgte felt i valgrekkefølge · slot: felt -> farge 0..7 · bm: Brent som månedssnitt
+// y0/y1: periode · sel: valgte felt i valgrekkefølge · slot: felt -> farge 0..7 · bm: Brent som månedssnitt · ba: årssnitt
 let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
 
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi')]).then(([b, d, e, g, c]) => {
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory()]).then(([b, d, e, g, c]) => {
     priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c} : {};
     if (!priceData.diff) return;
     const years = priceYears();
@@ -2728,7 +2729,9 @@ function priceYears() {
   const d = priceData.diff, b = priceData.brent;
   const g = priceData.gas ? priceData.gas.rows.map(r => +r[0].slice(0, 4)) : [];
   const e = priceData.eia && priceData.eia.rows ? priceData.eia.rows.map(r => +r[0].slice(0, 4)) : [];
-  return [...new Set(d.months.map(m => +m.slice(0, 4)).concat(b.rows.map(r => +r[0].slice(0, 4)), g, e))].sort((a, c) => a - c);
+  // Brent går tilbake til 1970 med Verdensbankens årspriser (data/price_history.json).
+  const h = priceSubView === 'brent' && priceHist ? Object.keys(priceHist.byYear).map(Number).filter(y => priceHist.byYear[y].brent != null) : [];
+  return [...new Set(d.months.map(m => +m.slice(0, 4)).concat(b.rows.map(r => +r[0].slice(0, 4)), g, e, h))].sort((a, c) => a - c);
 }
 function priceMonths() { return priceData.diff.months.filter(m => { const y = +m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; }); }
 
@@ -2773,6 +2776,7 @@ function pricePeriod(which, v) {
   syncUrl(); drawChart();
 }
 function priceSet(k, v) { prF[k] = v; syncUrl(); drawChart(); }
+function priceRes(r) { prF.bm = r === 'm'; prF.ba = r === 'y'; syncUrl(); drawChart(); }
 
 const PRICE_COLORS = PALETTE.map(p => p[0]);
 
@@ -2806,8 +2810,9 @@ function priceBar(extra = '') {
   const sel = (k) => `<select class="year-select" onchange="pricePeriod('${k}', this.value)" aria-label="${k === 'y0' ? 'From year' : 'To year'}">
     ${years.map(y => `<option value="${y}"${y === prF[k] ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
   const bm = priceSubView === 'brent' ? `<div class="pill-group">
-      <button class="pill-btn${prF.bm ? '' : ' active'}" onclick="priceSet('bm', false)">Daily</button>
-      <button class="pill-btn${prF.bm ? ' active' : ''}" onclick="priceSet('bm', true)">Monthly average</button></div>` : '';
+      <button class="pill-btn${prF.bm || prF.ba ? '' : ' active'}" onclick="priceRes('d')">Daily</button>
+      <button class="pill-btn${prF.bm && !prF.ba ? ' active' : ''}" onclick="priceRes('m')">Monthly average</button>
+      <button class="pill-btn${prF.ba ? ' active' : ''}" onclick="priceRes('y')">Annual average</button></div>` : '';
   const real = ['brent', 'gas', 'oilgas'].includes(priceSubView) && priceData.cpi ? `<div class="pill-group">
       <button class="pill-btn${prF.real ? '' : ' active'}" onclick="priceSet('real', false)">Nominal</button>
       <button class="pill-btn${prF.real ? ' active' : ''}" onclick="priceSet('real', true)">Real (${cpiLabel(priceSubView === 'gas' ? gasCur() : 'USD')} prices)</button></div>` : '';
@@ -2849,7 +2854,93 @@ function priceLineChart(labels, datasets, yTitle, opts = {}) {
   });
 }
 
+// Verdiene over stolpene. Står loddrett når stolpene er for smale til teksten.
+const barLabelPlugin = (fmt) => ({
+  id: 'barLabels',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx, meta = chart.getDatasetMeta(0), data = chart.data.datasets[0].data;
+    ctx.save();
+    ctx.font = '9px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#4a5568';
+    meta.data.forEach((bar, i) => {
+      const v = data[i];
+      if (v == null) return;
+      const t = fmt(v), w = ctx.measureText(t).width, bw = bar.width || 0;
+      if (bw >= w + 2) {
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(t, bar.x, bar.y - 2);
+      } else {
+        ctx.save();
+        ctx.translate(bar.x, bar.y - 3); ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(t, 0, 0);
+        ctx.restore();
+      }
+    });
+    ctx.restore();
+  },
+});
+
+// Årssnitt som stolper, 1970 og framover. Fra 1990 er det snittet av den
+// sammenskjøtte dagsserien (rådets Datert Brent, forlenget med EIA); før det
+// Verdensbankens årspris for Brent (Pink Sheet), som de første årene er den
+// samme som for Dubai. Realvisningen bruker årssnitt av amerikansk KPI med
+// siste år som basis.
+function drawPriceBrentAnnual() {
+  const sp = priceSplice();
+  const acc = {};
+  const add = ([d, v]) => { const y = +d.slice(0, 4); (acc[y] = acc[y] || []).push(v); };
+  priceData.brent.rows.forEach(add);
+  sp.head.concat(sp.fit, sp.tail).forEach(add);
+  const ph = (priceHist && priceHist.byYear) || {};
+  const years = [];
+  for (let y = prF.y0; y <= prF.y1; y++) years.push(y);
+  const daily = y => acc[y] && acc[y].length > 200 || (acc[y] && y === currentYear);
+  const nom = years.map(y => daily(y) ? acc[y].reduce((a, b) => a + b, 0) / acc[y].length
+                                       : ph[y] && ph[y].brent != null ? ph[y].brent : null);
+  const cpiYears = Object.keys(ph).map(Number).filter(y => ph[y].uscpi);
+  const base = cpiYears.length ? Math.max(...cpiYears) : null;
+  const real = prF.real && base;
+  const vals = nom.map((v, i) => v == null ? null : +(real && ph[years[i]] && ph[years[i]].uscpi ? v * ph[base].uscpi / ph[years[i]].uscpi : v).toFixed(2));
+  const C = 'rgba(0,48,87,0.85)', W = 'rgba(154,165,177,0.9)';
+  const labels = years.map(y => y === currentYear ? `${y}*` : String(y));
+  document.getElementById('chartArea').innerHTML = `${priceBar()}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:${C}"></div>Dated Brent (Petroleum Price Board, extended with EIA)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:${W}"></div>Brent, World Bank annual average (before 1990)</div></div>`;
+  if (chartInstance) chartInstance.destroy();
+  const many = years.length > 25;
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'bar',
+    data: {labels, datasets: [{label: `Brent, annual average${real ? ', real' : ''}`, data: vals,
+      backgroundColor: years.map(y => daily(y) ? C : W), borderWidth: 0}]},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, layout: {padding: {top: 26}},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: c => c.parsed.y == null ? null : ` ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 2})} $/bbl${real ? ` (${base} USD)` : ''}`}}},
+      scales: {
+        x: {ticks: {maxRotation: 0, autoSkipPadding: 8, font: {size: 9}}, grid: {display: false}},
+        y: {beginAtZero: true, title: {display: true, text: real ? `$/bbl, ${base} USD` : '$/bbl', color: '#4a5568', font: {size: 10}},
+            ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
+      }},
+    plugins: [barLabelPlugin(v => v.toFixed(many ? 0 : 1))],
+  });
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = [{label: `Brent, annual average, $/bbl${real ? ` (${base} USD)` : ''}`, data: vals.map(v => v ?? '')}];
+  pptSpec = {kind: 'cat', dir: 'col', labels, yTitle: '$/bbl',
+    series: [{name: 'Brent, annual average', type: 'bar', color: pptHex(C), values: vals.map(v => v ?? 0)}]};
+  const shown = vals.filter(v => v != null);
+  const part = acc[currentYear] ? acc[currentYear][acc[currentYear].length - 1] : null;
+  setChartTitle('Dated Brent', `Annual average · $/bbl${real ? ` · real, ${base} USD` : ''} · ${prF.y0}–${prF.y1}`);
+  setInfo((real ? `<strong>Real prices:</strong> annual average × US CPI-U ${base} / CPI-U in the year (annual averages; ${base} so far this year) &nbsp;|&nbsp; ` : '') +
+    (shown.length ? `<strong>Period${real ? ' (real)' : ''}:</strong> low ${Math.min(...shown).toFixed(2)}, high ${Math.max(...shown).toFixed(2)} $/bbl &nbsp;|&nbsp; ` : '') +
+    `<strong>From 1990:</strong> average of the daily Dated Brent series (the Petroleum Price Board's figures from ${fmtShort(sp.firstP)}, extended with EIA Brent spot as in the daily view)` +
+    (labels.includes(`${currentYear}*`) ? `; ${currentYear}* is the year to date` : '') +
+    ` &nbsp;|&nbsp; <strong>Before 1990:</strong> World Bank Commodity Price Data (Pink Sheet), Crude oil, Brent, annual average; the World Bank uses the Dubai price for the earliest years &nbsp;|&nbsp; ${PRICE_SRC}; EIA; World Bank`);
+}
+
 function drawPriceBrent() {
+  if (prF.ba) return drawPriceBrentAnnual();
   const sp = priceSplice();
   const inP = d => { const y = +d.slice(0, 4); return y >= prF.y0 && y <= prF.y1; };
   const base = priceData.brent.rows.filter(r => inP(r[0]));
@@ -5015,7 +5106,9 @@ function outlineMap(ownItems, opts = {}) {
   const PAD = opts.pad || 3;
   const own = ownItems.flatMap(it => it.rings);
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-  own.forEach(r => r.forEach(([x, y]) => {
+  // opts.extra: punkter utenfor omrisset som skal med i utsnittet
+  // (vertsinnretningen et satellittfelt er koblet til).
+  own.concat(opts.extra ? [opts.extra] : []).forEach(r => r.forEach(([x, y]) => {
     x0 = Math.min(x0, x); x1 = Math.max(x1, x);
     y0 = Math.min(y0, y); y1 = Math.max(y1, y);
   }));
@@ -5281,16 +5374,25 @@ function fieldLayer(skip) {
           fill: '#cbd6e2', stroke: '#b2bfcd'};
 }
 
+// Feltkartet: kvadratisk, med feltets installasjoner og koblingen videre til
+// vertsinnretningen, regnet ut i hubnettet (hubNetwork) og filtrert til feltet.
 function profileMap(id) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   const own = outlines && outlines[id];
   if (!own) return '';
+  const ids = hubFieldIds([hubOfField[id] || fieldNameOf(id)]);
+  const net = hubNetwork(ids.includes(id) ? ids : [id], hubFacilities(ids.includes(id) ? ids : [id]), outlines, id);
   return outlineMap([{name: fieldNameOf(id), rings: own}], {
-    label: 'Map of the field',
-    fill: OIL_COLOR, stroke: '#8e0a48',
+    label: 'Map of the field', h: 560, pad: 2.2,
+    fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(new Set([id])), discoveryLayer()],
+    overlay: net.svg, extra: net.extent,
     note: 'Fields in grey, discoveries in pale green, the subject in colour. '
-        + 'Coastline: Natural Earth · outlines: Sodir, simplified to ~110 m',
+        + (net.n ? `Surface installations as dark squares, subsea installations as rings. Lines show how the
+           field is tied in, following the route in Sodir's field description where it names one, and the
+           satellites tied directly to the field's own installations; straight lines, not the actual
+           pipeline routes. ` : '')
+        + 'Coastline: Natural Earth · outlines and installations: Sodir',
   });
 }
 
@@ -5527,7 +5629,7 @@ function drawFieldProfile() {
       <div class="lc-links">${factPageBtn('field', id)}</div>
     </div>
     ${fieldPhoto(id, name)}
-    ${profileMap(id) ? `<div class="pf-card"><h3>Location</h3>${profileMap(id)}</div>` : ''}
+    ${(() => { const m = profileMap(id); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${investmentCard([id], () => name)}
     ${(() => { const o = profileOwnership(id, p.operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
@@ -5763,109 +5865,227 @@ async function loadPriceHistory() {
 const usdnokOf = y => (priceHist && priceHist.byYear[y] && priceHist.byYear[y].usdnok) || null;
 
 // ── HUBS: KONTANTSTRØM ───────────────────────────────────────────────────────
-// Sjablongmessig kontantstrøm før skatt, nominelle USD:
+// Sjablongmessig kontantstrøm for hele huben (100 %), i nominelle USD.
+//
+// Historikk, til og med året før inneværende år:
 // · capex: Sodirs investeringer per år (NOK) til årssnittkurs
-// · opex: OPEX_USD per fat o.e. i OPEX_BASE-kroneverdi, deflatert bakover med
+// · opex: OPEX_USD per fat o.e. i OPEX_BASE-dollar, deflatert bakover med
 //   amerikansk KPI
 // · inntekter: væske (olje, NGL, kondensat) til Brent, gass til europeisk
 //   gasspris med GAS_MMBTU_PER_SM3
-// Akkumulert kontantstrøm er en enkel sum av de nominelle årstallene.
+//
+// Prognose, fra 1.1. i inneværende år, med CF_INFL årlig inflasjon fra
+// OPEX_BASE:
+// · produksjon per felt fra fjorårets produksjon: flat så lenge gjenværende
+//   reserver (siste anslag) er mer enn CF_PLATEAU ganger årsraten, deretter
+//   CF_DECLINE årlig fall til reservene er produsert. Uten fallet ville en
+//   stor reservebase som Troll aldri blitt produsert ut. Felt med reserver,
+//   men uten produksjon i fjor, starter om tre år med raten R/8.
+// · inntekter: scenarioprisen (OPEX_BASE-dollar per fat) for alle fat o.e.,
+//   også gass og NGL
+// · opex som i historikken
+// · capex: Sodirs anslag for gjenstående investeringer (faste kroner for
+//   prisåret) til siste årssnittkurs, fordelt CF_CAPEX_SPLIT på årene etter
+//   siste rapporterte investeringsår og inflatert fra prisåret
+// · fjerning: CF_ABEX av historisk capex, året etter siste produksjonsår
+//
+// NPV per 1.1. i inneværende år med midtårskonvensjon. Etter skatt er
+// kontantstrømmen ganget med 1 − CF_TAX (flat skatt på alt, også underskudd).
 const OPEX_USD = 10, OPEX_BASE = 2026;
-let hubCfChart = null;
-function hubCashFlow(ids) {
+const CF_INFL = 0.025, CF_DECLINE = 0.10, CF_PLATEAU = 5, CF_CAPEX_SPLIT = [0.4, 0.3, 0.2, 0.1];
+const CF_ABEX = 0.05, CF_TAX = 0.78, CF_RATES = [0.07, 0.10], CF_PRICES = [60, 100];
+let hubCfPrice = 60, hubCfChart = null;
+const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
+function hubCfSet(v) { hubCfPrice = v; drawChart(); }
+
+function hubCashFlow(ids, price) {
   const ph = priceHist && priceHist.byYear;
   if (!ph || !Object.keys(ph).length) return null;
-  const base = (ph[OPEX_BASE] || ph[Math.max(...Object.keys(ph).map(Number))]).uscpi;
+  const phYears = Object.keys(ph).map(Number);
+  const base = (ph[OPEX_BASE] || ph[Math.max(...phYears)]).uscpi;
+  const fxNow = usdnokOf(Math.max(...phYears.filter(y => ph[y].usdnok)));
   const inv = bundle.field_investments;
+  const y0 = currentYear, lastInv = invLastYear();
   const per = {}, gaps = new Set();
-  const get = y => per[y] = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0};
+  const get = y => per[y] = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0, abex: 0, fc: {}};
+  let histCapex = 0, lastProd = 0, reserves = 0;
   ids.forEach(id => {
     ((inv && inv.fields[String(id)]) || []).forEach(([y, v]) => {
       const fx = usdnokOf(y);
       if (!fx) { gaps.add(y); return; }
       get(y).capex -= v / fx / 1000;                       // MNOK -> USD bn
+      histCapex += v / fx / 1000;
     });
+    let lastBoe = 0, lastLiq = 0;
     annualProduction(id).annual.forEach(a => {
-      const y = a.prfYear, p = ph[y];
-      if (!p || p.brent == null || p.gas == null || !p.uscpi) { gaps.add(y); return; }
+      const y = a.prfYear;
+      if (y >= y0) return;                                  // inneværende år er prognose
       const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
+      const boe = oe * 1e6 * BBL_PER_SM3, liq = Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3;
+      if (boe > 0) lastProd = Math.max(lastProd, y);
+      if (y === y0 - 1) { lastBoe = boe; lastLiq = liq; }
+      const p = ph[y];
+      if (!p || p.brent == null || p.gas == null || !p.uscpi) { gaps.add(y); return; }
       const r = get(y);
-      r.liq += Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3 * p.brent / 1e9;
+      r.liq += liq * p.brent / 1e9;
       r.gas += gas * 1e9 * GAS_MMBTU_PER_SM3 * p.gas / 1e9;
-      r.opex -= oe * 1e6 * BBL_PER_SM3 * OPEX_USD * p.uscpi / base / 1e9;
+      r.opex -= boe * OPEX_USD * p.uscpi / base / 1e9;
     });
+    // Produksjonsprognosen.
+    const res = (fieldReserves && fieldReserves[id]) || [];
+    const cur = res.length ? res[res.length - 1] : null;
+    let R = cur ? Math.max(0, cur.remainingOE || 0) * 1e6 * BBL_PER_SM3 : 0;
+    reserves += R;
+    const liqShare = lastBoe > 0 ? lastLiq / lastBoe
+      : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
+    let rate = lastBoe, y = y0;
+    if (!(rate > 0) && R > 0) { rate = R / 8; y = y0 + 3; }
+    for (let k = 0; R > 0 && rate > 0 && k < 80; k++, y++) {
+      if (R <= CF_PLATEAU * rate) rate *= 1 - CF_DECLINE;
+      // Siste rest tas med i året før, så halen ikke blir noen få fat.
+      const q = R - rate < 0.05 * rate ? R : Math.min(rate, R);
+      R -= q;
+      const r = get(y), f = cfInfl(y);
+      r.fc.liq = r.fc.gas = r.fc.opex = true;
+      r.liq += q * liqShare * price * f / 1e9;
+      r.gas += q * (1 - liqShare) * price * f / 1e9;
+      r.opex -= q * OPEX_USD * f / 1e9;
+      lastProd = Math.max(lastProd, y);
+    }
+    // Gjenstående investeringer.
+    const exp = inv && inv.expected[String(id)];
+    if (exp && exp[0] > 0 && fxNow) {
+      CF_CAPEX_SPLIT.forEach((w, i) => {
+        const yy = lastInv + 1 + i, r = get(yy);
+        r.fc.capex = true;
+        r.capex -= exp[0] * w / fxNow / 1000 * Math.pow(1 + CF_INFL, yy - exp[1]);
+      });
+    }
   });
+  // Fjerning: bare for huber som fortsatt produserte i fjor eller har prognose.
+  let abex = null;
+  if (lastProd >= y0 - 1 && histCapex > 0) {
+    const ya = lastProd + 1, r = get(ya);
+    r.fc.abex = true;
+    r.abex -= CF_ABEX * histCapex * cfInfl(ya);
+    abex = {year: ya, usd: -r.abex};
+  }
   const ys = Object.keys(per).map(Number);
   if (!ys.length) return null;
   const years = [];
-  for (let y = Math.min(...ys); y <= Math.max(...ys); y++) years.push(y);
+  for (let yy = Math.min(...ys); yy <= Math.max(...ys); yy++) years.push(yy);
   let acc = 0;
-  const rows = years.map(y => {
-    const r = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0};
-    const net = r.liq + r.gas + r.capex + r.opex;
+  const rows = years.map(yy => {
+    const r = per[yy] || {liq: 0, gas: 0, capex: 0, opex: 0, abex: 0, fc: {}};
+    const net = r.liq + r.gas + r.capex + r.opex + r.abex;
     acc += net;
-    return {y, ...r, net, acc};
+    return {y: yy, ...r, net, acc};
   });
-  return {rows, gaps: [...gaps].sort()};
+  const npv = rate => rows.filter(r => r.y >= y0).reduce((t, r) => t + r.net / Math.pow(1 + rate, r.y - y0 + 0.5), 0);
+  return {rows, gaps: [...gaps].sort(), y0, reserves, lastProd, abex, npv: CF_RATES.map(npv), histCapex,
+          hasForecast: rows.some(r => r.y >= y0 && (r.fc.liq || r.fc.capex || r.fc.abex))};
 }
 
+const CF_CAPEX = 'rgba(26,35,50,0.85)', CF_OPEX = 'rgba(154,165,177,0.9)', CF_ABEXC = 'rgba(125,34,72,0.85)', CF_LINE = '#e36b2f';
+const CF_SERIES = [['liq', 'Revenue, liquids', OIL_COLOR], ['gas', 'Revenue, gas', GAS_COLOR],
+                   ['capex', 'Capex', CF_CAPEX], ['opex', 'Opex', CF_OPEX], ['abex', 'Abandonment', CF_ABEXC]];
+
 function hubCashFlowCard(ids) {
-  const cf = hubCashFlow(ids);
+  const cf = hubCashFlow(ids, hubCfPrice);
   if (!cf) return '';
-  const {rows} = cf;
+  const {rows, y0} = cf;
   const n1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
-  const tot = k => rows.reduce((t, r) => t + r[k], 0);
+  const hist = rows.filter(r => r.y < y0);
+  const histEnd = hist.length ? hist[hist.length - 1] : null;
   const low = rows.reduce((m, r) => r.acc < m.acc ? r : m, rows[0]);
-  // Tilbakebetalt: første år der akkumulert kontantstrøm går fra negativ til
-  // null eller positiv.
   const payback = rows.find((r, i) => i && rows[i - 1].acc < 0 && r.acc >= 0);
-  const last = rows[rows.length - 1];
-  const part = priceHist.partial && priceHist.partial.year === last.y ? priceHist.partial : null;
   const fact = (k, v) => `<div class="pf-fact"><span>${k}</span><strong>${v}</strong></div>`;
+  // NPV-tabellen viser begge scenariene; grafen det valgte.
+  const both = CF_PRICES.map(p => ({p, cf: p === hubCfPrice ? cf : hubCashFlow(ids, p)}));
+  const resBoe = cf.reserves;
+  const cell = v => `<td>${n1(v)}</td>`;
+  const perBoe = v => `<td>${resBoe > 1e6 ? (v * 1e9 / resBoe).toFixed(2) : '—'}</td>`;
+  const npvRow = (label, k, tax) => `<tr><td>${label}</td>${both.map(b => cell(b.cf.npv[k] * tax) + perBoe(b.cf.npv[k] * tax)).join('')}</tr>`;
+  const npvTable = cf.hasForecast ? `
+    <div class="pf-scroll"><table class="res-table">
+      <caption>NPV as at 1 January ${y0} · USD bn and USD per barrel of remaining reserves (${n1(resBoe / 1e6)} million boe at end-${y0 - 1})</caption>
+      <thead><tr><th></th>${CF_PRICES.map(p => `<th>USD ${p}/bbl, total</th><th>USD ${p}/bbl, per boe</th>`).join('')}</tr></thead>
+      <tbody>
+        ${CF_RATES.map((r, k) => npvRow(`Pre-tax, ${Math.round(r * 100)} %`, k, 1)).join('')}
+        ${CF_RATES.map((r, k) => npvRow(`After tax (${Math.round(CF_TAX * 100)} %), ${Math.round(r * 100)} %`, k, 1 - CF_TAX)).join('')}
+      </tbody>
+    </table></div>` : '';
   return `<div class="pf-card pf-wide"><h3>Simulated cash flow</h3>
+    ${cf.hasForecast ? `<div class="pill-group" style="margin-bottom:10px;width:max-content">${CF_PRICES.map(p =>
+      `<button class="pill-btn${p === hubCfPrice ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div>` : ''}
     <div class="pf-facts">
-      ${fact('Revenue', `USD ${n1(tot('liq') + tot('gas'))} bn`)}
-      ${fact('Capex', `USD ${n1(-tot('capex'))} bn`)}
-      ${fact('Opex', `USD ${n1(-tot('opex'))} bn`)}
-      ${fact(`Cumulative, ${last.y}`, `USD ${n1(last.acc)} bn`)}
+      ${histEnd ? fact(`Cumulative to ${histEnd.y}`, `USD ${n1(histEnd.acc)} bn`) : ''}
       ${fact('Maximum exposure', low.acc < 0 ? `USD ${n1(-low.acc)} bn (${low.y})` : '—')}
-      ${fact('Payback', payback ? String(payback.y) : low.acc < 0 && last.acc < 0 ? 'Not yet' : '—')}
+      ${fact('Payback', payback ? String(payback.y) : low.acc < 0 ? 'Not reached' : '—')}
+      ${cf.hasForecast ? fact('Production to', String(cf.lastProd)) : ''}
+      ${cf.abex ? fact('Abandonment', `USD ${n1(cf.abex.usd)} bn (${cf.abex.year})`) : ''}
+      ${cf.hasForecast ? fact(`Cumulative, ${rows[rows.length - 1].y}`, `USD ${n1(rows[rows.length - 1].acc)} bn`) : ''}
     </div>
-    <div class="chart-container" style="height:320px"><canvas id="hubCfCanvas"></canvas></div>
-    <div class="legend-row">${[['Revenue, liquids', OIL_COLOR], ['Revenue, gas', GAS_COLOR], ['Capex', CF_CAPEX],
-      ['Opex', CF_OPEX], ['Cumulative (right axis)', CF_LINE]]
-      .map(([l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>
-    <div class="pf-map-note">A simplified, undiscounted pre-tax cash flow in nominal USD bn, 100 % of the hub.
-      <strong>Capex:</strong> investments reported to Sodir, converted from NOK at each year's average rate.
-      <strong>Opex:</strong> a flat USD ${OPEX_USD} per boe produced in ${OPEX_BASE} money, deflated to earlier
-      years with the US CPI. <strong>Revenue:</strong> liquids (oil, NGL and condensate) at Brent, gas at the World
-      Bank's European natural gas price (TTF in recent years), with ${GAS_MJ_PER_SM3} MJ/Sm³.
-      Tariffs, taxes, abandonment and future years are not included${part ? `; ${part.year} covers the months
-      reported so far, priced at the average for ${part.months} months` : ''}.
+    <div class="chart-container" style="height:340px"><canvas id="hubCfCanvas"></canvas></div>
+    <div class="legend-row">${CF_SERIES.filter(([k]) => rows.some(r => r[k])).map(([, l, c]) =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
+      <div class="legend-item"><div class="legend-dot" style="background:${CF_LINE}"></div>Cumulative (right axis)</div>
+      ${cf.hasForecast ? '<div class="legend-item">Hatched bars and dashed line: forecast</div>' : ''}</div>
+    ${npvTable}
+    <div class="pf-map-note">A simplified, pre-tax cash flow in nominal USD bn for 100 % of the hub; the cumulative line is
+      undiscounted. <strong>History</strong> (to ${y0 - 1}): capex as reported to Sodir, converted from NOK at each year's
+      average rate; opex a flat USD ${OPEX_USD} per boe in ${OPEX_BASE} money, deflated with the US CPI; liquids sold at
+      Brent and gas at the World Bank's European gas price (TTF in recent years), ${GAS_MJ_PER_SM3} MJ/Sm³.
+      ${cf.hasForecast ? `<strong>Forecast</strong> (from ${y0}, ${Math.round(CF_INFL * 1000) / 10} % inflation from ${OPEX_BASE}):
+      each field from last year's production, flat while the remaining reserves (latest Sodir estimate) exceed
+      ${CF_PLATEAU} years of output, then declining ${Math.round(CF_DECLINE * 100)} % a year until they are produced;
+      fields with reserves but no production last year start in ${y0 + 3}. All boe, gas and NGL included, sold at the
+      scenario oil price in ${OPEX_BASE} dollars. Opex as in the history. Sodir's expected future investments spread
+      ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} % over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length},
+      the first years without reported figures; amounts before ${y0} are sunk and not in the NPV. Abandonment
+      ${Math.round(CF_ABEX * 100)} % of historical capex, the year after the last production year. NPV with mid-year
+      discounting; after tax as ${Math.round((1 - CF_TAX) * 100)} % of the pre-tax cash flow (a flat ${Math.round(CF_TAX * 100)} % tax on
+      all cash flows). Tariffs and transport are not included.` : 'No remaining reserves or investments, so no forecast.'}
       Prices: World Bank Pink Sheet; exchange rates and CPI: FRED.${cf.gaps.length ? ` No prices for ${cf.gaps.join(', ')}.` : ''}</div>
   </div>`;
 }
-const CF_CAPEX = 'rgba(26,35,50,0.85)', CF_OPEX = 'rgba(154,165,177,0.9)', CF_LINE = '#e36b2f';
+
+// Skravert stolpe: blek bakgrunn i seriefargen med diagonale streker.
+function cfHatch(ctx, color) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 8;
+  const g = c.getContext('2d');
+  g.globalAlpha = 0.3; g.fillStyle = color; g.fillRect(0, 0, 8, 8);
+  g.globalAlpha = 1; g.strokeStyle = color; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(-2, 10); g.lineTo(10, -2); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke();
+  return ctx.createPattern(c, 'repeat');
+}
 
 function drawHubCashFlow(ids) {
   if (hubCfChart) { hubCfChart.destroy(); hubCfChart = null; }
   const el = document.getElementById('hubCfCanvas');
-  const cf = el && hubCashFlow(ids);
+  const cf = el && hubCashFlow(ids, hubCfPrice);
   if (!cf) return;
+  const ctx = el.getContext('2d');
   const labels = cf.rows.map(r => String(r.y));
-  const bar = (label, k, color) => ({type: 'bar', label, data: cf.rows.map(r => +r[k].toFixed(3)),
-    backgroundColor: color, borderWidth: 0, stack: 's', order: 1});
+  const bars = CF_SERIES.filter(([k]) => cf.rows.some(r => r[k])).map(([k, label, color]) => {
+    const pat = cfHatch(ctx, color);
+    return {type: 'bar', label, data: cf.rows.map(r => +r[k].toFixed(3)), stack: 's', order: 1, borderWidth: 0,
+            backgroundColor: cf.rows.map(r => r.fc[k] ? pat : color)};
+  });
+  const firstFc = cf.rows.findIndex(r => r.y >= cf.y0);
   const fmt = v => `USD ${v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})} bn`;
-  hubCfChart = new Chart(el.getContext('2d'), {
+  hubCfChart = new Chart(ctx, {
     data: {labels, datasets: [
       {type: 'line', label: 'Cumulative', data: cf.rows.map(r => +r.acc.toFixed(3)), yAxisID: 'y1',
-       borderColor: CF_LINE, backgroundColor: CF_LINE, borderWidth: 2, pointRadius: 0, tension: 0.15, order: 0},
-      bar('Revenue, liquids', 'liq', OIL_COLOR), bar('Revenue, gas', 'gas', GAS_COLOR),
-      bar('Capex', 'capex', CF_CAPEX), bar('Opex', 'opex', CF_OPEX),
+       borderColor: CF_LINE, backgroundColor: CF_LINE, borderWidth: 2, pointRadius: 0, tension: 0.15, order: 0,
+       segment: {borderDash: s => firstFc >= 0 && s.p1DataIndex >= firstFc ? [5, 4] : undefined}},
+      ...bars,
     ]},
     options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
       plugins: {legend: {display: false}, tooltip: {callbacks: {
-        label: ctx => ctx.parsed.y ? ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` : null,
+        title: items => `${items[0].label}${cf.rows[items[0].dataIndex].y >= cf.y0 ? ' (forecast)' : ''}`,
+        label: c => c.parsed.y ? ` ${c.dataset.label}: ${fmt(c.parsed.y)}` : null,
         afterBody: items => [`Net: ${fmt(cf.rows[items[0].dataIndex].net)}`]}}},
       scales: {
         x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
@@ -6069,9 +6289,13 @@ function satelliteRoute(id, ids, surface) {
 // samme felt, ellers til nærmeste prosessanlegg i huben, ellers til nærmeste
 // overflateinnretning. Satellittfelt uten egne subseainstallasjoner trekkes
 // stiplet fra midten av omrisset. Fjernede innretninger er ikke med.
-function hubNetwork(ids, facs, outlines) {
+//
+// focus (et felt-id) filtrerer til det ene feltet: dets egne installasjoner,
+// kjeden videre til vertsinnretningen (Skogul -> Vilje -> Alvheim FPSO) og
+// satellittene som er koblet direkte til feltets installasjoner.
+function hubNetwork(ids, facs, outlines, focus) {
   const live = facs.filter(f => !isGone(f) && f.lon != null && f.lat != null);
-  if (!live.length) return {n: 0, svg: () => ''};
+  if (!live.length) return {n: 0, svg: () => '', extent: []};
   const surface = live.filter(f => f.surface), subsea = live.filter(f => !f.surface);
   const hosts = surface.filter(isProcessing);
   const kx = Math.cos(live[0].lat * Math.PI / 180);
@@ -6105,16 +6329,34 @@ function hubNetwork(ids, facs, outlines) {
   ids.forEach(id => {
     if (live.some(f => f.fieldId === id)) return;
     const c = centre(id), to = c && (routed(c, id) || nearest(c, anchors));
-    if (to) links.push({a: c, b: to, dash: true});
+    if (to) links.push({a: c, b: to, dash: true, field: id});
   });
+  let shown = links, pts = live;
+  if (focus != null) {
+    const keep = new Set(live.filter(f => f.fieldId === focus));
+    const used = new Set(links.filter(l => l.field === focus));
+    used.forEach(l => keep.add(l.b));
+    for (let grew = true; grew;) {
+      grew = false;
+      links.forEach(l => { if (!used.has(l) && keep.has(l.a)) { used.add(l); keep.add(l.b); grew = true; } });
+    }
+    links.forEach(l => { if (!used.has(l) && keep.has(l.b) && l.b.fieldId === focus) { used.add(l); keep.add(l.a); } });
+    shown = [...used];
+    pts = live.filter(f => keep.has(f));
+  }
+  const ptsSurface = pts.filter(f => f.surface), ptsSubsea = pts.filter(f => !f.surface);
+  const extent = shown.flatMap(l => [[l.a.lon, l.a.lat], [l.b.lon, l.b.lat]]).concat(pts.map(f => [f.lon, f.lat]));
   const svg = (px, py) => {
     const line = l => `<line x1="${px(l.a.lon).toFixed(1)}" y1="${py(l.a.lat).toFixed(1)}" x2="${px(l.b.lon).toFixed(1)}" y2="${py(l.b.lat).toFixed(1)}"`
       + ` stroke="#1a2332" stroke-width="${l.dash ? 1.4 : 1}" stroke-opacity="0.75"${l.dash ? ' stroke-dasharray="4 3"' : ''}/>`;
     const sub = f => `<circle cx="${px(f.lon).toFixed(1)}" cy="${py(f.lat).toFixed(1)}" r="2.6" fill="#fff" stroke="#1a2332" stroke-width="1.1"><title>${esc(f.name)} · ${esc(f.kind || 'subsea')}</title></circle>`;
     const top = f => `<rect x="${(px(f.lon) - 4).toFixed(1)}" y="${(py(f.lat) - 4).toFixed(1)}" width="8" height="8" fill="${isProcessing(f) ? '#1a2332' : '#5b6675'}" stroke="#fff" stroke-width="1"><title>${esc(f.name)} · ${esc(f.kind || 'surface')}</title></rect>`;
-    return links.map(line).join('') + subsea.map(sub).join('') + surface.map(top).join('');
+    // I feltkartet: navnet på vertsinnretningen når den står på et annet felt.
+    const host = f => focus == null || f.fieldId === focus ? '' :
+      `<text class="pf-lbl" x="${(px(f.lon) + 7).toFixed(1)}" y="${(py(f.lat) + 3).toFixed(1)}" style="text-anchor:start">${esc(f.name)}</text>`;
+    return shown.map(line).join('') + ptsSubsea.map(sub).join('') + ptsSurface.map(top).join('') + ptsSurface.map(host).join('');
   };
-  return {n: live.length, svg};
+  return {n: pts.length, svg, extent};
 }
 
 // Siste tilgjengelige reserveanslag per medlemsfelt, summert. Årgangen kan
