@@ -5988,20 +5988,87 @@ function hubMap(ids, facs) {
     overlay: net.svg,
     note: 'Member fields in colour, other fields in grey, discoveries in pale green. '
         + (net.n ? `Surface installations as dark squares, subsea installations as rings. Lines are a
-           simplified picture of the infield flowlines: each subsea installation is drawn to the nearest
-           surface installation on its own field, or else to the nearest processing installation in the hub;
-           dashed lines tie satellite fields without listed subsea installations to the hub. The routes
-           are schematic, not the actual pipelines. ` : '')
+           simplified picture of the infield flowlines. Satellite fields follow the route in Sodir's field
+           description where it names one (via another subsea field, or to a named host installation);
+           otherwise each subsea installation is drawn to the nearest surface installation on its own field,
+           or to the nearest processing installation in the hub. Dashed lines tie satellite fields without
+           listed subsea installations to the hub. Straight lines, not the actual pipeline routes. ` : '')
         + 'Coastline: Natural Earth · outlines and installations: Sodir',
   });
 }
 
+// Hvor et satellittfelt (uten egen overflateinnretning) er koblet inn, lest
+// fra Sodirs feltbeskrivelser. Sodir publiserer bare transportrørledningene,
+// ikke infield-ledningene, men beskrivelsene sier det i klartekst: Symra er
+// «tied-back to the Ivar Aasen platform», Skogul «routed by pipeline via the
+// Vilje field», Tordis går «to the Gullfaks C facility». I prioritert
+// rekkefølge, i Development- og Transport-teksten:
+// 1. «drilled from (the) X»: brønner boret fra en plattform på nabofeltet
+// 2. «via / through (the) X» der X er et rent subseafelt (mellomledd), også
+//    når teksten sier «tied to Alvheim FPSO via the Vilje field». «Via» om et
+//    felt med plattform er som regel eksportruten («gas exported via the
+//    Troll A platform») og teller ikke.
+// 3. «tied(-back/-in) to (the) X»: den fysiske tilknytningen
+// 4. «to (the) X»: «transported by pipeline to the Ula field»
+// 5. den første overflateinnretningen i huben som nevnes ved navn
+// X er et annet felt i huben eller en av hubens overflateinnretninger. Et felt
+// med egen overflateinnretning gir den innretningen (prosessanlegget først);
+// et rent subseafelt gir {via}, og ledningen går videre derfra. Feltets eget
+// navn fjernes fra teksten først, så Visund Sør ikke peker på Visund. Et
+// innretningsnavn som også er et feltnavn (VISUND, BRAGE) teller i regel 3
+// bare foran «facility», «platform» o.l.
+const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const wordRe = (t, flags = 'iu') => new RegExp('(?<![\\p{L}\\d])' + reEsc(t) + '(?![\\p{L}\\d])', flags);
+function satelliteRoute(id, ids, surface) {
+  const own = fieldNameOf(id);
+  const texts = ['Development', 'Transport']
+    .map(h => (fieldDescriptions(id).find(d => d.heading === h) || {}).text || '')
+    .map(t => t.replace(wordRe(own, 'giu'), ' '));
+  const fieldNames = new Set(ids.map(fieldNameOf));
+  const fieldTarget = g => {
+    const on = surface.filter(f => f.fieldId === g);
+    return on.length ? {to: on.find(isProcessing) || on[0]} : {via: g};
+  };
+  // Første treff på «<forledd> (the) X» for et felt eller en innretning X.
+  const isSubseaField = g => !surface.some(f => f.fieldId === g);
+  const all = texts.join(' \n ');
+  const after = (lead, subseaOnly) => {
+    let best = null;
+    all.replace(new RegExp(lead + '\\s+(?:the\\s+)?', 'giu'), (m, i) => {
+      const rest = all.slice(i + m.length);
+      const hit = ids.filter(g => g !== id && (!subseaOnly || isSubseaField(g))).map(g => ({g, n: fieldNameOf(g)}))
+        .concat(subseaOnly ? [] : surface.map(f => ({f, n: f.name})))
+        .filter(c => new RegExp('^' + reEsc(c.n) + '(?![\\p{L}\\d])', 'iu').test(rest))
+        .sort((x, y) => y.n.length - x.n.length)[0];   // lengste navn: «Gullfaks C» før «Gullfaks»
+      if (hit && !best) best = hit.f ? {to: hit.f} : fieldTarget(hit.g);
+      return m;
+    });
+    return best;
+  };
+  const r = after('\\bdrilled\\s+from') || after('\\b(?:via|through)', true)
+         || after('\\btied(?:[- ]?(?:back|in))?\\s+(?:in\\s+)?to') || after('\\bto');
+  if (r) return r;
+  for (const t of texts.slice().reverse()) {
+    let best = null;
+    surface.forEach(f => {
+      const re = fieldNames.has(f.name)
+        ? new RegExp('(?<![\\p{L}\\d])' + reEsc(f.name) + '\\s+(?:facility|platform|installation|FPSO|FPU|production vessel)', 'iu')
+        : wordRe(f.name);
+      const m = re.exec(t);
+      if (m && (!best || m.index < best.i)) best = {i: m.index, f};
+    });
+    if (best) return {to: best.f};
+  }
+  return null;
+}
+
 // Hubens installasjoner som kartlag, med skjematiske infield-ledninger.
-// Sodir oppgir ikke hvor en subseainstallasjon er koblet inn, så koblingen
-// simuleres: til nærmeste overflateinnretning på samme felt, ellers til
-// nærmeste prosessanlegg i huben, ellers til nærmeste overflateinnretning i
-// huben. Satellittfelt uten egne subseainstallasjoner trekkes fra midten av
-// omrisset til nærmeste prosessanlegg. Fjernede innretninger er ikke med.
+// Koblingen for et satellittfelt følger feltbeskrivelsen (satelliteRoute):
+// via et annet subseafelt, eller til den navngitte vertsinnretningen. Uten
+// noe i teksten går en subseainstallasjon til nærmeste overflateinnretning på
+// samme felt, ellers til nærmeste prosessanlegg i huben, ellers til nærmeste
+// overflateinnretning. Satellittfelt uten egne subseainstallasjoner trekkes
+// stiplet fra midten av omrisset. Fjernede innretninger er ikke med.
 function hubNetwork(ids, facs, outlines) {
   const live = facs.filter(f => !isGone(f) && f.lon != null && f.lat != null);
   if (!live.length) return {n: 0, svg: () => ''};
@@ -6010,24 +6077,34 @@ function hubNetwork(ids, facs, outlines) {
   const kx = Math.cos(live[0].lat * Math.PI / 180);
   const d2 = (a, b) => ((a.lon - b.lon) * kx) ** 2 + (a.lat - b.lat) ** 2;
   const nearest = (p, list) => list.reduce((best, f) => !best || d2(p, f) < d2(p, best) ? f : best, null);
-  const links = [];
+  const links = [], routes = {};
+  ids.forEach(id => { if (!surface.some(f => f.fieldId === id)) routes[id] = satelliteRoute(id, ids, surface); });
+  // Målet for et punkt på et satellittfelt etter ruten: den navngitte
+  // innretningen, eller nærmeste installasjon på feltet det går via.
+  const routed = (p, id) => {
+    const r = routes[id];
+    if (!r) return null;
+    if (r.to) return r.to;
+    const on = live.filter(x => x.fieldId === r.via);
+    return on.length ? nearest(p, on) : centre(r.via);
+  };
   subsea.forEach(f => {
     const own = surface.filter(x => x.fieldId === f.fieldId);
-    const to = nearest(f, own.length ? own : hosts.length ? hosts : surface);
+    const to = (!own.length && routed(f, f.fieldId)) || nearest(f, own.length ? own : hosts.length ? hosts : surface);
     if (to) links.push({a: f, b: to, dash: false});
   });
   // Midtpunktet i feltets største ring.
-  const centre = id => {
+  function centre(id) {
     const rings = outlines[id] || [];
     const big = rings.reduce((m, r) => r.length > (m ? m.length : 0) ? r : m, null);
     if (!big) return null;
     const n = big.length;
     return {lon: big.reduce((t, p) => t + p[0], 0) / n, lat: big.reduce((t, p) => t + p[1], 0) / n};
-  };
+  }
   const anchors = hosts.length ? hosts : surface;
   ids.forEach(id => {
     if (live.some(f => f.fieldId === id)) return;
-    const c = centre(id), to = c && nearest(c, anchors);
+    const c = centre(id), to = c && (routed(c, id) || nearest(c, anchors));
     if (to) links.push({a: c, b: to, dash: true});
   });
   const svg = (px, py) => {
