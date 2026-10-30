@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-29",
+  "updated": "2026-10-30",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -199,6 +199,10 @@
       "hub": "Balder area",
       "auto": false
     },
+    "3960848": {
+      "hub": "KRISTIN",
+      "auto": false
+    },
     "4005142": {
       "hub": "GULLFAKS",
       "auto": true
@@ -320,8 +324,8 @@
       "auto": false
     },
     "26465170": {
-      "hub": "TYRIHANS",
-      "auto": true
+      "hub": "KRISTIN",
+      "auto": false
     },
     "28975067": {
       "hub": "TROLL",
