@@ -60,6 +60,11 @@
    "company": "ORLEN Upstream Norway AS",
    "title": "Upstream",
    "n": 9
+  },
+  "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/": {
+   "company": "Harbour Energy Norge AS",
+   "title": "Announcements and latest news - Harbour Energy",
+   "n": 97
   }
  },
  "items": [
@@ -463,6 +468,13 @@
    "s": "When Stavanger Oilers played their first two home games of the season, it was about more than what happened on the ice. Together with Aker BP, Oilers invited children from Stavanger Ski Club and young people from Frøyland secondary school to enjoy sport, community, and meaningful conversations. …"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Start-up of Greensand CCS, the EU’s first full-scale CO2 storage site",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/start-up-of-greensand-ccs-the-eu-s-first-full-scale-co2-storage-site/",
+   "d": "2026-09-22",
+   "s": "In another milestone for Harbour, the Ineos-operated Greensand carbon capture, storage and transport project in the Danish North Sea has successfully achieved first injection of CO₂."
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/682830",
@@ -666,6 +678,13 @@
    "s": "ORLEN Upstream Norway, together with its license partners, has started gas production from the Idun Nord field in the Norwegian Sea. Over the coming weeks, the company will bring two additional fields, Alve Nord and Ørn, on stream. All three fields are located in the Skarv area, one of ORLEN’s key …"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Start-up of Alve Nord and Idun Nord in the Norwegian Sea",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/start-up-of-alve-nord-and-idun-nord-in-the-norwegian-sea/",
+   "d": "2026-08-26",
+   "s": "The Alve Nord and Idun Nord fields in the Norwegian Sea have started production, marking another milestone in Norway for Harbour."
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Aker BP has started production from the Skarv Satellites",
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-has-started-production-from-the-skarv-satellites,c4382977",
@@ -755,6 +774,13 @@
    "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/August-2026/orlen-secures-up-to-one-quarter-of-its-crude-oil-needs",
    "d": "2026-08-20",
    "s": "ORLEN has signed a three-year agreement with Equinor for crude oil supplies from the Johan Sverdrup field on the Norwegian Continental Shelf. Deliveries will begin in September, and the contracted volume may reach over 9 million tonnes per year, equivalent to up to one-quarter of the ORLEN Group’s …"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Who Dat East development approved",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/who-dat-east-development-approved/",
+   "d": "2026-08-20",
+   "s": "Harbour Energy and its partners have taken Final Investment Decision for the Who Dat East development in the Gulf of America."
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -909,6 +935,13 @@
    "u": "https://akerbp.com/en/cracking-the-carbonate-code-at-symra/",
    "d": "2026-08-07",
    "s": "The Symra field on the Utsira High in the North Sea has presented some of the greatest drilling challenges for Aker BP in recent years. Even so, the team has succeeded in delivering safe, producing wells in a reservoir that is notably complex to manage. “The Zechstein carbonate at Symra remains one …"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy 2026 half-year results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-2026-half-year-results/",
+   "d": "2026-08-06",
+   "s": "Harbour Energy plc today announces its unaudited half-year results for the six months ended 30 June 2026."
   },
   {
    "f": "https://akerbp.com/en/news/",
@@ -1128,6 +1161,13 @@
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy completes UK North Sea acquisition",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-completes-uk-north-sea-acquisition/",
+   "d": "2026-07-10",
+   "s": "Harbour Energy announces that it has completed the acquisition of substantially all the subsidiaries of Waldorf Energy Partners Ltd and Waldorf Production Ltd (Waldorf) in the UK for $163 million."
+  },
+  {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
    "t": "Vår Energi: Second quarter 2026 trading update",
    "u": "https://news.cision.com/var-energi-asa/r/var-energi--second-quarter-2026-trading-update,c4372533",
@@ -1196,6 +1236,13 @@
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-receives-investment-grade-credit-rating-from-fitch,c4370252",
    "d": "2026-07-02",
    "s": "Sandnes, Norway, 2 July 2026: Vår Energi ASA (OSE:VAR, “Vår Energi”) has been assigned a long-term issuer credit rating of BBB by Fitch Ratings (“Fitch”), with a stable outlook. The rating highlights Vår Energi’s strong financial position and resilience, and confirms the Company’s solid investment …"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "First gas achieved at Dvalin North, Norway",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/first-gas-achieved-at-dvalin-north-norway/",
+   "d": "2026-07-01",
+   "s": "News of Harbour Energy achieving first gas at Dvalin North subsea development"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -1471,6 +1518,13 @@
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour completes sale of Natuna Sea Block A and Tuna in Indonesia",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-completes-sale-of-natuna-sea-block-a-and-tuna-in-indonesia/",
+   "d": "2026-05-26",
+   "s": "News of Harbour Energy's Indonesia divestment"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "The Goldman Sachs Group, Inc. Disclosure in DNO ASA",
    "u": "https://newsweb.oslobors.no/message/674086",
@@ -1616,6 +1670,13 @@
    "u": "https://kommunikasjon.ntb.no/pressemelding/18897176/petoro-25-ar-den-norske-petroleumsmodellen-har-skapt-enorme-verdier?lang=no",
    "d": "2026-05-09",
    "s": "I dag fyller Petoro 25 år. Selskapet markerer jubileet med å løfte frem betydningen av den norske petroleumsmodellen – et rammeverk som har bidratt til å gjøre naturressurser til fellesskapets formue."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading and Operations Update May 2026",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-and-operations-update-may-2026/",
+   "d": "2026-05-07",
+   "s": "Harbour today provides the following unaudited Trading and Operations Update for Q1 2026."
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1905,6 +1966,13 @@
    "s": "ORLEN Upstream Norway, together with operator Equinor and partner Vår Energi, has confirmed a gas and condensate discovery in the Sleipner Area. The resources at the Frida Kahlo prospect are estimated at 7.2 million barrels of oil equivalent. The partners plan to bring the discovery into production …"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Full Year Results 2025",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/full-year-results-2025/",
+   "d": "2026-03-05",
+   "s": "Harbour Energy plc today announces its results for the year ended 31 December 2025."
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/667307",
@@ -1938,6 +2006,13 @@
    "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/february-2026/orlen-acquires-stake-in-the-afrodite-discovery",
    "d": "2026-02-11",
    "s": "ORLEN Upstream Norway has agreed to acquire a 25% interest in production license PL293 in the North Sea from Vår Energi. The license covers the unconventional Afrodite gas discovery, which has the potential to deliver nearly 2 billion cubic meters of natural gas net to ORLEN."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Completion of LLOG acquisition",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/completion-of-llog-acquisition/",
+   "d": "2026-02-11",
+   "s": "Harbour Energy announces that it has completed the acquisition of LLOG Exploration Company LLC (“LLOG\") for $3.2 billion (the \"Acquisition\"), marking the Company’s strategic entry into the US Gulf of America. The Acquisition strengthens Harbour’s global portfolio and establishes a new core business …"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2150,6 +2225,13 @@
    "s": "Quartz Box TotalEnergies Nordic"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update Jan 2026",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-jan-2026/",
+   "d": "2026-01-22",
+   "s": "Harbour Energy today provides the following unaudited Trading and Operations Update for the year ended 31 December 2025, ahead of announcing its Full Year Results on 5 March 2026."
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/663860",
@@ -2176,6 +2258,13 @@
    "u": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE93RTdPM0tFSFZRdUhTUi0yMWU3NTlCUF9RRVlOcTVKS2w0RFFkNU40UU1uVDhRa2xCWmp3N05QUHVCalBTTzdWYjJKZkdyZ3RPc2RFQUJYVURoZw?oc=5",
    "d": "2026-01-14",
    "s": "Hjelp og støtte - Auto TotalEnergies Nordic"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour receives nine exploration licences in Norway",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-receives-nine-exploration-licences-in-norway/",
+   "d": "2026-01-13",
+   "s": "Harbour Energy has been awarded nine exploration licences in the APA (Awards in Predefined Areas) 2025 licensing round in Norway. Harbour is the operator of four."
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2206,6 +2295,20 @@
    "s": "Kunstig intelligens gav 1,3 milliarder kroner i besparelser i 2025 Equinor"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour appointed operator of the Zama project in Mexico",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-appointed-operator-of-the-zama-project-in-mexico/",
+   "d": "2025-12-31",
+   "s": "Harbour announces that it has been appointed operator of the Zama oil project offshore Mexico. The appointment was agreed by the Zama partners, including Pemex, Grupo Carso and Talos Energy who will have the option to appoint key personnel into Harbour’s project team, and subsequently approved by …"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Strategic acquisition of LLOG Exploration Company LLC",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/strategic-acquisition-of-llog-exploration-company-llc/",
+   "d": "2025-12-22",
+   "s": "Harbour announces that it has entered into an agreement to acquire LLOG Exploration Company LLC (\"LLOG\") from LLOG Holdings LLC for $3.2 billion (the “Acquisition”), comprising $2.7 billion of cash and $0.5 billion of Harbour’s voting ordinary shares."
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Agrees North Sea Oil Offtake with Exxon Mobil and Shell, Unlocks Attractive Financing",
    "u": "https://newsweb.oslobors.no/message/662328",
@@ -2220,11 +2323,25 @@
    "s": "Endelig investeringsbeslutning for tidligere produserte felt-prosjektet ConocoPhillips Norway"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "UK North Sea acquisition",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/uk-north-sea-acquisition/",
+   "d": "2025-12-12",
+   "s": "Harbour Energy announces that it has entered into an agreement to acquire substantially all the subsidiaries of Waldorf Energy Partners Ltd and Waldorf Production Ltd."
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Charges Past 500 Million Barrels in Kurdistan and Picks Up Speed",
    "u": "https://newsweb.oslobors.no/message/661691",
    "d": "2025-12-11",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Sale of Natuna Sea Block A and Tuna in Indonesia",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/sale-of-natuna-sea-block-a-and-tuna-in-indonesia/",
+   "d": "2025-12-08",
+   "s": "Harbour Energy plc announces that it has entered into a Sale and Purchase Agreement to sell its operated interests in the producing Natuna Sea Block A field and the Tuna development project in Indonesia to Prime Group for a cash consideration of $215 million."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -2276,6 +2393,13 @@
    "s": "Managers’ transaction"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update Nov 2025",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-nov-2025/",
+   "d": "2025-11-06",
+   "s": "Harbour today provides the following unaudited Trading and Operations Update for the nine months to 30 September 2025."
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Posts Solid Third Quarter Results; Launches Fast-Track Kjøttkake Tie-Back",
    "u": "https://newsweb.oslobors.no/message/658866",
@@ -2318,11 +2442,25 @@
    "s": "Nysgjerrighet former framtiden - Sponsorship Equinor"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy 2025 half-year results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-2025-half-year-results/",
+   "d": "2025-08-07",
+   "s": "Harbour today announces its unaudited half-year results for the six months ended 30 June 2025."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "139 milliarder kroner fra SDØE i første halvår",
    "u": "https://kommunikasjon.ntb.no/pressemelding/18609868/139-milliarder-kroner-fra-sdoe-i-forste-halvar?lang=no",
    "d": "2025-08-07",
    "s": "I første halvår leverte Petoro en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 139 milliarder kroner. Kontantstrømmen overføres i sin helhet til staten. To nye felt i produksjon bidrar med å styrke energiforsyningen til Europa."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour completes sale of Vietnam business",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-completes-sale-of-vietnam-business/",
+   "d": "2025-07-10",
+   "s": "Harbour Energy announces that it has completed the sale of its Vietnam business, which included its operated Chim Sao and Dua assets, to EnQuest plc."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2346,6 +2484,55 @@
    "s": "Åpenhetsloven – Transparency Act TotalEnergies Nordic"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "First oil achieved at Maria Phase 2, Norway",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/first-oil-achieved-at-maria-phase-2-norway/",
+   "d": "2025-05-23",
+   "s": "Harbour Energy announces the start-up of oil production from its operated Maria Phase 2 project in Norway."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update May 2025",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-may-2025/",
+   "d": "2025-05-08",
+   "s": "Harbour is pleased to share its unaudited Trading and Operations Update for Q1 2025. This is issued ahead of the Company's AGM to be held 8 May 2025."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy successfully appraises Kan Discovery in Mexico and significantly increases its estimate to 500 million barrels of oil-in-place",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-successfully-appraises-kan-discovery-in-mexico-and-significantly-increases-its-estimate-to-500-million-barrels-of-oil-in-place/",
+   "d": "2025-05-08",
+   "s": "Harbour Energy is pleased to announce the successful appraisal of the Kan discovery located in Block 30 in the Salina del Istmo Basin, offshore Mexico."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy evalúa con éxito el descubrimiento Kan en México y aumenta significativamente su estimación a 500 millones de barriles de petróleo in situ",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-evalua-con-exito-el-descubrimiento-kan-en-mexico-y-aumenta-significativamente-su-estimacion-a-500-millones-de-barriles-de-petroleo-in-situ/",
+   "d": "2025-05-08",
+   "s": "La operadora Harbour Energy se complace en anunciar la exitosa evaluación del descubrimiento Kan, ubicado en el Bloque 30 de la Cuenca Salina del Istmo, en aguas someras de México."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "2.5% Perpetual Subordinated Notes Non-Call 2026 Tender Results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/25-perpetual-subordinated-notes-non-call-2026-tender-results/",
+   "d": "2025-05-07",
+   "s": "Wintershall Dea Finance 2 B.V. announces the tender results of its invitation to holders of its outstanding EUR 650,000,000 undated subordinated resettable fixed rate notes issued 20 January 2021."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Southern Energy SA – Final Investment Decision",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/southern-energy-sa-final-investment-decision/",
+   "d": "2025-05-02",
+   "s": "Harbour and its partners – Pan American Energy, YPF, Pampa Energia and Golar LNG – have taken Final Investment Decision (FID) for the Southern Energy floating liquefied natural gas (FLNG) export project in Argentina."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Pricing of Hybrid Notes Offering",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/pricing-of-hybrid-notes-offering/",
+   "d": "2025-04-30",
+   "s": "Harbour is pleased to announce that Wintershall Dea Finance 2 B.V. priced an offering on 29 April 2025 of €900 million in aggregate principal amount of perpetual guaranteed subordinated resettable fixed rate notes."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Motorolje til anleggsmaskiner - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMikAFBVV95cUxONVhXUHhlZmJSTnhaTk9WT3lDNGttSnFtLUlwYzh6a1lkYVB4bHdZcnFCbDl2cEZEcGZVQ0N4cG1udTdPeXJpN2x0SHdaQjdPZ2h1amlKS0NuTmRRMVRITWxXcWxZSmM4N2RvZ2hHMmlTTnZBWUlBanZncmxhVmlMQ1MzYVNnTVo0b2RuaUhpVGY?oc=5",
@@ -2365,6 +2552,20 @@
    "u": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQMmRFaHVzc1dXQ0dTbmJYUlBXaW5IbmtTQ0ExMTJ3Qi1UMzBNaXVxS3dZREx3YlVfandiMWJlLUpvM193d1RuZzZSNXRQbXJrbWdoSUhwUG9nV3VQdlEyOVpXbXd5SDd4MFdTelRMTmJZN05ZekRpZTg0Q2pCNXREbEZ5TnJsTTJWREhUYVhLRW4ya1hiSXN1Z3RKN0thUm9MNUVpaDln?oc=5",
    "d": "2025-03-31",
    "s": "Johan Castberg styrker Norge som langsiktig energieksportør Equinor"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "5.5% Senior Notes due 2026 Tender Results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/55-senior-notes-due-2026-tender-results/",
+   "d": "2025-03-28",
+   "s": "Harbour Energy plc announces the results of a previously announced tender offer to purchase for cash any outstanding 5.5% Senior Notes due 2026."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Pricing of Senior Notes Offering 2025",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/pricing-of-senior-notes-offering-2025/",
+   "d": "2025-03-25",
+   "s": "Harbour is pleased to announce that it has priced an offering on 24 March 2025 of $900 million in aggregate principal amount of 6.327% Senior Notes due 2035."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
@@ -2402,6 +2603,20 @@
    "s": "DNO to Acquire Sval Energi in Transformative Transaction; Quadruples North Sea Output-2025-03-07 dno.no"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Full Year Results 2024",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/full-year-results-2024/",
+   "d": "2025-03-06",
+   "s": "Harbour Energy plc is pleased to share its full year financial results for the period ending 31 December 2025."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Capital Markets Update March 2025",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/capital-markets-update-march-2025/",
+   "d": "2025-03-06",
+   "s": "Harbour Energy plc updates its investors on a strategy to create value by building a global, diversified oil and gas company focused on cashflow and shareholder distributions over a 2025-2027 timeframe."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Gassfunn i Norskehavet - Equinor",
    "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE1UNVJubEVkaTBWQXREXy03dUtEeVBBcGFLcW5SV2ZpYjRLQVJ3dExBVGM5d2g1U09ZS3R4aHVUSXluYkRNY1hBaHI3aml6Wi01ZFlHV1h1X1RTWXVZQmFsUmd4ZDcwSFhqRTV5bGtJWnl4Zw?oc=5",
@@ -2414,6 +2629,13 @@
    "u": "https://news.google.com/rss/articles/CBMibkFVX3lxTFBMOHZLVmV4eHZJMHkzdHJxZEIzUTFuMzZLcjVPLUdYbnZrZ2t5VDRJd01sNW81RDJ2aGFHbXk0RTIwMVduWTBIaUp3cE1uaXJYaml1Y1lIcFFUYXpKc2lucGNYWWQ3Q3lXaUxmOVVB?oc=5",
    "d": "2025-02-24",
    "s": "Informasjon om håndtering av oljeklumper Equinor"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading and Operations Update Jan 2025",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-and-operations-update-jan-2025/",
+   "d": "2025-01-23",
+   "s": "Harbour Energy provides an unaudited Trading and Operations Update for the year ended 31 December 2024, ahead of announcing its Full Year Results on 6 March 2025."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
@@ -2449,6 +2671,20 @@
    "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTE0td3J1MDFkTkJ5NXF1Zm5Gd2wwR19uS3RJQUxNMHVGa2cyXzVKVkIxRU1scDdTZm5NaFVzR3VPaUNQMWExdUd0MzFBNjVQT2FLY3diN2Vsd3NaLWtBZENFczNHZ1F6amZ2YUtMRFoyNWFBSk0?oc=5",
    "d": "2024-12-23",
    "s": "Informasjon fra TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Greensand Future reaches Final Investment Decision",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/greensand-future-reaches-final-investment-decision/",
+   "d": "2024-12-10",
+   "s": "Harbour Energy and its project partners announce a final project investment decision for the Greensand Future carbon capture and storage project in Denmark, which will become the EU's first operational CO2 storage facilities in an effort to mitigate climate change."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy signs participation agreement for proposed FLNG project in Argentina",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-signs-participation-agreement-for-proposed-flng-project-in-argentina/",
+   "d": "2024-12-03",
+   "s": "Harbour Energy signs a participation agreement with Pan American Energy and Golar LNG to acquire a 15% interest in Southern Energy SA a company which is planning to develop a floating liquefied natural gas (FLNG) export project in Argentina."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2491,6 +2727,13 @@
    "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE5zemE4TlFISjYzUGdmY0ZsSThlcVBkWTR5cFBrWGNHODRQOUlJd3hZalFFcERNVDF1UUpTbmx3SUhyY3d2bUlwbVd5Ykw4eklYY0NRY2hGajVsZWE0X0lhQWNpYm9OZG5fY3BiTl9OcEVjZw?oc=5",
    "d": "2024-11-08",
    "s": "Pressekontakt ConocoPhillips Norway"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update Nov 2024",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-nov-2024/",
+   "d": "2024-11-07",
+   "s": "Harbour Energy provides the following unaudited Trading and Operations Update for the nine months to 30 September 2024."
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -2540,6 +2783,20 @@
    "u": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE1YS1IyVHBXMG03WFhOdXVBTnRyMlJLWU5LZUhPT3BBYVlDN0x4RV8tWkxOcVdiMHk2cklBN2JrQzJqT0xjNmJiM0xKYlBqdGJBN3NSbQ?oc=5",
    "d": "2024-10-09",
    "s": "Øygarden: Kollsnes, Sture og Northern Lights Equinor"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Pricing of Senior Notes Offering 2024",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/pricing-of-senior-notes-offering-2024/",
+   "d": "2024-09-26",
+   "s": "Harbour is pleased to announce that Wintershall Dea Finance B.V., priced an offering on 25 September 2024 of €700 million in aggregate principal amount of 3.830% senior notes due 2029 and €900 million in aggregate principal amount of 4.357% senior notes due 2032."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Completion of Wintershall Dea asset portfolio acquisition",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/completion-of-wintershall-dea-asset-portfolio-acquisition/",
+   "d": "2024-09-03",
+   "s": "Harbour Energy is pleased to announce the acquisition of the Wintershall Dea asset portfolio, comprising substantially of all Wintershall Dea AG's upstream assets, is effective from 30 June 2023."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -2654,11 +2911,25 @@
    "s": "DNO - Supplerende opplysninger - tvungen innløsning av aksjeeiere som eier 33 eller færre aksjer i DNO ASA dno.no"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Wintershall Dea acquisition to complete in early September 2024",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/wintershall-dea-acquisition-to-complete-in-early-september-2024/",
+   "d": "2024-08-27",
+   "s": "Harbour is pleased to announce that the acquisition of Wintershall Dea is expected to be completed in early September 2024."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor skal ta i bruk verdens første ammoniakkdrevne forsyningsfartøy - Equinor",
    "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQb0dfZGpGUHRiNEN0VHRjdjdidTAwVDc3cU8tRW84NjRXV3NoQkZ2NkZ2Yks2Ni15NWdfMkJvYUxoSGZiTHMzanhFaERsNGR5Q3RESVFCMjE0QjRrWGFkQ0dUUi1GT1dVRXI0cGtTVVBua1Y2TUhObVZ1UEpJaG9tdHRIekc0SXdrODBURzR5S2hyWl8wd2c?oc=5",
    "d": "2024-08-26",
    "s": "Equinor skal ta i bruk verdens første ammoniakkdrevne forsyningsfartøy Equinor"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy 2024 half-year results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-2024-half-year-results/",
+   "d": "2024-08-08",
+   "s": "Harbour is pleased to announce its unaudited half-year results for the six months ended 30 June 2024."
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -2668,6 +2939,13 @@
    "s": "Petoro leverte en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 114 milliarder kroner per andre kvartal 2024. Netto kontantstrøm for andre kvartal isolert var på 54 milliarder kroner."
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Result of the General Meeting in connection with the proposed acquisition of Wintershall Dea asset portfolio",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/result-of-the-general-meeting-in-connection-with-the-proposed-acquisition-of-wintershall-dea-asset-portfolio/",
+   "d": "2024-07-05",
+   "s": "Harbour Energy is pleased to announce the poll and duty results of the Annual General Meeting held on 5 July 2024."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor sikrer utforskingstillatelse for CO2-lagring i Danmark - Equinor",
    "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQSkRGdUtta0Zfby1KSWhBSFNfdnljNkViSjVtd1B0czdvNGI0ZDBLZkNXX3dqemdIa0ZHV2VFQ016U2M1NGhnMUJ5YVcybk9mVDh2RkV4YWVJck9OMklPTEp6RUkxOHFHUElRVTJKZTEzeC1MLXljdnIxdjQySmFCZjN1NWdueUxWSTkxNXhSRkhTRlE?oc=5",
@@ -2675,11 +2953,39 @@
    "s": "Equinor sikrer utforskingstillatelse for CO2-lagring i Danmark Equinor"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Publication of Circular and Prospectus in connection with proposed acquisition of Wintershall Dea asset portfolio",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/publication-of-circular-and-prospectus-in-connection-with-proposed-acquisition-of-wintershall-dea-asset-portfolio/",
+   "d": "2024-06-12",
+   "s": "Harbour is pleased to announce the publication of its shareholder circular and prospectus in relation to the proposed acquisition of substantially all of Wintershall Dea AG's upstream oil and gas assets."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Update on proposed Wintershall Dea asset portfolio acquisition",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/update-on-proposed-wintershall-dea-asset-portfolio-acquisition/",
+   "d": "2024-05-31",
+   "s": "Both prospectus and shareholder circular documents in relation to the acquisition of Wintershall Dea's asset portfolio are in the final preparations for publication."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Bytte av deltakerandeler mellom SDØE ved Petoro AS og Equinor ASA",
    "u": "https://kommunikasjon.ntb.no/pressemelding/18096294/bytte-av-deltakerandeler-mellom-sdoe-ved-petoro-as-og-equinor-asa?lang=no",
    "d": "2024-05-14",
    "s": "Petoro og Equinor har inngått omfattende andelsbytter på norsk sokkel. Avtalen vil sikre økt verdiskaping og en mer effektiv ressursforvaltning av selskapenes aktiviteter på Haltenbanken."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Significant gas discovery at Tangkulo, Indonesia",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/significant-gas-discovery-at-tangkulo-indonesia/",
+   "d": "2024-05-13",
+   "s": "Harbour Energy is pleased to note operator Mubadala Energy’s announcement that the Tangkulo-1 exploration well has made a significant discovery on the South Andaman licence (Harbour 20 per cent), offshore North Sumatra, Indonesia."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update May 2024",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-may-2024/",
+   "d": "2024-05-09",
+   "s": "Harbour Energy plc is pleased to announce the unaudited Trading and Operations update for the first quarter of 2024, issued ahead of the Company's Annual General Meeting."
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -2731,11 +3037,39 @@
    "s": "Production & operations ConocoPhillips Norway"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Publication of 2023 Annual Report and AGM Notice",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/publication-of-2023-annual-report-and-agm-notice/",
+   "d": "2024-03-28",
+   "s": "Harbour Energy plc is pleased to announce the publication of its Integrated Annual Report and Accounts and ESG Review for the year ended 31 December 2023 and Notice of the 2024 Annual General Meeting, which is to be held on 9 May 2024."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "3000 milliarder kroner fra SDØE siden 2001",
    "u": "https://kommunikasjon.ntb.no/pressemelding/18056177/3000-milliarder-kroner-fra-sdoe-siden-2001?lang=no",
    "d": "2024-03-11",
    "s": "Petoro leverte 277 milliarder kroner i kontantstrøm til staten i 2023. Det er den nest høyeste kontantstrømmen i selskapets historie. Siden Petoro ble opprettet i 2001 har selskapet levert over 3000 milliarder kroner til staten fra Statens direkte økonomiske engasjement (SDØE)."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy full-year results 2023",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-full-year-results-2023/",
+   "d": "2024-03-07",
+   "s": "Harbour Energy plc is pleased to announce its full-year financial results for the year ended 31 December 2023."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Viking CCS project awards front end engineering design contract",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/viking-ccs-project-awards-front-end-engineering-design-contract/",
+   "d": "2024-01-31",
+   "s": "Viking CSS, led by Harbour Energy, announces Technip Energies has been awarded the Front-End Engineering Design contract."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update Jan 2024",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-jan-2024/",
+   "d": "2024-01-18",
+   "s": "Harbour Energy plc is pleased to announce its unaudited Trading and Operations update for the year ending 31 December 2023, ahead of announcing its full-year results on 7 March 2024."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -2745,11 +3079,53 @@
    "s": "DNO Receives 14 Awards in Norway's APA Licensing Round-2024-01-16 | Announcements | Investors dno.no"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Transformational acquisition of Wintershall Dea asset portfolio",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/transformational-acquisition-of-wintershall-dea-asset-portfolio/",
+   "d": "2023-12-21",
+   "s": "Harbour is pleased to announce the acquisition of Wintershall Dea asset portfolio for $11.2 billion."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy responds to UK Government announcement on CCS emitter sequencing",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-responds-to-uk-government-announcement-on-ccs-emitter-sequencing/",
+   "d": "2023-12-20",
+   "s": "Harbour Energy's Executive Vice President of Strategy, Business Development and Energy Transition, Gustavo Banquero speaks on the Company's involvement in the UK's legally binding emissions reduction targets."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Significant gas discovery at Layaran-1, Indonesia",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/significant-gas-discovery-at-layaran-1-indonesia/",
+   "d": "2023-12-19",
+   "s": "Harbour Energy plc is pleased to note operator Mubadala Energy’s announcement that the Layaran-1 well has made a significant gas discovery on the South Andaman licence, offshore North Sumatra, Indonesia."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor og tyske SEFE inngår langsiktige gassalgsavtaler og planlegger hydrogenforsyning i stor skala - Equinor",
    "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPOXl6cm9Vc3BlTURpNnQ0WnM5UXdYam5FS3lZUzZKckV3bTV0UnprNFNjMDlueHZGU1U4RzNOV1JBb2hJQzA5ajBvRVFBczFBaWVBWVMxRnJpdFQwSzV4eHRwY2w3TFozbGRSQm5qMFJIcXNaZi1nb09sckVBaUpiQW5ZSlFoYWhtXy1sMmFiZWNvLUdC?oc=5",
    "d": "2023-12-19",
    "s": "Equinor og tyske SEFE inngår langsiktige gassalgsavtaler og planlegger hydrogenforsyning i stor skala Equinor"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Cory Group sign exclusive agreement with Viking CCS",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/cory-group-sign-exclusive-agreement-with-viking-ccs/",
+   "d": "2023-12-05",
+   "s": "Harbour Energy, bp and Associated British Ports announce exclusive commercial agreement with Cory Group for CO2 transportation and storage by ship."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update Sept 2023",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-sept-2023/",
+   "d": "2023-11-29",
+   "s": "Harbour Energy plc is pleased to announce its unaudited Trading and Operations update for the nine months to 30 September 2023."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Application for Viking CCS onshore CO2 transportation pipeline accepted for examination by Planning Inspectorate",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/application-for-viking-ccs-onshore-co2-transportation-pipeline-accepted-for-examination-by-planning-inspectorate/",
+   "d": "2023-11-24",
+   "s": "Harbour Energy is pleased to announce that the Planning Inspectorate has accepted for extermination its application to build the Viking CSS onshore CO2 transportation pipeline – a key component needed to decarbonise and rejuvenate the industries of the Humber."
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -2778,6 +3154,27 @@
    "u": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOUXdUVmptVl9zTlo0SU1oelBGM3B4T3QzX2RzaWhjX1lmVWFiMXk3Q3FrNFNmbGNkWGVFSTZFUzR4blBDTFJTUzFwQzFKMTU0RDR2UmJoZWhJREo5UjdFcXI3bWpaU3B2Y3ExSlMxLUZia1lmQ1ZQcmlnTk5ITlpYNHMwdjZacEVrdWJxdkhnRkV4bG5USFBoYkY3cHZ1UU1GX3NtV19yeWNkQkMwcE16OG9MR2VOWG55?oc=5",
    "d": "2023-10-13",
    "s": "Tommeliten A-feltet leverer naturgass tidligere enn planlagt ConocoPhillips Norway"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy awarded four carbon storage licences",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-awarded-four-carbon-storage-licences/",
+   "d": "2023-09-15",
+   "s": "Harbour Energy is pleased to announce it has been awarded four carbon storage licenses by the North Sea Transition Authority as part of the UK's recent CO2 storage licence round."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy 2023 half-year results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-2023-half-year-results/",
+   "d": "2023-08-24",
+   "s": "Harbour Energy plc is pleased to announce its unaudited half-year results for the six months ended 30 June 2023."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Sale of Vietnam business",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/sale-of-vietnam-business/",
+   "d": "2023-08-10",
+   "s": "Harbour Energy announces it has entered into Sale and Purchase Agreements to sell its Vietnam business, subject to approvals, has an effective date of 1 January 2023 and consideration of $84 million."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2822,6 +3219,13 @@
    "s": "Petoro leverte en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 180 milliarder kroner per andre kvartal 2023. Netto kontantstrøm for andre kvartal isolert var på 63 milliarder kroner."
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour's Viking and Acorn CCS projects awarded Track 2 status",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbours-viking-and-acorn-ccs-projects-awarded-track-2-status/",
+   "d": "2023-07-31",
+   "s": "Harbour Energy welcomes the news that Viking and Acorn CSS have been awarded Track 2 status as part of the UK Government's CSS cluster sequencing process."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Norway logs largest hydrocarbon discovery in 10 years-2023-07-10 | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxNTHNTR1l4WWg5QVkzMVRySkpBRUl2RkJMVjBFdXdoUldRTnoyX05sc3dmRDc5bnlid2c5eG5LZTAtR2ktN1M3NnY3U2lra2o2U2FtWlFZLUpXQjhJY2JzYlozVUFKQmtBQjg0aDBkRWlkbWptSmVyeUhDOWxOZlZ1MGJfVDNBdXpsSjhtZmt5ay1FZWpCSWxVWlNMelBHS1A0bE41ZUdrdG5tb0tJRDJiMQ?oc=5",
@@ -2850,11 +3254,25 @@
    "s": "Fuel Fighter NTNU - inspirer til en bærekraftig fremtid. TotalEnergies stolt sponsor av Fuel Fighter NTNU TotalEnergies Nordic"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update May 2023",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-may-2023/",
+   "d": "2023-05-10",
+   "s": "Harbour Energy plc is pleased to announce its unaudited Trading and Operations update for the first quarter of 2023."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Sterk kontantstrøm også i første kvartal - Petoro leverte 117 milliarder til staten",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17966669/sterk-kontantstrom-ogsa-i-forste-kvartal---petoro-leverte-117-milliarder-til-staten?lang=no",
    "d": "2023-05-09",
    "s": "Petoro leverte 117 milliarder kroner i kontantstrøm til staten fra SDØE-porteføljen i første kvartal 2023. Dette er fire milliarder mer enn i første kvartal 2022 og 91 milliarder mer enn første kvartal 2021."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Kan oil discovery, offshore Mexico",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/kan-oil-discovery-offshore-mexico/",
+   "d": "2023-04-26",
+   "s": "Harbour Energy is pleased to note operator Wintershall Dea’s announcement that the Kan-1 exploration well has made an oil discovery in Block 30, offshore Mexico."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
@@ -2864,6 +3282,41 @@
    "s": "Fikk presentert framtidens Ekofisk ConocoPhillips Norway"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy and bp agree to develop the Viking CCS project",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-and-bp-agree-to-develop-the-viking-ccs-project/",
+   "d": "2023-04-11",
+   "s": "Harbour Energy and bp are pleased to announce that they have entered into an agreement to develop the Viking CCS transportation and storage project."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Publication of 2022 Annual Report and ESG Report and Notice of AGM",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/publication-of-2022-annual-report-and-esg-report-and-notice-of-agm/",
+   "d": "2023-03-31",
+   "s": "Harbour Energy plc is pleased to announce the publication of its Annual Report and Accounts for the year ended 31 December 2022, Notice of the 2023 Annual General Meeting to be held on 10 May 2023 and ESG Report 2022."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Submission of Zama Unit Development Plan",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/submission-of-zama-unit-development-plan/",
+   "d": "2023-03-24",
+   "s": "Harbour Energy and the other Zama Unit Holders are pleased to announce that Pemex, as operator, submitted the Unit Development Plan for the Zama field to Mexico’s National Commission of Hydrocarbons for approval."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Board Appointments 2023",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/board-appointments-2023/",
+   "d": "2023-03-23",
+   "s": "Harbour Energy is pleased to announce the appointment of Belgacem Chariag and Louise Hough as independent Non-Executive Directors."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Viking CCS - report outlines pivotal role in Humber transformation",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/viking-ccs-report-outlines-pivotal-role-in-humber-transformation/",
+   "d": "2023-03-14",
+   "s": "Harbour Energy issues a report setting out significant economic benefits the Viking CSS CO2 transport and storage project can unlock in the Humber region."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "528 milliarder til staten i unntaksåret 2022",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17959025/528-milliarder-til-staten-i-unntaksaret-2022?lang=no",
@@ -2871,11 +3324,25 @@
    "s": "Petoro leverte 528 milliarder kroner til staten i 2022, over fem ganger så mye som i et normalår. Energiprisene er rekordhøye som et resultat av Ukraina-krigen, en krig som vil prege det geopolitiske bildet i lang tid. Norge dekker nå 30 % av Europas gassbehov. Gassleveransene fra norsk sokkel økte …"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy 2022 full-year results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-2022-full-year-results/",
+   "d": "2023-03-09",
+   "s": "Harbour Energy plc is pleased to announce its audited full year financial results for the year ended 31 December 2022."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Invitasjon til pressekonferanse - årsresultat 2022 for SDØE",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17959021/invitasjon-til-pressekonferanse---arsresultat-2022-for-sdoe?lang=no",
    "d": "2023-03-09",
    "s": "Petoro AS inviterer til pressekonferanse i forbindelse med offentliggjøring av resultat 2022 (SDØE)."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Viking CCS - independent verification of 300mt of CO2 storage",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/viking-ccs-independent-verification-of-300mt-of-co2-storage/",
+   "d": "2023-03-07",
+   "s": "Harbour Energy plc announces ERCE has completed an independent audit of the CO2 storage capacity of the offshore Viking fields, a project expected to be operational from as early as 2027."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
@@ -2890,6 +3357,13 @@
    "u": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQUndfTEpaaWR1dnd0bGdtWGxBaHhjM1gtNzJTdkdUbFNNSHpVSjBYbUlWU241TDR3eGdGaU1tRWctSVRWS045ZXVfZ0E2WC1aR2xxX2N5M3Zkc1JYTnA2Y3ZXTHRpNlAwOG5KeUxqcWlQdzJPRkJoakRGLVRIWWl2UFZvTjBvRDM4eFEtYnB3?oc=5",
    "d": "2023-01-31",
    "s": "Equinor går ut av Barents Blue-prosjektet idet avtale utløper og ny partner annonseres Equinor"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update Jan 2023",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-jan-2023/",
+   "d": "2023-01-19",
+   "s": "Harbour Energy plc is pleased to announce its unaudited Trading and Operations update for the year ended 31 December 2022, ahead of announcing its full-year results on 9 March 2023."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -2913,11 +3387,25 @@
    "s": "Equinor og det tyske energiselskapet RWE skal samarbeide om energisikkerhet og avkarbonisering Equinor"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Viking CCS welcomes RWE as a capture project partner",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/viking-ccs-welcomes-rwe-as-a-capture-project-partner/",
+   "d": "2022-12-20",
+   "s": "RWE announces a new partnership to investigate options to capture, transport and store CO2 from its gas fired power stations via Viking CSS."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "TotalEnergies' CEO Patrick Pouyanné deltok på COP27 Kairo - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMizAFBVV95cUxQUHVpY2VWQV91eGUyT0d1SVdaZllRR1hyVGdqSUxqNE02YlRRVXlaZk0wTGlUNUs3NThGUHhVa0FQbFNSaXM3dHpJemtWaTR1U1NTTHdlM2wwaHBoZWxxVVdubW9ZYTFodTBWa3VEX3h0NmdqdmRneTRtNkNld09OT1NCU2Rfczl2cHdXUGZQSGVCSFNRVjBoZkU1QTFpRUo0T250Ql9BdkNCekNmcXhtSEFSTlZ5Q2xPa24yMUE5UjhkT2xYMWRxS2FKZWs?oc=5",
    "d": "2022-12-01",
    "s": "TotalEnergies' CEO Patrick Pouyanné deltok på COP27 Kairo TotalEnergies Nordic"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Viking CCS pipeline progresses towards DCO with statutory consultation",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/viking-ccs-pipeline-progresses-towards-dco-with-statutory-consultation/",
+   "d": "2022-11-29",
+   "s": "Harbour is pleased to announce Viking CSS has opened the statutory consultation process for a Development Consent Order for its onshore pipeline."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -2927,11 +3415,46 @@
    "s": "Irpa — sikrer gass til Europa og forlenger levetiden til Aasta Hansteen Equinor"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update Nov 2022",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-nov-2022/",
+   "d": "2022-11-03",
+   "s": "Harbour Energy plc is pleased to announce its unaudited Trading and Operations update for the nine months to 30 September 2023."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Resultat SDØE 3. kvartal 2022: Pålitelig energileveranse og rekordhøy gassproduksjon",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17943949/resultat-sdoe-3-kvartal-2022-palitelig-energileveranse-og-rekordhoy-gassproduksjon?lang=no",
    "d": "2022-11-02",
    "s": "Petoro har levert en netto kontantstrøm på 402 milliarder kroner per tredje kvartal 2022. For tredje kvartal isolert var kontantstrømmen på 167 milliarder kroner, noe som er nesten like mye som for hele fjoråret. Kontantstrømmen overføres i sin helhet til staten."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Viking CCS & Associated British Ports announcement",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/viking-ccs-associated-british-ports-announcement/",
+   "d": "2022-10-24",
+   "s": "Harbour Energy and Associated British Ports announce an exclusive commercial relationship to develop a CO2 import terminal at the Port of Immingham, which will link Harbour's Viking CSS to the CO2 transport and storage network."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Viking CCS welcomes West Burton Energy",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/viking-ccs-welcomes-west-burton-energy/",
+   "d": "2022-10-17",
+   "s": "Harbour Energy announces Viking CSS has entered into a partnership with West Burton Energy to capture, transport and permanently store CO2 emissions from the West Burton B power station."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Directorate Change 2022",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/directorate-change-2022/",
+   "d": "2022-10-13",
+   "s": "Anne Marie Cannon has notified Harbour’s Board of Directors of her intention to step down as a Non-Executive Director of the Company after nine years."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "V Net Zero is renamed Viking CCS",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/v-net-zero-is-renamed-viking-ccs/",
+   "d": "2022-10-12",
+   "s": "V Net Zero has been renamed Viking CSS to better reflect the strength of its CO2 carbon capture and storage capabilities."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2969,11 +3492,39 @@
    "s": "Presentations | Reports and presentations | Investors dno.no"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy's half-year results 2022",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energys-half-year-results-2022/",
+   "d": "2022-08-25",
+   "s": "Harbour Energy plc is pleased to announce its half-year results for the period ended 30 June 2022."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Resultat SDØE 2. kvartal 2022: 1,3 milliarder til AS Norge hver dag",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17938247/resultat-sdoe-2-kvartal-2022-13-milliarder-til-as-norge-hver-dag?lang=no",
    "d": "2022-08-03",
    "s": "Petoro har levert en netto kontantstrøm på 234 milliarder kroner per andre kvartal 2022, 48 milliarder mer enn resultatet for hele rekordåret 2021. Netto kontantstrøm for andre kvartal isolert var på 121 milliarder kroner. Dette betyr at SDØE-porteføljen som Petoro forvalter bidro med 1,3 …"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Timpan exploration well result",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/timpan-exploration-well-result/",
+   "d": "2022-07-11",
+   "s": "Harbor Energy announces its completion of drilling the Timpan-1 exploration well, located 150 kilometres offshore Indonesia, in a water depth of 4,245 feet."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Distribution of shareholder’s interest",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/distribution-of-shareholder-s-interest/",
+   "d": "2022-07-08",
+   "s": "Harbour announces today that it has been notified by EIG that their notifiable interest in the Company has changed from approximately 37 per cent to approximately 16 per cent."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "$200 million buyback programme",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/200-million-buyback-programme/",
+   "d": "2022-06-16",
+   "s": "Harbour is pleased to announce today the commencement of a share buyback programme of the Company’s ordinary shares for up to a maximum aggregate consideration of $200 million."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -2995,6 +3546,13 @@
    "u": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxQU1NMU1FpMVJYVDc2MUlQR3RMalRmWHZjbHVOdmVLSGk1MHRYYUtTVHRGNVh6QWVnT2VNMGI0YTdNNWc5d3ZyODF6RXdMVkZLSGM4REdvQ0Rra3BoZUN1SGFaX3pVNHctRVhkcGo5Njd6dlM3NGEzem1nN3dlZ1lhTjU5Ul9BdXdmQkJaWmJUdXg2U1o3b1dJTndZVU1oZ1lfc2UzZUc0ZlFvcTZsX3RFU1g0SENYSWNJcHVyNXNGZFdyY1prVXZTbA?oc=5",
    "d": "2022-05-23",
    "s": "Tour de France og Team TotalEnergies kommer til Danmark TotalEnergies Nordic"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading Update 2022",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-update-2022/",
+   "d": "2022-05-11",
+   "s": "Harbour Energy plc provides the following unaudited Trading Update. This is issued ahead of the Company’s Annual General Meeting which is being held today at 10.00 BST."
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -3207,6 +3765,20 @@
    "s": "Quarterly reports | Reports and presentations | Investors dno.no"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Publication of Annual Report and Accounts and ESG Report for 2021 and Notice of Annual General Meeting",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/publication-of-annual-report-and-accounts-and-esg-report-for-2021-and-notice-of-annual-general-meeting/",
+   "d": "2022-04-05",
+   "s": "Further to the release of the Company’s Full Year Results on 17 March 2022, Harbour announces that it has today published its Annual Report and Accounts for the financial year ended 31 December 2021 along with its 2021 ESG Report."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy's full-year results 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energys-full-year-results-2021/",
+   "d": "2022-03-17",
+   "s": "Harbour Energy is pleased to announce its full-year results for the year ended 31 December 2021."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Årsresultat Petoro/SDØE: 186 milliarder til staten – pålitelig energileveranse til Europa",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17928151/arsresultat-petorosdoe-186-milliarder-til-staten-palitelig-energileveranse-til-europa?lang=no",
@@ -3219,6 +3791,20 @@
    "u": "https://kommunikasjon.ntb.no/pressemelding/17927671/fremleggelse-av-arsresultat-2021-for-sdoe-og-petoro-as?lang=no",
    "d": "2022-03-02",
    "s": "Petoro AS inviterer til fremleggelse av resultater SDØE og Petoro AS 2021, onsdag 9. mars, klokken 10:00"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Board change 2022",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/board-change-2022/",
+   "d": "2022-02-02",
+   "s": "Harbour Energy today announces that Phil Kirk has notified the Board of his intention to step down as Executive Director, President and CEO Europe, with effect from 28 February 2022."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Dunottar exploration well result",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/dunottar-exploration-well-result/",
+   "d": "2021-12-30",
+   "s": "Harbour Energy has completed the drilling of the Dunnottar exploration well (30/8-4) in licence P2399 in the UK North Sea."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -3242,6 +3828,13 @@
    "s": "Smøremidler for vindmøller | TotalEnergies TotalEnergies Nordic"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy Capital Markets Day 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-capital-markets-day-2021/",
+   "d": "2021-12-09",
+   "s": "Harbour will host its first Capital Markets day at midday on 9 December 2021. It will provide more detail around Harbour's strategy, strength of its asset base, the cashflow potential of the business and its capital allocation plans."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Smøremidler for maskiner i grustak og gruvedrift | TotalEnergies - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMigwFBVV95cUxOX1NDS3hwNTFXbVRxeVFNVm12SGRBVGdXZW5IUkNoLWZBU3JLQjMxUUlwSDY3TE1BMWxqSVlWUlNmbUlJa1R4U25BVnB4ZFV4bWtEVjZnTkVmZjRobk5Uc0l3dzZtMDl0bmhUSEFWMjZHcW5pYnFMa2NtWGRSRWdCcDB4WQ?oc=5",
@@ -3254,6 +3847,34 @@
    "u": "https://kommunikasjon.ntb.no/pressemelding/17918584/resultat-3-kvartal-sdoe-ekstreme-priser-gir-rekordhoy-kontantstrom?lang=no",
    "d": "2021-10-28",
    "s": "Petoro leverte en kontantstrøm på 98 milliarder per tredje kvartal. Kontantstrømmen for tredjekvartalet isolert er på 44 milliarder, noe som er den høyeste for et kvartal i Petoros historie."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "OGA grants carbon storage licence to Harbour Energy",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/oga-grants-carbon-storage-licence-to-harbour-energy/",
+   "d": "2021-10-11",
+   "s": "The Oil and Gas Authority (OGA) has awarded a carbon dioxide (CO2) appraisal and storage licence (CS licence) to Harbour Energy, boosting the drive to reach net zero greenhouse gas emissions by 2050."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Pricing of offering of $500 million senior notes",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/pricing-of-offering-of-500-million-senior-notes/",
+   "d": "2021-10-08",
+   "s": "Harbour Energy plc is pleased to announce that it has priced its senior notes offering of $500 million aggregate principal amount of 5.50% senior notes due October 2026."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Launch of offering of $500 million senior notes",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/launch-of-offering-of-500-million-senior-notes/",
+   "d": "2021-10-04",
+   "s": "Harbour Energy announces today that it has launched an offering of $500 million five year Rule 144A/Regulation S senior notes."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy 2021 Half Year Results",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-2021-half-year-results/",
+   "d": "2021-09-23",
+   "s": "Harbour Energy plc today announces its half-year results for the period ended 30 June 2021. Financial and operational performance is provided on a reported basis with Premier Oil’s portfolio included from 31 March 2021."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -3298,6 +3919,27 @@
    "s": "Aksjeopsjoner til selskapets styre, ledelse og prosjektmedarbeidere | Announcements | Investors dno.no"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Operations Update 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/operations-update-2021/",
+   "d": "2021-07-21",
+   "s": "Harbour announces that during final commissioning and testing of the HGS Tolmount platform issues were identified in certain offshore electrical systems."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Appointment of Joint Corporate Brokers",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/appointment-of-joint-corporate-brokers/",
+   "d": "2021-07-16",
+   "s": "Harbour Energy plc is pleased to announce that it has appointed Barclays Bank plc and Morgan Stanley & Co International plc to act as joint corporate brokers alongside Jefferies International Ltd."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour's endorsement of the World Bank's ZRF initiative",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbours-endorsement-of-the-world-banks-zrf-initiative/",
+   "d": "2021-07-15",
+   "s": "Harbour announced it has become a signatory of the World Bank's 'Zero Routine Flaring by 2030' initiative, which aims to bring governments, oil companies and NGOs together to work to eliminate routine flaring no later than 2030."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Smøremidler for bedrifter i energisektoren | TotalEnergies - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxQS19QeGtvWFF1ZEdSRmZTOFVVYTFXTVFxMW5mY3NyU3RWcWVPeURfaXQzeEJzUVoxUjRrTkg4cmRZZlg0U1ZmYUNFTWJrM08zUjBxdGdKOWgycmtKcldMel9ZUklhNEdZT1Z3U1JaQ2d1SVZsQjBsX2hpRHoySlVQdnRuN01PUQ?oc=5",
@@ -3324,6 +3966,27 @@
    "u": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE1kbWMzWXR6MWJJUVlKaDhVQklIc0RSeUpMT0ZGVGRXU0E0RjJ6dkJnclVzOThhUFVwZlJnYTljWDFrWmdDVEt2UER6RlBnUnR0bVpj?oc=5",
    "d": "2021-06-27",
    "s": "FAQ TotalEnergies Nordic"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Share Consolidation & Total Voting Rights 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/share-consolidation-total-voting-rights-2021/",
+   "d": "2021-06-25",
+   "s": "Harbour confirms that the Share Consolidation will become effective such that shareholders who were on the Company’s register of members at 6:00pm on 24 June 2021 will hold 1 New Ordinary Share of 0.002 pence each for every 20 Existing Ordinary Shares of 0.0001 pence each previously held."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Trading & Operations Update to 31 May 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-to-31-may-2021/",
+   "d": "2021-06-23",
+   "s": "Harbour Energy plc provides an unaudited Trading and Operations Update for the five months to 31 May 2021, issued ahead of the AGM."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Result of the Annual General Meeting 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/result-of-the-annual-general-meeting-2021/",
+   "d": "2021-06-23",
+   "s": "The AGM of the Company was held 23 June 2021 at 23 Lower Belgrave Street, London, SW1W 0NR at 3.00pm. Each of the resolutions contained in the Notice of Meeting were put to the AGM, voted on by way of a poll and duly approved."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -3459,11 +4122,32 @@
    "s": "Services | TotalEnergies TotalEnergies Nordic"
   },
   {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Proposed share consolidation 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/proposed-share-consolidation-2021/",
+   "d": "2021-05-19",
+   "s": "Harbour has issued a notice convening the Company’s 2021 AGM to be held on 23 June 2021. One of the resolutions being proposed at the AGM will seek approval to implement a 20:1 share consolidation."
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Resultat 1. kvartal SDØE: 26 milliarder til staten – kraftig resultatforbedring fra Petoro",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17906612/resultat-1-kvartal-sdoe-26-milliarder-til-staten-kraftig-resultatforbedring-fra-petoro?lang=no",
    "d": "2021-05-05",
    "s": "Petoro leverte en kontantstrøm til staten på 26 milliarder kroner i første kvartal 2021. Dette tilsvarer kontantstrømmen for de to siste kvartalene i 2020. Prisene på olje og gass styrket seg betydelig fra slutten av fjoråret og bidro til denne forbedringen. Kontantstrømmen er nå på nivå med …"
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Result of audit tender 2021",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/result-of-audit-tender-2021/",
+   "d": "2021-04-22",
+   "s": "The Board of Harbour Energy plc announces its intention to appoint Ernst & Young LLP as its auditor for the year ending 31 December 2021."
+  },
+  {
+   "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
+   "t": "Harbour Energy to be admitted to trading",
+   "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energy-to-be-admitted-to-trading/",
+   "d": "2021-04-01",
+   "s": "Harbour Energy plc is pleased to announce that, following the completion of the all-share merger of Chrysaor Holdings Ltd and Premier Oil plc, the Group’s enlarged ordinary share capital will be admitted to trading on the London Stock Exchange’s Main Market at 0800 BST today."
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
