@@ -40,7 +40,7 @@
     },
     {
       "company": "Equinor Energy AS",
-      "url": "https://newsweb.oslobors.no/search?category=&issuer=1309&fromDate=&toDate=&market=&messageTitle=",
+      "url": "https://newsweb.oslobors.no/search?category=&issuer=1309",
       "label": "Newsweb",
       "added": "2026-11-01"
     },
