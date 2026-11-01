@@ -1477,7 +1477,9 @@ const FIELD_TABS   = [
   {id:'oilgas',         label:'Oil & Gas'},
   {id:'oe_per_company', label:'Prod per company'},
   {id:'reserves',       label:'Reserves'},
+  {id:'map',            label:'Map'},
   {id:'profile',        label:'Profile'},
+  {id:'havtil',         label:'Havtil'},
 ];
 const HUB_TABS     = [
   {id:'oe_per_field',   label:'Prod per field'},
@@ -2332,9 +2334,11 @@ function pageSources() {
   if (m === 'ncs' && v === 'economy') return ['ssb'];
   add('sodir');
   if (v === 'profile') {
-    if (m !== 'discoveries' && m !== 'companies') add('havtil');
-    add('ne');
+    if (m === 'hubs') add('havtil');
+    if (m !== 'fields') add('ne');   // feltkartet har egen fane
   }
+  if (m === 'fields' && v === 'map') add('ne');
+  if (m === 'fields' && v === 'havtil') add('havtil');
   if (m === 'companies' && v === 'news') add('havtil', 'ais');
   if (m === 'exploration') {
     if (['map', 'fleet'].includes(v)) add('ne');
@@ -2586,6 +2590,8 @@ async function refreshFields() {
     drawChart();
     return;
   }
+  if (fieldSubView === 'map') { drawChart(); return; }
+  if (fieldSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
   await loadProdForFields(ids);
   if (fieldSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -2707,6 +2713,8 @@ function drawChart() {
     else if (sv === 'oe_per_company')  drawFieldsOePerCompany();
     else if (sv === 'reserves')        drawFieldsReserves();
     else if (sv === 'profile')         drawFieldProfile();
+    else if (sv === 'map')             drawFieldMap();
+    else if (sv === 'havtil')          drawFieldHavtil();
   } else if (topMode === 'hubs') {
     // Gjenbruker feltvisningene med hubens medlemsfelt.
     const names = [...selectedHubNames];
@@ -5271,6 +5279,8 @@ function isReservesView() {
       || topMode === 'prices'
       || (topMode === 'fields'    && fieldSubView   === 'profile')
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
+      || (topMode === 'fields'    && fieldSubView   === 'map')
+      || (topMode === 'fields'    && fieldSubView   === 'havtil')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'installations')
@@ -6065,7 +6075,9 @@ function drawFieldProfile() {
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
   const descs = fieldDescriptions(id);
 
-  setProfile(`
+  // Key facts og Ownership (selskapene) står side om side med lik høyde
+  // (pf-row2). Kartet og Havtil-sakene har egne faner.
+  const keyFacts = `
     <div class="pf-card">
       <h3>Key facts</h3>
       <div class="pf-facts">
@@ -6082,16 +6094,52 @@ function drawFieldProfile() {
                    p.owner && (p.ownerKind === 'PRODUCTION LICENCE' ? licenceLink(p.owner) : esc(p.owner)))}
       </div>
       <div class="lc-links">${factPageBtn('field', id)}</div>
-    </div>
+    </div>`;
+  const own = profileOwnership(id, p.operator);
+  const ownCard = own ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : '';
+
+  setProfile(`
+    ${ownCard ? `<div class="pf-row2">${keyFacts}${ownCard}</div>` : keyFacts}
     ${fieldPhoto(id, name)}
-    ${(() => { const m = profileMap(id); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
-    ${investmentCard([id], () => name)}
-    ${(() => { const o = profileOwnership(id, p.operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
-    ${havtilCard(id)}
     ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
       descs.map(d => `<h4>${esc(d.heading)}</h4><p>${esc(d.text)}</p>`).join('')}</div>` : ''}
+    ${investmentCard([id], () => name)}
   `);
+}
+
+// Fields → Map: feltkartet, som før lå i profilen.
+function drawFieldMap() {
+  const ids = [...selectedFieldIds];
+  if (ids.length !== 1) {
+    setChartEmpty(ids.length ? 'Select a single field to see its map.' : 'Tap the button below to select a field.');
+    setInfo('');
+    return;
+  }
+  const id = ids[0], name = fieldNameOf(id), p = profileRow(id) || {};
+  setChartNone();
+  setChartTitle(name, ['Map', p.area, hubOfField[id] && hubOfField[id] !== name ? `hub ${hubOfField[id]}` : ''].filter(Boolean).join(' · '));
+  setInfo(`<strong>Field:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactMaps (outlines, installations), Natural Earth (coastline)`);
+  const m = profileMap(id);
+  setProfile(m ? `<div class="pf-card pf-wide"><h3>Location</h3>${m}</div>`
+    : '<div class="pf-card pf-wide"><div class="pf-map-note">Sodir has no outline for this field.</div></div>');
+}
+
+// Fields → Havtil: tilsynssakene, som før lå i profilen.
+function drawFieldHavtil() {
+  const ids = [...selectedFieldIds];
+  if (ids.length !== 1) {
+    setChartEmpty(ids.length ? 'Select a single field to see its Havtil cases.' : 'Tap the button below to select a field.');
+    setInfo('');
+    return;
+  }
+  const id = ids[0], name = fieldNameOf(id);
+  setChartNone();
+  setChartTitle(name, 'Havtil · inspections, consents and investigations');
+  setInfo(`<strong>Field:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Source:</strong> Norwegian Ocean Industry Authority (Havtil), cases linked to the field`);
+  const card = havtilCard(id);
+  setProfile(card ? card.replace('class="pf-card"', 'class="pf-card pf-wide"')
+    : '<div class="pf-card pf-wide"><div class="pf-map-note">No Havtil cases are linked to this field.</div></div>');
 }
 
 // ── HAVTIL ───────────────────────────────────────────────────────────────────
