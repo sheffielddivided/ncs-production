@@ -70,6 +70,13 @@ jobs:
         timeout-minutes: 5
         run: python fetch_news.py
 
+      # Prospektnavn til letebrønner (spesielt tørre) fra Sodirs RSS-feed for
+      # boreresultater. Arkivet i data/exploration_prospects.json bare vokser.
+      - name: Hent prospektnavn (Sodir RSS)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_prospects.py
+
       # Tilsynssaker fra Havtil (RSS, første listeside og saksider), koblet
       # til felt for sakslista i feltprofilen. Arkivet i data/havtil.json bare
       # vokser. Sakssidene leses innenfor et tidsbudsjett på 7 minutter.

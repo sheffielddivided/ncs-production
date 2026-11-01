@@ -9402,7 +9402,8 @@ function explGroup(bores) {
     if (dw) { g.discovery = dw.discovery; g.discoveryId = dw.discoveryId; }
     g.found = list.some(b => b.found);
     const label = dw ? explDiscoveryLabel(dw.discovery) : '';
-    g.title = label || g.well || main.name;
+    g.prospect = label ? '' : (list.map(b => b.prospect).find(Boolean) || '');
+    g.title = label || g.prospect || g.well || main.name;
     g.pressUrl = (dw && dw.pressUrl) || list.map(b => b.pressUrl).find(Boolean) || '';
     g.td = Math.max(0, ...list.map(b => b.td || 0)) || null;
     g.days = list.reduce((t, b) => t + (b.days || 0), 0) || null;
@@ -9420,7 +9421,8 @@ function explGroup(bores) {
 function loadExploration() {
   if (explLoaded) return Promise.resolve();
   if (explLoading) return explLoading;
-  explLoading = Promise.all([fetchBundle('exploration_wells'), loadDiscoveries().catch(() => {})]).then(([b]) => {
+  explLoading = Promise.all([fetchBundle('exploration_wells'), loadDiscoveries().catch(() => {}),
+                             fetchBundle('exploration_prospects')]).then(([b, , prospects]) => {
     if (b) {
       explOwners = b.owners || [];
       const today = new Date().toISOString().slice(0, 10);
@@ -9439,8 +9441,10 @@ function loadExploration() {
         w.found = !!(w.discoveryWell && label);
         // Alle brønner som hører til et funn — også avgrensningsbrønnene —
         // vises under funnnavnet, med brønnnavnet som undertekst.
-        w.title = label || w.name;
-        w.sub = label ? w.name : '';
+        // Brønner uten funnnavn (tørre) får prospektnavnet fra Sodirs pressemeldinger.
+        w.prospect = !label && prospects && prospects[w.well] ? prospects[w.well].prospect : '';
+        w.title = label || w.prospect || w.name;
+        w.sub = label || w.prospect ? w.name : '';
         w.hay = [w.title, w.name, w.licence, w.operator, w.rig, w.discovery].join('|').toLowerCase();
         return w;
       }).filter(w => w.start);
