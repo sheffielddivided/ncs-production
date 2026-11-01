@@ -27,6 +27,12 @@
       "added": "2026-11-01"
     },
     {
+      "company": "DNO Norge AS",
+      "url": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
+      "label": "DNO stock exchange announcements (NewsWeb)",
+      "added": "2026-11-01"
+    },
+    {
       "company": "Equinor Energy AS",
       "url": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
       "label": "Google RSS",
