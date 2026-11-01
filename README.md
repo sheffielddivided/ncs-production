@@ -40,8 +40,12 @@ Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
 | `data/rig_tracks.json` | Veipunkter og opphold per rigg, til riggprofilen med avspilling |
 | `data/rig_now.json` | Dagens posisjon, status og AIS-destinasjon per rigg, til flåtekartet |
 | `fetch_havtil.py` | Henter tilsynssaker fra Havtils RSS-feed, listesider og saksider, kobler dem til felt og selskap og bygger `data/havtil.json`. `--backfill` leser alle listesidene (tilbake til 2012–2014) |
-| `data/havtil.json` | Arkiv over tilsynsrapporter, samtykker, granskinger og pålegg fra Havtil, koblet til felt og til juridisk enhet i `companies.json`. Vises i felt-, hub-, selskaps-, brønn- og riggprofilen (selskap gruppert per konsern som i Licences), og lastes først når en av dem åpnes. Nye saker legges også i `changes.json` og vises i News |
+| `data/havtil.json` | Arkiv over tilsynsrapporter, samtykker, granskinger og pålegg fra Havtil, koblet til felt og til juridisk enhet i `companies.json`. Vises i felt-, hub-, brønn- og riggprofilen og i Companies → News (selskap gruppert per konsern som i Licences), og lastes først når en av dem åpnes. Nye saker legges også i `changes.json` og vises i News |
 | `data/havtil_aliases.json` | Navn Havtil bruker som ikke finnes i Sodir-dataene (f.eks. Yggdrasil), skrivefeil og tvetydige selskapsnavn, og manuelle unntak — redigeres for hånd |
+| `fetch_company_news.py` | Henter Sodirs pressemeldinger (boretillatelser, boreresultater, generelle nyheter) og selskapenes egne RSS/Atom-feeder til Companies → News. `--sodir` / `--companies` kjører bare den ene delen |
+| `data/sodir_press.json` | Arkiv over Sodirs pressemeldinger med brønner, felt og selskaper hentet ut av teksten. Frontend kobler dem til selskapet via rollen i brønnen, andel i feltet eller navnet |
+| `data/company_feeds.json` | Selskapenes nyhetsfeeder. Redigeres fra tannhjulet i Companies → News (samme token som hub-innstillingene) eller for hånd; en endring starter `update-company-news.yml`, som henter de nye feedene med en gang, og appen viser resultatet så snart jobben har committet |
+| `data/company_news.json` | Siste saker (inntil 100 per feed) og status per feed fra feedene i `company_feeds.json` |
 | `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
 | `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |
 | `data/rig_health.json` | Driftsrapport fra AIS-steget: rigger uten kobling, rigger som bores uten signal, mistenkelige MMSI og om kilden feiler |

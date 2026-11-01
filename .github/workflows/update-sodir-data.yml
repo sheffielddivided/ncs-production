@@ -85,6 +85,15 @@ jobs:
         timeout-minutes: 10
         run: python fetch_havtil.py
 
+      # Sodirs pressemeldinger (boretillatelser, boreresultater, generelle
+      # nyheter) til Companies → News. Etter Havtil, så felt- og
+      # selskapsdataene er oppdatert. Selskapenes egne feeder hentes av
+      # update-company-news.yml, som eier data/company_news.json alene.
+      - name: Hent Sodirs pressemeldinger (RSS)
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python fetch_company_news.py --sodir
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB
@@ -109,5 +118,7 @@ jobs:
             echo "Ingen endringer - hopper over commit."
           else
             git commit -m "Oppdater SODIR-data ($(date -u +%Y-%m-%d))"
+            # Selskapsnyhetsjobben kan ha pushet i mellomtiden (andre filer).
+            git pull --rebase origin main
             git push
           fi

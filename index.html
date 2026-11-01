@@ -274,6 +274,18 @@
     .nw-rig{background:#dbe7f1;color:#2f5f82;border-color:#b8c4d2;}
     .nw-havtil{background:#e6e4f6;color:#45399a;border-color:#c9c3ec;}
     .nw-from{color:var(--muted);}
+    .nw-permit{background:#e3f0e8;color:#2e6b45;border-color:#b9d9c5;}
+    .nw-result{background:#fbe0ee;color:#8e0a48;border-color:#eeabcb;}
+    .nw-sodir{background:#e2ecf6;color:#24557d;border-color:#b8cde2;}
+    .nw-press{background:#fff1d6;color:#7a5200;border-color:#f1d394;}
+    .nw-sum{display:block;color:#44505f;font-size:0.72rem;margin-top:2px;}
+    .nw-why{display:block;color:var(--muted);font-size:0.66rem;margin-top:1px;}
+    .nw-txt a{color:#1a2332;text-decoration:underline;text-decoration-color:var(--blue);text-underline-offset:2px;}
+    .cn-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .cn-gear{background:none;border:1px solid var(--border);border-radius:7px;color:var(--navy);cursor:pointer;padding:3px 7px;
+      display:inline-flex;align-items:center;gap:5px;font-size:0.66rem;font-weight:600;text-transform:none;letter-spacing:0;}
+    .cn-gear svg{width:14px;height:14px;}
+    .cn-gear:hover{border-color:var(--blue);color:var(--blue);}
     .ex-scroll{overflow-x:auto;}
     .ex-gantt{min-width:760px;width:100%;height:auto;display:block;}
     .ex-ax{font-size:10px;fill:#828282;}
@@ -491,6 +503,14 @@
     .auto-badge{font-size:0.62rem;background:#fde8b0;color:#7a5b00;border-radius:4px;padding:1px 5px;flex-shrink:0;}
     .move-input{width:118px;padding:4px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.75rem;flex-shrink:0;}
     .move-input:focus{border-color:var(--blue);outline:none;}
+    .fd-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--card);font-size:0.8rem;}
+    .fd-label{font-weight:700;color:var(--navy);min-width:0;overflow-wrap:anywhere;}
+    .fd-url{grid-column:1;font-size:0.7rem;color:var(--muted);overflow-wrap:anywhere;}
+    .fd-st{grid-column:1;font-size:0.7rem;}
+    .fd-st.ok{color:var(--green);} .fd-st.err{color:#c0392b;} .fd-st.wait{color:#9a5a00;}
+    .fd-del{grid-column:2;grid-row:1 / span 3;align-self:center;background:none;border:1px solid var(--border);border-radius:7px;
+      color:#8a3030;cursor:pointer;padding:4px 9px;font-size:0.75rem;}
+    .fd-other{padding:9px 12px;font-size:0.72rem;color:var(--muted);}
     .settings-note{padding:12px;font-size:0.72rem;color:var(--muted);line-height:1.5;background:var(--card);border-bottom:1px solid var(--border);}
       /* ── Maksbredde på store skjermer ──────────────────────────────────────
        Innholdet sentreres i en spalte på 1100 px. Under 1148 px (spalten
@@ -547,7 +567,7 @@
   <div>
     <button class="topbar-title" onclick="resetView()" title="Reset all selections">NCS Insight</button>
   </div>
-  <button class="settings-btn" id="settingsBtn" onclick="openHubSettings()" title="Rediger huber" style="display:none">
+  <button class="settings-btn" id="settingsBtn" onclick="openSettings()" title="Settings" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="3"/>
       <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
@@ -693,6 +713,31 @@
   </div>
   <div class="settings-list" id="hubSettingsList"></div>
   <datalist id="hubNameList"></datalist>
+</div>
+
+<div class="settings-panel" id="feedPanel">
+  <div class="settings-head">
+    <div>
+      <h3 id="feedTitle">News feeds</h3>
+      <div class="sub">Saved in data/company_feeds.json and shared by everyone · fetched daily and right after saving</div>
+    </div>
+    <button class="settings-close" onclick="closeFeedSettings()">&#10005;</button>
+  </div>
+  <div class="settings-bar">
+    <input class="settings-search" id="feedUrl" type="url" style="flex-basis:100%" placeholder="RSS/Atom address or the company's news page" onkeydown="if(event.key==='Enter')addFeed()"/>
+    <input class="settings-search" id="feedLabel" type="text" placeholder="Label (optional), e.g. Press releases" onkeydown="if(event.key==='Enter')addFeed()"/>
+    <button class="save-btn" onclick="addFeed()" style="background:var(--navy)">Add</button>
+    <button class="save-btn" id="feedSaveBtn" onclick="saveFeeds()" disabled>Save</button>
+    <div class="save-status" id="feedSaveStatus"></div>
+  </div>
+  <div class="settings-note">
+    Paste the address of the company's RSS or Atom feed. A normal news page works too, if it advertises its feed —
+    the fetch job looks for it. Feeds are read by a GitHub Actions job, not by your browser, because most sites block
+    cross-site reading. Saving writes the list to the repository with your GitHub token (the same as for hub settings);
+    the job then fetches the new feed right away (usually within a minute — the status below updates by itself) and all feeds every morning.
+    Feeds apply to the whole corporate group.
+  </div>
+  <div class="settings-list" id="feedList"></div>
 </div>
 
 <div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
@@ -1457,6 +1502,7 @@ const COMPANY_TABS = [
   {id:'reserves',      label:'Reserves'},
   {id:'exploration',   label:'Exploration'},
   {id:'profile',       label:'Profile'},
+  {id:'news',          label:'News'},
   {id:'valuation',     label:'Valuation BETA'},
 ];
 
@@ -1480,7 +1526,9 @@ function renderViewTabs() {
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
   const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas'
     : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product' : false;
-  document.getElementById('settingsBtn').style.display = topMode === 'hubs' ? '' : 'none';
+  document.getElementById('settingsBtn').style.display =
+    topMode === 'hubs' || (topMode === 'companies' && cur === 'news') ? '' : 'none';
+  document.getElementById('settingsBtn').title = topMode === 'hubs' ? 'Edit hubs' : 'Company news feeds';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
   // Reservevisningen har ingen tidsakse — ett estimat per felt — så periode og
   // årsutvalg gjelder ikke der.
@@ -2283,9 +2331,10 @@ function pageSources() {
   if (m === 'ncs' && v === 'economy') return ['ssb'];
   add('sodir');
   if (v === 'profile') {
-    if (m !== 'discoveries') add('havtil');
+    if (m !== 'discoveries' && m !== 'companies') add('havtil');
     add('ne');
   }
+  if (m === 'companies' && v === 'news') add('havtil', 'ais');
   if (m === 'exploration') {
     if (['map', 'fleet'].includes(v)) add('ne');
     if (['rigs', 'fleet', 'news'].includes(v)) add('ais');
@@ -2571,6 +2620,11 @@ async function refreshCompanies() {
     drawChart();
     return;
   }
+  if (companySubView === 'news') {
+    await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis()]);
+    drawChart();
+    return;
+  }
   if (companySubView === 'reserves') {
     // Funndataene brukes av tabellen under reservetabellen.
     await Promise.all([loadFieldReserves(), loadDiscoveries()]);
@@ -2675,6 +2729,7 @@ function drawChart() {
     else if (sv === 'exploration')   drawCompaniesExploration();
     else if (sv === 'operated')      drawCompaniesOperated();
     else if (sv === 'profile')       drawCompanyProfile();
+    else if (sv === 'news')          drawCompanyNews();
     else if (sv === 'valuation')     drawCompanyValuation();
   }
 }
@@ -5214,6 +5269,7 @@ function isReservesView() {
       || (topMode === 'companies' && companySubView === 'profile')
       || (topMode === 'companies' && companySubView === 'reserves')
       || (topMode === 'companies' && companySubView === 'exploration')
+      || (topMode === 'companies' && companySubView === 'news')
       || (topMode === 'companies' && companySubView === 'valuation');
 }
 
@@ -6114,6 +6170,177 @@ function havtilList(items, linkNote, intro = '') {
       <ul class="hv-list">${rest.map(row).join('')}</ul></details>` : ''}
     <div class="pf-map-note">${HV_SOURCE}, ${linkNote}.</div>
   </div>`;
+}
+
+// ── COMPANIES: NEWS ──────────────────────────────────────────────────────────
+// Alt som skjer rundt ett selskap (konsern), samlet i én tidslinje:
+//   · Sodirs pressemeldinger (data/sodir_press.json, fetch_company_news.py):
+//     boretillatelser og boreresultater for brønner selskapet er operatør eller
+//     partner i, og generelle nyheter om felt det har andel i eller som nevner det.
+//   · Hendelser på selskapets letebrønner fra data/changes.json (samme som
+//     Exploration → News): planlagt, startet, ferdig, funn, utsatt, fjernet.
+//   · Selskapets egne pressemeldinger fra RSS-feedene i data/company_feeds.json,
+//     hentet til data/company_news.json. Feedene legges til fra tannhjulet.
+// Havtil-kortet, som før lå i profilen, står under tidslinjen.
+let companyNewsData = null, sodirPress = null, companyFeeds = null, companyNewsLoading = null;
+let cnType = 'all', cnShown = 40;
+
+function loadCompanyNews() {
+  if (companyNewsData) return Promise.resolve();
+  if (!companyNewsLoading) companyNewsLoading = Promise.all(
+    [fetchBundle('company_news'), fetchBundle('sodir_press'), fetchBundle('company_feeds')]
+  ).then(([n, p, f]) => {
+    companyNewsData = n || {feeds: {}, items: []};
+    sodirPress = (p && p.items) || [];
+    companyFeeds = (f && f.feeds) || [];
+  });
+  return companyNewsLoading;
+}
+
+const CN_KIND = {permit: 'Permit', result: 'Drilling result', news: 'Sodir'};
+const CN_CLASS = {permit: 'permit', result: 'result', news: 'sodir'};
+const httpUrl = u => /^https?:\/\//i.test(u || '');
+
+// Selskapets nåværende felt, for hele konsernet.
+function concernFieldIds(key) {
+  const out = new Set();
+  allLicRecords.forEach(r => {
+    if (r.fldLicenseeTo === null && (r.fldCompanyShare || 0) > 0 && concernKey(r.cmpLongName) === key) out.add(r.fldNpdidField);
+  });
+  Object.entries(TRIAL_PROD_OWNERSHIP).forEach(([id, o]) => {
+    if (Object.entries(o).some(([n, s]) => s > 0 && concernKey(n) === key)) out.add(+id);
+  });
+  return out;
+}
+
+// Rollen konsernet har i brønnen: 'operator', 'partner' eller ''.
+function concernWellRole(g, key) {
+  if (!g) return '';
+  if (g.operator && concernKey(g.operator) === key) return 'operator';
+  return g.partners.some(p => concernKey(p.name) === key) ? 'partner' : '';
+}
+
+function companyNewsItems(name) {
+  const key = concernKey(name);
+  const byWell = {};
+  explWells.forEach(g => {
+    [g.well, g.name, ...g.branches.map(b => b.name)].filter(Boolean).forEach(n => { byWell[hvWellKey(n)] = g; });
+  });
+  const fields = concernFieldIds(key);
+  const out = [];
+
+  sodirPress.forEach(it => {
+    if (!httpUrl(it.u)) return;
+    const why = [];
+    (it.wells || []).forEach(w => {
+      const g = byWell[hvWellKey(w)], role = concernWellRole(g, key);
+      if (role) why.push(`${role} in ${w}`);
+    });
+    const fl = (it.fields || []).filter(id => fields.has(id)).map(fieldNameOf);
+    if (fl.length) why.push(`interest in ${fl.map(tc).join(', ')}`);
+    if ((it.cmp || []).some(c => concernKey(c) === key) && !why.length) why.push('mentioned');
+    if (!why.length) return;
+    out.push({d: it.d, src: 'sodir', cls: CN_CLASS[it.k] || 'sodir', label: CN_KIND[it.k] || 'Sodir',
+      html: `<a href="${esc(it.u)}" target="_blank" rel="noopener">${esc(it.t)} ↗</a>
+        ${it.s ? `<span class="nw-sum">${esc(it.s)}</span>` : ''}<span class="nw-why">Sodir · ${esc(why.join(' · '))}</span>`});
+  });
+
+  // Riggbevegelser: riggen har kommet til (eller forlatt) en brønn der konsernet
+  // er operatør eller partner, eller et felt det har andel i. Opphold på åpent
+  // hav eller i havn regnes bare med når riggen kom fra et slikt sted.
+  const fieldByName = Object.fromEntries(allFields.map(f => [String(f.name).toUpperCase(), f.id]));
+  const placeWhy = (k, p) => {
+    if (k === 'well') {
+      const role = concernWellRole(byWell[hvWellKey(p)], key);
+      return role ? `${role} in ${p}` : '';
+    }
+    if (k === 'field') {
+      const id = fieldByName[String(p || '').toUpperCase()];
+      return id != null && fields.has(id) ? `interest in ${tc(fieldNameOf(id))}` : '';
+    }
+    return '';
+  };
+  (changesData || []).forEach(e => {
+    if (e.t !== 'rig') return;
+    const to = placeWhy(e.k, e.p), from = e.pp && e.pp !== e.p ? placeWhy(e.pk, e.pp) : '';
+    if (!to && !from) return;
+    out.push({d: e.d, src: 'rigs', cls: 'rig', label: 'Rig',
+      click: `openRigProfile(${esc(JSON.stringify(e.r))}, false, ${+e.f || 0})`,
+      html: `${newsLine(e)}<span class="nw-why">${esc(to ? 'Arrived · ' + to : 'Left · ' + from)}</span>`});
+  });
+
+  (changesData || []).forEach(e => {
+    if (e.t === 'rig' || e.t === 'havtil' || !NEWS_TYPES[e.t]) return;
+    const g = e.w != null ? explById[e.w] : null;
+    const role = g ? concernWellRole(g, key) : (e.op && concernKey(e.op) === key ? 'operator' : '');
+    if (!role) return;
+    out.push({d: e.d, src: 'wells', cls: e.t, label: NEWS_TYPES[e.t].label,
+      click: g ? `openWell(${e.w})` : '',
+      html: `${newsLine(e)}<span class="nw-why">${role === 'operator' ? 'Operator' : 'Partner'}</span>`});
+  });
+
+  const feeds = (companyNewsData && companyNewsData.feeds) || {};
+  const label = Object.fromEntries((companyFeeds || []).map(f => [f.url, f.label || '']));
+  ((companyNewsData && companyNewsData.items) || []).forEach(it => {
+    const st = feeds[it.f];
+    if (!st || concernKey(st.company) !== key || !httpUrl(it.u)) return;
+    out.push({d: it.d, src: 'company', cls: 'press', label: 'Company',
+      html: `<a href="${esc(it.u)}" target="_blank" rel="noopener">${esc(it.t)} ↗</a>
+        ${it.s ? `<span class="nw-sum">${esc(it.s)}</span>` : ''}<span class="nw-why">${esc(label[it.f] || st.title || 'Company feed')}</span>`});
+  });
+
+  return out.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+}
+
+function setCnType(t) { cnType = t; cnShown = 40; drawCompanyNews(); }
+
+const GEAR_SVG = document.querySelector('#settingsBtn svg') ? document.querySelector('#settingsBtn svg').outerHTML : '';
+
+function drawCompanyNews() {
+  const names = [...selectedCompanyNames];
+  if (names.length !== 1) {
+    setChartEmpty(names.length ? 'Select a single company to see its news.' : 'Tap the button below to select a company.');
+    setInfo('');
+    return;
+  }
+  const name = names[0];
+  const key = concernKey(name);
+  const all = companyNewsItems(name);
+  const list = cnType === 'all' ? all : all.filter(x => x.src === cnType);
+  const n = t => all.filter(x => x.src === t).length;
+  const myFeeds = (companyFeeds || []).filter(f => concernKey(f.company) === key);
+
+  setChartNone();
+  setChartTitle(name, 'News · Sodir, well events, rig moves, company press releases and Havtil');
+  setInfo(`<strong>Company:</strong> ${esc(name)} (corporate group) &nbsp;|&nbsp; <strong>Sources:</strong> Sodir press releases,
+    the daily well log, ${myFeeds.length} company feed${myFeeds.length === 1 ? '' : 's'}, Havtil`);
+
+  const chip = (t, lab, c) => `<button class="grp-btn${cnType === t ? ' active' : ''}" onclick="setCnType('${t}')">${lab}${c != null ? ` (${c})` : ''}</button>`;
+  let day = '', rows = '';
+  list.slice(0, cnShown).forEach(x => {
+    if (x.d !== day) { day = x.d; rows += `<div class="nw-day">${fmtShort(day)}</div>`; }
+    rows += `<div class="nw-row${x.click ? ' nw-click' : ''}"${x.click ? ` onclick="${x.click}"` : ''}>
+      <span class="nw-t nw-${x.cls}">${esc(x.label)}</span><span class="nw-txt">${x.html}</span></div>`;
+  });
+  const empty = cnType === 'company' && !myFeeds.length
+    ? `<div class="pf-map-note">No feeds for this company yet. <a href="#" onclick="openFeedSettings();return false">Add the company's RSS feed →</a></div>`
+    : '<div class="pf-map-note">Nothing here yet.</div>';
+
+  setProfile(`
+    <div class="pf-card pf-wide">
+      <h3 class="cn-head"><span>Latest news</span>
+        <button class="cn-gear" onclick="openFeedSettings()" title="Company news feeds">${GEAR_SVG}Feeds${myFeeds.length ? ` (${myFeeds.length})` : ''}</button></h3>
+      <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}</div>
+      ${rows || empty}
+      ${list.length > cnShown ? `<button class="grp-btn ex-more" onclick="cnShown+=60;drawCompanyNews()">Show more (${list.length - cnShown} older)</button>` : ''}
+      <div class="pf-map-note">Sodir press releases are drilling permits and drilling results for wells where the group is operator or
+        partner (interests as recorded by Sodir for the well), and other Sodir news about fields the group has an interest in or that
+        names it. Well events come from comparing each daily data run with the previous one. Rig moves (AIS) are shown when a rig arrives
+        at or leaves a well where the group is operator or partner, or a field it has an interest in. Company press releases come from the RSS
+        feeds added with the Feeds button; they are fetched daily.</div>
+    </div>
+    ${havtilCompanyCard(name)}
+  `);
 }
 
 // ── INVESTERINGER ────────────────────────────────────────────────────────────
@@ -8006,7 +8233,9 @@ function drawCompanyProfile() {
     ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
     ${investmentCard(ids, fieldNameOf, {company: name})}
-    ${havtilCompanyCard(name)}
+    <div class="pf-card"><h3>News</h3><div class="pf-map-note" style="margin:0">Havtil inspections and consents, Sodir press releases,
+      well events and the company's own press releases are in
+      <a href="#" onclick="setSubView('news');return false">News →</a></div></div>
     ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
     ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
@@ -9334,6 +9563,220 @@ async function saveHubs() {
     refresh();
   } catch (e) {
     setHubStatus(`Lagring feilet: ${e.message}`, 'err');
+    btn.disabled = false;
+  }
+}
+
+function openSettings() {
+  if (topMode === 'companies') openFeedSettings();
+  else openHubSettings();
+}
+
+// ── NYHETSFEEDER PER SELSKAP ─────────────────────────────────────────────────
+// Tannhjulet i Companies → News redigerer data/company_feeds.json med samme
+// token og Contents API som hub-innstillingene. Fila leses på nytt fra GitHub
+// rett før lagring, og bare konsernets egne oppføringer byttes ut, så to
+// personer som redigerer hvert sitt selskap ikke overskriver hverandre.
+// Feedene hentes av fetch_company_news.py: daglig, og straks fila endres
+// (.github/workflows/update-company-news.yml). Nettleseren kan ikke lese de
+// fleste feedene selv (CORS), så «Add» prøver bare en rask sjekk og godtar
+// feeden uansett; jobben sier fra i statusen om adressen ikke virker.
+const FEEDS_PATH = 'data/company_feeds.json';
+let feedEdits = [], feedDirty = false, feedCompany = '';
+
+function openFeedSettings() {
+  const name = [...selectedCompanyNames][0];
+  if (!name) return;
+  feedCompany = name;
+  const key = concernKey(name);
+  feedEdits = (companyFeeds || []).filter(f => concernKey(f.company) === key).map(f => ({...f}));
+  feedDirty = false;
+  document.getElementById('feedTitle').textContent = `News feeds · ${name}`;
+  document.getElementById('feedUrl').value = '';
+  document.getElementById('feedLabel').value = '';
+  document.getElementById('feedSaveBtn').disabled = true;
+  setFeedStatus('');
+  document.getElementById('feedPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderFeedSettings();
+}
+
+function closeFeedSettings() {
+  if (feedDirty && !confirm('You have unsaved changes. Close anyway?')) return;
+  document.getElementById('feedPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function setFeedStatus(msg, kind) {
+  const el = document.getElementById('feedSaveStatus');
+  el.textContent = msg || '';
+  el.className = 'save-status' + (kind ? ' ' + kind : '');
+}
+
+function markFeedDirty() {
+  feedDirty = true;
+  document.getElementById('feedSaveBtn').disabled = false;
+}
+
+function renderFeedSettings() {
+  const st = (companyNewsData && companyNewsData.feeds) || {};
+  const box = document.getElementById('feedList');
+  const rows = feedEdits.map((f, i) => {
+    const s = st[f.url];
+    const status = !s ? '<span class="fd-st wait">Not fetched yet — runs shortly after saving</span>'
+      : s.error ? `<span class="fd-st err">Failing since ${esc(fmtShort(s.since))}: ${esc(s.error)}</span>`
+      : `<span class="fd-st ok">OK · ${s.n || 0} item${s.n === 1 ? '' : 's'}${s.title ? ` · “${esc(s.title)}”` : ''}${
+          s.feed ? ` · feed found at ${esc(s.feed)}` : ''}</span>`;
+    return `<div class="fd-row">
+      <span class="fd-label">${esc(f.label || s && s.title || 'Company feed')}${concernKey(f.company) === concernKey(feedCompany) && f.company !== feedCompany
+        ? ` <span class="fd-url">(${esc(f.company)})</span>` : ''}</span>
+      <span class="fd-url">${esc(f.url)}</span>${status}
+      <button class="fd-del" onclick="removeFeed(${i})" title="Remove">Remove</button></div>`;
+  }).join('');
+  const others = (companyFeeds || []).filter(f => concernKey(f.company) !== concernKey(feedCompany)).length;
+  box.innerHTML = (rows || '<div class="fd-other">No feeds for this company yet.</div>') +
+    (others ? `<div class="fd-other">${others === 1 ? '1 feed for another company is' : `${others} feeds for other companies are`} kept as is.</div>` : '');
+}
+
+function removeFeed(i) {
+  feedEdits.splice(i, 1);
+  markFeedDirty();
+  setFeedStatus('Unsaved changes');
+  renderFeedSettings();
+}
+
+async function addFeed() {
+  const urlIn = document.getElementById('feedUrl'), labIn = document.getElementById('feedLabel');
+  let url = urlIn.value.trim();
+  if (url && !/^[a-z]+:\/\//i.test(url)) url = 'https://' + url;
+  let ok = false;
+  try { ok = ['http:', 'https:'].includes(new URL(url).protocol); } catch (e) { ok = false; }
+  if (!ok) { setFeedStatus('Enter a web address (https://…).', 'err'); return; }
+  if ((companyFeeds || []).concat(feedEdits).some(f => f.url === url)) { setFeedStatus('That feed is already in the list.', 'err'); return; }
+  feedEdits.push({company: feedCompany, url, label: labIn.value.trim(), added: new Date().toISOString().slice(0, 10)});
+  urlIn.value = ''; labIn.value = '';
+  markFeedDirty();
+  renderFeedSettings();
+  setFeedStatus('Checking…');
+  setFeedStatus(await probeFeed(url) + ' Remember to save.', '');
+}
+
+// Rask sjekk fra nettleseren. De fleste nettsteder tillater ikke at andre
+// sider leser dem (CORS), og da er svaret bare at jobben sjekker feeden.
+async function probeFeed(url) {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 8000);
+    const res = await fetch(url, {signal: ctl.signal, cache: 'no-store'});
+    clearTimeout(t);
+    if (!res.ok) return `The address answered ${res.status}.`;
+    const doc = new DOMParser().parseFromString(await res.text(), 'text/xml');
+    const n = doc.querySelectorAll('item, entry').length;
+    return n ? `Feed OK: ${n} items.` : 'No feed items found at the address — the fetch job will look for a feed link on the page.';
+  } catch (e) {
+    return 'Could not check from the browser (the site does not allow it); the fetch job checks it after saving.';
+  }
+}
+
+// Lagringen starter update-company-news.yml, som henter de nye feedene og
+// committer data/company_news.json. GitHub Pages bruker et par minutter på å
+// publisere, så appen leser fila rett fra repoet (Contents API, rå form) til
+// konsernets feeder i fila stemmer med lista, og oppdaterer listen og
+// tidslinjen. Fjernede feeder er ferdige når de er borte fra fila.
+let feedWatch = 0;
+async function watchFeedJob(token, urls) {
+  const run = ++feedWatch;
+  const key = concernKey(feedCompany), want = new Set(urls);
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/data/company_news.json?ref=${GH_BRANCH}`;
+  const headers = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.raw+json'};
+  const done = d => urls.every(u => d.feeds && d.feeds[u] && concernKey(d.feeds[u].company) === key)
+    && Object.entries(d.feeds || {}).every(([u, st]) => concernKey(st.company) !== key || want.has(u));
+  const t0 = Date.now();
+  while (run === feedWatch && Date.now() - t0 < 5 * 60000) {
+    const secs = Math.round((Date.now() - t0) / 1000);
+    setFeedStatus(`Saved. Running the fetch job on GitHub… (${secs} s)`, 'ok');
+    await new Promise(r => setTimeout(r, secs < 30 ? 5000 : 10000));
+    if (run !== feedWatch) return;
+    try {
+      const res = await fetch(api, {headers, cache: 'no-store'});
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (!done(d)) continue;
+      companyNewsData = d;
+      renderFeedSettings();
+      if (topMode === 'companies' && companySubView === 'news') drawCompanyNews();
+      const bad = urls.filter(u => d.feeds[u].error);
+      setFeedStatus(bad.length ? `Fetched, but ${bad.length} feed${bad.length === 1 ? '' : 's'} failed — see below.`
+        : 'Saved and fetched. The news are in the timeline now; the public site updates in a few minutes.', bad.length ? 'err' : 'ok');
+      return;
+    } catch (e) { /* nettverksfeil: prøv igjen */ }
+  }
+  if (run === feedWatch) setFeedStatus('Saved, but the fetch job has not finished after 5 minutes. Check the Actions tab on GitHub; the daily run fetches the feed too.', 'err');
+}
+
+async function saveFeeds() {
+  let token = lsGet(GH_TOKEN_KEY);
+  if (!token) {
+    token = prompt(
+      `Paste a GitHub fine-grained token with "Contents: read and write" on ${GH_OWNER}/${GH_REPO}.\n\n` +
+      'The token is stored only in your own browser, never in the page code.');
+    if (!token) return;
+    token = token.trim();
+    lsSet(GH_TOKEN_KEY, token);
+  }
+  const btn = document.getElementById('feedSaveBtn');
+  btn.disabled = true;
+  setFeedStatus('Saving…');
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${FEEDS_PATH}`;
+  const headers = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json'};
+  try {
+    // Les gjeldende fil rett før skriving: sha er den optimistiske låsen, og
+    // innholdet er grunnlaget, så andre selskapers feeder bevares.
+    let sha, cur = {version: 1, feeds: []};
+    const res0 = await fetch(`${api}?ref=${GH_BRANCH}`, {headers, cache: 'no-store'});
+    if (res0.status === 401 || res0.status === 403) {
+      lsDel(GH_TOKEN_KEY);
+      setFeedStatus('The token was rejected. Save again and paste a new one.', 'err');
+      btn.disabled = false;
+      return;
+    }
+    if (res0.ok) {
+      const j = await res0.json();
+      sha = j.sha;
+      try { cur = JSON.parse(base64ToUtf8(j.content)); } catch (e) { /* skadet fil: skrives på nytt */ }
+    }
+    const key = concernKey(feedCompany);
+    const keep = (cur.feeds || []).filter(f => concernKey(f.company) !== key);
+    const feeds = keep.concat(feedEdits).sort((a, b) => a.company.localeCompare(b.company, 'en') || a.url.localeCompare(b.url));
+    const out = {...cur, version: 1, updated: new Date().toISOString().slice(0, 10), feeds};
+    const text = JSON.stringify(out, null, 2) + '\n';
+    const res = await fetch(api, {
+      method: 'PUT', headers: {...headers, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        message: `Nyhetsfeeder for ${feedCompany} fra appen`,
+        content: utf8ToBase64(text),
+        branch: GH_BRANCH,
+        ...(sha ? {sha} : {}),
+      }),
+    });
+    if (res.status === 409 || res.status === 422) {
+      setFeedStatus('Someone else changed the file just now. Try saving again.', 'err');
+      btn.disabled = false;
+      return;
+    }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setFeedStatus(`Saving failed: ${d.message || res.status}`, 'err');
+      btn.disabled = false;
+      return;
+    }
+    companyFeeds = feeds;
+    feedDirty = false;
+    renderFeedSettings();
+    if (topMode === 'companies' && companySubView === 'news') drawCompanyNews();
+    watchFeedJob(token, feedEdits.map(f => f.url));
+  } catch (e) {
+    setFeedStatus(`Saving failed: ${e.message}`, 'err');
     btn.disabled = false;
   }
 }
