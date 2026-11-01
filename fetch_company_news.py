@@ -38,7 +38,8 @@ Contents API, samme token som hub-innstillingene) eller for hånd:
        "added": "2026-11-01"}]}
 
 «company» er selskapet slik det heter i appen; frontend viser feeden for hele
-konsernet (concernKey). En søkeadresse fra NewsWeb (Oslo Børs) leses via
+konsernet (concernKey). En nyhetsside uten feed leses direkte når lista har en
+kjent struktur (page_list; foreløpig AEM «tilelist», som ORLEN). En søkeadresse fra NewsWeb (Oslo Børs) leses via
 NewsWebs eget JSON-API, se read_newsweb. Er adressen en vanlig nettside, letes det etter
 <link rel="alternate" type="application/rss+xml"> i den, så det holder å lime
 inn nyhetssiden. RSS 2.0, RSS 1.0 (RDF) og Atom leses.
@@ -319,6 +320,40 @@ def read_newsweb(url):
     return url, clean(f'NewsWeb · {issuer}', 120), items
 
 
+# ── NYHETSLISTER UTEN FEED ───────────────────────────────────────────────────
+# Noen selskaper har bare en nyhetsside. Har siden ingen feed, leses lista på
+# siden selv når den har en kjent, fast struktur. Foreløpig én: «tilelist» fra
+# Adobe Experience Manager (AEM), som ORLEN bruker:
+#   <li class="cmp-tilelist__item"><a class="cmp-tilelist__item-link" href="…">
+#     <span class="cmp-tilelist__item-date">29.10.2026</span>
+#     <h2 class="cmp-tilelist__item-title">…</h2>
+#     <p class="cmp-tilelist__item-description">…</p>
+# Bare én side leses, den brukeren har limt inn, og bare der robots.txt ikke
+# forbyr det (sjekkes ikke her; ORLENs robots.txt tillater alt).
+def page_list(page, base):
+    txt = page.decode('utf-8', 'replace')
+    out = []
+    for li in re.findall(r'<li[^>]*class="[^"]*cmp-tilelist__item\b[^"]*"[^>]*>(.*?)</li>', txt, re.S):
+        href = re.search(r'<a[^>]*href="([^"]+)"', li)
+        title = re.search(r'cmp-tilelist__item-title[^>]*>(.*?)</', li, re.S)
+        if not href or not title:
+            continue
+        date = re.search(r'cmp-tilelist__item-date[^>]*>\s*(\d{1,2})\.(\d{1,2})\.(\d{4})', li)
+        desc = re.search(r'cmp-tilelist__item-description[^>]*>(.*?)</p>', li, re.S)
+        link = urljoin(base, html.unescape(href.group(1)))
+        if not re.match(r'^https?://', link):
+            continue
+        out.append({'t': clean(title.group(1), 300), 'u': link,
+                    'd': f'{date.group(3)}-{int(date.group(2)):02d}-{int(date.group(1)):02d}' if date else '',
+                    's': clean(desc.group(1), SUMMARY) if desc else ''})
+    return out
+
+
+def page_title(page):
+    m = re.search(rb'<title[^>]*>(.*?)</title>', page[:200000], re.S | re.I)
+    return clean(m.group(1).decode('utf-8', 'replace'), 120) if m else ''
+
+
 def read_feed(url):
     """(endelig feedadresse, kanalnavn, saker). Nettsider slås opp til feeden sin."""
     if is_newsweb(url):
@@ -327,7 +362,11 @@ def read_feed(url):
     if not is_feed(body):
         found = discover(body, final)
         if not found:
-            raise FeedError('No RSS or Atom feed at the address, and the page does not link to one.')
+            listed = page_list(body, final)
+            if listed:
+                return url, page_title(body), listed
+            raise FeedError('No RSS or Atom feed at the address, and the page does not link to one '
+                            'or have a news list the fetch job can read.')
         body, ctype, final = get(found)
         if not is_feed(body):
             raise FeedError('The page links to a feed, but the link does not return one.')
