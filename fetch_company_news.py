@@ -39,7 +39,8 @@ Contents API, samme token som hub-innstillingene) eller for hånd:
 
 «company» er selskapet slik det heter i appen; frontend viser feeden for hele
 konsernet (concernKey). En nyhetsside uten feed leses direkte når lista har en
-kjent struktur (page_list: AEM «tilelist» som ORLEN, nyhetskort som Harbour Energy). En søkeadresse fra NewsWeb (Oslo Børs) leses via
+kjent struktur (page_list / model_list: AEM «tilelist» som ORLEN, AEM-innholdsdokument som Shell,
+nyhetskort som Harbour Energy). En søkeadresse fra NewsWeb (Oslo Børs) leses via
 NewsWebs eget JSON-API, se read_newsweb. Er adressen en vanlig nettside, letes det etter
 <link rel="alternate" type="application/rss+xml"> i den, så det holder å lime
 inn nyhetssiden. RSS 2.0, RSS 1.0 (RDF) og Atom leses.
@@ -330,6 +331,11 @@ def read_newsweb(url):
 #    <li class="cmp-tilelist__item"><a class="cmp-tilelist__item-link" href="…">
 #      <span class="cmp-tilelist__item-date">29.10.2026</span>
 #      <h2 class="cmp-tilelist__item-title">…</h2><p class="cmp-tilelist__item-description">…</p>
+#  model     AEM «headless» (Shell): siden bygges med JavaScript fra sitt eget
+#            innholdsdokument, som HTML-en forhåndslaster
+#            (<link rel="preload" href="….model.json">). Sakene er elementer med
+#            organism «PressRelease»: model.title, model.text, model.date (ISO)
+#            og model.links[0].value. Bare oversiktens eget dokument hentes.
 #  card      nyhetskort (Harbour Energy):
 #    <div class="card … card--news"> <time datetime="22/09/26">…</time>
 #      <h2 class="card-title …">…</h2> <p>…</p> <a href="…">Read article</a>
@@ -385,6 +391,39 @@ def page_list(page, base):
     return uniq
 
 
+def model_list(page, base):
+    """Saker fra sidens eget AEM-innholdsdokument (.model.json), se over."""
+    txt = page[:300000].decode('utf-8', 'replace')
+    m = re.search(r'<link[^>]*rel="preload"[^>]*href="([^"]+\.model\.json)"', txt)
+    if not m:
+        return []
+    url = urljoin(base, html.unescape(m.group(1)))
+    if urlparse(url).hostname != urlparse(base).hostname:
+        return []
+    try:
+        data = json.loads(get(url)[0])
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            mdl = o.get('model') if isinstance(o.get('model'), dict) else None
+            if o.get('organism') == 'PressRelease' and mdl and mdl.get('title') and mdl.get('links'):
+                href = (mdl['links'][0] or {}).get('value', '')
+                it = _list_item(base, href, mdl['title'], mdl.get('date', ''), mdl.get('text', ''))
+                if it:
+                    out.append(it)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(data)
+    seen = set()
+    return [it for it in out if not (it['u'] in seen or seen.add(it['u']))]
+
+
 def page_title(page):
     m = re.search(rb'<title[^>]*>(.*?)</title>', page[:200000], re.S | re.I)
     return clean(m.group(1).decode('utf-8', 'replace'), 120) if m else ''
@@ -398,7 +437,7 @@ def read_feed(url):
     if not is_feed(body):
         found = discover(body, final)
         if not found:
-            listed = page_list(body, final)
+            listed = page_list(body, final) or model_list(body, final)
             if listed:
                 return url, page_title(body), listed
             raise FeedError('No RSS or Atom feed at the address, and the page does not link to one '

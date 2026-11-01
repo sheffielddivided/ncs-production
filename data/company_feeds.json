@@ -3,6 +3,12 @@
   "note": "Selskapenes egne nyhetsfeeder til Companies -> News. Redigeres fra tannhjulet i appen. Hentes av fetch_company_news.py.",
   "feeds": [
     {
+      "company": "A/S Norske Shell",
+      "url": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+      "label": "Shell Norge news",
+      "added": "2026-11-01"
+    },
+    {
       "company": "Aker BP ASA",
       "url": "https://akerbp.com/en/news/",
       "label": "Aker BP news",
