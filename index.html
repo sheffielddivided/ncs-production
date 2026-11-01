@@ -6460,9 +6460,10 @@ function investmentCard(ids, nameOf, opts = {}) {
           <td>${g.total ? bnNum(g.total) : '—'}</td><td>${g.hasExp ? bnNum(g.exp) : '—'}</td></tr>`).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td>${bnNum(total)}</td><td>${withExp.length ? bnNum(expSum) : '—'}</td></tr></tfoot>
     </table></div>` : '';
-  // I selskapsprofilen er hubtabellen lang og står kollapset under grafen.
-  const tableHtml = table && cmp
-    ? `<details class="hv-more"><summary>Show investments per hub (${per.length})</summary>${table}</details>` : table;
+  // Tabellen (per hub i selskapsprofilen, per felt i hubprofilen) står
+  // kollapset under grafen og åpnes ved klikk.
+  const tableHtml = table
+    ? `<details class="hv-more"><summary>Show investments per ${head.toLowerCase()} (${per.length})</summary>${table}</details>` : table;
 
   const fixTxt = fixYears.join('/');
   const noun = cmp ? 'company' : ids.length > 1 ? 'hub' : 'field';
@@ -8670,7 +8671,7 @@ function renderReserveTableByHub(series, companies, year) {
   return reserveTableHtml(groups, 'Hub / field',
     `Remaining reserves per field, vintage ${year} · million boe · equity-adjusted · ` +
     `field share is the licence interest, hub share is the companies' share of the hub total`,
-    {shareHead: 'Share'});
+    {shareHead: 'Share', collapsible: true});
 }
 
 // Betingede ressurser for de valgte selskapene, som egen tabell under
