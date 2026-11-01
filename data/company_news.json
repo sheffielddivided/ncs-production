@@ -65,6 +65,11 @@
    "company": "Harbour Energy Norge AS",
    "title": "Announcements and latest news - Harbour Energy",
    "n": 97
+  },
+  "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html": {
+   "company": "A/S Norske Shell",
+   "title": "Nyhetsoversikt | Shell Norge",
+   "n": 21
   }
  },
  "items": [
@@ -354,6 +359,13 @@
    "u": "https://news.cision.com/var-energi-asa/r/var-energi--third-quarter-2026-trading-update,c4407231",
    "d": "2026-10-12",
    "s": "Sandnes, Norway, 12 October 2026: Vår Energi ASA (OSE: VAR, the \"Company\") will publish its financial report for the third quarter 2026 on Wednesday 21 October. Today, the Company provides an update on production, sales volumes and other relevant items. Vår Energi’s net production of oil, liquids …"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Ormen Lange: ny investering for å hente ut mer gass",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2026/ormenlange-ny-investering.html",
+   "d": "2026-10-09",
+   "s": "Ny brønnintervensjon og borekampanje på Ormen Lange-feltet skal bidra til å øke utvinningen."
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -2281,6 +2293,13 @@
    "s": "DNO Awarded 17 Licenses in Norway as It Keeps Up Pace of Exploration and Development-2026-01-13 DNO ASA"
   },
   {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Smidig operasjon på Ormen Lange",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2026/smidig-operasjon-pa-ormen-lange.html",
+   "d": "2026-01-08",
+   "s": "Trond Lofstad har hatt en lang karriere i Shell. Da han ble operasjonsleder for Ormen Lange i 2021, ventet ikke bare en ny rolle, men en helt ny måte å jobbe på. Teamene som har ansvar for subsea-vedlikehold og optimalisering av feltproduksjon skulle legge om til Agile metodikk."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Store oppdrag til norsk leverandørindustri - Equinor",
    "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxQNHRwZVpkVDNSYmFTMWZIZ2oxWkZDbklyd0VfYUF3WnZscDMzX1ZXSjFIajdJS3oxOWdFMTdvSHU4Nkx0TEowRVhObTdxX2NBSzFnU2lrTGxONFE4dzZ1aWxWSzZhU1ZvR1Y3UVZKMTVObmhld3pGSUxBWWJJZ0hGNG1JZXJxNkVPTzRiWmhsTQ?oc=5",
@@ -2293,6 +2312,13 @@
    "u": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQc2JJYWl2VUNNUUZ4d3FoMXI1bmY1U3Vkcmo5Rzhkbng3Z1N1aUhPbXFULS1PN1dLbWRlQTFCMkJNN09UNUZ0d1EtNGJWVF9VdWx3NUpjR2hLTk9ESHJWUmZSSDkyUlJHX0kzRnZ6M3dESXN1QXR2eHZFTnZvQWhuVzVkV2tmSHJsX0U1bmdOaVJVdw?oc=5",
    "d": "2026-01-07",
    "s": "Kunstig intelligens gav 1,3 milliarder kroner i besparelser i 2025 Equinor"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Mange fagfelt sammen skaper mer verdi",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2026/mange-felt-sammen-skaper-mer-verdi.html",
+   "d": "2026-01-05",
+   "s": "Lise Sætre leder det tverrfaglige vekst-teamet hos Norske Shell. – Vår oppgave er å evaluere og modne nye muligheter for vekst og verdiskapning på norsk sokkel."
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -2344,6 +2370,27 @@
    "s": "Harbour Energy plc announces that it has entered into a Sale and Purchase Agreement to sell its operated interests in the producing Natuna Sea Block A field and the Tuna development project in Indonesia to Prime Group for a cash consideration of $215 million."
   },
   {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Ser fremover med datadrevet vedlikehold",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/ser-framover-med-datadrevet-vedlikehold.html",
+   "d": "2025-12-06",
+   "s": "– Vi driver med kontinuerlig tilstandsovervåkning, sier Gøran Gedde-Dahl. Han jobber som roterende utstyrsingeniør på Nyhamna. Gassanlegget prosesserer og eksporterer naturgass fra Ormen Lange-feltet og feltene som er tilknyttet Polarled lenger nord i Norskehavet."
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Fremtidens fartøy er allerede i bruk",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/fremtidens-fartoy-er-allerede-i-bruk.html",
+   "d": "2025-12-06",
+   "s": "Norske Shell bruker ubemannede fartøy for monitorering av Ormen Lange. – Vi overvåker både havbunnen, reservoaret og de mellomliggende lagene. Dette gir oss innsikt som er helt avgjørende for videreutvikling av feltet, sier geomatiker Egil Syre."
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "– Du får forme din egen vei",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/du-far-forme-din-egen-vei.html",
+   "d": "2025-12-04",
+   "s": "– Hos Shell får jeg jobbe med mye forskjellig. Jeg lærer både av arbeidsoppgavene og av kollegaer som tar seg tid til å dele av sin erfaring, sier Ingrid Holstad Berge, som startet hos Shell som sommerstudent."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor gjør nye funn i Nordsjøen - Equinor",
    "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE1POEdvREtKVmI0QVBCNnhwNVZFZEJ2ODQybkVHdGpwMjFtWXRkclJBUmN1ZFlheGJKWTVfcVlZTDNUVWJXRXZaaGxSalJZWS1YOUFseHEyM21yczU5VUcyR2xNZVZ1Ykl4aVFELXR1VW9Odw?oc=5",
@@ -2351,11 +2398,46 @@
    "s": "Equinor gjør nye funn i Nordsjøen Equinor"
   },
   {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "En integrert del av teamet vårt",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/en-integrert-del-av-teamet-vart.html",
+   "d": "2025-12-01",
+   "s": "Godt samarbeid med lokale leverandører gir stabilitet og kontinuitet. Kravet om bruk av norske leverandører på norsk sokkel opphørte på nittitallet, men Shell ser ingen grunn til å slutte å satse på kortreist kompetanse. forteller Erlend Melby, som er kontraktsholder for arbeidet Linjebygg gjør …"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "40 år med vekst og tillit",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/40-ar-med-vekst-og-tillit.html",
+   "d": "2025-12-01",
+   "s": "På Nyhamna finnes det om lag 35 tusen ventiler. I størrelse varierer de fra 20 gram og opp til 70 tonn, noe som tilsvarer vekten på en moderne stridsvogn. Ventilene er viktige barrierer som må fungere hele tiden."
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Digital tvilling gir full oversikt",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/digital-tvilling-gir-full-oversikt.html",
+   "d": "2025-11-30",
+   "s": "Shell har tatt i bruk avansert digital tvilling-teknologi som integrerer Ormen Lange-feltet og prosessanlegget på Nyhamna. Teknologien gjør det blant annet mulig å planlegge, utføre og overvåke vedlikeholdsarbeid langt mer effektivt og sikrere enn tidligere."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Utbygging og drift av Kjøttkake Forslag til program for konsekvensutredning - dno.no",
    "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBMNS0yZFZnMXQxNnp1Yk05bzFTUXQzc09mbWRTbHVPZnhZbTVpaDloTkFsZXFRTEtMQmZ5NVllQVlsWDBVTEZ1OXp1RGVrN01WMGdjZFFUc0xGMDFVQl9pSUNOMXJTQzczQlZUMjUxczhURlBmOFRmdWY5dw?oc=5",
    "d": "2025-11-28",
    "s": "Utbygging og drift av Kjøttkake Forslag til program for konsekvensutredning dno.no"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Side om side i Norskehavet",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/side-om-side-i-norskehavet.html",
+   "d": "2025-11-26",
+   "s": "På Ormen Lange-feltet i Norskehavet møtes to viktige næringer – energi og fiskeri. For Shell handler driften ikke bare om teknologi og produksjon, men også om å dele havområdet på en måte som fungerer for alle."
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Laginnsats for bedre beredskap",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/laginnsats-for-bedre-beredskap.html",
+   "d": "2025-11-26",
+   "s": "Norske Shell er Redningsselskapets hovedsamarbeidspartner i digitaliseringsprosjektet, «Samvirke først», der Redningsselskapet og Hovedredningssentralen (HRS) sammen med BarentsWatch (Kystverket), utvikler et moderne verktøy for enda bedre koordinering av redningsoperasjoner langs kysten."
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2384,6 +2466,13 @@
    "u": "https://newsweb.oslobors.no/message/659506",
    "d": "2025-11-13",
    "s": "Ex date"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Oljeerfaring bygger klimaløsninger",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/oljeerfaring-bygger-klimalosninger.html",
+   "d": "2025-11-11",
+   "s": "Aksel Plener er driftssjef for Northern Lights CCS i Øygarden, verdens første kommersielle tilbyder av fangst og lagring av CO 2 ."
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2421,6 +2510,27 @@
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Gasskjempen lever videre",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/gasskjempen-lever-videre.html",
+   "d": "2025-11-03",
+   "s": "Intervju med Nina Thowsen, Asset Manager Troll, Troll-feltet, gass, gassproduksjon, Shell, Equinor"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Trygg og effektiv gasseksport",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/trygg-og-effektiv-gasseksport.html",
+   "d": "2025-10-13",
+   "s": "Intervju med Bård Dyrnes, anleggssjef på prosessanlegget på Nyhamna i Aukra"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Digital innovasjon i praksis",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/norge-er-shells-digitale-kraftsenter.html",
+   "d": "2025-10-10",
+   "s": "Med verdensledende satsing på digital tvilling og en kultur for innovasjon, har Norske Shell fått status som et fyrtårn globalt i konsernet."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Takk for at du tok kontakt. - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE1iWGdYMGtzNERUSGE5OEJKRkFPNHBVSDF1Y1hWOGo4ZDVCLTBHR290cVpEX0pZTXVmb1BSeF8xWTQ0VWZJVDhfaU9yekd3Ty01N2k3cm1fVlZYQ0JReEFCdm9LMG12QQ?oc=5",
@@ -2435,11 +2545,32 @@
    "s": "Vitensentrene & Equinor Equinor"
   },
   {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Ormen Lange – lenge",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/ormen-lange-lenge.html",
+   "d": "2025-09-03",
+   "s": "Volumene som vi kan hente ut ved hjelp av optimalisering, ville andre steder i verden kvalifisert til en separat feltutvikling"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Nysgjerrighet former framtiden - Sponsorship - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiTEFVX3lxTE5CdFJmQVJrVTEzMlB6Q19pT19vSnVCMXBYUjkxUnpib3BxRmdGX2Z3dzI2VU5NLURDR3VjbDJZSEJIWHlOT2N6RmlXd1Q?oc=5",
    "d": "2025-09-02",
    "s": "Nysgjerrighet former framtiden - Sponsorship Equinor"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Energiminister Terje Aasland åpnet Ormen Lange havbunnskompresjon",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/energiminister-terje-aasland-apnet-ormen-lange-havbunnskompresjon.html",
+   "d": "2025-08-26",
+   "s": "Banebrytende teknologi gir mer gass til Europa fra Norges nest største gassfelt."
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Northern Lights har startet CO₂ injeksjon",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/northern-lights-har-startet-co2-injeksjon.html",
+   "d": "2025-08-25",
+   "s": "Northern Lights har startet første injeksjon av CO₂ fanget fra Heidelbergs sementfabrikk i Brevik."
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -2475,6 +2606,13 @@
    "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE1UemhxNXF3VFZ6ckY2R2htMkxDd2VfU0pnZG1uVUVvRXRXcDRPbk4yUW5TdmtuTHVFNW5odXNVaWwweGdBSlJVU0JpVUNROXdjQzh5dEZNR0tHaU9YVlg5Q0FoOTFTWVhaTERPdWxVa1BfUkRwZHc?oc=5",
    "d": "2025-06-30",
    "s": "Oljefunn i Johan Castberg-området i Barentshavet Equinor"
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Første gass fra Ormen Lange havbunnskompresjon",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/forste-gass-fra-ormen-lange-havbunnskompresjon.html",
+   "d": "2025-06-27",
+   "s": "Shell har startet kompresjon på havbunnen for å øke utvinningsgraden fra Ormen Lange-feltet i Norskehavet. Havbunnskompressorene er installert med mål om å øke mengden gass som utvinnes fra feltet fra 75 % til 85 %."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2547,6 +2685,13 @@
    "s": "Bitumen - CE dokumentasjon TotalEnergies Nordic"
   },
   {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Shell støtter Redningsselskapets arbeid med å etablere nytt digitalt verktøy for å styrke beredskapen langs kysten",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/shell-stotter-redningsselskapet.html",
+   "d": "2025-04-04",
+   "s": "Norske Shell, Redningsselskapet, Sikkerhet og beredskap"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Johan Castberg styrker Norge som langsiktig energieksportør - Equinor",
    "u": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQMmRFaHVzc1dXQ0dTbmJYUlBXaW5IbmtTQ0ExMTJ3Qi1UMzBNaXVxS3dZREx3YlVfandiMWJlLUpvM193d1RuZzZSNXRQbXJrbWdoSUhwUG9nV3VQdlEyOVpXbXd5SDd4MFdTelRMTmJZN05ZekRpZTg0Q2pCNXREbEZ5TnJsTTJWREhUYVhLRW4ya1hiSXN1Z3RKN0thUm9MNUVpaDln?oc=5",
@@ -2559,6 +2704,13 @@
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/55-senior-notes-due-2026-tender-results/",
    "d": "2025-03-28",
    "s": "Harbour Energy plc announces the results of a previously announced tender offer to purchase for cash any outstanding 5.5% Senior Notes due 2026."
+  },
+  {
+   "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
+   "t": "Northern Lights investerer i kapasitetsutvidelse med ny kommersiell avtale",
+   "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/northern-lights-investerer-i-kapasitetsutvidelse-med-ny-kommersiell-avtale.html",
+   "d": "2025-03-27",
+   "s": "Stockholm Exergi blir første kunde for ny kapasitet"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
