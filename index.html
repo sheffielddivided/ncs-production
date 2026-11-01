@@ -9393,13 +9393,17 @@ function explResultKey(content) {
 const tc = s => String(s || '').toLowerCase().replace(/(^|[\s/(-])([a-zæøå])/g, (m, a, b) => a + b.toUpperCase());
 
 // Funnnavnet uten brønnbetegnelsen: «35/8-8 S (Camilla Nord)» -> «Camilla Nord»,
-// «16/4-6 S Solveig» -> «Solveig». Funn uten eget navn heter det samme som
-// brønnen, og beholdes slik.
+// «16/4-6 S Solveig» -> «Solveig». Funn uten eget navn gir tomt svar, se under.
 function explDiscoveryLabel(s) {
   if (!s) return '';
   const p = s.match(/\(([^)]+)\)\s*$/);
   if (p) return p[1].trim();
-  return s.replace(/^\d+\/\d+-\d+(?:\s[A-Z]{1,2})?\s+/, '').trim() || s;
+  const name = s.replace(/^\d+\/\d+-\d+(?:\s[A-Z]{1,2})?\s+/, '').trim();
+  // Funn uten eget navn heter det samme som brønnen («34/8-4 S»). Det som blir
+  // igjen er da bare brønnsuffikset («S», «A», «SR»), som ikke er et navn. Tomt
+  // svar betyr «ikke noe navn»; kallerne faller tilbake på prospektnavn eller
+  // det tekniske brønnnavnet.
+  return /^[A-Z]{1,2}\d?$/.test(name) ? '' : (name || s);
 }
 
 // Sodir regner hver gren av en brønn — sidesteg og re-entries, «S», «A», «R2» —
@@ -9492,7 +9496,7 @@ function loadExploration() {
         w.overdue = w.state === 'planned' && w.planned < today;
         w.resKey = w.state === 'completed' ? explResultKey(w.content) : '';
         const label = explDiscoveryLabel(w.discovery);
-        w.found = !!(w.discoveryWell && label);
+        w.found = !!(w.discoveryWell && w.discovery);
         // Alle brønner som hører til et funn — også avgrensningsbrønnene —
         // vises under funnnavnet, med brønnnavnet som undertekst.
         // Brønner uten funnnavn (tørre) får prospektnavnet fra Sodirs pressemeldinger.
@@ -10572,7 +10576,7 @@ function explSummaryText(w) {
     if (r === 'dry') bits.push('The well was dry.');
     else if (r === 'shows') bits.push(`The well proved ${w.content.toLowerCase()}, but not a commercial find.`);
     else if (['oil', 'gas', 'oilgas'].includes(r)) {
-      bits.push(`The well proved ${w.content.toLowerCase()}${w.found ? ` and is the discovery well for ${w.title}` : w.discovery ? ` in the ${explDiscoveryLabel(w.discovery)} discovery` : ''}.`);
+      bits.push(`The well proved ${w.content.toLowerCase()}${w.found ? ` and is the discovery well for ${w.title}` : w.discovery ? ` in the ${explDiscoveryLabel(w.discovery) || w.discovery} discovery` : ''}.`);
       if (w.hcFormation) bits.push(`Hydrocarbons were found in the ${tc(w.hcFormation)}${w.hcAge ? ` (${tc(w.hcAge)})` : ''}.`);
     }
     const dims = [w.td ? `total depth ${Math.round(w.td).toLocaleString('en')} m` : '',
@@ -11019,7 +11023,7 @@ const NEWS_TYPES = {
 
 function newsLine(e) {
   const g = e.w != null ? explById[e.w] : null;
-  const title = g ? g.title : (e.t === 'discovery' && e.dn ? explDiscoveryLabel(e.dn) : e.n);
+  const title = g ? g.title : (e.t === 'discovery' && e.dn ? explDiscoveryLabel(e.dn) || e.dn : e.n);
   const op = e.op || (g && g.operator) || '';
   const rig = e.rig || (g && g.rig) || '';
   // Delene er ferdig HTML: operatør og rigg lenker til profilene sine.
