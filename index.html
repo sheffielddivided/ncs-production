@@ -4943,7 +4943,7 @@ function drawCompaniesOperated() {
   const labels = unionLabels(ids);
   if (!labels.length) { setChartEmpty('No data for selected period.'); setInfo(''); return; }
   const q = period === 'quarterly', qMap = q ? buildQuarterMap(ids) : null, want = new Set(labels);
-  const op = {}, part = {}, byField = {};
+  const op = {}, part = {}, fld = {};   // fld[id][periode] = {op, part}
   ids.forEach(id => (fieldProdCache[id] || []).forEach(r => {
     const a = r.attributes;
     if (!isValidRow(a)) return;
@@ -4955,7 +4955,10 @@ function drawCompaniesOperated() {
     const d = days(a), v = oeBoed(a.prfPrdOeNetMillSm3 || 0, d) * share * (q ? d : 1);
     const isOp = fieldOperatorAt(id, date) === cmp;
     (isOp ? op : part)[key] = ((isOp ? op : part)[key] || 0) + v;
-    if (key === labels[labels.length - 1]) byField[id] = {v, isOp, share: share * 100};
+    // Rollen kan skifte underveis, så feltet fordeles per periode.
+    const byKey = fld[id] = fld[id] || {};
+    const f = byKey[key] = byKey[key] || {op: 0, part: 0};
+    f[isOp ? 'op' : 'part'] += v;
   }));
   const per = k => q ? qMap[k].totalDays : 1;
   const dOp = labels.map(k => +((op[k] || 0) / per(k)).toFixed(0)), dPart = labels.map(k => +((part[k] || 0) / per(k)).toFixed(0));
@@ -4968,17 +4971,14 @@ function drawCompaniesOperated() {
   const last = labels[labels.length - 1];
   setChartTitle(`${cmp} · Operated`, `Net production, operated vs partner · equity-adjusted · boe/day`);
   setInfo(`<strong>Company:</strong> ${esc(cmp)} &nbsp;|&nbsp; <strong>Operated</strong> = the company's share of production from fields it operated at the time; <strong>Partner</strong> = its share in fields operated by others &nbsp;|&nbsp; <strong>Operated share in the period:</strong> ${tot ? (totOp / tot * 100).toFixed(0) : '—'} % &nbsp;|&nbsp; <strong>Basis:</strong> equity-adjusted net OE; operator from Sodir's operator history`);
-  const n0 = v => Math.round(v).toLocaleString('en');
-  const rows = Object.entries(byField).map(([id, o]) => ({id: +id, name: fieldNameOf(+id), ...o, v: o.v / per(last)}))
-    .filter(r => r.v >= 1).sort((a, b) => b.isOp - a.isOp || b.v - a.v);
-  if (rows.length) setChartTable(`
-    <table class="res-table">
-      <caption>Fields in ${last} · equity-adjusted net production, boe/day</caption>
-      <thead><tr><th>Field</th><th>Role</th><th>Share</th><th>Net production</th></tr></thead>
-      <tbody>${rows.map(r => `<tr><td><a class="row-link" href="#" onclick="openFieldProfile(${r.id});return false;">${esc(r.name)}</a></td>
-        <td>${r.isOp ? 'Operator' : 'Partner'}</td><td>${r.share.toFixed(2)} %</td><td>${n0(r.v)}</td></tr>`).join('')}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td>${n0(sum(rows.map(r => r.v)))}</td></tr></tfoot>
-    </table>`);
+  // Tabell: de siste (inntil) fem periodene grafen viser, gruppert på rolle.
+  const periods = lastLabels.slice(-5);
+  const fields = role => Object.entries(fld).map(([id, byKey]) => ({id: +id, name: fieldNameOf(+id),
+    vals: periods.map(k => ((byKey[k] || {})[role] || 0) / per(k))}));
+  setChartTable(groupedFieldTableHtml(periods, 'Role / field', [
+    {key: 'op', label: 'Operated', color: OP_C, fields: fields('op')},
+    {key: 'part', label: 'Partner', color: PART_C, fields: fields('part')},
+  ]));
 }
 
 // ── COMPANIES: EXPLORATION ───────────────────────────────────────────────────
@@ -7542,31 +7542,42 @@ function oilGasFieldTableHtml(ids, companies, qMap, periods) {
     return {id, name: allFields.find(f => f.id === id)?.name || `Field ${id}`,
             oil: v.map(x => x.oil), gas: v.map(x => x.gas)};
   });
+  return groupedFieldTableHtml(periods, 'Product / field', [
+    {key: 'oil', label: 'Oil', color: OIL_COLOR, fields: per.map(f => ({id: f.id, name: f.name, vals: f.oil}))},
+    {key: 'gas', label: 'Gas', color: GAS_COLOR, fields: per.map(f => ({id: f.id, name: f.name, vals: f.gas}))},
+  ]);
+}
+
+// Felles tabell for Oil & Gas og Operated: én kolonne per periode, grupper med
+// sum og felt under. Felt uten verdi i gruppen tas ikke med. De OG_TOP største
+// (etter siste periode) vises; resten ligger bak «Show N more» i gruppen.
+function groupedFieldTableHtml(periods, headLabel, groups) {
+  const last = periods.length - 1;
   const n = v => Math.round(v).toLocaleString('en');
   const cells = vals => vals.map(v => `<td>${n(v)}</td>`).join('');
-  const totals = {oil: periods.map((_, i) => per.reduce((t, f) => t + f.oil[i], 0)),
-                  gas: periods.map((_, i) => per.reduce((t, f) => t + f.gas[i], 0))};
-  const group = (key, label, color) => {
-    const kids = per.filter(f => f[key].some(v => v > 0.5))
-      .sort((a, b) => b[key][last] - a[key][last] || a.name.localeCompare(b.name, 'en'));
+  const sumOf = list => periods.map((_, i) => list.reduce((t, f) => t + f.vals[i], 0));
+  const body = groups.map(g => {
+    const kids = g.fields.filter(f => f.vals.some(v => v > 0.5))
+      .sort((a, b) => b.vals[last] - a.vals[last] || a.name.localeCompare(b.name, 'en'));
     if (!kids.length) return '';
     const rest = kids.length - OG_TOP;
-    return `<tr class="hub-row"><td><span class="ex-dot" style="background:${color}"></span>${label}
-        <span class="grp-count">${kids.length}</span></td>${cells(totals[key])}</tr>` +
-      kids.map((f, i) => `<tr class="field-row"${i >= OG_TOP ? ` data-more="${key}" hidden` : ''}>
-        <td>${fieldLink(f.id, f.name)}</td>${cells(f[key])}</tr>`).join('') +
+    return `<tr class="hub-row"><td><span class="ex-dot" style="background:${g.color}"></span>${g.label}
+        <span class="grp-count">${kids.length}</span></td>${cells(sumOf(g.fields))}</tr>` +
+      kids.map((f, i) => `<tr class="field-row"${i >= OG_TOP ? ` data-more="${g.key}" hidden` : ''}>
+        <td>${fieldLink(f.id, f.name)}</td>${cells(f.vals)}</tr>`).join('') +
       (rest > 0 ? `<tr class="field-row og-more"><td colspan="${periods.length + 1}">
-        <button class="grp-btn" onclick="toggleOgMore(this, '${key}', ${rest})">Show ${rest} more</button></td></tr>` : '');
-  };
-  const sum = periods.map((_, i) => totals.oil[i] + totals.gas[i]);
+        <button class="grp-btn" onclick="toggleOgMore(this, '${g.key}', ${rest})">Show ${rest} more</button></td></tr>` : '');
+  }).join('');
+  if (!body) return '';
+  const total = sumOf(groups.flatMap(g => g.fields));
   return `
     <table class="res-table">
       <caption>Net production per field, last ${periods.length} ${
         period === 'monthly' ? 'months' : period === 'quarterly' ? 'quarters' : 'years'} · boe/day · equity-adjusted ·
         largest contributors in the latest period first</caption>
-      <thead><tr><th>Product / field</th>${periods.map(p => `<th>${p}</th>`).join('')}</tr></thead>
-      <tbody>${group('oil', 'Oil', OIL_COLOR)}${group('gas', 'Gas', GAS_COLOR)}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td>${cells(sum)}</tr></tfoot>
+      <thead><tr><th>${headLabel}</th>${periods.map(p => `<th>${p}</th>`).join('')}</tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td>${cells(total)}</tr></tfoot>
     </table>`;
 }
 
