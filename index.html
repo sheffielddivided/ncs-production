@@ -278,6 +278,7 @@
     .nw-result{background:#fbe0ee;color:#8e0a48;border-color:#eeabcb;}
     .nw-sodir{background:#e2ecf6;color:#24557d;border-color:#b8cde2;}
     .nw-press{background:#fff1d6;color:#7a5200;border-color:#f1d394;}
+    .nw-deal{background:#e4ecf7;color:#2a5a8a;border-color:#bccde3;}
     .nw-sum{display:block;color:#44505f;font-size:0.72rem;margin-top:2px;}
     .nw-why{display:block;color:var(--muted);font-size:0.66rem;margin-top:1px;}
     .nw-txt a{color:#1a2332;text-decoration:underline;text-decoration-color:var(--blue);text-underline-offset:2px;}
@@ -2642,7 +2643,7 @@ async function refreshCompanies() {
     return;
   }
   if (companySubView === 'news') {
-    await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis()]);
+    await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis(), licLoadTransfers()]);
     drawChart();
     return;
   }
@@ -6353,6 +6354,24 @@ function companyNewsItems(name) {
       html: `${newsLine(e)}<span class="nw-why">${role === 'operator' ? 'Operator' : 'Partner'}</span>`});
   });
 
+  // Lisenstransaksjoner (Licences → Transactions, Deals): andeler konsernet har
+  // kjøpt eller solgt, med samme standardtyper som der (ikke navneendringer).
+  // Overføringer innad i konsernet tas ikke med.
+  const dealKinds = new Set(LIC_DEAL_KINDS.split(','));
+  (licTransfers || []).forEach(t => {
+    if (!dealKinds.has(t.kind)) return;
+    const buy = !!t.buyer && concernKey(t.buyer) === key, sell = !!t.seller && concernKey(t.seller) === key;
+    if (buy === sell) return;   // ikke med, eller innad i konsernet
+    const lic = `PL ${licenceLink(licName(t.lic))}`, k = licKindOf(t.kind);
+    const other = buy ? t.seller : t.buyer;
+    const verb = t.kind === 'merger' ? (buy ? 'Took over' : 'Merged away')
+               : t.kind === 'withdrawal' && sell ? 'Withdrew from' : buy ? 'Bought' : 'Sold';
+    const what = t.kind === 'withdrawal' && sell ? `${licPct(t.share)} · ${lic}` : `${licPct(t.share)} in ${lic}`;
+    out.push({d: licDayIso(t.day), src: 'deals', cls: 'deal', label: 'Deal',
+      html: `<strong>${verb}</strong> ${what}${other ? ` ${buy ? 'from' : 'to'} ${companyLink(other)}` : ''}
+        <span class="nw-why">${esc(k ? k.label.replace(/s$/, '') : t.kind)} · ${esc(buy ? t.buyer : t.seller)}</span>`});
+  });
+
   const feeds = (companyNewsData && companyNewsData.feeds) || {};
   const label = Object.fromEntries((companyFeeds || []).map(f => [f.url, f.label || '']));
   ((companyNewsData && companyNewsData.items) || []).forEach(it => {
@@ -6404,12 +6423,13 @@ function drawCompanyNews() {
     <div class="pf-card pf-wide">
       <h3 class="cn-head"><span>Latest news</span>
         <button class="cn-gear" onclick="openFeedSettings()" title="Company news feeds">${GEAR_SVG}Feeds${myFeeds.length ? ` (${myFeeds.length})` : ''}</button></h3>
-      <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}</div>
+      <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}${chip('deals', 'Deals', n('deals'))}</div>
       ${rows || empty}
       ${list.length > cnShown ? `<button class="grp-btn ex-more" onclick="cnShown+=60;drawCompanyNews()">Show more (${list.length - cnShown} older)</button>` : ''}
       <div class="pf-map-note">Sodir press releases are drilling permits and drilling results for wells where the group is operator or
         partner (interests as recorded by Sodir for the well), and other Sodir news about fields the group has an interest in or that
-        names it. Well events come from comparing each daily data run with the previous one. Rig moves (AIS) are shown when a rig arrives
+        names it. Well events come from comparing each daily data run with the previous one. Deals are licence stakes the group bought or sold (transfers, state (SDFI) transfers, withdrawals and mergers; transfers within
+        the group are left out), as in Licences → Transactions. Rig moves (AIS) are shown when a rig arrives
         at or leaves a well where the group is operator or partner, or a field it has an interest in. Company press releases come from the RSS
         feeds added with the Feeds button; they are fetched daily.</div>
     </div>
