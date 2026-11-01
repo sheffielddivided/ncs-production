@@ -593,6 +593,49 @@ Sodir automatisk dukker opp som egne huber, og at fila bare inneholder avvik
 > under: hubene identifiseres av et *navn* vi selv velger, ikke av en
 > kilde-ID.
 
+### Companies → News og selskapenes RSS-feeder
+
+Fanen samler alt rundt ett konsern i én tidslinje, med Havtil-kortet (som før
+lå i profilen) under:
+
+| Kilde | Fil | Kobling til selskapet |
+|---|---|---|
+| Sodirs RSS: `drilling-permits`, `exploration-drilling-results`, `general-news` | `data/sodir_press.json` (arkiv, `fetch_company_news.py`) | Konsernet er operatør eller partner i en brønn nevnt i meldingen (Exploration-dataene), har andel i et nevnt felt, eller er nevnt ved navn |
+| Endringsloggen | `data/changes.json` | Brønnhendelser der konsernet er operatør eller partner |
+| Selskapenes egne feeder | `data/company_feeds.json` → `data/company_news.json` | Feeden er lagt inn på et selskap i konsernet (`concernKey`) |
+
+De andre adressene under Sodirs `/rss/` svarte 403 (Cloudflare) 2026-11-01.
+
+**RSS-prosessen.** Appen har ingen backend, og de fleste nettsteder tillater
+ikke at nettleseren leser feedene deres (CORS). Derfor:
+
+1. Tannhjulet (i topplinjen og på kortet) åpner en liste over konsernets
+   feeder. «Add» prøver en rask sjekk fra nettleseren og godtar adressen
+   uansett. «Save» leser `data/company_feeds.json` fra GitHub, bytter ut bare
+   dette konsernets oppføringer og skriver fila tilbake med Contents API og
+   samme token som hub-innstillingene (sha som optimistisk lås).
+2. Pushen starter `.github/workflows/update-company-news.yml`, som kjører
+   `fetch_company_news.py --companies` og committer `data/company_news.json`.
+   Den daglige jobben kjører hele skriptet.
+3. Skriptet godtar en nyhetsside i stedet for feedadressen og finner feeden
+   via `<link rel="alternate" type="application/rss+xml">`. RSS 2.0, RSS 1.0
+   og Atom leses; HTML fjernes, lenker må være http(s), svar over 4 MB og
+   DOCTYPE med entiteter avvises.
+4. Per feed lagres inntil 100 saker, og saker som faller ut av feeden
+   beholdes. Status per feed (`title`, `n`, `feed` hvis adressen ble slått
+   opp, `error` og `since` ved feil) endres bare når noe faktisk endres, så en
+   frisk feed gir ingen daglig commit. Statusen vises i innstillingslisten.
+
+```json
+// data/company_feeds.json
+{"version": 1, "feeds": [{"company": "Aker BP ASA", "url": "https://akerbp.com/en/news/",
+  "label": "Aker BP news", "added": "2026-11-01"}]}
+// data/company_news.json
+{"feeds": {"https://akerbp.com/en/news/": {"company": "Aker BP ASA", "title": "Aker BP",
+   "feed": "https://akerbp.com/en/feed/", "n": 10}},
+ "items": [{"f": "https://akerbp.com/en/news/", "t": "…", "u": "https://…", "d": "2026-10-20", "s": "…"}]}
+```
+
 ### `data/meta.json`
 
 ```json

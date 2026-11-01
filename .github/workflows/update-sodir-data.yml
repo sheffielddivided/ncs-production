@@ -85,6 +85,14 @@ jobs:
         timeout-minutes: 10
         run: python fetch_havtil.py
 
+      # Sodirs pressemeldinger (boretillatelser, boreresultater, generelle
+      # nyheter) og selskapenes egne RSS-feeder til Companies → News.
+      # Etter Havtil, så felt- og selskapsdataene er oppdatert.
+      - name: Hent selskapsnyheter (Sodir RSS og selskapenes feeder)
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python fetch_company_news.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB

@@ -1,0 +1,49 @@
+name: Oppdater selskapsnyheter
+
+# Henter selskapenes RSS-feeder straks lista endres fra tannhjulet i
+# Companies → News (appen skriver data/company_feeds.json via Contents API med
+# brukerens token, og den pushen starter denne jobben). Den daglige kjøringen
+# ligger i update-sodir-data.yml.
+on:
+  push:
+    branches: [main]
+    paths: ['data/company_feeds.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Samme gruppe som den daglige jobben, så de ikke committer om kapp.
+concurrency:
+  group: sodir-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: pip install requests
+
+      - name: Hent selskapenes feeder
+        run: python fetch_company_news.py --companies
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/company_news.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+          else
+            git commit -m "Oppdater selskapsnyheter ($(date -u +%Y-%m-%d))"
+            git pull --rebase origin main
+            git push
+          fi
