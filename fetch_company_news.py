@@ -38,7 +38,8 @@ Contents API, samme token som hub-innstillingene) eller for hånd:
        "added": "2026-11-01"}]}
 
 «company» er selskapet slik det heter i appen; frontend viser feeden for hele
-konsernet (concernKey). Er adressen en vanlig nettside, letes det etter
+konsernet (concernKey). En søkeadresse fra NewsWeb (Oslo Børs) leses via
+NewsWebs eget JSON-API, se read_newsweb. Er adressen en vanlig nettside, letes det etter
 <link rel="alternate" type="application/rss+xml"> i den, så det holder å lime
 inn nyhetssiden. RSS 2.0, RSS 1.0 (RDF) og Atom leses.
 
@@ -61,7 +62,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import requests
 
@@ -256,8 +257,72 @@ def parse(body):
     return clean(title, 120), out
 
 
+# ── NEWSWEB (Oslo Børs) ──────────────────────────────────────────────────────
+# Børsmeldinger fra newsweb.oslobors.no, for selskaper uten egen RSS. NewsWeb
+# har ingen feed, men nettsiden henter lista fra et åpent JSON-API uten
+# innlogging (api_large i /urls.json, så /v1/newsreader/list). Det er den samme
+# lista siden viser, hentet én gang per kjøring; ingen sperrer omgås.
+#
+# I company_feeds.json legges søkeadressen fra NewsWeb inn som den er, f.eks.
+#   https://newsweb.oslobors.no/search?category=&issuer=1015&...
+# Filtrene i adressen (issuer, category, market, messageTitle, fromDate,
+# toDate) sendes videre til API-et. Uten fromDate gir API-et omtrent siste år.
+NEWSWEB = 'newsweb.oslobors.no'
+NEWSWEB_API = 'https://api3.oslo.oslobors.no'
+NEWSWEB_PARAMS = ('issuer', 'category', 'market', 'messageTitle', 'fromDate', 'toDate')
+
+
+def is_newsweb(url):
+    return urlparse(url).hostname == NEWSWEB
+
+
+def read_newsweb(url):
+    q = parse_qs(urlparse(url).query)
+    params = {k: q[k][0] for k in NEWSWEB_PARAMS if q.get(k) and q[k][0]}
+    if not params.get('issuer'):
+        raise FeedError('Choose a company in NewsWeb first; the address needs an issuer (…&issuer=1015…).')
+    api = NEWSWEB_API
+    try:
+        api = json.loads(get(f'https://{NEWSWEB}/urls.json')[0]).get('api_large') or NEWSWEB_API
+    except Exception:  # noqa: BLE001
+        pass
+    if not re.match(r'^https://[\w.-]+\.oslobors\.no$', api):
+        api = NEWSWEB_API
+    last = None
+    for attempt in range(RETRIES):
+        try:
+            r = requests.post(f'{api}/v1/newsreader/list?{urlencode(params)}', timeout=30,
+                              headers={'User-Agent': UA, 'Accept': 'application/json', 'Content-Type': 'application/json'})
+            if r.status_code >= 400:
+                raise FeedError(http_message(r.status_code))
+            data = r.json().get('data') or {}
+            break
+        except FeedError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if attempt < RETRIES - 1:
+                time.sleep(2 ** (attempt + 1))
+    else:
+        raise FeedError(f'Could not read NewsWeb ({type(last).__name__}).')
+    msgs = [m for m in data.get('messages') or [] if not m.get('test') and m.get('messageId')]
+    if not msgs:
+        raise FeedError('NewsWeb has no messages for this search.')
+    issuer = msgs[0].get('issuerName') or ''
+    items = []
+    for m in msgs:
+        cat = ((m.get('category') or [{}])[0].get('category_en') or '').capitalize()
+        corr = ' (correction)' if m.get('correctionForMessageId') else ''
+        items.append({'t': clean(m.get('title', ''), 300) + corr,
+                      'u': f'https://{NEWSWEB}/message/{int(m["messageId"])}',
+                      'd': iso_date(m.get('publishedTime', '')), 's': clean(cat, SUMMARY)})
+    return url, clean(f'NewsWeb · {issuer}', 120), items
+
+
 def read_feed(url):
     """(endelig feedadresse, kanalnavn, saker). Nettsider slås opp til feeden sin."""
+    if is_newsweb(url):
+        return read_newsweb(url)
     body, ctype, final = get(url)
     if not is_feed(body):
         found = discover(body, final)

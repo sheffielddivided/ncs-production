@@ -733,7 +733,9 @@
   </div>
   <div class="settings-note">
     Paste the address of the company's RSS or Atom feed. A normal news page works too, if it advertises its feed —
-    the fetch job looks for it. Feeds are read by a GitHub Actions job, not by your browser, because most sites block
+    the fetch job looks for it. For companies listed on Oslo Børs, a search on
+    <a href="https://newsweb.oslobors.no" target="_blank" rel="noopener">NewsWeb</a> filtered on the company also works:
+    paste the address of the search page. Feeds are read by a GitHub Actions job, not by your browser, because most sites block
     cross-site reading. Saving writes the list to the repository with your GitHub token (the same as for hub settings);
     the job then fetches the new feed right away (usually within a minute — the status below updates by itself) and all feeds every morning.
     Feeds apply to the whole corporate group.
@@ -9977,6 +9979,11 @@ async function addFeed() {
 // Rask sjekk fra nettleseren. De fleste nettsteder tillater ikke at andre
 // sider leser dem (CORS), og da er svaret bare at jobben sjekker feeden.
 async function probeFeed(url) {
+  if (/^https:\/\/newsweb\.oslobors\.no\//i.test(url)) {
+    return /[?&]issuer=\d+/.test(url)
+      ? 'NewsWeb search: the fetch job reads the stock exchange announcements through NewsWeb\'s own data service.'
+      : 'This NewsWeb address has no company (issuer) — choose the company in NewsWeb\'s search first and copy the address again.';
+  }
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 8000);
