@@ -55,9 +55,21 @@
    "company": "Equinor Energy AS",
    "title": "NewsWeb · Equinor ASA",
    "n": 100
+  },
+  "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream": {
+   "company": "ORLEN Upstream Norway AS",
+   "title": "Upstream",
+   "n": 9
   }
  },
  "items": [
+  {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN Confirms Significant Increase in Afrodite Gas Resources",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/october-2026/orlen-confirms-significant-increase-in-afrodite-gas-resources",
+   "d": "2026-10-29",
+   "s": "ORLEN Upstream Norway, together with Equinor, the operator of the license, DNO and Wellesley Petroleum, has completed appraisal drilling on the Afrodite discovery in the North Sea. The data acquired during the campaign show that recoverable resources are more than twice the original estimate. As a …"
+  },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Races Ahead on Stronger Production, Higher Prices",
@@ -225,6 +237,13 @@
    "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE1HZ2JGZ3MwRlg5QkVjZ05HT1hlbDdBcVZGNjRZeXJjR0IxNFpNUWsteF9fN0prWUc2M2NoSTh4UklTRnF3WDNFeC1aUzhjY09yZ0lGZFpGdFU4eEU?oc=5",
    "d": "2026-10-22",
    "s": "Vilkår for smøremidler | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN's CO₂ storage project in Norway receives EU funding for innovative climate technologies",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/october-2026/orlens-co-storage-project-in-norway-receives-eu-funding-for-innovative-climate-technologies",
+   "d": "2026-10-21",
+   "s": "Atlas, a joint initiative of ORLEN Upstream Norway, Aker BP and Höegh Evi, has been awarded a EUR 223 million from the European Union Innovation Fund to support the development of CO₂ transport and storage network on the Norwegian Continental Shelf. The project will offer storage capacity of 6 …"
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -640,6 +659,13 @@
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN brings three new Norwegian Sea fields on stream",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/August-2026/orlen-brings-three-new-norwegian-sea-fields-on-stream",
+   "d": "2026-08-26",
+   "s": "ORLEN Upstream Norway, together with its license partners, has started gas production from the Idun Nord field in the Norwegian Sea. Over the coming weeks, the company will bring two additional fields, Alve Nord and Ørn, on stream. All three fields are located in the Skarv area, one of ORLEN’s key …"
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Aker BP has started production from the Skarv Satellites",
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-has-started-production-from-the-skarv-satellites,c4382977",
@@ -722,6 +748,13 @@
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa--ex-dividend-q2-2026,c4384778",
    "d": "2026-08-21",
    "s": "Sandnes, Norway, 21 August 2026: The shares in Vår Energi ASA (OSE: VAR) will be traded ex dividend of NOK 1.355 per share for the second quarter of 2026, as of today 21 August. The extraordinary general meeting held on 17 August in Vår Energi resolved to pay a dividend of NOK 1.355 per share, NOK …"
+  },
+  {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN secures up to one-quarter of its crude oil needs",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/August-2026/orlen-secures-up-to-one-quarter-of-its-crude-oil-needs",
+   "d": "2026-08-20",
+   "s": "ORLEN has signed a three-year agreement with Equinor for crude oil supplies from the Johan Sverdrup field on the Norwegian Continental Shelf. Deliveries will begin in September, and the contracted volume may reach over 9 million tonnes per year, equivalent to up to one-quarter of the ORLEN Group’s …"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -1207,6 +1240,13 @@
    "s": "PROTOKOLL FRA ORDINÆR GENERALFORSAMLING I DNO ASA MINUTES OF THE ANNUAL GENERAL MEETING OF DNO ASA Den 26. juni 2026 kl. 10:00 DNO ASA"
   },
   {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN Advances Cerisa Project in the North Sea",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/June-2026/orlen-advances-cerisa-project-in-the-north-sea",
+   "d": "2026-06-25",
+   "s": "ORLEN Upstream Norway, together with its license partners, has taken a final investment decision on the development of the Cerisa discovery. The project is expected to deliver 8.5 million barrels of oil equivalent net to ORLEN, including approximately 0.8 billion cubic meters of natural gas. …"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Forslag til program for konsekvensutredning for Wisting sendt på høring - Equinor",
    "u": "https://news.google.com/rss/articles/CBMikAFBVV95cUxNRUxtdzdlakNudHZqaGRXV0pBRVFpTUc2NG1lMFVXM1lPdEJVMU1pR1JkTE5fZTUwQWsyRE1ab0FVOVI3MXZXWHRCd3JhUm1sR0V5VGFYek5pNjVQMWtudXdPT2o3eEgycHlJYTV2RzVVMjZWZjhlOWd5V1A5cnM4Yk0tM2MwYVRlWmVJMWFUY1I?oc=5",
@@ -1247,6 +1287,13 @@
    "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5WU1FPRGk2bEdieVNFVHhjN3M3NDlIbEZVMEwzVGdkSFpPbFlCREN3TWxTLW10cVJUcWlzMUFkS0l3YkppMldaTVctRXZ6WllWaFo1c2t2RVY?oc=5",
    "d": "2026-06-21",
    "s": "Smørefett til industri- og kjøretøybransjen TotalEnergies Nordic"
+  },
+  {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN strengthens Norwegian portfolio with Goliat stake",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/June-2026/orlen-strengthens-norwegian-portfolio-with-goliat-stake",
+   "d": "2026-06-18",
+   "s": "ORLEN Upstream Norway has signed an agreement with Vår Energi to acquire a 20% stake in five licenses, including the producing Goliat field. The transaction will increase the company’s oil and gas reserves by nearly 60 million barrels of oil equivalent (boe) and is expected to boost production by …"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -1599,6 +1646,13 @@
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN: The Eirin field is already supplying gas to Poland",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/April-2026/ORLEN-The-Eirin-field-is-already-supplying-gas-to-Poland",
+   "d": "2026-05-05",
+   "s": "ORLEN Upstream Norway and Equinor, the operator, have started production from a new field in the North Sea. At peak output, Eirin will deliver around 270 million cubic meters of gas per year to ORLEN. Production is carried out using installations powered by electricity from renewable energy sources."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Energidepartementet godkjenner gjenutbyggingen av tidligere produserte felt - ConocoPhillips Norway",
    "u": "https://news.google.com/rss/articles/CBMizAFBVV95cUxOWng5UDkzNWJSdVBWeUlyNUVIUWZXRks2MVFuSERDVGtUT3dQbDZGeThNdHkwYlFHckd2eTVmOXAwMWtsY3VIUGNjbF9sSENkbk5MMkZKcmRqMU1PamtxbFloQkNVa294ZXdtanp1N0xoTjY3NnNxRUMzZ2lHa3MxTUpfQmJ2VjR4RTcydDREZ1EtYnpmU1cySzl1eFZMVmJYUWhWYUNkck5STURjRTkxdXN5cnFTbjNvamtZZnQ2VnFwOERtUHY2Yno5dzI?oc=5",
@@ -1844,6 +1898,13 @@
    "s": "Annual financial report"
   },
   {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN Announces North Sea Discovery in the Sleipner Area",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/March-2026/orlen-announces-north-sea-discovery-in-the-sleipner-area",
+   "d": "2026-03-10",
+   "s": "ORLEN Upstream Norway, together with operator Equinor and partner Vår Energi, has confirmed a gas and condensate discovery in the Sleipner Area. The resources at the Frida Kahlo prospect are estimated at 7.2 million barrels of oil equivalent. The partners plan to bring the discovery into production …"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/667307",
@@ -1870,6 +1931,13 @@
    "u": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNY1c5SjlSczlWcHVRMGFJS0hoSjhPdVRJLXE0MWE5b0kycGctWFFXLUpEa2wwS01vMjNCSU41bXFpN3NoanhKSmRmMWM2TWhIWVprN2l6SzU3Zi1GNmhJWXV0NWhiSy16UmhHOURzWFJtSzVlbl9CRWpEZmkwcXpUcjVYc0JCN2t1UDhKSlFuR0FrMy1ZeWZ5a1JTRGR4RnpRNG9zY3l5ZUQzbFNXcW9kdF94dkkybEljOHE0ZHlzRVRnOWtpYWtYQi1pMzA2SFNVZ2xTSzF4UjdoYmhwTWxHeVdiUFpqWjky?oc=5",
    "d": "2026-02-13",
    "s": "Leverte planer for utbygging og drift for tidligere produserte felt-prosjektet i Ekofisk-området ConocoPhillips Norway"
+  },
+  {
+   "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
+   "t": "ORLEN Acquires Stake in the Afrodite Discovery",
+   "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/february-2026/orlen-acquires-stake-in-the-afrodite-discovery",
+   "d": "2026-02-11",
+   "s": "ORLEN Upstream Norway has agreed to acquire a 25% interest in production license PL293 in the North Sea from Vår Energi. The license covers the unconventional Afrodite gas discovery, which has the potential to deliver nearly 2 billion cubic meters of natural gas net to ORLEN."
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
