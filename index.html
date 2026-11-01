@@ -7503,6 +7503,78 @@ function drawCompaniesOilGas() {
     setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   }
   renderChart(labels, datasets, legend, 'boe/day');
+  // lastLabels er trimmet av renderChart, så tabellen viser de periodene
+  // grafen faktisk tegner.
+  const ids = [...new Set(companies.flatMap(c => getFieldsForCompany(c)))];
+  setChartTable(oilGasFieldTableHtml(ids, companies, qMap, lastLabels.slice(-5)));
+}
+
+// Companies / Oil & Gas: én felts egenandelsjusterte olje og gass i en periode,
+// med samme formler som grafen («Oil» = OE minus gass, se oilBoed).
+function equityOilGas(id, lbl, qMap, companies) {
+  if (period === 'quarterly') {
+    return companies.reduce((t, cmp) => ({
+      oil: t.oil + quarterBoedEquity([id], lbl, qMap, (v, d) => Math.max(0, oeBoed(v.oe, d) - gasBoed(v.gas, d)),
+        a => ({oe: a.prfPrdOeNetMillSm3 || 0, gas: a.prfPrdGasNetBillSm3 || 0}), cmp),
+      gas: t.gas + quarterBoedEquity([id], lbl, qMap, (v, d) => gasBoed(v, d), a => a.prfPrdGasNetBillSm3 || 0, cmp),
+    }), {oil: 0, gas: 0});
+  }
+  const row = (fieldProdCache[id] || []).find(r => periodKey(r.attributes) === lbl);
+  const a = row?.attributes || {};
+  if (!a.prfYear) return {oil: 0, gas: 0};
+  const dy = days(a);
+  const share = companies.reduce((t, cmp) => t + getShare(id, midDate(a.prfYear, a.prfMonth || 7), cmp) / 100, 0);
+  return {
+    oil: oilBoed(a.prfPrdOilNetMillSm3 || 0, a.prfPrdGasNetBillSm3 || 0, a.prfPrdOeNetMillSm3 || 0, dy) * share,
+    gas: gasBoed(a.prfPrdGasNetBillSm3 || 0, dy) * share,
+  };
+}
+
+// Tabell under Oil & Gas-grafen: de siste (inntil) fem periodene, gruppert på
+// olje og gass, med feltene som bidrar under hver gruppe. De fem største
+// (etter siste periode) vises; resten ligger bak en knapp i gruppen.
+const OG_TOP = 5;
+function oilGasFieldTableHtml(ids, companies, qMap, periods) {
+  if (!periods.length || !ids.length) return '';
+  const last = periods.length - 1;
+  const per = ids.map(id => {
+    const v = periods.map(lbl => equityOilGas(id, lbl, qMap, companies));
+    return {id, name: allFields.find(f => f.id === id)?.name || `Field ${id}`,
+            oil: v.map(x => x.oil), gas: v.map(x => x.gas)};
+  });
+  const n = v => Math.round(v).toLocaleString('en');
+  const cells = vals => vals.map(v => `<td>${n(v)}</td>`).join('');
+  const totals = {oil: periods.map((_, i) => per.reduce((t, f) => t + f.oil[i], 0)),
+                  gas: periods.map((_, i) => per.reduce((t, f) => t + f.gas[i], 0))};
+  const group = (key, label, color) => {
+    const kids = per.filter(f => f[key].some(v => v > 0.5))
+      .sort((a, b) => b[key][last] - a[key][last] || a.name.localeCompare(b.name, 'en'));
+    if (!kids.length) return '';
+    const rest = kids.length - OG_TOP;
+    return `<tr class="hub-row"><td><span class="ex-dot" style="background:${color}"></span>${label}
+        <span class="grp-count">${kids.length}</span></td>${cells(totals[key])}</tr>` +
+      kids.map((f, i) => `<tr class="field-row"${i >= OG_TOP ? ` data-more="${key}" hidden` : ''}>
+        <td>${fieldLink(f.id, f.name)}</td>${cells(f[key])}</tr>`).join('') +
+      (rest > 0 ? `<tr class="field-row og-more"><td colspan="${periods.length + 1}">
+        <button class="grp-btn" onclick="toggleOgMore(this, '${key}', ${rest})">Show ${rest} more</button></td></tr>` : '');
+  };
+  const sum = periods.map((_, i) => totals.oil[i] + totals.gas[i]);
+  return `
+    <table class="res-table">
+      <caption>Net production per field, last ${periods.length} ${
+        period === 'monthly' ? 'months' : period === 'quarterly' ? 'quarters' : 'years'} · boe/day · equity-adjusted ·
+        largest contributors in the latest period first</caption>
+      <thead><tr><th>Product / field</th>${periods.map(p => `<th>${p}</th>`).join('')}</tr></thead>
+      <tbody>${group('oil', 'Oil', OIL_COLOR)}${group('gas', 'Gas', GAS_COLOR)}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td>${cells(sum)}</tr></tfoot>
+    </table>`;
+}
+
+function toggleOgMore(btn, key, rest) {
+  const rows = btn.closest('tbody').querySelectorAll(`tr[data-more="${key}"]`);
+  const open = rows.length && rows[0].hidden;
+  rows.forEach(r => { r.hidden = !open; });
+  btn.textContent = open ? 'Show fewer' : `Show ${rest} more`;
 }
 
 // ── COMPANIES: OE PER FIELD ───────────────────────────────────────────────────
