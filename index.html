@@ -4819,7 +4819,7 @@ function drawCompanyValuation() {
       subtitle: `${cmp} · equity cash flow, USD bn (nominal) · oil price USD ${hubCfPrice} · forecast from ${y0}`,
       yTitle: 'USD bn per year', y1Title: 'cumulative, USD bn',
       series: CF_SERIES.filter(([k]) => v.rows.some(r => r[k])).map(([k, name, color]) =>
-        ({name, type: 'bar', color: pptHex(color), values: v.rows.map(r => +r[k].toFixed(3))}))
+        ({name, type: 'bar', color: pptHex(color), values: v.rows.map(r => +r[k].toFixed(3)), est: v.rows.map(r => !!r.fc[k])}))
         .concat([{name: 'Cumulative', type: 'line', secondary: true, color: pptHex(CF_LINE), values: v.rows.map(r => +r.acc.toFixed(3))}])};
   }
 
@@ -4849,7 +4849,7 @@ function drawCompanyValuation() {
       `<div class="legend-item"><div class="legend-dot" style="background:${d._color}"></div>${esc(d.label)}</div>`).join('');
     pptCardSpecs.valProd = {kind: 'cat', dir: 'col', stacked: true, labels: yrs.map(String), yTitle: 'boe/day, net',
       subtitle: `${cmp} · net production by hub, boe/day · forecast from ${y0}`,
-      series: ds.map(d => ({name: d.label, type: 'bar', color: pptHex(d._color), values: d.data}))};
+      series: ds.map(d => ({name: d.label, type: 'bar', color: pptHex(d._color), values: d.data, est: yrs.map(y => y >= y0)}))};
   }
 }
 
@@ -6547,13 +6547,13 @@ function drawHubCashFlow(ids) {
   });
   const firstFc = cf.rows.findIndex(r => r.y >= cf.y0);
   const fmt = v => `USD ${v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})} bn`;
-  // «+ PPT» i kortet: samme graf som ekte PowerPoint-graf. Skraveringen
-  // følger ikke med; undertittelen sier hvor prognosen starter.
+  // «+ PPT» i kortet: samme graf som ekte PowerPoint-graf. Skraveringen blir
+  // til blekere prognoseserier (est); undertittelen sier hvor prognosen starter.
   pptCardSpecs.hubCf = {kind: 'cat', dir: 'col', stacked: true, labels,
     subtitle: `Simulated cash flow, USD bn (nominal) · oil price USD ${hubCfPrice} · forecast from ${cf.y0}`,
     yTitle: 'USD bn per year', y1Title: 'cumulative, USD bn',
     series: CF_SERIES.filter(([k]) => cf.rows.some(r => r[k])).map(([k, name, color]) =>
-      ({name, type: 'bar', color: pptHex(color), values: cf.rows.map(r => +r[k].toFixed(3))}))
+      ({name, type: 'bar', color: pptHex(color), values: cf.rows.map(r => +r[k].toFixed(3)), est: cf.rows.map(r => !!r.fc[k])}))
       .concat([{name: 'Cumulative', type: 'line', secondary: true, color: pptHex(CF_LINE), values: cf.rows.map(r => +r.acc.toFixed(3))}])};
   hubCfChart = new Chart(ctx, {
     data: {labels, datasets: [
@@ -7092,9 +7092,10 @@ function drawHubProfile() {
   if (datasets.length) {
     renderChart(labels, datasets, legend, 'boe/day', {xTitle:'Year'});
     // Skraverte stolper kan ikke leses av pptSpecFromChart; grafen gis
-    // seriefargene direkte.
+    // seriefargene direkte, og prognoseårene (est) blir en blekere serie.
     pptSpec = {kind: 'cat', dir: 'col', stacked: true, labels: lastLabels, yTitle: 'boe/day',
-      series: lastDatasets.map((d, i) => ({name: d.label, type: 'bar', color: pptHex(datasets[i]._color), values: d.data}))};
+      series: lastDatasets.map((d, i) => ({name: d.label, type: 'bar', color: pptHex(datasets[i]._color), values: d.data,
+        ...(hasFc ? {est: lastLabels.map(l => +String(l).slice(0, 4) >= y0)} : {})}))};
   } else {
     setChartEmpty('No production reported for this hub.');
   }
@@ -8613,6 +8614,29 @@ function pptColor(c, n) {
   return pptHex(Array.isArray(c) ? c[0] : c);
 }
 
+// Estimater/prognoser er skravert (mønster) eller blekere i nettleseren.
+// PowerPoint-grafen har ikke mønster per stolpe, så punktene som er skravert
+// eller bleke returneres som en maske (est[i]); pptAddChart legger dem i en
+// egen, blekere serie. color er seriens fulle farge når den kan leses av.
+function pptEstimatePoints(ch, d, di, n) {
+  const bg = d.backgroundColor;
+  if (typeof bg !== 'function' && !Array.isArray(bg)) return null;
+  const at = i => typeof bg === 'function'
+    ? bg({chart: ch, dataset: d, datasetIndex: di, dataIndex: i, type: 'data'}) : bg[i % bg.length];
+  const vals = Array.from({length: n}, (_, i) => at(i));
+  const solid = vals.filter(v => typeof v === 'string');
+  const maxA = solid.length ? Math.max(...solid.map(pptAlpha)) : 1;
+  const est = vals.map(v => typeof v !== 'string' || pptAlpha(v) < maxA);
+  if (!est.some(Boolean) || est.every(Boolean)) return null;
+  const full = solid.find(v => pptAlpha(v) === maxA);
+  return {est, color: full ? pptHex(full) : null};
+}
+
+// Blek variant av en 'RRGGBB'-farge (blandet mot hvit).
+function pptPale(hex, t = 0.55) {
+  return [0, 2, 4].map(i => Math.round(parseInt(hex.substr(i, 2), 16) * (1 - t) + 255 * t).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
 function pptSpecFromChart(ch) {
   const base = ch.config.type, sc = ch.options.scales || {};
   const title = k => (sc[k] && sc[k].title && sc[k].title.display !== false && sc[k].title.text) || '';
@@ -8621,11 +8645,16 @@ function pptSpecFromChart(ch) {
       series: ch.data.datasets.map(d => ({name: d.label, points: d.data, color: pptColor(d.borderColor || d.backgroundColor, 1)}))};
   }
   const labels = (ch.data.labels || []).map(String);
-  const series = ch.data.datasets.map(d => {
+  const series = ch.data.datasets.map((d, di) => {
     const line = (d.type || base) === 'line';
-    return {name: d.label, type: line ? 'line' : 'bar', secondary: d.yAxisID === 'y1', dash: !!(d.borderDash && d.borderDash.length),
+    const s = {name: d.label, type: line ? 'line' : 'bar', secondary: d.yAxisID === 'y1', dash: !!(d.borderDash && d.borderDash.length),
       values: d.data.map(v => (v == null || v === '' || isNaN(+v) ? null : +v)),
       color: pptColor(line ? (d.borderColor || d.backgroundColor) : d.backgroundColor, labels.length)};
+    if (!line) {
+      const est = pptEstimatePoints(ch, d, di, labels.length);
+      if (est) { s.est = est.est; if (est.color) s.color = est.color; }
+    }
+    return s;
   }).filter(s => s.values.some(v => v != null));
   return {kind: 'cat', dir: 'col', labels, series, stacked: !!(sc.y && sc.y.stacked),
     yTitle: title('y'), y1Title: title('y1'), y1Min: sc.y1 && sc.y1.min, y1Max: sc.y1 && sc.y1.max};
@@ -8701,12 +8730,22 @@ function pptAddChart(pptx, slide, spec, box) {
   }
 
   const toData = list => list.map(s => ({name: s.name, labels: spec.labels, values: s.values}));
-  const bars = spec.series.filter(s => s.type === 'bar');
+  // Estimatpunkter (s.est) skilles ut i en egen, blekere serie, siden
+  // PowerPoint ikke kan skravere enkeltstolper. Stablet er det trygt; side om
+  // side med flere serier ville det forskjøvet stolpene, så der hoppes det over.
+  const rawBars = spec.series.filter(s => s.type === 'bar');
+  const bars = [];
+  rawBars.forEach(s => {
+    if (!s.est || (!spec.stacked && rawBars.length > 1)) { bars.push(s); return; }
+    const mask = keep => s.values.map((v, i) => (s.est[i] === keep ? v : null));
+    bars.push({...s, values: mask(false)});
+    bars.push({...s, name: s.name + ' (estimate)', values: mask(true), color: pptPale(s.color)});
+  });
   const lines1 = spec.series.filter(s => s.type === 'line' && !s.secondary);
   const lines2 = spec.series.filter(s => s.type === 'line' && s.secondary);
   const barOpts = {barDir: spec.dir || 'col', barGrouping: spec.stacked ? 'stacked' : 'clustered',
     barGapWidthPct: spec.labels.length > 30 ? 30 : 60, chartColors: bars.map(s => s.color),
-    ...(spec.stacked ? {barOverlapPct: 100} : {})};
+    ...(spec.stacked || (rawBars.length === 1 && bars.length > 1) ? {barOverlapPct: 100} : {})};
   const lineOpts = list => ({chartColors: list.map(s => s.color), lineSize: 2, lineDataSymbol: list.length && spec.labels.length <= 30 ? 'circle' : 'none',
     lineDataSymbolSize: 4, ...(list.some(s => s.dash) && list.every(s => s.dash) ? {lineDash: 'dash'} : {})});
 
