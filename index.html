@@ -7438,7 +7438,7 @@ function drawHubProfile() {
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
   // Fast oppsett i rader (pf-row2): to kort side om side med lik høyde, og
   // kortene i full bredde mellom radene.
-  const companies = (() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Companies</h3>${o}</div>` : ''; })();
+  const companies = (() => { const o = hubOwnership(ids, operator); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })();
   const volumes = (() => { const v = hubVolumes(ids); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })();
   const row2 = (a, b) => a && b ? `<div class="pf-row2">${a}${b}</div>` : (a || b).replace('class="pf-card', 'class="pf-card pf-wide');
 
