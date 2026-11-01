@@ -2334,7 +2334,7 @@ function pageSources() {
     if (m !== 'discoveries' && m !== 'companies') add('havtil');
     add('ne');
   }
-  if (m === 'companies' && v === 'news') add('havtil');
+  if (m === 'companies' && v === 'news') add('havtil', 'ais');
   if (m === 'exploration') {
     if (['map', 'fleet'].includes(v)) add('ne');
     if (['rigs', 'fleet', 'news'].includes(v)) add('ais');
@@ -2621,7 +2621,7 @@ async function refreshCompanies() {
     return;
   }
   if (companySubView === 'news') {
-    await Promise.all([loadExploration(), loadChanges(), loadCompanyNews()]);
+    await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis()]);
     drawChart();
     return;
   }
@@ -6237,12 +6237,36 @@ function companyNewsItems(name) {
       if (role) why.push(`${role} in ${w}`);
     });
     const fl = (it.fields || []).filter(id => fields.has(id)).map(fieldNameOf);
-    if (fl.length) why.push(`interest in ${fl.join(', ')}`);
+    if (fl.length) why.push(`interest in ${fl.map(tc).join(', ')}`);
     if ((it.cmp || []).some(c => concernKey(c) === key) && !why.length) why.push('mentioned');
     if (!why.length) return;
     out.push({d: it.d, src: 'sodir', cls: CN_CLASS[it.k] || 'sodir', label: CN_KIND[it.k] || 'Sodir',
       html: `<a href="${esc(it.u)}" target="_blank" rel="noopener">${esc(it.t)} ↗</a>
         ${it.s ? `<span class="nw-sum">${esc(it.s)}</span>` : ''}<span class="nw-why">Sodir · ${esc(why.join(' · '))}</span>`});
+  });
+
+  // Riggbevegelser: riggen har kommet til (eller forlatt) en brønn der konsernet
+  // er operatør eller partner, eller et felt det har andel i. Opphold på åpent
+  // hav eller i havn regnes bare med når riggen kom fra et slikt sted.
+  const fieldByName = Object.fromEntries(allFields.map(f => [String(f.name).toUpperCase(), f.id]));
+  const placeWhy = (k, p) => {
+    if (k === 'well') {
+      const role = concernWellRole(byWell[hvWellKey(p)], key);
+      return role ? `${role} in ${p}` : '';
+    }
+    if (k === 'field') {
+      const id = fieldByName[String(p || '').toUpperCase()];
+      return id != null && fields.has(id) ? `interest in ${tc(fieldNameOf(id))}` : '';
+    }
+    return '';
+  };
+  (changesData || []).forEach(e => {
+    if (e.t !== 'rig') return;
+    const to = placeWhy(e.k, e.p), from = e.pp && e.pp !== e.p ? placeWhy(e.pk, e.pp) : '';
+    if (!to && !from) return;
+    out.push({d: e.d, src: 'rigs', cls: 'rig', label: 'Rig',
+      click: `openRigProfile(${esc(JSON.stringify(e.r))}, false, ${+e.f || 0})`,
+      html: `${newsLine(e)}<span class="nw-why">${esc(to ? 'Arrived · ' + to : 'Left · ' + from)}</span>`});
   });
 
   (changesData || []).forEach(e => {
@@ -6287,7 +6311,7 @@ function drawCompanyNews() {
   const myFeeds = (companyFeeds || []).filter(f => concernKey(f.company) === key);
 
   setChartNone();
-  setChartTitle(name, 'News · Sodir, well events, company press releases and Havtil');
+  setChartTitle(name, 'News · Sodir, well events, rig moves, company press releases and Havtil');
   setInfo(`<strong>Company:</strong> ${esc(name)} (corporate group) &nbsp;|&nbsp; <strong>Sources:</strong> Sodir press releases,
     the daily well log, ${myFeeds.length} company feed${myFeeds.length === 1 ? '' : 's'}, Havtil`);
 
@@ -6306,12 +6330,13 @@ function drawCompanyNews() {
     <div class="pf-card pf-wide">
       <h3 class="cn-head"><span>Latest news</span>
         <button class="cn-gear" onclick="openFeedSettings()" title="Company news feeds">${GEAR_SVG}Feeds${myFeeds.length ? ` (${myFeeds.length})` : ''}</button></h3>
-      <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}</div>
+      <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}</div>
       ${rows || empty}
       ${list.length > cnShown ? `<button class="grp-btn ex-more" onclick="cnShown+=60;drawCompanyNews()">Show more (${list.length - cnShown} older)</button>` : ''}
       <div class="pf-map-note">Sodir press releases are drilling permits and drilling results for wells where the group is operator or
         partner (interests as recorded by Sodir for the well), and other Sodir news about fields the group has an interest in or that
-        names it. Well events come from comparing each daily data run with the previous one. Company press releases come from the RSS
+        names it. Well events come from comparing each daily data run with the previous one. Rig moves (AIS) are shown when a rig arrives
+        at or leaves a well where the group is operator or partner, or a field it has an interest in. Company press releases come from the RSS
         feeds added with the Feeds button; they are fetched daily.</div>
     </div>
     ${havtilCompanyCard(name)}
