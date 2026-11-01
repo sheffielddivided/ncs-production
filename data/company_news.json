@@ -35,6 +35,11 @@
    "company": "ConocoPhillips Skandinavia AS",
    "title": "\"site:www.conocophillips.no\" - Google Nyheter",
    "n": 42
+  },
+  "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no": {
+   "company": "TotalEnergies EP Norge AS",
+   "title": "\"site:https://nordic.totalenergies.com/nb\" - Google Nyheter",
+   "n": 100
   }
  },
  "items": [
@@ -107,6 +112,13 @@
    "u": "https://news.cision.com/okea/r/invitation-to-okea-s-third-quarter-conference-call--3-november-2026,c4414433",
    "d": "2026-10-23",
    "s": "(Trondheim, 23 October 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the third quarter of 2026 on Tuesday 3 November at 06:00 CET. A trading update summarising key figures for the quarter will be published on Tuesday 27 October at 06:00 CET. A presentation of the results and a …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Vilkår for smøremidler | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE1HZ2JGZ3MwRlg5QkVjZ05HT1hlbDdBcVZGNjRZeXJjR0IxNFpNUWsteF9fN0prWUc2M2NoSTh4UklTRnF3WDNFeC1aUzhjY09yZ0lGZFpGdFU4eEU?oc=5",
+   "d": "2026-10-22",
+   "s": "Vilkår for smøremidler | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -186,6 +198,27 @@
    "s": "Oppdatering om Norge og Teesside ConocoPhillips Norway"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan TotalEnergies hjelpe meg å optimalisere smøremidlene for hele bilparken? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMitAFBVV95cUxOU2JTRTR1U1Y5VC05R1BmU05ldkZnS0JTQjRnZTNXdzlWR2NJWWJlWW9vSmpyV0dCT1JuOFR4WC12aHlycmJ2NllPQVp0WmlXUXdZMHhmdnp6SzNwQjRwOUo0X011dmdGZ2xYRVFoVkx3eWhvVUdBS1FhN0Nuejdxbm14UlkyaVVQLTFLQU1OLUUzMzlSZzZ5TVgtdGFKZk0tNW9sQVJGSE5wcmc2U2didWVpR0M?oc=5",
+   "d": "2026-09-30",
+   "s": "Kan TotalEnergies hjelpe meg å optimalisere smøremidlene for hele bilparken? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvordan velger jeg riktig motorolje til lastebilen eller bussen min? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMisgFBVV95cUxNXzFLbXZMSTJzMkxidVpTNmtDQWEyN0FQZ3lCaGMyWmU5LUg0blZaczZCTlVmT0FaMnA2V0hmMnFPYWRhNFVMYVhablAxWkkydTNwZzIyalBoY2ZDUVFNd05sOF9ZMUJQRmpjTS11R1RSSnVwS1QtZl9KNTNlUG5ESUwtVk50aWF3aEhmS0lSVmJIZldkTEVyV3R5ZG9TWnFsOUhvX3ZYMnNBemhXUDV0cWl3?oc=5",
+   "d": "2026-09-30",
+   "s": "Hvordan velger jeg riktig motorolje til lastebilen eller bussen min? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvorfor er OEM-godkjenninger viktige? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxONWhlS3lUUVVGTms4VHQwTHVXT1Bob2hwWnYzTk9DejQzNTZmWXZpUjhSNk1La2NlTE1MMFE3elhjZGtZaHNLZkczUDZXdG9NYzBpOUx6aXVtWU9acThzV1N0S1Q3eERwMDJxUXhHNjQ2d05qVWpXWGlLcTU0VWwxdnRNZ0cwb3di?oc=5",
+   "d": "2026-09-30",
+   "s": "Hvorfor er OEM-godkjenninger viktige? TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
    "t": "Vår Energi ASA completes acquisition of Pandion Energy AS’ portfolio",
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-completes-acquisition-of-pandion-energy-as--portfolio,c4404437",
@@ -221,6 +254,13 @@
    "s": "Sandnes, Norway, 16 September 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) ASA will present at Pareto Securities' 33[rd] Annual Energy Conference in Oslo today, 16 September 2026. The presentation will be held by Nick Walker, Chief Executive Officer. The presentation is attached and available on …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Mer enn bare smøremidler: Oppdag hva TotalEnergies gjør i Norge - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxOWGdhMVJpeGdCTThUd0JEWU1rUFFUWndHX1lTNEE1TjJobkhyWUpnd0ZEb182YWlUbS0tQkhqMWpXSmRHVTFVVXVxUDllajFQNFVEZlBFeTJJamI3OHUyZ1l1bGI0YjZBVzloSmpzSWw5YjhnUFFKdXVZcnRXRndKZ0pCa3l1OUZMMV85SHFaWTNhdVpHdEJpd1VDaEFkbEhIeDEtbG9wUVNNNzg?oc=5",
+   "d": "2026-09-15",
+   "s": "Mer enn bare smøremidler: Oppdag hva TotalEnergies gjør i Norge TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
    "t": "Vår Energi ASA’s share saving plan allocates shares",
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-s-share-saving-plan-allocates-shares,c4396469",
@@ -254,6 +294,27 @@
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4392445",
    "d": "2026-09-07",
    "s": "Reference is made to Aker BP's press release from 15 July 2026, where the company announced its plan to buy up to 1,500,000 own shares in connection with the company's employee share saving plan. In the period from 31 August to 4 September 2026, the company purchased 7,121 own shares at an average …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan riktig motorolje hjelpe meg å redusere drivstoffkostnadene? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxNUFQwZ1hXVkE0UkZiRjI0Nm9YbU0wY3FUb0ttTEVxbV9kckdaNzJBZVByOG9hVUdCRnF4UVJYLUQ4bmplT09lYlVwUjVVUkJyX294UW1aMm5DcXJkUUhpVE9zdzFkYWM4dU5kYWF0WDhWMFlIc19QQ3Vrc2xkTktiWmMyZGhhU3lkX181dXRoLXJnaE1INEh4N2RKa3ZERjJTamlvSEl0Sy0?oc=5",
+   "d": "2026-09-06",
+   "s": "Kan riktig motorolje hjelpe meg å redusere drivstoffkostnadene? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvor ofte bør motoroljen skiftes i tunge kjøretøy? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMimgFBVV95cUxQMTU4UzNuOFN3bXpDOWtZdjhaNUNlMGhBdWJ1MHlxRDlKWnRUbDVzSXVnMk9GaEpWZHQ2b0NoaTEwcnUzTjJXN1BRdXNNYWVUSzIzeHBMdGdqOHVydExKcm80OHZVRkhpU3BCS1YwamoxMUhvNHNscDlpdGJUaWVWYWtoa2tWbkVvNHFoam5iTjluYmh1OUR5R0hn?oc=5",
+   "d": "2026-09-06",
+   "s": "Hvor ofte bør motoroljen skiftes i tunge kjøretøy? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Benytt TotalEnergies Lubmarine til marine og skipsfart | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE1SRk1wMmdyN1FWaHpsU2dvbFJIR3VRenJGRi1XUXBFd3BoLTZLTU53S0E5cnVHU0R5NVVHY2dabmtfQmNqVFZNWm9Bc3Y1T2dlOGJGclE1cEptTlowVEwwREMxTUlmZw?oc=5",
+   "d": "2026-09-06",
+   "s": "Benytt TotalEnergies Lubmarine til marine og skipsfart | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -543,6 +604,13 @@
    "s": "Sandnes, Norway, 25 June 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) has taken final investment decision (FID) on the Gjøa Subsea Projects in the North Sea. Together with its partners, the Company has today submitted the Plan for Development and Operations (PDO) for the Ofelia and Gjøa Nord …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smørefett til industri- og kjøretøybransjen - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5WU1FPRGk2bEdieVNFVHhjN3M3NDlIbEZVMEwzVGdkSFpPbFlCREN3TWxTLW10cVJUcWlzMUFkS0l3YkppMldaTVctRXZ6WllWaFo1c2t2RVY?oc=5",
+   "d": "2026-06-21",
+   "s": "Smørefett til industri- og kjøretøybransjen TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
    "t": "Vår Energi ASA high-grades the portfolio to strengthen long-term value creation",
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-high-grades-the-portfolio-to-strengthen-long-term-value-creation,c4365069",
@@ -555,6 +623,13 @@
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-welcomes-agreement-on-ringvei-vest-development-concept,c4365313",
    "d": "2026-06-18",
    "s": "Aker BP welcomes the announcement by Equinor, operator of Ringvei Vest, that the partners have agreed on the development concept for the project. Ringvei Vest is planned as a major subsea development tied back to the Troll B platform in the North Sea. The agreement marks an important milestone and …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "CERAN smørefett​ - TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE4yRUpmNGtsaVFIbW9DU0xVM1FkN3BZbS1FMWZIYmgtUVc5MnBkVFp3WDBGQUNySkMxT3RRY2hESnAtRldLUVZhaEZuV3JrTzBFbjNj?oc=5",
+   "d": "2026-06-15",
+   "s": "CERAN smørefett​ - TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -576,6 +651,13 @@
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-increases-ownership-interest-in-johan-sverdrup-following-redetermination,c4358738",
    "d": "2026-06-08",
    "s": "Aker BP ASA and its partners have completed the redetermination process for the Johan Sverdrup Unit. Following the redetermination, Aker BP’s ownership interest will be 31.7163 percent, compared with 31.5733 percent previously. The redetermination process was initiated in January 2025 and conducted …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler for kjøretøy | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE1fRXBTREEydnZ5STRXOW8yNnBWQ3lkVlg5MkRzNnVxR19JekxsS1E2UGhDYk1nTUtUbjJadjUyUHVEQXRfcUtkMzA0LXBtckx1MHNHV1QwTnI4WDA?oc=5",
+   "d": "2026-05-29",
+   "s": "Smøremidler for kjøretøy | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -634,11 +716,74 @@
    "s": "(Trondheim, 22 April 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the first quarter of 2026 on Wednesday 29 April at 06:00 (CEST). This trading update is provided to summarise production and sales volumes and related updates for the quarter. First quarter 2026 production and …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan man blande forskjellige hydraulikkoljer? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMikgFBVV95cUxNdlpqdjZMdUdwQldSYmZsREZBcV9uNzI4VEFtY0dyLUw4eFo0UDdFT1VpSWJoYWVNZGp2ZkZkMVpsYUxBS0FONGNYOVJSTTFZUjJLUGUtVkZHUzJ1blZFYWhxZXRpZmxHWXE0VkFXb1JqMjhUOXpWRjBKOWlyU1llbEdaVVhCTndURTZsMTcxbXJGUQ?oc=5",
+   "d": "2026-04-20",
+   "s": "Kan man blande forskjellige hydraulikkoljer? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er matvaregodkjent olje \"Food Grade\"? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxNM0I0ekJxQzRvWVpPUEpZb3R6R09ycUM0UUpTMDhIUXBMd3F5ZEVjbkwyRDNGcGJjV1pLUE5SRlFOam9RQVVTekxxcUpxZ01FRzVVMGJSN0NLRGhmQy1zS3NRYlFCLVZiMV9WTUhfeGVIM3NRQjlYWXVGTmJ6VWJaQ1c4dmd4azg5anhz?oc=5",
+   "d": "2026-04-20",
+   "s": "Hva er matvaregodkjent olje \"Food Grade\"? TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA – Realising value from the Mistral discovery",
    "u": "https://news.cision.com/okea/r/okea-asa---realising-value-from-the-mistral-discovery,c4336705",
    "d": "2026-04-20",
    "s": "(Trondheim, 20 April 2026) OKEA ASA (OSE: OKEA or “the company”) has entered into a sale and purchase agreement with Japex Norge AS for a 20% WI in PL1119 (Mistral) for a fixed consideration of USD 30 million. Effective date for the transaction is 1 January 2026. OKEA is selling its 20% WI in …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er en PAG-olje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTE83U3JUcUVQZ3duWU5RdEFQendHZWpoNy10S1QzcEgzVWlsVjlrUnRqVnY3NG9UQVYydlRmTlRUN0YxYVRDNmVwV2t3eHB0STRlbktHajJwT0w4a0hLMXdIRmlKeHJsRGJiN2M0SGN1Y0w?oc=5",
+   "d": "2026-04-18",
+   "s": "Hva er en PAG-olje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er Flash Point (flammepunkt) på et datablad? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxQWEZXa1Jqd051Q2Y4MnFfM1dfMUVIYzdqUWxmTWxuai1KUlFoenVHUU1GUy1iSEFuUHNXS3Q5T1pxelVGSUZVMWRMcURfd2dPa3pIRG9XcEpxYkIzaWRLekM0TmxOTGFxSWNMUUpkOGtRdE1WdTQ5LUxvR3NxR1F0VXJHVFZ6QU9HZktoUlpxUndEZmJkczItZA?oc=5",
+   "d": "2026-04-17",
+   "s": "Hva er Flash Point (flammepunkt) på et datablad? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvorfor forsvinner noe av motoroljen over tid? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxOTXUzbVFfVWU4d202WW1sX1RkbVBKZEZPaVd2M1c1cFJFdnNXVFcyTV9TVWJaMWtOOFBKMWRQWXZianZ3UDVnVWQxRmF1U3hWNzBja0pPZGlWMm5NZURVMi1kX3pvSU9QS2NIYWdCbXpTY2cxZHBSbUI0dXQxUjhuZldIQ3pqSVlpR3F0UlMtWVJ5cWJqanpodQ?oc=5",
+   "d": "2026-04-17",
+   "s": "Hvorfor forsvinner noe av motoroljen over tid? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan jeg bruke DOT 5.1 bremsevæske i stedet for DOT 4? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNem1tVDRaTFdSam5DZEU5aG1OOGZOZ1BwX09VQnNrZEJMZzJ2WS1Ya20teXdrRkpEc2YzLWpjazIyT0pLZHRkQ1VXVDJ4eXFvSHIyM1pJUmhlQWZqa2hlVTd0anVZYU1ONjQyVDVwSTFFX1dyMnp5bFVGT2R0ZXc1V3FsVExKbWtUY2hxVFRFNV9hRzFfRzh1SA?oc=5",
+   "d": "2026-04-17",
+   "s": "Kan jeg bruke DOT 5.1 bremsevæske i stedet for DOT 4? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er Pour Point (stivnepunkt) på et datablad? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQUG1BZUNJUTlDNVdlSjJXeGJYQmkzNGpYOTloT1B0UHF5MDZnanBUS3lqUWVTWks2elQzeW1mNzJ4dFl2NGlhTWx4OE9rVWlBNFhfaVd6Rk5uT1FSUEh4TG9yNnFuMFNFRXBwY0ZwWnlCX1VlMjZIcDhwSmVfOTJrckw2MnlOS2J2WDBTd1EtZ3FlRjhBZFk0?oc=5",
+   "d": "2026-04-17",
+   "s": "Hva er Pour Point (stivnepunkt) på et datablad? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan jeg bruke DOT 5 bremsevæske i stedet for DOT 4? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQUDE3VTZwdTMtSFBfNGxFQ3RVYnJud1J6YzllS3RHcDVSVGFjZHpCTUtSd2I2X1JhS2FGYlZzMXpSb2tDU2ZnbnQ5YnRoUndMbmhwTEVDeXprNU1JT3FtNjdyVG5TUkFYQ1pNSWJqZHAzbWNVZXFjb3FLVGVZTU1HcHFTdDFnOFhUbjBRdlFOczZwdGVrajUw?oc=5",
+   "d": "2026-04-17",
+   "s": "Kan jeg bruke DOT 5 bremsevæske i stedet for DOT 4? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan jeg blande mineralsk og syntetisk motorolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQRjNJLXBBaEl0Y29wWHNvcGoyRmI1U2RQQW12WG5aSnlIaHNFaFc1UDhIaUNDVERnSmFjWTlDUVpIamFyb0YwcVhoZm8yZWlsd1k1bF9BNHFHOXc5WElnT0xiY21NWU5UTlMzWWNNX25LeTNFVnRKSnEtM0ZhYl9RY1pjdTJDOFZ1aVNwR3dJLWhJdmpsNXZZ?oc=5",
+   "d": "2026-04-17",
+   "s": "Kan jeg blande mineralsk og syntetisk motorolje? TotalEnergies Nordic"
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -683,11 +828,53 @@
    "s": "(Trondheim, 25 March 2026) - Reference is made to stock exchange notice dated 25 August 2025 with regards to the Talisker West discovery. Through further subsurface maturation of the Talisker Statfjord formation, recoverable resource estimates (P50) have increased from 19 to 28 million barrels of …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kia og TotalEnergies feirer 15 år med globalt samarbeid med en fjerde kontraktsfornyelse - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxOYTl4aFd6S3hYX1VPclFNMC1HdWZ2UDYwVDc5czJ0ZTRVeGxMTlE2ei0tUktvdDlRSU9HdXAyQTB5T3JUYnh0ZHpyeW9UVDNHNmV5WTlMQThwel84eXd1S2MyaF9nYTZscjNCTHF3cVZ3Qkt5dXdRQkxXV3JUcDV5NmJpWG5lcXVnRkg3RjdzVTM3VXZYdlB1aDQ4M1dDS3NRWXZSazBNcUg4dTlKMlR0QzBoT1A1dkpjV2FrbTNSTkJYQQ?oc=5",
+   "d": "2026-03-23",
+   "s": "Kia og TotalEnergies feirer 15 år med globalt samarbeid med en fjerde kontraktsfornyelse TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Sirkulasjonsolje og turbinolje | Se løsninger fra TotalEnergies Norge - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMikgFBVV95cUxOV3RVTzJGNzFTQ0NLaC15Y1BqaVJqaTJLaUlRUVFDeUtjWEQtUlZOVXRmZGluMDJmODRtN2duZU43YWtoY3AtYlBfVHpBY2p2aFVnU2RyRDJxcjljaVVJRzRKYXpXSjlvTmNBVVNTMUctVVhXSm53QzFTYTVKcUZ0dG9MT3R5dlhNMlA5QkFNX0VmQQ?oc=5",
+   "d": "2026-03-19",
+   "s": "Sirkulasjonsolje og turbinolje | Se løsninger fra TotalEnergies Norge TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Transformatoroljer - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxNVFlMY3A3WkxvMlRKWWlEN3E0NzZvRVVoTnRia1pKQS0zTEQ1M2tQOHNKZDFsam1XeUhSc1RhN24tYW90bU9hU0Z2N2Z1OFZRdzVRaW9TY3FNM2JKenpkR0NxQ2xBamtBSkQ0S3IwMHBGbGlIVXAtUUt2X05EdUVqRWtyYjd6Zw?oc=5",
+   "d": "2026-03-19",
+   "s": "Transformatoroljer TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kjølesmøremiddel for metallbearbeiding - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxOblFzbWItNzJkOGRicV91VFRwWG4weDktZ0h0ZWRFT3pjUmtaTElMeTFldmtvZ2daV1plRWNmT0ZyRzFzYlkxVk1EMnJRY2RURzBhZGg1Y1lJUG9VNVBDZFo4VzRreGY0NHJIa0JFaW9qNFlESEV5alV0WE9uZW54U0lLTDM?oc=5",
+   "d": "2026-03-19",
+   "s": "Kjølesmøremiddel for metallbearbeiding TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinors årsrapport for 2025 - Equinor",
    "u": "https://news.google.com/rss/articles/CBMifEFVX3lxTE54R3RoQVV1aGkzeGJmblJ3ZXhCQ2tSVER6VWJVNi05QmJnb3JxNUdyamI1ZzFWVmdXdXRzbmVpUy1yRktkbFJkZEFieUthYy1ueG41VGs4ZzQya2xvd2RmZmpha1dvSTBSdlhhaXdyck56R3hUSXdJWjlGdmc?oc=5",
    "d": "2026-03-19",
    "s": "Equinors årsrapport for 2025 Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Girolje - stort utvalg av høyeste kvalitet - TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMieEFVX3lxTE9iVXlwNWlPUnZUQ2NkSEE0OHVSNU90UGVVU3BJWWZnc2RCcmpKTTY0MVg1Zkgyd1A5X0w1WDZVLWtFbk02eFo5aGZmcFdJT3VYUVowd2tTYVkyOTExSW5XRkV5MGpvRnEzTFN3UWtxa3BDcXpDWmRIcg?oc=5",
+   "d": "2026-03-19",
+   "s": "Girolje - stort utvalg av høyeste kvalitet - TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kjølevæske - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMia0FVX3lxTE5hU0lZT19zNlF0cDNpM1o4WmVxalpBampEZE1PcWdZaURVTHJMaFFXWEI1UlhYSU94WkZEX0tnempvckliNzV4MUZxSExPQ3Rnek1DZ25vWHE1YXNHRFBQT3RfYndwR0x3RzZj?oc=5",
+   "d": "2026-03-19",
+   "s": "Kjølevæske TotalEnergies Nordic"
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -725,11 +912,193 @@
    "s": "(Trondheim, 3 February 2026) - In the fourth quarter of 2025, OKEA ASA (OSE: OKEA) delivered operating income of USD 107 (224) million and EBITDA of USD 50 (117) million. The net loss of USD 18 (37) million was largely a result of a significant underlift and impairments. The net cash position was …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Er transmisjonsolje og girkasseolje det samme? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPSVBwRE5ESXJlNC1NOTNhQXh5cEcwYmNrZ0wyVzcyaEw2ZV84ZVVUM3ItVW5TTHVSOWtUb3pWT21jQ2dJX3dtUnhXRVlyNEhaUWpwLWdfNkh5SThHQXlMS3gyX1FadEZzWlRaMjJhLUszWHFfd3BGLWZjLXA0NmtlNXpOclpUcDlvTDNKYm1VZWNxMVJW?oc=5",
+   "d": "2026-02-01",
+   "s": "Er transmisjonsolje og girkasseolje det samme? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan jeg spare motorolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMid0FVX3lxTE5IRVBIVVdNWno1YU5Ya3FVRi1NTDIzVHBudTRxOE9Qb19SaTF4b25CSktvWlNIREdSQUVRTW5RMExmMTRiN1NieUdkNkNGbHlxWXQ0dzN6a3BKZE1obnFwXzRfaS1sV0VvTVctdVBVZlRLZ0FxOUNN?oc=5",
+   "d": "2026-02-01",
+   "s": "Kan jeg spare motorolje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvilken transmisjonsolje skal jeg bruke? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMijAFBVV95cUxPbWRIYkVHUEtfX3RRQzJJT0dnc3lUbmNWMTJjMEZZZnNjQ1ltS2gzV3lPdFBQYUNkalhJWnJNZXhBbm9SQjlBT2QxWTRKMUFSMXU1dHZqYldheldDaGdNWlVGM0NTRW5CZUI1ZDVSWThhWWtsVFp2Tlh6Q21SOTNESUJOWWdZYlFPbEhxMA?oc=5",
+   "d": "2026-01-31",
+   "s": "Hvilken transmisjonsolje skal jeg bruke? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Er det nødvendig å skifte oljefilter når man skifter olje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQSkFpTmlEMHRRdVlkT0hQVUM5b0ljaktrdl83enNxOXR4NWpWODlIblFIdUlRZm1BR3JUSFNrckNWaTlPcC1ieENiLVZVV000RXVzd1JhRnJTUnRGQ2pyXzZTSmVGbktjUWFhV2lTaks4ZUlhVEVxbGZPc2tTNjJJVU1MRFNna2pIMTlQZG1EdmMtQXBldnBUMllWbk03UTJPbXc?oc=5",
+   "d": "2026-01-30",
+   "s": "Er det nødvendig å skifte oljefilter når man skifter olje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan jeg bruke samme olje i girkassen som i motoren? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOSnEyTGlkb2hveWl2VVQ5aUNuOG80SUljaEZjUHJ5TmNuQ1B6Wm05ZmRFXzZnREdqOEdoal8taldCc3c5NHlhbTE3VnZscmcxZ0pZdnJlMWo4cmJLOEhoTmttTGxXXzQ0d1FEX2VFR3pWWXRnbWxuMF9DS3hrVHd2VU5iMW1LamNQY3JoeXZDOHV0d19EZWYxS2xJaw?oc=5",
+   "d": "2026-01-30",
+   "s": "Kan jeg bruke samme olje i girkassen som i motoren? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvor ofte bør jeg skifte motorolje i bilen min? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQYU4tXzhySUNmZGtkMEY3MVJmempiMFpONWtpODJDRXRHbml5Y0JZWTd5VzFOd1FMX1U0QzlPcV9JOHhpR25ReUdRcnhidjgxUmNrbW9lTkUwUEJuX25CQmlPTFVaRW9LSE1PT3ZDR25rSnBLeTJYYk1Qbmp1U3g0R3hNRDFMY1FZX3FDTDFrOGJxbVcxOGc?oc=5",
+   "d": "2026-01-30",
+   "s": "Hvor ofte bør jeg skifte motorolje i bilen min? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kan to forskjellige typer motorolje blandes? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQVHBEUzlyOVZiOXpiS2dRUXNnUWkzaGpBSi1ZendqSlp4bFFhNmlWTWRzQmYxaFhwb0xLamhnUnE5U1ktcm9qZUhpLU0wYURpaEZrYkRRck15TGgwc2JKOVE1eHVZWnkwdW5vOFVpU09Kb0JKaUlnX2N3Z2d3bDFXbWlsQ2JMdy1oRTFDbkpn?oc=5",
+   "d": "2026-01-30",
+   "s": "Kan to forskjellige typer motorolje blandes? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er viskositeten til girkasseolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxQZ3prRHhMbDhFdU5LcFVkeEl3N0VwUDBqcHFpVXlIUVQwSG9sZWdJNGFzVXNMS1liUEVRR3BHOUZxQTNmdi1Ib0NNbXQ0MlNQVUhKR1lIbkNhb0M5OGUybzNaWENjYXRHcTlKMlRjLUhKYnkzWm5xZzl6bWRiaDVHeC1UUG9jSTZH?oc=5",
+   "d": "2026-01-30",
+   "s": "Hva er viskositeten til girkasseolje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvorfor velge syntetisk olje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMifkFVX3lxTFBGN3cwR3h6OHR3OThsSkNuVFVIQWd3cm5lOGNZSTBXcEE2cFQ1cjdCMU5MSHEzQWhqUjVldXpkU0twdXJpcmVVazRNVUdFYmxxd2RvUC1yQkdGV2djZGhmeXk1RGt2QWVpbUtkNUFjMkQxTmdPbmJ6UHdTenppUQ?oc=5",
+   "d": "2026-01-30",
+   "s": "Hvorfor velge syntetisk olje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvordan sjekker du motoroljen? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMif0FVX3lxTE1xVlpWcDZBeVVReFlRa1JiS1dlOFh3LWRvZ2FGdUlkNlk3b1hoOVJFWWdlc1lnS3M2YnFCaU93NmVoRU8tUmNtX3A2VmFldl9rQy1oUUhHV3lpYTlMR01DZE5PSVVMcTZCeXdhTUljamJTRTdKNG9xSnJ3QU5tam8?oc=5",
+   "d": "2026-01-30",
+   "s": "Hvordan sjekker du motoroljen? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er biohydraulikkolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMieEFVX3lxTE9VU3pnVGFtRUZLSkpKRTNKNDhqa3Zoa0NwcjFBSzhEWDhOQW0yY1F6WVczMUJfcE9CR09TSXVNck4zeXhTMGZkWW9kQU5YLXowTnZTOVNBNU1uWVJUNnRFOW9VNmRLWER4amdGdklQU0V1QXdOSEFYSA?oc=5",
+   "d": "2026-01-30",
+   "s": "Hva er biohydraulikkolje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er transmisjonsolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMid0FVX3lxTFBCejdoWmR3Y3U4LW1NS3hZZGppTFhGRXI5X1V1RXRHNzE4LTM5aHNQRTNVRWNfRHdWdE9yUGFQLWVKYWlDOFJ3VXZ2UE9tR2pCS2hIR2ZrSzhPbkxMSkR4N04tZWczZ014a1gwWllQLU5RLTQtSHRB?oc=5",
+   "d": "2026-01-30",
+   "s": "Hva er transmisjonsolje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er bakakselolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE1BR1lDNU05R254NFRSQjlCekJPQUcxY1VReTh3ZnJEcUFDRENzYXpWQXhqV25SYmlWUEUwcmhqN3FjX3NYaU03RkMwS2RLbXVEZlBlVDBHZTNvZWZkRmc4VnhXMm5xOGxqTklsc1pOX3JmUQ?oc=5",
+   "d": "2026-01-30",
+   "s": "Hva er bakakselolje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er hvit olje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMibkFVX3lxTE1qSWMwbms1S2RkUGREeG16ZEgtc2owcVdwYVg3RXJYTmg1SHpvcUNUWVNBUWRscGFER1JwTXo1a3ZPdTJKUm9mVDkwcDRrQkxoNlU0U3A3aHh3UlkwLXQ1bHpKQ2t1cW9DLTlsMzN3?oc=5",
+   "d": "2026-01-30",
+   "s": "Hva er hvit olje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva er turbinolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTE5aRlh3dHNBWmlKbkhnbmVqM2NoLVpIUVB4TXA3RHZGTS1ZY1J2VENKTkdma1FDR2VaVkNOaHI3Y0YyUG1XTGFNOXlYX2tzYzRkMVI3WW9XLVdiVXlOMkZFTGxlc1hycExUT3RQR25BNA?oc=5",
+   "d": "2026-01-30",
+   "s": "Hva er turbinolje? TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA fourth quarter 2025 trading update",
    "u": "https://news.cision.com/okea/r/okea-fourth-quarter-2025-trading-update,c4297829",
    "d": "2026-01-27",
    "s": "(Trondheim, 27 January 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the fourth quarter of 2025 on Tuesday 3 February at 06:00 (CET). This trading update is provided to summarise production and sales volumes and related updates for the quarter. Fourth quarter 2025 production and …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Rubia EV3R: Laget for tung trafikk, gjenfødt fra regenerert olje - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQUDhkc3FybHc1QWlXVkZkdVI5dk8zMFQ0WVRMZlpjV1BsRFRQOUZxU1JpR3I0SENISVpxcGZKajZIYnVWdUlUZDdDMTJRcWc5ZGVKZjhrUVVFRWtDRTkzN2J2RGc4ZGh4c2Q2b19OSFQ1by1VT3otZ1N6ZnJVZ0pvUDl3dVkxUFRnV0tNRVR1VHpQNk0wZ3pySFRDMk9mQkNVeEZoOXpn?oc=5",
+   "d": "2026-01-23",
+   "s": "Rubia EV3R: Laget for tung trafikk, gjenfødt fra regenerert olje TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Næringsmiddelgodkjente smøremidler - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMioAFBVV95cUxOd2hJSUg0VVc1R0kzdzdsbXB2LVlhX3FnU3Z2amhwRE1oNF9laG55RldJVTFuYUlqMktqMWx5M2xFdXN5Vy1QaDB1bUhfX0pnSDNRYTg2aXlCejZZckVyS2Q0eGxlVkFjN0V2N1NwaHdnbWdELTR0MUUyMUYyUkp0SnFSQnY5aGtFRU9nSDhHb0F1dlVRdFlodFVNS0Zxa19D?oc=5",
+   "d": "2026-01-23",
+   "s": "Næringsmiddelgodkjente smøremidler TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Motoroljer for lastbiler og busser - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPTl96LXBUb2NzT1NRWmdkbjVnTWZZQnM3Nk52UXozdWd6NjlhaEZIUlVWT2lXdVpBNi10OFMyUDNNUHkwb0U3cE9ZbjFiTDQxOUVVYkNxZGJ2cklwcXVlVUdSTG5DVEo4WHNNUWJXc1dkUTFQUGg3cHc3NzQyRDRyOXNKMTY3cXhuQS1rQ3hIcXNtQ2p4T0Rv?oc=5",
+   "d": "2026-01-23",
+   "s": "Motoroljer for lastbiler og busser TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Quartz motorolie til personbiler og erhvervskøretøjer - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxQRmF4NUFwR2p4SnNaeC05S196Q2llaFhHTWF5Z2t0WnJ1eF9TaW05QVlxOGFGVi1yTi0wYXNfa2xTeFBTdk00WUNpaktKdVN6MmVuWUZkemlpNGZXTzBpQ0RQQmc1WEs5Nmxjb0MtZ01CYmYzOWw0ZjVXZHRMMEtCc245bGFHMndmYWJ6YW83aw?oc=5",
+   "d": "2026-01-23",
+   "s": "Quartz motorolie til personbiler og erhvervskøretøjer TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Oljer til gassmotorer - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxPNnludVhFVk9yX3BETEdoM3Y1ZWxtV05Ic0VZUHY2VnB3blVGamoydG9qdmJad3R1UjFIOWVrRk9QU3NFRmFTdno2dERublNqdFdKOEpJOUJnejRXQ1hlTm5WazZQWndva1RjWTdEOGUycnFVUXloeDZoYnRwYmM5YnZWNE85QmR5aUE?oc=5",
+   "d": "2026-01-23",
+   "s": "Oljer til gassmotorer TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Varmeoverføringsolje - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxOME5VeW5xNldXLTRHUHQwLTJjMFh5LXY3TXFObkJlYlE0TmNlc1lmQmtYWWtlN3g1QUxNMnhfemhUY3RiVTV2YWpQdWVwSnNiTVhXcWxPbzY5UHVNUjBKcFlHbHpHbmR1WkxURTRaT2VNaW1FY2JSemhJUnpCVXZyM2Q2VElISk5N?oc=5",
+   "d": "2026-01-23",
+   "s": "Varmeoverføringsolje TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kompressorolje til alle typer kompressorer - TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxNZ2hIeTI5ZkkxcGNKS3A2dVMtcFFqOTgwNFlOajV4WVN1UnJaZVE5LVFtbGZIOGxVbmFaWF9STkMzdE1kcDZRb0ZteE5GR3A0Vmh1aGlQUlZQUTg0LU1xcTEtWFpzUS1RdTU5Y3Z3TTM2RG10dHREeUJBUjk2Uk9jbXFn?oc=5",
+   "d": "2026-01-23",
+   "s": "Kompressorolje til alle typer kompressorer - TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hydraulikolie - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMigAFBVV95cUxPMFlaZUhsNEkwcTc3ZGppSFJmZVdubEQ2SlZ1MW80SXQtWkt0SC14cjlxVHR3cVVHT25GblhIcjNNMmtVR2dSRUMzcF9KM24xMXNpT1V0ems5anlMMzZjVGNlamlReFNmVXlVY1R6T1JmQXZfbkF6cHlCMTFXVTFPUg?oc=5",
+   "d": "2026-01-23",
+   "s": "Hydraulikolie TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Quartz Box - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMifEFVX3lxTE9COGQ3TUtuMkJJZkpHdnZHRk9YcjR2Y2Rlc3o0dE9Md1hlLWFLNnUxM2czNm1WTzgzMUlmN2ZybGFJSnFwSjN2SVhoSmpvVm1jV3FvX3dlV1JDdi1LN3lBb3RWNWF3NHBZUTdpcnVnbExoLWZZLTF0MWdJMTc?oc=5",
+   "d": "2026-01-23",
+   "s": "Quartz Box TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hjelp og støtte - Indu - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE9rLVZDM015VDBNS0Z4NzVfczVNZHBCWVF5dXVpeEdDSXFoZGt6Z0ttQzlkdnJMbHlNT3dNUi1SSXJPY2dITHdtVDlKOGJLRnBJMWx2MXRjWEVtdw?oc=5",
+   "d": "2026-01-14",
+   "s": "Hjelp og støtte - Indu TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hjelp og støtte - Auto - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE93RTdPM0tFSFZRdUhTUi0yMWU3NTlCUF9RRVlOcTVKS2w0RFFkNU40UU1uVDhRa2xCWmp3N05QUHVCalBTTzdWYjJKZkdyZ3RPc2RFQUJYVURoZw?oc=5",
+   "d": "2026-01-14",
+   "s": "Hjelp og støtte - Auto TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -760,6 +1129,20 @@
    "s": "Equinor gjør nye funn i Nordsjøen Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Quartz EV3R: Resirkulert olje med mindre karbonavtrykk - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMinwFBVV95cUxPSk5YQjhwQjJVT0ZQeWh0ZDRHd2hqdGY5bndmN0lrVFpoQkl0c1BSZ3NSRWZ5SlhMNG9zaXpNN0NndDZNeUp3T0pCekw5MF8wNEtKR004ZVJLdmtkN1cwbmYwY0xkM3pPZ05kZGVraVBBNlVaUHdlNW0xZ3ZXRFh1dTFEeEt3cEMzQkhXQ1BkZVhnOVFpVGtIZFpoQUg0SjA?oc=5",
+   "d": "2025-11-25",
+   "s": "Quartz EV3R: Resirkulert olje med mindre karbonavtrykk TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Takk for at du tok kontakt. - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE1iWGdYMGtzNERUSGE5OEJKRkFPNHBVSDF1Y1hWOGo4ZDVCLTBHR290cVpEX0pZTXVmb1BSeF8xWTQ0VWZJVDhfaU9yekd3Ty01N2k3cm1fVlZYQ0JReEFCdm9LMG12QQ?oc=5",
+   "d": "2025-10-01",
+   "s": "Takk for at du tok kontakt. TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Vitensentrene & Equinor - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE9oNVZzbUJfbmRrX25tWE5YOHNOai0wdzdfbkptWEJnODBVVHlkU2hsYkI5TWtrRTVIc0FGQWZGcFNVT1NMYl9QTUhkdlM3cW82SWVMMXdZdi1wejRjVzNnRXFlbw?oc=5",
@@ -781,11 +1164,39 @@
    "s": "I første halvår leverte Petoro en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 139 milliarder kroner. Kontantstrømmen overføres i sin helhet til staten. To nye felt i produksjon bidrar med å styrke energiforsyningen til Europa."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "TotalEnergies blir offisiell partner for Tour de France - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMikAFBVV95cUxNaHdhMDZNalA2U1dOdF9EYXJjNlhqWnMzTmxTVFN3eHMwNkR6SHBpd19ZMHpJNV9DczFzeUx3SmozQVZ6VzlnQVZScFBlMUN5d0pSaU1IRnpQZmVmLXNvUEw0RFNoT09CNHZvRzNqM1k4djFaejhBWWdEM09ZUVJKb3p0eFZId1Z3SkpteElDVEg?oc=5",
+   "d": "2025-07-01",
+   "s": "TotalEnergies blir offisiell partner for Tour de France TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Oljefunn i Johan Castberg-området i Barentshavet - Equinor",
    "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE1UemhxNXF3VFZ6ckY2R2htMkxDd2VfU0pnZG1uVUVvRXRXcDRPbk4yUW5TdmtuTHVFNW5odXNVaWwweGdBSlJVU0JpVUNROXdjQzh5dEZNR0tHaU9YVlg5Q0FoOTFTWVhaTERPdWxVa1BfUkRwZHc?oc=5",
    "d": "2025-06-30",
    "s": "Oljefunn i Johan Castberg-området i Barentshavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Åpenhetsloven – Transparency Act - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTE5FZWR3Mkl0amo2VlFua2diNENMd054X2FKMEM4N1NSX2ZyUktuWHFCdU5Ya1BjSU96R2lhTzNTWktWNWxYanRNSlBzd0pnNDloMWhlR2xyZTRhTE5GRGZlTnhuR2pPdkRsNDcxMlFtLWFwZzJj?oc=5",
+   "d": "2025-06-11",
+   "s": "Åpenhetsloven – Transparency Act TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Motorolje til anleggsmaskiner - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMikAFBVV95cUxONVhXUHhlZmJSTnhaTk9WT3lDNGttSnFtLUlwYzh6a1lkYVB4bHdZcnFCbDl2cEZEcGZVQ0N4cG1udTdPeXJpN2x0SHdaQjdPZ2h1amlKS0NuTmRRMVRITWxXcWxZSmM4N2RvZ2hHMmlTTnZBWUlBanZncmxhVmlMQ1MzYVNnTVo0b2RuaUhpVGY?oc=5",
+   "d": "2025-04-10",
+   "s": "Motorolje til anleggsmaskiner TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bitumen - CE dokumentasjon - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMid0FVX3lxTFBwRVI2MHZVUHVFQWxNaGFkQjRHOTdTQVdfTXFqRTlqSlY5MzdSTV8xQ2R1Tm43eTF1T0doblJVNzRTNjM3T3lCWjRjSUItMnppUmdRWDJJOHFFVXFpX0ZBYUZBSmpZbW52Nmt0THRBWGZlSGdjYk04?oc=5",
+   "d": "2025-04-08",
+   "s": "Bitumen - CE dokumentasjon TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -851,11 +1262,39 @@
    "s": "Sponsing og samfunn ConocoPhillips Norway"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "MyLubPortal - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE56b3lrOC11eFloYXBlV2RxWkRiSG4waHhqNVRleF9mbUlFaG1lN3NXRHloWW13Q190UVViRG9OSVpZQkxhenZlem92TlNsUkg0WkUwWW8yQ0t1YVk?oc=5",
+   "d": "2025-01-10",
+   "s": "MyLubPortal TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Informasjon fra TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTE0td3J1MDFkTkJ5NXF1Zm5Gd2wwR19uS3RJQUxNMHVGa2cyXzVKVkIxRU1scDdTZm5NaFVzR3VPaUNQMWExdUd0MzFBNjVQT2FLY3diN2Vsd3NaLWtBZENFczNHZ1F6amZ2YUtMRFoyNWFBSk0?oc=5",
+   "d": "2024-12-23",
+   "s": "Informasjon fra TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Om oss - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE1abDJkM0l5eklFUExHSElxSzdwcmhlSklUVWxyOUo2VVFmY3BGaXBuRVhTUEg5N1EwYUVhUU9SMHpIMGdnb0daVDFCSm1PdWFVM1dYQg?oc=5",
+   "d": "2024-12-03",
+   "s": "Om oss TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "FIRST® LEGO® LEAGUE & Equinor - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiVkFVX3lxTFBsRXNiekxyanI4MGEtcG1wOXpWVlR3X3V2VDJHX3RvOWJCbzlocjFSVG9razJqTTdqX1p5NjZnVkJ6LVQ2QmN4OHdhdFBDN3pfUFh4SE93?oc=5",
    "d": "2024-11-21",
    "s": "FIRST® LEGO® LEAGUE & Equinor Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Brosjyrer til kjøretøysegmentet - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiakFVX3lxTE5wOVNDbFN3OFhNTFlER2tYZFFUaFA0X0VXOWMtQ01udVdKWW1yRmJFbWZUdEpYY215MkF6aE9sLTAxTXh0SUtFQzE3c3JrVGgySlBlWDNEanBVaFY0eGZxUmotVmJLQ2x0Ync?oc=5",
+   "d": "2024-11-14",
+   "s": "Brosjyrer til kjøretøysegmentet TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -1047,11 +1486,39 @@
    "s": "Tommeliten A-feltet leverer naturgass tidligere enn planlagt ConocoPhillips Norway"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremiddelkatalog - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiZEFVX3lxTE8ydnRkOVI1ZHpEel9FZWN1RGZTV2ZLejNzdVIzMDJXWTZFT0Rjc3BVR0xndkk1ZkVINjNicENwNWRLMkxmcmJESlVKMndVUmJhZXNEazUxYjBqZmstbzRCMllUdXM?oc=5",
+   "d": "2023-08-09",
+   "s": "Smøremiddelkatalog TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Snøhvit Future-prosjektet godkjent av myndighetene - Equinor",
    "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE5MOF9NSzhpeW1fQnNOOV8yQkJFcWk0OE9FLVdWWjJKMzVtblFJRlZIcnZnbi12YWZ0cVZmendacE80MV9fVzFDY3Fscld4M1lGQkVtMjhTd1FhajNmeUpzdHBabVAyU1NNeko4MElEamxYVWtJZ1E?oc=5",
    "d": "2023-08-08",
    "s": "Snøhvit Future-prosjektet godkjent av myndighetene Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Levering av bitumen - raskt og effektivt | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiekFVX3lxTE55NWMxeDRLelVQYmQ3bHpZVVUyMDMzYzlKZmlDSjBjcVlSTzFEWnBvVVZKNUNyU2t0SUxNREtaRmV4WUlpVmZBV1R4bnlYVHZfNEVub0FLX1Fya05EVzRCS0hMcUcxUjdKNEdBSl8xQkFmWUdheXYzUTNR?oc=5",
+   "d": "2023-08-04",
+   "s": "Levering av bitumen - raskt og effektivt | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bitumen for vei - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTFBvNUxVV3RjMC1QZElmc2pPWV9uME5GR0ptaGw2UkJJazZtMWtLVllvREd1UkpWOS1ObXRiTm5nZ3VIeEFZTGkyX25BbDZWcHVRelhhaEtXVlhyZ3Y4eFdmYUY0ZFR3QQ?oc=5",
+   "d": "2023-08-04",
+   "s": "Bitumen for vei TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bitumen | Unike løsninger på tvers av bransjer - Se mulighetene - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE9uZkJwOS1SMHpvV2MzY3FfS2lZcm13X1lndUpzcWhkTGFObWVlc2J1eElRWDhJc3RLWlVjcFhXWHJlcUtYLU5Fb2tIQWd4TE9ZRUZWRE1R?oc=5",
+   "d": "2023-08-04",
+   "s": "Bitumen | Unike løsninger på tvers av bransjer - Se mulighetene TotalEnergies Nordic"
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -1066,6 +1533,13 @@
    "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxNeGxTVE0wZEw1aWJENlk5N21QVmY4bi1HSEJySF8tQjhqa19oTEdCQko5YTlWMWNkQS1ZeDBxU2RKUGhvQXF5d0hBU0EzMms2V291Rnh1Z0t6SFQ1SjZBYnFMd0x0QTMwRUVBaWlfTEZkWTdMS0k0ZjA3RG81V1dvelUweG9PMFF1ZlE?oc=5",
    "d": "2023-05-22",
    "s": "Equinor utsetter videre utvikling av Trollvind Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Fuel Fighter NTNU - inspirer til en bærekraftig fremtid. TotalEnergies stolt sponsor av Fuel Fighter NTNU - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxNa3BoMk0yYjMtQ1FMNUpabGNYZ2Q5WXBRQTdzNzN0OFkwSUx5d05qQjZVbjU1b3l5cXQwS1pqTmdlcDFwMlIyRjdUdVhqaVUxMks1NmtVclVZSkNVeWRJVnZkMk9aWFNUbG5EMFJCTUlJQkJlSUg1MkVsVXc4SkFwYlBEV0JtQUczaEV0TV9iV0VRVDlINkdXaTEydFdBakxVYTFaQWlmQXFuYjdVWjgwZC1BT21NSFlnZ2ZUczM4MTFNbFdHNEgzb0FlQ2YyVmMtYnc?oc=5",
+   "d": "2023-05-22",
+   "s": "Fuel Fighter NTNU - inspirer til en bærekraftig fremtid. TotalEnergies stolt sponsor av Fuel Fighter NTNU TotalEnergies Nordic"
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -1110,11 +1584,25 @@
    "s": "Equinor går ut av Barents Blue-prosjektet idet avtale utløper og ny partner annonseres Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "TotalEnergies reise mot fornybar energi - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMivgFBVV95cUxQQXFKRUF4VXptaWFvb1owazhUTmxqbllNMXpla3ZNRnAxNVN6V2lUSm1xZFBRd2g3VDBQLUZ6Y0pnUUl4cjlIQWZET2w4b0Y3TEI0YV9zLTR0ZXVKWHRHNTZZdVI3S3hpRXlTc2dFSmxLSy1tdVNOWEFzRW5wam51c005T3hzcFVsT2FxSFFGa2Z0V1lvRHhOcHdpQ3V5QTI1Q19ZVkU2Q25rLV9ZUU14M1dJTkFxTnIwNkZhRVVR?oc=5",
+   "d": "2023-01-06",
+   "s": "TotalEnergies reise mot fornybar energi TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor og det tyske energiselskapet RWE skal samarbeide om energisikkerhet og avkarbonisering - Equinor",
    "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTE9rRjI2NG5WSTRRSUpNcmZnWW5FR0RZUzZncm5TMThmM2JjYkE0N0xXRWx3SFFrT19XVWZxTXBhY1FXWTZlUEdWako1YVFVQmhuendjcUF1RDJha3NBREkyTHB6dURLVERQTHhHYlRKUWdlSDQ?oc=5",
    "d": "2023-01-05",
    "s": "Equinor og det tyske energiselskapet RWE skal samarbeide om energisikkerhet og avkarbonisering Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "TotalEnergies' CEO Patrick Pouyanné deltok på COP27 Kairo - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMizAFBVV95cUxQUHVpY2VWQV91eGUyT0d1SVdaZllRR1hyVGdqSUxqNE02YlRRVXlaZk0wTGlUNUs3NThGUHhVa0FQbFNSaXM3dHpJemtWaTR1U1NTTHdlM2wwaHBoZWxxVVdubW9ZYTFodTBWa3VEX3h0NmdqdmRneTRtNkNld09OT1NCU2Rfczl2cHdXUGZQSGVCSFNRVjBoZkU1QTFpRUo0T250Ql9BdkNCekNmcXhtSEFSTlZ5Q2xPa24yMUE5UjhkT2xYMWRxS2FKZWs?oc=5",
+   "d": "2022-12-01",
+   "s": "TotalEnergies' CEO Patrick Pouyanné deltok på COP27 Kairo TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -1131,6 +1619,20 @@
    "s": "Petoro har levert en netto kontantstrøm på 402 milliarder kroner per tredje kvartal 2022. For tredje kvartal isolert var kontantstrømmen på 167 milliarder kroner, noe som er nesten like mye som for hele fjoråret. Kontantstrømmen overføres i sin helhet til staten."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "EV Fluids - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9EUWtiRjZyVTNsWnBNRXZvUmNhQTNSNW4wclFmdlVYWGlYTFZRVEZfaU1NNTZOT3gwNjdhczNFZXJ4WXR4RFNDdzRFVHpHaWlKVzh6b1duS2M?oc=5",
+   "d": "2022-09-29",
+   "s": "EV Fluids TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "TotalEnergies & Motorsport - The Track is our Lab - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMia0FVX3lxTE1wTFZJRTBqSGRjakQ2Mkp2QjVLRUxFR1VkbS0xTDBGOENiZzR4Zi1UNjlaeFRtVFZUZWRXaGVsYkk2VmpCR2FDMXFNY3lQdS0wN1BxQ2c4TlAxZUxnc1ZsdWlYd1ZhUXBadkI4?oc=5",
+   "d": "2022-09-22",
+   "s": "TotalEnergies & Motorsport - The Track is our Lab TotalEnergies Nordic"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Resultat SDØE 2. kvartal 2022: 1,3 milliarder til AS Norge hver dag",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17938247/resultat-sdoe-2-kvartal-2022-13-milliarder-til-as-norge-hver-dag?lang=no",
@@ -1143,6 +1645,13 @@
    "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxNOE1wTDdTejlFc1dOU1hlQUw5MTZHUURTcFduODdCSjlDLUlCOHNldGFxZHdTSXFWWHJTZFRsS3pFSnV1eXZYTjMzTFdrT2MtUENsaFBlM3VVV1dOZGtYUWZMUmJwcERHZndrWnB5TEFOQXQwSlFnN05hR0lUTE9jX3pn?oc=5",
    "d": "2022-05-24",
    "s": "Nytt funn ved Johan Castberg-feltet i Barentshavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Tour de France og Team TotalEnergies kommer til Danmark - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxQU1NMU1FpMVJYVDc2MUlQR3RMalRmWHZjbHVOdmVLSGk1MHRYYUtTVHRGNVh6QWVnT2VNMGI0YTdNNWc5d3ZyODF6RXdMVkZLSGM4REdvQ0Rra3BoZUN1SGFaX3pVNHctRVhkcGo5Njd6dlM3NGEzem1nN3dlZ1lhTjU5Ul9BdXdmQkJaWmJUdXg2U1o3b1dJTndZVU1oZ1lfc2UzZUc0ZlFvcTZsX3RFU1g0SENYSWNJcHVyNXNGZFdyY1prVXZTbA?oc=5",
+   "d": "2022-05-23",
+   "s": "Tour de France og Team TotalEnergies kommer til Danmark TotalEnergies Nordic"
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -1341,6 +1850,13 @@
    "s": "Karriere i Equinor Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "The Distinguished Gentleman’s Ride i Norge - TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMixAFBVV95cUxNeGhaTVg0VDZZcjQ3ejBNbktUR0h6ZHBXYTh2Vm11X1VWX3V5S3BfazA5Zm4welZPa29MZk9iMG9mSFVvVEpUVUJ6RjQwc2Vwa0padGJYVXNBRE5MbnRjdVYzQWRPYjI0YklIQkVpRFZrWmhOMktSMWlxM2hlUkFFZF9MbDNQVTBZVWU5ZVQ0MUh6SlhWWlBsTl9fUmNsaUFVT3VId3h5T1Ffa1RtRVA0ZGtKX2FmbWhGeXl0Y0VKZ0xfZ3ps?oc=5",
+   "d": "2022-04-20",
+   "s": "The Distinguished Gentleman’s Ride i Norge - TotalEnergies TotalEnergies Nordic"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Årsresultat Petoro/SDØE: 186 milliarder til staten – pålitelig energileveranse til Europa",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17928151/arsresultat-petorosdoe-186-milliarder-til-staten-palitelig-energileveranse-til-europa?lang=no",
@@ -1355,11 +1871,32 @@
    "s": "Petoro AS inviterer til fremleggelse av resultater SDØE og Petoro AS 2021, onsdag 9. mars, klokken 10:00"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler for gassturbiner | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQTjE0REhKQURFQVpnQ3lpWUJFa0xEc3B1dTE1R01QcmlRcUN3QmRWaDUyOG1QNW4wTG1rUzBPdEx5LW82blFFM1l1Tk9OQ3JuRWE5YUJQSTdiMUpiRHlIM3JYZzNzVk13NjMxdlBrVFhndkYtZTlVZ1ZOUkt5SWRPSXl3Q0F1MUpvT2dXRzZ4RWtGbDd5bkE?oc=5",
+   "d": "2021-12-18",
+   "s": "Smøremidler for gassturbiner | TotalEnergies TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Tre milliarder fat olje Fra Ekofisk - ConocoPhillips Norway",
    "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPWV9QU0NiX21MRnVna0x6Z3VCZWJKN1dqcEEyVzFWQnNDdy13YS1RY0FPTmNZaHQ4SzR6M1RtNXo1elRsT2J1Vm1xY1NfUHZiQkstWU9IUWJOQm4zU3gxTjIxdEQxcjNQbjBhU1UwZ3dfaW9qdUFnWTVwZFVjYkQ1dnVfVGpMbUJWR2E0bVRIVW5fQ21UeS1v?oc=5",
    "d": "2021-12-17",
    "s": "Tre milliarder fat olje Fra Ekofisk ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler for vindmøller | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxNUkxDXzNiUjJmVExQTExUdGNWd0NrcmVWaklvRDhqcXJ4LXBNZ19ETGgyWWhGcXdLNHRCUG5PVF9WUE80ZWxMZUlvaTB6WjMteEY0NFBRcVlRYjFIenNKMkE5NHpBbGxEelk5OHdWZmdPWllXWmliN29UeGxPWVgxYlBfWWo5eml1c3VvRlRySFllSHd0aTZz?oc=5",
+   "d": "2021-12-12",
+   "s": "Smøremidler for vindmøller | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler for maskiner i grustak og gruvedrift | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMigwFBVV95cUxOX1NDS3hwNTFXbVRxeVFNVm12SGRBVGdXZW5IUkNoLWZBU3JLQjMxUUlwSDY3TE1BMWxqSVlWUlNmbUlJa1R4U25BVnB4ZFV4bWtEVjZnTkVmZjRobk5Uc0l3dzZtMDl0bmhUSEFWMjZHcW5pYnFMa2NtWGRSRWdCcDB4WQ?oc=5",
+   "d": "2021-12-01",
+   "s": "Smøremidler for maskiner i grustak og gruvedrift | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -1369,6 +1906,20 @@
    "s": "Petoro leverte en kontantstrøm på 98 milliarder per tredje kvartal. Kontantstrømmen for tredjekvartalet isolert er på 44 milliarder, noe som er den høyeste for et kvartal i Petoros historie."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler for papir- og treindustrien | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxNZzMwV1pBWVozZnJYZjRnYW9id3Vzb2JnQy05SjJNRnl6RUxJTHE5eDNXcW51a1JyZ0lvREl0NzRCQnFBbHNxbjZKSWx3c2ppTEx2dGxEY2IzdFdFYzRXa1A0Q2JnWmRmVGlnODQ4T3hNM3RJckpIdnUxNHA3Z3pfejl6UUs?oc=5",
+   "d": "2021-09-12",
+   "s": "Smøremidler for papir- og treindustrien | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bruker du riktig hydraulikkolje for bilen din? | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQbV9SOFdoQWtJMzVzTVhSd01kdUtVLUdWaHgxb0hSV2JyWXRxOEFTU3VnQWFrclNGY3VxVDJyLWJzTzB0NS1faVpNcXdqcl9ETVlVdXc5SlVCUkZJM3NDa0hyNTdheWJ1OFNPYU4wQUtZTGVwS0dJNGFQUFg5TlFqWHQ4RVc3ZlU4U29uWQ?oc=5",
+   "d": "2021-08-20",
+   "s": "Bruker du riktig hydraulikkolje for bilen din? | TotalEnergies TotalEnergies Nordic"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Resultat 2. kvartal SDØE: 54 milliarder til staten – olje og gass forblir viktig når Norges posisjon som energinasjon skal videreutvikles",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17912470/resultat-2-kvartal-sdoe-54-milliarder-til-staten-olje-og-gass-forblir-viktig-nar-norges-posisjon-som-energinasjon-skal-videreutvikles?lang=no",
@@ -1376,11 +1927,165 @@
    "s": "Petoro leverte en kontantstrøm på 54 milliarder kroner per andre kvartal 2021. Dette er en økning på 20 milliarder i forhold til samme periode i fjor. - Kontantstrømmen fra Petoro i første halvår er nå nesten like høy som for hele 2020 til sammen, sier administrerende direktør Kristin Kragseth. - …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler for bedrifter i energisektoren | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxQS19QeGtvWFF1ZEdSRmZTOFVVYTFXTVFxMW5mY3NyU3RWcWVPeURfaXQzeEJzUVoxUjRrTkg4cmRZZlg0U1ZmYUNFTWJrM08zUjBxdGdKOWgycmtKcldMel9ZUklhNEdZT1Z3U1JaQ2d1SVZsQjBsX2hpRHoySlVQdnRuN01PUQ?oc=5",
+   "d": "2021-06-30",
+   "s": "Smøremidler for bedrifter i energisektoren | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Motorolje - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTE1Kb2xRQ1oxc1p0ajlfanA0dnJiOVAwVndSNlg4S05nNkNhdFNRUHpuQ3BkTWhrZEx6eWlYaWdsNWtndXNxbWEwX0ttclhZUUd4ZmdSYl9wZjM1MGg2dDlleEx6TUZMQmtCRmRfWTY3STl1Nld3?oc=5",
+   "d": "2021-06-30",
+   "s": "Motorolje TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Avtal et møte med oss - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE4zdzdyMEZJZHlOc2loVmxaUE1sN19abUgyZzhPMmtmMVZyYzhxVlRhQlRXcmVWdGtJM25OWHlmZXphRHZQU3RkeGl2V2t6b1k3LUVRQnh2ZWo3NC1uTkNoVWJybllpSlA3?oc=5",
+   "d": "2021-06-29",
+   "s": "Avtal et møte med oss TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "FAQ - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE1kbWMzWXR6MWJJUVlKaDhVQklIc0RSeUpMT0ZGVGRXU0E0RjJ6dkJnclVzOThhUFVwZlJnYTljWDFrWmdDVEt2UER6RlBnUnR0bVpj?oc=5",
+   "d": "2021-06-27",
+   "s": "FAQ TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Les de siste nyhetene fra TOTAL Norge her | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNcmJzQ0tRU29xeS1rUGt1dGNaUUphYVllZFA2T2x6ckFmU21LU2RqanZERDRVMk1lNGFzSHJnajlUd0Jsd0JlQTMtZTM2V0M0V0lGMUEtMUQxTmZzU3o3WHRQbnVtOU01LXh0ODBpQnRjWWFMYnZ0d0hsdE1XelRSdVpTYlNUc3k3?oc=5",
+   "d": "2021-06-11",
+   "s": "Les de siste nyhetene fra TOTAL Norge her | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Teknisk inspeksjon - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE4xZXRMdkxlZU5aN21sS3RTYVhPeXlCVm9Zb2RQQkVYRmxMbGt6dXZTODNpdlljYWhQazFTSy11TG5lTzVGYTdBdFRWYU5uNHBmNGVxSlVLUnNidlhUZUhUaFp6b29YenZZQTJhaWJNcTM3dw?oc=5",
+   "d": "2021-06-11",
+   "s": "Teknisk inspeksjon TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Teknisk support - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE5UVVhzQk0ybWtYYUpwLTZtZDRMRFVKUHFNNHVjM3dWQ0F3TVdCTUJEd01SRklLemROc1lXbWlnR0xwaGgxdkRfRHVCTXN4UzdONkZtVGxlZ0dnRzFVcnZzSQ?oc=5",
+   "d": "2021-06-11",
+   "s": "Teknisk support TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Andre smøremidler for industri | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMihwFBVV95cUxNLWo0RnlRSXVpMkNGNTBBMDZTeTRlZlhOelZGU0pzMHVrNnEwSkllaENIblJGTWhvUzFDMUFEMU1hV1FXTWVBVV9CU05jQTFqSFZ2eGlWclU4ZU4xeXBHcXlpTGY1U0JYREJTeXJhT2hFZzFfanVEVWFLdWN0aDh4WDZJN3FYWG8?oc=5",
+   "d": "2021-06-10",
+   "s": "Andre smøremidler for industri | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "LubAnac - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTFBxeFZoYUFrRE1OVU9yZThSSUd6M0ZacW9qUDRodVl6QTRKVzB6NmJXOGNLQXMyRk9iY2dvZHloSDJYZ0s0WWtKTjB2clFPZ01xMGVkaF9wbnZoOFdIM0JzelJsNzQydkdj?oc=5",
+   "d": "2021-06-10",
+   "s": "LubAnac TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
    "t": "ConocoPhillips markerer 50 års oljeproduksjon - ConocoPhillips Norway",
    "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPUURzaGNZUmRPMnJlQXo4UmEtRlpGS0RoNGo5bHhUU3pJSHdCcTVMYUR2eDAwZ2ZjeUJvOTVhN2FkRWc3MU1LWTNocTgyNjU4TlB1bnZSb2hOYTdZZ0hhUlp1MUxlMTlPcE1pSTlOQkJLRGtuWGZibHhRNGl3ZHdWRkl4a3dVeGdWajNhUTFzSTVZM2dJeTZ4ZmljNXJZaVR3LTFYMg?oc=5",
    "d": "2021-06-09",
    "s": "ConocoPhillips markerer 50 års oljeproduksjon ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Vannkraftindustrien | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQMnhkVk5jRWU2czBidzVhbHlMS2dXcEo3X2kyakJjNGN5ZlU5ZjlReE9hQWh1cnZ0Y3dVMU85bHg3aGxBS0J0N0NoZm1YN1pKSXA5RTlsSmF4TjAxaUlHNUlkWDB3TUF5LTVaazRGZDQ5b3BYYjBIOVU4T0I2bzVLc18yRDgzZHdPYURDYktPUkE1bDA?oc=5",
+   "d": "2021-06-03",
+   "s": "Vannkraftindustrien | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler for industri - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiekFVX3lxTE55U2dJOE9KWnRvMUQxNTV2VV9Vam4xWmtvVWxPVmpka0V2dG9fLVBSUUdmMDlyQ1lpWERUY2xGdnBxNGRCVkVBWkViOVZ3VjNfa3VqS0RoTGVuVmx6UkJXX1UxR09oVldMUE9wRGtGZDFpdnlZZGlXS3dB?oc=5",
+   "d": "2021-06-03",
+   "s": "Smøremidler for industri TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Produktkatalog - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE9HVlpHQTNvY3NVd00wSVVsVEQzd0pEOEpMV1BvZFdJVWN0OWJMczFNb1Boa2VYc1gwZDNSb0xrUEtpU2lkNExzTUNIRkVuaEd1clZ5bmdiNmpnN2NSc3g0?oc=5",
+   "d": "2021-06-03",
+   "s": "Produktkatalog TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Sikkerhetsdatablad for alle produkter med TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiZEFVX3lxTFBjd3N5MTFNMHhLX2R6VDNwRVFSc0YzS1BCQ2gxTDdFQ2s0NzV5bkc4UFJPSEdTb3lLM1ZoRGtZWHhuazZOSXhUX05NX3hmSzdhTEl1bm5ubXkza3duekN6SUxiVGc?oc=5",
+   "d": "2021-06-02",
+   "s": "Sikkerhetsdatablad for alle produkter med TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kontakt oss | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTFBLR2ZhQm1Ob3B2SzBoU0N6R2Q4QnpvbUZ3RkRHSVFpdndCN0JLN0FhMGdpU1hrLTdNQTRJWUtDVDdRZ2EyY3laMTM2YnhYbjVVY053bmx6djZQSFE?oc=5",
+   "d": "2021-06-02",
+   "s": "Kontakt oss | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bruk riktig girolje for din maskin | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTE5YSGxUa3pseG9jVUlURG1meEtFYUVKbV9FYXA1eTRiSjdVRGhoOEY4cmNOUXFEUjlKaEZkNXN1c3RtOHpHRG9vOGt1cVZNWk5EQVNOX1RBOHByeTh4N2tWTFdmVE14UF8zNk1uQmhZMA?oc=5",
+   "d": "2021-06-01",
+   "s": "Bruk riktig girolje for din maskin | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bestill produkter online via e-Lub | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE5xVzVIaFg5T3VuN2pqdnFEcVVwN201X3ZXVEJaSmtja2V4cERUODItR3NaZlVNelpYeG9JQUJfWmNodHdfNzJXdWxST1Atek1WWjhsbE9vQkxHUGpkR0NJSnJ3VQ?oc=5",
+   "d": "2021-06-01",
+   "s": "Bestill produkter online via e-Lub | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "E-faktura - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTFBuc1R5NC1ZSXpQbGtyLThycWtRTlpkTmJqTmZUQ1dsanIwNU1Ob3BJZUdGNWphSlVrOWFWdjA5SVUxQU91Q0pUbjBtX3ZPLUJLb1BKUzhoS1psZ3ZWQzVWclllT1hKQQ?oc=5",
+   "d": "2021-05-31",
+   "s": "E-faktura TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smørefett - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE9UQUNuNy10eEF6T1J0SGVSZmxXS1RlZWQtcVJjWkMtbUV1UV9uS3Y4SG9nMEtVMDNhTTRJc1FUcmc4TnNGeV84cDdHcDNpX0x0N3ZIamI1dlh6ZGdrQWZnUWc4OHFndw?oc=5",
+   "d": "2021-05-31",
+   "s": "Smørefett TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bli en TotalEnergies distributør - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE5mckRONnNWQUVMbjJPR0txdlhadXdvU2h0MmZjdmRONmstclF0OHlzc0E2OU5WMm9tRXJ4cVVFdjVoZDN3Vk8zUkhyS3o4Z2d3Vkd6T2Mxc0F0c2M?oc=5",
+   "d": "2021-05-31",
+   "s": "Bli en TotalEnergies distributør TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smøremidler, spesialvæsker og bitumen - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE1PcnAySGRzTVQwVHB5Yi1ob2xJb0lVM3pLd2hyeDVYSHE2SDBnS1JQRnRKbVJUM1kxSmRIR0pRcHE3VmpwWUMwclNrVQ?oc=5",
+   "d": "2021-05-31",
+   "s": "Smøremidler, spesialvæsker og bitumen TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Du kan kontakte vår kundeservice | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiXEFVX3lxTFA3TEVfb2dvRFpHM2xtYUthQmRLZXAyTGFvend5d3k5R1VHYWdqdmpKOTNnUk1keXBQVS1LUlhySG5XajN3RU5NNi1pczE2bGFVWUlReVd5TWl1R2FB?oc=5",
+   "d": "2021-05-30",
+   "s": "Du kan kontakte vår kundeservice | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Services | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE14bWZjU0t4SEU2V2ZnaHA2T29BMGhiN2xkTDNFd3F3d2VuYzlfck1nZHY0QXM1cnFnU05WZHNTQ2oxcGtvcTBDWnU4S0FDM3BuU2pIaThuNk4?oc=5",
+   "d": "2021-05-30",
+   "s": "Services | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
