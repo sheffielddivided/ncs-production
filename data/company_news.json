@@ -26,11 +26,6 @@
    "title": "\"site:equinor.com\" - Google Nyheter",
    "n": 63
   },
-  "https://www.globenewswire.com/rssfeed/organization/5C0f30oSsBwArLGJwM6n5A==": {
-   "company": "Equinor Energy AS",
-   "error": "403 Client Error: Forbidden for url: https://www.globenewswire.com/rssfeed/organization/5C0f30oSsBwArLGJwM6n5A==",
-   "since": "2026-11-01"
-  },
   "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318": {
    "company": "Petoro AS",
    "title": "Petoro AS - siste pressemeldinger",
