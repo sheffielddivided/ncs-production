@@ -7842,7 +7842,7 @@ function drawDiscoveriesPerDiscovery() {
             gas:r.v.gas*BBL_PER_SM3, oe:r.v.oe*BBL_PER_SM3, children};
   });
   setChartTable(reserveTableHtml(groups, 'Discovery / partner',
-    'Contingent resources per discovery and partner · million boe', {shareHead:'Share'}));
+    'Contingent resources per discovery and partner · million boe', {shareHead:'Share', collapsible:true}));
 }
 
 function drawDiscoveriesPerCompany() {
