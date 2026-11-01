@@ -6113,7 +6113,7 @@ function drawFieldProfile() {
     ${(() => { const v = profileVolumes(id); return v ? `<div class="pf-card"><h3>Volumes</h3>${v}</div>` : ''; })()}
     ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
       descs.map(d => `<h4>${esc(d.heading)}</h4><p>${esc(d.text)}</p>`).join('')}</div>` : ''}
-    ${investmentCard([id], () => name)}
+    ${investmentCard([id], () => name, {compact: true})}
   `);
 }
 
