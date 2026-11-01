@@ -33,6 +33,7 @@ Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
 | `data/facilities.json` | Innretninger per felt (lag 6000) — til hubprofilen |
 | `data/exploration_wells.json` | Letebrønner (lag 5000) — planlagte, pågående og avsluttede, med eierskap per spud-dato. Lastes først når Exploration åpnes |
 | `fetch_prospects.py` | Henter prospektnavn til letebrønner fra Sodirs RSS-feed «Exploration drilling results» (brønn fra tittelen, prospekt fra beskrivelsen) og bygger `data/exploration_prospects.json` — et arkiv som bare vokser. Brukes som navn på brønner uten funnnavn, typisk tørre |
+| `data/exploration_name_overrides.json` | Navn på letebrønner satt for hånd i appen (Exploration → brønn → «Edit name»). Skrives rett til GitHub med samme token som hub-innstillingene og gjelder for alle. Går foran både funnnavn og prospektnavn; tomt navn fjerner overstyringen |
 | `data/rig_wells.json` | Utviklingsbrønner (lag 5000, siste to år) til riggoversikten i Exploration |
 | `fetch_rigs.py` | Henter AIS-posisjoner for borerigger fra Kystverkets åpne API og bygger `rig_*.json` |
 | `data/rig_ais.json` | Kobling riggnavn (Sodir) til MMSI/IMO — redigeres for hånd |
