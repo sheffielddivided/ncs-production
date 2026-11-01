@@ -3,7 +3,11 @@ Nyheter til Companies → News: Sodirs pressemeldinger og selskapenes egne
 RSS-feeder.
 
     pip install requests
-    python fetch_company_news.py
+    python fetch_company_news.py                     # alt
+    python fetch_company_news.py --sodir             # bare Sodir (daglig, update-sodir-data.yml)
+    python fetch_company_news.py --companies         # bare selskapenes feeder (daglig)
+    python fetch_company_news.py --companies --new   # bare feeder som ikke er hentet før
+                                                     # (straks lista endres fra appen)
 
 Skriver to filer:
 
@@ -333,7 +337,7 @@ def update_sodir():
 
 # ── SELSKAPENES FEEDER ───────────────────────────────────────────────────────
 
-def update_companies():
+def update_companies(only_new=False):
     conf = load(FEEDS, {'feeds': []}).get('feeds', [])
     old = load(OUT, {'feeds': {}, 'items': []})
     status, items = old.get('feeds', {}), old.get('items', [])
@@ -342,6 +346,10 @@ def update_companies():
     items = [it for it in items if it.get('f') in wanted]
 
     for url, f in wanted.items():
+        # --new: bare feeder som ikke er hentet før (eller er flyttet til et
+        # annet selskap). Brukes når lista endres fra appen.
+        if only_new and url in status and status[url].get('company') == f.get('company', ''):
+            continue
         st = dict(status.get(url) or {})
         st['company'] = f.get('company', '')
         try:
@@ -375,13 +383,13 @@ def update_companies():
 
 
 def main():
-    only = sys.argv[1] if len(sys.argv) > 1 else ''
-    if only != '--companies':
+    args = set(sys.argv[1:])
+    if '--companies' not in args:
         print('Sodir:')
         update_sodir()
-    if only != '--sodir':
+    if '--sodir' not in args:
         print('Selskapenes feeder:')
-        update_companies()
+        update_companies(only_new='--new' in args)
 
 
 if __name__ == '__main__':

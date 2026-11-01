@@ -44,7 +44,7 @@ Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
 | `data/havtil_aliases.json` | Navn Havtil bruker som ikke finnes i Sodir-dataene (f.eks. Yggdrasil), skrivefeil og tvetydige selskapsnavn, og manuelle unntak — redigeres for hånd |
 | `fetch_company_news.py` | Henter Sodirs pressemeldinger (boretillatelser, boreresultater, generelle nyheter) og selskapenes egne RSS/Atom-feeder til Companies → News. `--sodir` / `--companies` kjører bare den ene delen |
 | `data/sodir_press.json` | Arkiv over Sodirs pressemeldinger med brønner, felt og selskaper hentet ut av teksten. Frontend kobler dem til selskapet via rollen i brønnen, andel i feltet eller navnet |
-| `data/company_feeds.json` | Selskapenes nyhetsfeeder. Redigeres fra tannhjulet i Companies → News (samme token som hub-innstillingene) eller for hånd; en endring starter `update-company-news.yml` |
+| `data/company_feeds.json` | Selskapenes nyhetsfeeder. Redigeres fra tannhjulet i Companies → News (samme token som hub-innstillingene) eller for hånd; en endring starter `update-company-news.yml`, som henter de nye feedene med en gang, og appen viser resultatet så snart jobben har committet |
 | `data/company_news.json` | Siste saker (inntil 100 per feed) og status per feed fra feedene i `company_feeds.json` |
 | `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
 | `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |

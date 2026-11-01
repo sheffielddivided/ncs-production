@@ -1,21 +1,29 @@
 name: Oppdater selskapsnyheter
 
-# Henter selskapenes RSS-feeder straks lista endres fra tannhjulet i
-# Companies → News (appen skriver data/company_feeds.json via Contents API med
-# brukerens token, og den pushen starter denne jobben). Den daglige kjøringen
-# ligger i update-sodir-data.yml.
+# Selskapenes RSS-feeder til Companies → News (data/company_news.json).
+#
+#  · push: appen skriver data/company_feeds.json via Contents API med
+#    brukerens token når en feed legges til eller fjernes. Da hentes bare de
+#    nye feedene (--new), så jobben er ferdig på sekunder. Appen følger med og
+#    viser resultatet uten å vente på GitHub Pages.
+#  · schedule: daglig henting av alle feedene.
+#
+# Egen samtidighetsgruppe, så en ny feed ikke blir stående i kø bak den
+# daglige Sodir-jobben (som kan ta 45 minutter). Jobbene skriver ulike filer,
+# og begge rebaser før push.
 on:
   push:
     branches: [main]
     paths: ['data/company_feeds.json']
+  schedule:
+    - cron: '47 4 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
-# Samme gruppe som den daglige jobben, så de ikke committer om kapp.
 concurrency:
-  group: sodir-data
+  group: company-news
   cancel-in-progress: false
 
 jobs:
@@ -33,7 +41,12 @@ jobs:
         run: pip install requests
 
       - name: Hent selskapenes feeder
-        run: python fetch_company_news.py --companies
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            python fetch_company_news.py --companies --new
+          else
+            python fetch_company_news.py --companies
+          fi
 
       - name: Commit hvis dataene er endret
         run: |
@@ -42,8 +55,11 @@ jobs:
           git add data/company_news.json
           if git diff --staged --quiet; then
             echo "Ingen endringer - hopper over commit."
-          else
-            git commit -m "Oppdater selskapsnyheter ($(date -u +%Y-%m-%d))"
-            git pull --rebase origin main
-            git push
+            exit 0
           fi
+          git commit -m "Oppdater selskapsnyheter ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1

@@ -615,8 +615,14 @@ ikke at nettleseren leser feedene deres (CORS). Derfor:
    dette konsernets oppføringer og skriver fila tilbake med Contents API og
    samme token som hub-innstillingene (sha som optimistisk lås).
 2. Pushen starter `.github/workflows/update-company-news.yml`, som kjører
-   `fetch_company_news.py --companies` og committer `data/company_news.json`.
-   Den daglige jobben kjører hele skriptet.
+   `fetch_company_news.py --companies --new` (bare feeder som ikke er hentet
+   før; fjernede feeder tas ut samtidig) og committer `data/company_news.json`,
+   vanligvis innen et minutt. Appen leser fila rett fra repoet (Contents API,
+   rå form) hvert 5.–10. sekund til konsernets feeder i fila stemmer med
+   lista, og viser status og saker uten å vente på GitHub Pages. Samme
+   workflow henter alle feedene daglig kl. 04:47 UTC. Den har egen
+   samtidighetsgruppe, så den ikke venter bak Sodir-jobben; Sodir-jobben kjører
+   bare `--sodir`, så de to skriver ulike filer, og begge rebaser før push.
 3. Skriptet godtar en nyhetsside i stedet for feedadressen og finner feeden
    via `<link rel="alternate" type="application/rss+xml">`. RSS 2.0, RSS 1.0
    og Atom leses; HTML fjernes, lenker må være http(s), svar over 4 MB og

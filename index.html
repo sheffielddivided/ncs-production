@@ -734,7 +734,7 @@
     Paste the address of the company's RSS or Atom feed. A normal news page works too, if it advertises its feed —
     the fetch job looks for it. Feeds are read by a GitHub Actions job, not by your browser, because most sites block
     cross-site reading. Saving writes the list to the repository with your GitHub token (the same as for hub settings);
-    the job then runs within a minute or two, and every morning after that. The status below is from the last run.
+    the job then fetches the new feed right away (usually within a minute — the status below updates by itself) and all feeds every morning.
     Feeds apply to the whole corporate group.
   </div>
   <div class="settings-list" id="feedList"></div>
@@ -9678,9 +9678,40 @@ async function probeFeed(url) {
   }
 }
 
-function base64ToUtf8(b64) {
-  const bin = atob(b64.replace(/\s/g, ''));
-  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+// Lagringen starter update-company-news.yml, som henter de nye feedene og
+// committer data/company_news.json. GitHub Pages bruker et par minutter på å
+// publisere, så appen leser fila rett fra repoet (Contents API, rå form) til
+// konsernets feeder i fila stemmer med lista, og oppdaterer listen og
+// tidslinjen. Fjernede feeder er ferdige når de er borte fra fila.
+let feedWatch = 0;
+async function watchFeedJob(token, urls) {
+  const run = ++feedWatch;
+  const key = concernKey(feedCompany), want = new Set(urls);
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/data/company_news.json?ref=${GH_BRANCH}`;
+  const headers = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.raw+json'};
+  const done = d => urls.every(u => d.feeds && d.feeds[u] && concernKey(d.feeds[u].company) === key)
+    && Object.entries(d.feeds || {}).every(([u, st]) => concernKey(st.company) !== key || want.has(u));
+  const t0 = Date.now();
+  while (run === feedWatch && Date.now() - t0 < 5 * 60000) {
+    const secs = Math.round((Date.now() - t0) / 1000);
+    setFeedStatus(`Saved. Running the fetch job on GitHub… (${secs} s)`, 'ok');
+    await new Promise(r => setTimeout(r, secs < 30 ? 5000 : 10000));
+    if (run !== feedWatch) return;
+    try {
+      const res = await fetch(api, {headers, cache: 'no-store'});
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (!done(d)) continue;
+      companyNewsData = d;
+      renderFeedSettings();
+      if (topMode === 'companies' && companySubView === 'news') drawCompanyNews();
+      const bad = urls.filter(u => d.feeds[u].error);
+      setFeedStatus(bad.length ? `Fetched, but ${bad.length} feed${bad.length === 1 ? '' : 's'} failed — see below.`
+        : 'Saved and fetched. The news are in the timeline now; the public site updates in a few minutes.', bad.length ? 'err' : 'ok');
+      return;
+    } catch (e) { /* nettverksfeil: prøv igjen */ }
+  }
+  if (run === feedWatch) setFeedStatus('Saved, but the fetch job has not finished after 5 minutes. Check the Actions tab on GitHub; the daily run fetches the feed too.', 'err');
 }
 
 async function saveFeeds() {
@@ -9741,9 +9772,9 @@ async function saveFeeds() {
     }
     companyFeeds = feeds;
     feedDirty = false;
-    setFeedStatus('Saved. The fetch job runs now; news and status appear here after it has run and the site has been republished (a few minutes).', 'ok');
     renderFeedSettings();
     if (topMode === 'companies' && companySubView === 'news') drawCompanyNews();
+    watchFeedJob(token, feedEdits.map(f => f.url));
   } catch (e) {
     setFeedStatus(`Saving failed: ${e.message}`, 'err');
     btn.disabled = false;
