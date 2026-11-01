@@ -8442,7 +8442,9 @@ function equityOe(ids, lbl, qMap, companies) {
 // Tabell med én kolonne per periode. groups: [{name, vals, children?}], der
 // vals har samme lengde som periods. Tomme rader er allerede filtrert bort av
 // kalleren.
-function periodTableHtml(groups, periods, headLabel, caption, decimals = 0) {
+// opts.collapsible: feltradene skjules til gruppen klikkes, som i
+// reservetabellene (discOpen, toggleDiscGroup).
+function periodTableHtml(groups, periods, headLabel, caption, decimals = 0, opts = {}) {
   if (!groups.length || !periods.length) return '';
   const n = v => v.toLocaleString('en', {minimumFractionDigits:decimals, maximumFractionDigits:decimals});
   const totals = periods.map((_, i) => groups.reduce((t, g) => t + g.vals[i], 0));
@@ -8454,12 +8456,22 @@ function periodTableHtml(groups, periods, headLabel, caption, decimals = 0) {
   const body = groups.map(g => {
     const kids = (g.children || []);
     const single = kids.length === 1 && kids[0].name === g.name;
+    const fold = opts.collapsible && !single && kids.length > 0;
+    const open = fold && discOpen.has(g.name);
     const rows = single ? '' : kids
-      .map(c => `<tr class="field-row"><td>${c.id ? fieldLink(c.id, c.name) : esc(c.name)}</td>${cells(c.vals)}</tr>`).join('');
-    return `<tr class="hub-row"><td>${head(g)}</td>${cells(g.vals)}</tr>${rows}`;
+      .map(c => `<tr class="field-row${fold ? ' grp-child' : ''}"${fold && !open ? ' hidden' : ''}><td>${c.id ? fieldLink(c.id, c.name) : esc(c.name)}</td>${cells(c.vals)}</tr>`).join('');
+    const tr = fold
+      ? `<tr class="hub-row collapsible" tabindex="0" role="button" aria-expanded="${open}" data-g="${esc(g.name)}"
+           onclick="toggleDiscGroup(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDiscGroup(this)}">
+           <td><span class="grp-chev">${open ? '▾' : '▸'}</span>${head(g)} <span class="grp-count">${kids.length}</span></td>`
+      : `<tr class="hub-row"><td>${head(g)}</td>`;
+    return `${tr}${cells(g.vals)}</tr>${rows}`;
   }).join('');
+  const foldBar = opts.collapsible
+    ? `<div class="grp-row"><button class="grp-btn" onclick="toggleAllDiscGroups(true)">Expand all</button>
+         <button class="grp-btn" onclick="toggleAllDiscGroups(false)">Collapse all</button></div>` : '';
 
-  return `
+  return `${foldBar}
     <table class="res-table">
       <caption>${caption}</caption>
       <thead><tr><th>${headLabel}</th>${periods.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
@@ -8493,7 +8505,7 @@ function renderHubPeriodTable(series, companies, qMap, periods) {
   setChartTable(periodTableHtml(groups, periods, 'Hub / field',
     `Net OE per field, last ${periods.length} ${
       period === 'monthly' ? 'months' : period === 'quarterly' ? 'quarters' : 'years'
-    } · boe/day · equity-adjusted`));
+    } · boe/day · equity-adjusted`, 0, {collapsible: true}));
 }
 
 // Gjenstående reserver for ett felt i en årgang, skalert med en andel (0-1),
