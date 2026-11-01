@@ -1489,6 +1489,7 @@ const HUB_TABS     = [
   {id:'profile',        label:'Profile'},
   {id:'installations',  label:'Installations'},
   {id:'havtil',         label:'Havtil'},
+  {id:'valuation',      label:'Valuation BETA'},
 ];
 const DISCOVERY_TABS = [
   {id:'per_discovery', label:'Resources'},
@@ -2560,6 +2561,12 @@ async function refreshHubs() {
   // Profilen trenger alle tre: grafen bruker produksjonen, volumkortet
   // reservene og kakediagrammet eierandelene.
   if (hubSubView === 'profile') {
+    await Promise.all([loadProdForFields(ids), loadFieldReserves(), loadLicForFields(ids)]);
+    drawChart();
+    return;
+  }
+  // Kontantstrømmen trenger prisbanene og reservene i tillegg til produksjonen.
+  if (hubSubView === 'valuation') {
     await Promise.all([loadProdForFields(ids), loadFieldReserves(), loadLicForFields(ids), loadPriceHistory()]);
     drawChart();
     return;
@@ -2725,6 +2732,7 @@ function drawChart() {
     else if (hubSubView === 'profile')  drawHubProfile();
     else if (hubSubView === 'installations') drawHubInstallations();
     else if (hubSubView === 'havtil') drawHubHavtil();
+    else if (hubSubView === 'valuation') drawHubValuation();
     else drawFieldsOePerField(opts);
   } else if (topMode === 'ncs') {
     drawNcs();
@@ -5285,6 +5293,7 @@ function isReservesView() {
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'installations')
       || (topMode === 'hubs'      && hubSubView     === 'havtil')
+      || (topMode === 'hubs'      && hubSubView     === 'valuation')
       || (topMode === 'companies' && companySubView === 'profile')
       || (topMode === 'companies' && companySubView === 'reserves')
       || (topMode === 'companies' && companySubView === 'exploration')
@@ -7309,29 +7318,15 @@ function hubMemberTable(ids) {
       investments are in fixed prices for Sodir's price year and converted at that year's rate.` : ''}</div>`;
 }
 
-function drawHubProfile() {
-  const names = [...selectedHubNames];
-  if (names.length !== 1) {
-    setChartEmpty(names.length
-      ? 'Select a single hub to see its profile.'
-      : 'Tap the button below to select a hub.');
-    setInfo('');
-    return;
-  }
-  const hubName = names[0];
-  const ids = hubFieldIds(names);
+// Hubgrafen: hele den årlige historikken, én serie per medlemsfelt. Uten
+// prognose (profilen) vises inneværende år som snitt hittil i år, som i
+// selskapsprofilen. Med prognose (Valuation) går historikken til og med i fjor
+// og prognosen (cfHubForecast, samme som kontantstrømmen) fra i år, skravert.
+function drawHubProdChart(ids, withFc) {
   const nameOf = id => allFields.find(f => f.id === id)?.name || String(id);
-  const facs = hubFacilities(ids);
-  const hosts = hubHosts(facs);
-  const profiles = ids.map(id => profileRow(id) || {});
-
-  // Grafen: hele den årlige historikken, én serie per medlemsfelt. Den viser
-  // når hver tilknytning kom på, noe periodevelgerens vindu skjuler. Med
-  // prognose (cfHubForecast, samme som kontantstrømmen) går historikken til
-  // og med i fjor og prognosen fra i år, skravert.
   const y0 = currentYear;
-  const fcHub = cfHubForecast(ids);
-  const perField = ids.map(id => ({id, name: nameOf(id), ...annualProduction(id), fc: fcHub.perField[id].rows}))
+  const fcHub = withFc ? cfHubForecast(ids) : null;
+  const perField = ids.map(id => ({id, name: nameOf(id), ...annualProduction(id), fc: fcHub ? fcHub.perField[id].rows : []}))
                       .filter(s => s.annual.length || s.fc.length);
   const hasFc = perField.some(s => s.fc.length);
   if (hasFc) perField.forEach(s => { s.annual = s.annual.filter(a => a.prfYear < y0); });
@@ -7370,6 +7365,38 @@ function drawHubProfile() {
       legend.push({label: s.name, color});
     });
 
+  if (datasets.length) {
+    renderChart(labels, datasets, legend, 'boe/day', {xTitle:'Year'});
+    // Skraverte stolper kan ikke leses av pptSpecFromChart; grafen gis
+    // seriefargene direkte, og prognoseårene (est) blir en blekere serie.
+    pptSpec = {kind: 'cat', dir: 'col', stacked: true, labels: lastLabels, yTitle: 'boe/day',
+      series: lastDatasets.map((d, i) => ({name: d.label, type: 'bar', color: pptHex(datasets[i]._color), values: d.data,
+        ...(hasFc ? {est: lastLabels.map(l => +String(l).slice(0, 4) >= y0)} : {})}))};
+  } else {
+    setChartEmpty('No production reported for this hub.');
+  }
+
+  return {partialSrc, lastYear, hasFc, y0};
+}
+
+function drawHubProfile() {
+  const names = [...selectedHubNames];
+  if (names.length !== 1) {
+    setChartEmpty(names.length
+      ? 'Select a single hub to see its profile.'
+      : 'Tap the button below to select a hub.');
+    setInfo('');
+    return;
+  }
+  const hubName = names[0];
+  const ids = hubFieldIds(names);
+  const nameOf = id => allFields.find(f => f.id === id)?.name || String(id);
+  const facs = hubFacilities(ids);
+  const hosts = hubHosts(facs);
+  const profiles = ids.map(id => profileRow(id) || {});
+
+  const {partialSrc, lastYear} = drawHubProdChart(ids, false);
+
   const area = profiles.map(p => p.area).find(Boolean) || '';
   // Hubens operatør er den som driver prosessanlegget. Tolv huber har ikke
   // noe slikt anlegg i drift — seks er nedstengte, og seks prosesseres et
@@ -7384,17 +7411,6 @@ function drawHubProfile() {
   setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production, OE per member field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day${
     partialSrc ? ` &nbsp;|&nbsp; <strong>${lastYear}:</strong> ${partialSrc.partialNote} only, averaged over those months` : ''
   } &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
-
-  if (datasets.length) {
-    renderChart(labels, datasets, legend, 'boe/day', {xTitle:'Year'});
-    // Skraverte stolper kan ikke leses av pptSpecFromChart; grafen gis
-    // seriefargene direkte, og prognoseårene (est) blir en blekere serie.
-    pptSpec = {kind: 'cat', dir: 'col', stacked: true, labels: lastLabels, yTitle: 'boe/day',
-      series: lastDatasets.map((d, i) => ({name: d.label, type: 'bar', color: pptHex(datasets[i]._color), values: d.data,
-        ...(hasFc ? {est: lastLabels.map(l => +String(l).slice(0, 4) >= y0)} : {})}))};
-  } else {
-    setChartEmpty('No production reported for this hub.');
-  }
 
   // Produksjonsstart for huben er det tidligste av medlemsfeltenes.
   const starts = profiles.map(p => p.productionStart).filter(Boolean);
@@ -7440,11 +7456,29 @@ function drawHubProfile() {
         ${fact('Hub assignment', auto ? `${auto} of ${ids.length} machine-suggested` : 'Confirmed')}
       </div>
     </div>`, companies)}
+    ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
+    ${row2(volumes, investmentCard(ids, nameOf, {compact: true}))}
+  `);
+}
+
+// Hubs → Valuation BETA: den simulerte kontantstrømmen og produksjonsgrafen med
+// prognose, som før lå i profilen.
+function drawHubValuation() {
+  const names = [...selectedHubNames];
+  if (names.length !== 1) {
+    setChartEmpty(names.length ? 'Select a single hub to see its valuation.' : 'Tap the button below to select a hub.');
+    setInfo('');
+    return;
+  }
+  const hubName = names[0];
+  const ids = hubFieldIds(names);
+  const {partialSrc, lastYear, hasFc, y0} = drawHubProdChart(ids, true);
+  setChartTitle(hubName, 'Valuation BETA · simulated cash flow and production forecast');
+  setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production per member field, with forecast &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages, price paths from the World Bank and FRED`);
+  setProfile(`
     ${hubCashFlowCard(ids)}
     <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
       <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above (producing fields decline together; fields under development come on top from their start-up year with ramp-up, plateau and decline).` : ''} Source: Sodir FactPages.</div></div>
-    ${(() => { const t = hubMemberTable(ids); return t ? `<div class="pf-card pf-wide"><h3>Fields</h3>${t}</div>` : ''; })()}
-    ${row2(volumes, investmentCard(ids, nameOf, {compact: true}))}
   `);
   // Produksjonsgrafen er tegnet i grafområdet øverst (renderChart, så Excel og
   // «Add to PPT» virker som før) og flyttes ned i sitt kort under kontantstrømmen.
