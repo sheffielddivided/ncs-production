@@ -30,6 +30,11 @@
    "company": "Equinor Energy AS",
    "error": "403 Client Error: Forbidden for url: https://www.globenewswire.com/rssfeed/organization/5C0f30oSsBwArLGJwM6n5A==",
    "since": "2026-11-01"
+  },
+  "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318": {
+   "company": "Petoro AS",
+   "title": "Petoro AS - siste pressemeldinger",
+   "n": 25
   }
  },
  "items": [
@@ -335,6 +340,13 @@
    "s": "Trondheim, 10 August 2026. OKEA ASA (ticker: \"OKEA\") primary insider sold shares in OKEA. Olav Bjarne Roksvaag, deputy member of the board and primary insider (PDMR) of OKEA ASA, has on 10 august 2026 sold 20,000 shares in OKEA at a price of NOK 35.48 per share. Following the transaction, Olav …"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Sterk kontantstrøm og viktige beslutninger for fremtidig produksjon",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/19014326/sterk-kontantstrom-og-viktige-beslutninger-for-fremtidig-produksjon?lang=no",
+   "d": "2026-08-07",
+   "s": "Petoro leverte 137,5 milliarder kroner i netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) i første halvår 2026, en reduksjon på 1,6 milliarder kroner fra samme periode i fjor. Samtidig ble det tatt flere viktige prosjektbeslutninger som vil bidra til økt produksjon og langsiktig …"
+  },
+  {
    "f": "https://akerbp.com/en/news/",
    "t": "Girls designed the robots of the future",
    "u": "https://akerbp.com/en/girls-designed-the-robots-of-the-future/",
@@ -573,6 +585,13 @@
    "s": "(Trondheim, 11 May 2026) OKEA ASA (OSE: OKEA) On 11 May 2026 at 09.00 OKEA ASA held an annual general meeting as a digital meeting with online participation. All proposals from the board of directors on the agenda provided in the notice of the annual general meeting published on 15 April 2026, were …"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Petoro 25 år: Den norske petroleumsmodellen har skapt enorme verdier",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18897176/petoro-25-ar-den-norske-petroleumsmodellen-har-skapt-enorme-verdier?lang=no",
+   "d": "2026-05-09",
+   "s": "I dag fyller Petoro 25 år. Selskapet markerer jubileet med å løfte frem betydningen av den norske petroleumsmodellen – et rammeverk som har bidratt til å gjøre naturressurser til fellesskapets formue."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinors resultater for første kvartal 2026 - Equinor",
    "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxPcjJtd2h3eG1NMXhOWVBNdU16TUFoeTVzd1lsc1lLdXBWbzJOd1VfY25lTkhsTk9wRFZUVllDeVJjM2ZjeHFPS2pON0gzMzIwNDhFbUxreHVXTTZqYVpRMnh0YTNscjkwMW15WGIyRmlvd1RBMlFpSFowVENaeHE0VS0tdmg?oc=5",
@@ -650,6 +669,13 @@
    "s": "Equinors årsrapport for 2025 Equinor"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Sikre leveranser i en urolig verden",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18838445/sikre-leveranser-i-en-urolig-verden?lang=no",
+   "d": "2026-03-19",
+   "s": "Med god drift og stabil produksjon leverte Petoro i 2025 en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 243 milliarder kroner – en økning på 23 milliarder fra året før. Resultatet markerer nok et svært godt år for SDØE og er den tredje høyeste kontantstrømmen i …"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA – Mandatory notification of trade",
    "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade,c4323058",
@@ -713,6 +739,13 @@
    "s": "Nysgjerrighet former framtiden - Sponsorship Equinor"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "139 milliarder kroner fra SDØE i første halvår",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18609868/139-milliarder-kroner-fra-sdoe-i-forste-halvar?lang=no",
+   "d": "2025-08-07",
+   "s": "I første halvår leverte Petoro en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 139 milliarder kroner. Kontantstrømmen overføres i sin helhet til staten. To nye felt i produksjon bidrar med å styrke energiforsyningen til Europa."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Oljefunn i Johan Castberg-området i Barentshavet - Equinor",
    "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE1UemhxNXF3VFZ6ckY2R2htMkxDd2VfU0pnZG1uVUVvRXRXcDRPbk4yUW5TdmtuTHVFNW5odXNVaWwweGdBSlJVU0JpVUNROXdjQzh5dEZNR0tHaU9YVlg5Q0FoOTFTWVhaTERPdWxVa1BfUkRwZHc?oc=5",
@@ -725,6 +758,13 @@
    "u": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQMmRFaHVzc1dXQ0dTbmJYUlBXaW5IbmtTQ0ExMTJ3Qi1UMzBNaXVxS3dZREx3YlVfandiMWJlLUpvM193d1RuZzZSNXRQbXJrbWdoSUhwUG9nV3VQdlEyOVpXbXd5SDd4MFdTelRMTmJZN05ZekRpZTg0Q2pCNXREbEZ5TnJsTTJWREhUYVhLRW4ya1hiSXN1Z3RKN0thUm9MNUVpaDln?oc=5",
    "d": "2025-03-31",
    "s": "Johan Castberg styrker Norge som langsiktig energieksportør Equinor"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "1025 milliarder kroner fra SDØE til staten siden 2022",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18458295/1025-milliarder-kroner-fra-sdoe-til-staten-siden-2022?lang=no",
+   "d": "2025-03-18",
+   "s": "Petoro leverte en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 220 milliarder kroner i 2024. Netto kontantstrøm for fjerde kvartal isolert, var på 46 milliarder kroner. Siden 2022 har Petoro overført 1025 milliarder kroner fra SDØE til staten."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -755,6 +795,13 @@
    "s": "Forskning, utvikling og testing Equinor"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "God drift ga sterk kontantstrøm fra SDØE-porteføljen",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18309829/god-drift-ga-sterk-kontantstrom-fra-sdoe-portefoljen?lang=no",
+   "d": "2024-11-06",
+   "s": "Petoro har levert en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 174 milliarder kroner per tredje kvartal 2024. For tredje kvartal isolert var den på 61 milliarder kroner. Kontantstrømmen overføres i sin helhet til staten."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Kårstø prosessanlegg - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE5STGNiSEJYeHd2ck8tTzNDTk50SzNDUUxlUFlfRFdqNFd3Y2xHajI4THJJTlg5ZER1Y1dzVU5UYzRBU3NxZDZmSlVrb190MElIS3c?oc=5",
@@ -783,6 +830,13 @@
    "s": "Equinor skal ta i bruk verdens første ammoniakkdrevne forsyningsfartøy Equinor"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "114 milliarder kroner til staten i første halvår. Andelsbytter styrker den langsiktige strategien",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18186695/114-milliarder-kroner-til-staten-i-forste-halvar-andelsbytter-styrker-den-langsiktige-strategien?lang=no",
+   "d": "2024-08-01",
+   "s": "Petoro leverte en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 114 milliarder kroner per andre kvartal 2024. Netto kontantstrøm for andre kvartal isolert var på 54 milliarder kroner."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor sikrer utforskingstillatelse for CO2-lagring i Danmark - Equinor",
    "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQSkRGdUtta0Zfby1KSWhBSFNfdnljNkViSjVtd1B0czdvNGI0ZDBLZkNXX3dqemdIa0ZHV2VFQ016U2M1NGhnMUJ5YVcybk9mVDh2RkV4YWVJck9OMklPTEp6RUkxOHFHUElRVTJKZTEzeC1MLXljdnIxdjQySmFCZjN1NWdueUxWSTkxNXhSRkhTRlE?oc=5",
@@ -790,11 +844,39 @@
    "s": "Equinor sikrer utforskingstillatelse for CO2-lagring i Danmark Equinor"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Bytte av deltakerandeler mellom SDØE ved Petoro AS og Equinor ASA",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18096294/bytte-av-deltakerandeler-mellom-sdoe-ved-petoro-as-og-equinor-asa?lang=no",
+   "d": "2024-05-14",
+   "s": "Petoro og Equinor har inngått omfattende andelsbytter på norsk sokkel. Avtalen vil sikre økt verdiskaping og en mer effektiv ressursforvaltning av selskapenes aktiviteter på Haltenbanken."
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Høy produksjon og god kontantstrøm i første kvartal",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18078566/hoy-produksjon-og-god-kontantstrom-i-forste-kvartal?lang=no",
+   "d": "2024-05-02",
+   "s": "I første kvartal 2024 leverte Petoro 60 milliarder kroner i kontantstrøm fra Statens direkte økonomiske engasjement (SDØE). Dette er 57 milliarder mindre enn i første kvartal 2023."
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "3000 milliarder kroner fra SDØE siden 2001",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18056177/3000-milliarder-kroner-fra-sdoe-siden-2001?lang=no",
+   "d": "2024-03-11",
+   "s": "Petoro leverte 277 milliarder kroner i kontantstrøm til staten i 2023. Det er den nest høyeste kontantstrømmen i selskapets historie. Siden Petoro ble opprettet i 2001 har selskapet levert over 3000 milliarder kroner til staten fra Statens direkte økonomiske engasjement (SDØE)."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor og tyske SEFE inngår langsiktige gassalgsavtaler og planlegger hydrogenforsyning i stor skala - Equinor",
    "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPOXl6cm9Vc3BlTURpNnQ0WnM5UXdYam5FS3lZUzZKckV3bTV0UnprNFNjMDlueHZGU1U4RzNOV1JBb2hJQzA5ajBvRVFBczFBaWVBWVMxRnJpdFQwSzV4eHRwY2w3TFozbGRSQm5qMFJIcXNaZi1nb09sckVBaUpiQW5ZSlFoYWhtXy1sMmFiZWNvLUdC?oc=5",
    "d": "2023-12-19",
    "s": "Equinor og tyske SEFE inngår langsiktige gassalgsavtaler og planlegger hydrogenforsyning i stor skala Equinor"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Fortsatt sterk kontantstrøm tross lavere gasspriser og vedlikehold",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/18017718/fortsatt-sterk-kontantstrom-tross-lavere-gasspriser-og-vedlikehold?lang=no",
+   "d": "2023-11-07",
+   "s": "Petoro har levert en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 219 milliarder kroner per tredje kvartal 2023. For tredje kvartal isolert var kontantstrømmen på 39 milliarder kroner. Kontantstrømmen overføres i sin helhet til staten."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -818,11 +900,39 @@
    "s": "Snøhvit Future-prosjektet godkjent av myndighetene Equinor"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Petoro leverte 180 milliarder kroner til staten i første halvår",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17981999/petoro-leverte-180-milliarder-kroner-til-staten-i-forste-halvar?lang=no",
+   "d": "2023-08-02",
+   "s": "Petoro leverte en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 180 milliarder kroner per andre kvartal 2023. Netto kontantstrøm for andre kvartal isolert var på 63 milliarder kroner."
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor utsetter videre utvikling av Trollvind - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxNeGxTVE0wZEw1aWJENlk5N21QVmY4bi1HSEJySF8tQjhqa19oTEdCQko5YTlWMWNkQS1ZeDBxU2RKUGhvQXF5d0hBU0EzMms2V291Rnh1Z0t6SFQ1SjZBYnFMd0x0QTMwRUVBaWlfTEZkWTdMS0k0ZjA3RG81V1dvelUweG9PMFF1ZlE?oc=5",
    "d": "2023-05-22",
    "s": "Equinor utsetter videre utvikling av Trollvind Equinor"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Sterk kontantstrøm også i første kvartal - Petoro leverte 117 milliarder til staten",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17966669/sterk-kontantstrom-ogsa-i-forste-kvartal---petoro-leverte-117-milliarder-til-staten?lang=no",
+   "d": "2023-05-09",
+   "s": "Petoro leverte 117 milliarder kroner i kontantstrøm til staten fra SDØE-porteføljen i første kvartal 2023. Dette er fire milliarder mer enn i første kvartal 2022 og 91 milliarder mer enn første kvartal 2021."
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "528 milliarder til staten i unntaksåret 2022",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17959025/528-milliarder-til-staten-i-unntaksaret-2022?lang=no",
+   "d": "2023-03-14",
+   "s": "Petoro leverte 528 milliarder kroner til staten i 2022, over fem ganger så mye som i et normalår. Energiprisene er rekordhøye som et resultat av Ukraina-krigen, en krig som vil prege det geopolitiske bildet i lang tid. Norge dekker nå 30 % av Europas gassbehov. Gassleveransene fra norsk sokkel økte …"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Invitasjon til pressekonferanse - årsresultat 2022 for SDØE",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17959021/invitasjon-til-pressekonferanse---arsresultat-2022-for-sdoe?lang=no",
+   "d": "2023-03-09",
+   "s": "Petoro AS inviterer til pressekonferanse i forbindelse med offentliggjøring av resultat 2022 (SDØE)."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -846,11 +956,32 @@
    "s": "Irpa — sikrer gass til Europa og forlenger levetiden til Aasta Hansteen Equinor"
   },
   {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Resultat SDØE 3. kvartal 2022: Pålitelig energileveranse og rekordhøy gassproduksjon",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17943949/resultat-sdoe-3-kvartal-2022-palitelig-energileveranse-og-rekordhoy-gassproduksjon?lang=no",
+   "d": "2022-11-02",
+   "s": "Petoro har levert en netto kontantstrøm på 402 milliarder kroner per tredje kvartal 2022. For tredje kvartal isolert var kontantstrømmen på 167 milliarder kroner, noe som er nesten like mye som for hele fjoråret. Kontantstrømmen overføres i sin helhet til staten."
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Resultat SDØE 2. kvartal 2022: 1,3 milliarder til AS Norge hver dag",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17938247/resultat-sdoe-2-kvartal-2022-13-milliarder-til-as-norge-hver-dag?lang=no",
+   "d": "2022-08-03",
+   "s": "Petoro har levert en netto kontantstrøm på 234 milliarder kroner per andre kvartal 2022, 48 milliarder mer enn resultatet for hele rekordåret 2021. Netto kontantstrøm for andre kvartal isolert var på 121 milliarder kroner. Dette betyr at SDØE-porteføljen som Petoro forvalter bidro med 1,3 …"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Nytt funn ved Johan Castberg-feltet i Barentshavet - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxNOE1wTDdTejlFc1dOU1hlQUw5MTZHUURTcFduODdCSjlDLUlCOHNldGFxZHdTSXFWWHJTZFRsS3pFSnV1eXZYTjMzTFdrT2MtUENsaFBlM3VVV1dOZGtYUWZMUmJwcERHZndrWnB5TEFOQXQwSlFnN05hR0lUTE9jX3pn?oc=5",
    "d": "2022-05-24",
    "s": "Nytt funn ved Johan Castberg-feltet i Barentshavet Equinor"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Resultat SDØE 1. kvartal 2022: Petoro leverer 113 milliarder og setter høye klimamål",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17932784/resultat-sdoe-1-kvartal-2022-petoro-leverer-113-milliarder-og-setter-hoye-klimamal?lang=no",
+   "d": "2022-05-11",
+   "s": "Petoro leverte rekordhøye 113 milliarder kroner i kontantstrøm til staten fra SDØE-porteføljen i første kvartal 2022. Dette er 87 milliarder mer enn i første kvartal 2021. Årsaken til rekordresultatet skyldes god drift og eksepsjonelt høye produktpriser som følge av krigen i Ukraina."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -1040,6 +1171,55 @@
    "u": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE41M3RZOEh6eEpBd2xjcFIwQ2V2WFR2d0owM0twLWx5RnIyd2wzRXVxZjRORktGbUFDdWRTcWZYOXFENVBaZWRQdzdfaw?oc=5",
    "d": "2022-04-21",
    "s": "Karriere i Equinor Equinor"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Årsresultat Petoro/SDØE: 186 milliarder til staten – pålitelig energileveranse til Europa",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17928151/arsresultat-petorosdoe-186-milliarder-til-staten-palitelig-energileveranse-til-europa?lang=no",
+   "d": "2022-03-09",
+   "s": "Petoro leverte 186 milliarder kroner til staten i 2021. Dette er det beste resultatet i Petoros 20-årige historie og en økning på 215 % sammenlignet med 2020. - Det er fantastisk å kunne bidra med slike beløp til den norske velferdsstaten, men jeg reflekterer også over at dette ikke er godt for dem …"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Fremleggelse av årsresultat 2021 for SDØE og Petoro AS",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17927671/fremleggelse-av-arsresultat-2021-for-sdoe-og-petoro-as?lang=no",
+   "d": "2022-03-02",
+   "s": "Petoro AS inviterer til fremleggelse av resultater SDØE og Petoro AS 2021, onsdag 9. mars, klokken 10:00"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Resultat 3. kvartal SDØE: Ekstreme priser gir rekordhøy kontantstrøm",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17918584/resultat-3-kvartal-sdoe-ekstreme-priser-gir-rekordhoy-kontantstrom?lang=no",
+   "d": "2021-10-28",
+   "s": "Petoro leverte en kontantstrøm på 98 milliarder per tredje kvartal. Kontantstrømmen for tredjekvartalet isolert er på 44 milliarder, noe som er den høyeste for et kvartal i Petoros historie."
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Resultat 2. kvartal SDØE: 54 milliarder til staten – olje og gass forblir viktig når Norges posisjon som energinasjon skal videreutvikles",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17912470/resultat-2-kvartal-sdoe-54-milliarder-til-staten-olje-og-gass-forblir-viktig-nar-norges-posisjon-som-energinasjon-skal-videreutvikles?lang=no",
+   "d": "2021-07-30",
+   "s": "Petoro leverte en kontantstrøm på 54 milliarder kroner per andre kvartal 2021. Dette er en økning på 20 milliarder i forhold til samme periode i fjor. - Kontantstrømmen fra Petoro i første halvår er nå nesten like høy som for hele 2020 til sammen, sier administrerende direktør Kristin Kragseth. - …"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Resultat 1. kvartal SDØE: 26 milliarder til staten – kraftig resultatforbedring fra Petoro",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17906612/resultat-1-kvartal-sdoe-26-milliarder-til-staten-kraftig-resultatforbedring-fra-petoro?lang=no",
+   "d": "2021-05-05",
+   "s": "Petoro leverte en kontantstrøm til staten på 26 milliarder kroner i første kvartal 2021. Dette tilsvarer kontantstrømmen for de to siste kvartalene i 2020. Prisene på olje og gass styrket seg betydelig fra slutten av fjoråret og bidro til denne forbedringen. Kontantstrømmen er nå på nivå med …"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Årsresultat Petoro/SDØE - Unntaksår gav likevel solide inntekter til staten",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17902750/arsresultat-petorosdoe---unntaksar-gav-likevel-solide-inntekter-til-staten?lang=no",
+   "d": "2021-03-09",
+   "s": "Petoro leverte 59 milliarder kroner til staten i 2020. Dette er en nedgang på 37 milliarder fra 2019. Hovedårsaken er kraftig prisfall på olje og gass grunnet covid-19. - I et svært spesielt år preget av nedstengning og sterke mobilitetsbegrensninger, viser SDØE-porteføljen sin styrke. Dette bidrar …"
+  },
+  {
+   "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
+   "t": "Fremleggelse av årsresultat 2020 for SDØE og Petoro AS",
+   "u": "https://kommunikasjon.ntb.no/pressemelding/17902177/fremleggelse-av-arsresultat-2020-for-sdoe-og-petoro-as?lang=no",
+   "d": "2021-02-26",
+   "s": "Petoro AS inviterer til fremleggelse av resultater SDØE og Petoro AS 2020, tirsdag 9. mars, klokken 10:00."
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
