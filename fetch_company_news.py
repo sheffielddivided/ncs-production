@@ -39,7 +39,7 @@ Contents API, samme token som hub-innstillingene) eller for hånd:
 
 «company» er selskapet slik det heter i appen; frontend viser feeden for hele
 konsernet (concernKey). En nyhetsside uten feed leses direkte når lista har en
-kjent struktur (page_list; foreløpig AEM «tilelist», som ORLEN). En søkeadresse fra NewsWeb (Oslo Børs) leses via
+kjent struktur (page_list: AEM «tilelist» som ORLEN, nyhetskort som Harbour Energy). En søkeadresse fra NewsWeb (Oslo Børs) leses via
 NewsWebs eget JSON-API, se read_newsweb. Er adressen en vanlig nettside, letes det etter
 <link rel="alternate" type="application/rss+xml"> i den, så det holder å lime
 inn nyhetssiden. RSS 2.0, RSS 1.0 (RDF) og Atom leses.
@@ -322,31 +322,67 @@ def read_newsweb(url):
 
 # ── NYHETSLISTER UTEN FEED ───────────────────────────────────────────────────
 # Noen selskaper har bare en nyhetsside. Har siden ingen feed, leses lista på
-# siden selv når den har en kjent, fast struktur. Foreløpig én: «tilelist» fra
-# Adobe Experience Manager (AEM), som ORLEN bruker:
-#   <li class="cmp-tilelist__item"><a class="cmp-tilelist__item-link" href="…">
-#     <span class="cmp-tilelist__item-date">29.10.2026</span>
-#     <h2 class="cmp-tilelist__item-title">…</h2>
-#     <p class="cmp-tilelist__item-description">…</p>
-# Bare én side leses, den brukeren har limt inn, og bare der robots.txt ikke
-# forbyr det (sjekkes ikke her; ORLENs robots.txt tillater alt).
+# siden selv når den har en kjent, fast struktur. Bare den ene siden brukeren
+# har limt inn leses, én gang per kjøring, og bare den ferdige HTML-en (ikke
+# API-er bak siden, som robots.txt ofte forbyr). Kjente strukturer:
+#
+#  tilelist  Adobe Experience Manager (ORLEN):
+#    <li class="cmp-tilelist__item"><a class="cmp-tilelist__item-link" href="…">
+#      <span class="cmp-tilelist__item-date">29.10.2026</span>
+#      <h2 class="cmp-tilelist__item-title">…</h2><p class="cmp-tilelist__item-description">…</p>
+#  card      nyhetskort (Harbour Energy):
+#    <div class="card … card--news"> <time datetime="22/09/26">…</time>
+#      <h2 class="card-title …">…</h2> <p>…</p> <a href="…">Read article</a>
+#
+# Datoene er dag først (europeisk), med to- eller firesifret år.
+def list_date(s):
+    s = (s or '').strip()
+    m = re.match(r'(\d{4})-(\d{2})-(\d{2})', s)
+    if m:
+        return m.group(0)
+    m = re.match(r'(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})\b', s)
+    if not m:
+        return ''
+    d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    y = y + 2000 if y < 100 else y
+    return f'{y}-{mo:02d}-{d:02d}' if 1 <= mo <= 12 and 1 <= d <= 31 else ''
+
+
+def _list_item(base, href, title, date, desc):
+    link = urljoin(base, html.unescape(href))
+    if not re.match(r'^https?://', link):
+        return None
+    t = clean(title, 300)
+    return {'t': t, 'u': link, 'd': list_date(clean(date)), 's': clean(desc, SUMMARY)} if t else None
+
+
 def page_list(page, base):
     txt = page.decode('utf-8', 'replace')
     out = []
     for li in re.findall(r'<li[^>]*class="[^"]*cmp-tilelist__item\b[^"]*"[^>]*>(.*?)</li>', txt, re.S):
         href = re.search(r'<a[^>]*href="([^"]+)"', li)
         title = re.search(r'cmp-tilelist__item-title[^>]*>(.*?)</', li, re.S)
-        if not href or not title:
-            continue
-        date = re.search(r'cmp-tilelist__item-date[^>]*>\s*(\d{1,2})\.(\d{1,2})\.(\d{4})', li)
+        date = re.search(r'cmp-tilelist__item-date[^>]*>(.*?)</', li, re.S)
         desc = re.search(r'cmp-tilelist__item-description[^>]*>(.*?)</p>', li, re.S)
-        link = urljoin(base, html.unescape(href.group(1)))
-        if not re.match(r'^https?://', link):
-            continue
-        out.append({'t': clean(title.group(1), 300), 'u': link,
-                    'd': f'{date.group(3)}-{int(date.group(2)):02d}-{int(date.group(1)):02d}' if date else '',
-                    's': clean(desc.group(1), SUMMARY) if desc else ''})
-    return out
+        if href and title:
+            out.append(_list_item(base, href.group(1), title.group(1), date.group(1) if date else '',
+                                  desc.group(1) if desc else ''))
+    parts = re.split(r'(?=<div class="card\b[^"]*\bcard--news\b)', txt)[1:]
+    for card in parts:
+        title = re.search(r'class=["\'][^"\']*card-title[^"\']*["\'][^>]*>(.*?)</h\d>', card, re.S)
+        href = re.search(r'<a[^>]*href="([^"]+)"', card)
+        date = re.search(r'<time[^>]*datetime="([^"]+)"', card) or re.search(r'<time[^>]*>(.*?)</time>', card, re.S)
+        desc = re.search(r'</h\d>\s*<p[^>]*>(.*?)</p>', card, re.S)
+        if href and title:
+            out.append(_list_item(base, href.group(1), title.group(1), date.group(1) if date else '',
+                                  desc.group(1) if desc else ''))
+    # Fremhevede saker står ofte to ganger på siden; første forekomst vinner.
+    seen, uniq = set(), []
+    for it in out:
+        if it and it['u'] not in seen:
+            seen.add(it['u'])
+            uniq.append(it)
+    return uniq
 
 
 def page_title(page):
