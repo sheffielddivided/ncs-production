@@ -5489,6 +5489,13 @@ function wellLink(name) {
 // Knapp til Sodirs egen side for feltet, funnet, selskapet eller lisensen.
 const factPageBtn = (kind, id) => id
   ? `<a class="ex-btn" href="https://factpages.sodir.no/${kind}/pageview/all/${id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>` : '';
+// Enhetsregisteret i Brønnøysund. Bare norske organisasjonsnumre (9 sifre);
+// utenlandske selskaper har andre eller ingen numre hos Sodir.
+const brregBtn = orgNo => {
+  const n = String(orgNo || '').replace(/\s/g, '');
+  return /^\d{9}$/.test(n)
+    ? `<a class="ex-btn" href="https://virksomhet.brreg.no/en/oppslag/enheter/${n}" target="_blank" rel="noopener">Brønnøysund Register ↗</a>` : '';
+};
 // Faktarute der verdien allerede er HTML (typisk en lenke over).
 const factHtml = (k, html) => html ? `<div class="pf-fact"><span>${k}</span><strong>${html}</strong></div>` : '';
 
@@ -8228,7 +8235,7 @@ function drawCompanyProfile() {
         ${fact('Production licences', licenceRows.length || '')}
         ${fact('Roles', roles.join(', '))}
       </div>
-      <div class="lc-links">${factPageBtn('company', c.id)}</div>
+      <div class="lc-links">${factPageBtn('company', c.id)}${brregBtn(c.orgNumber)}</div>
     </div>
     ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
