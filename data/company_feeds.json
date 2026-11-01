@@ -21,6 +21,12 @@
       "added": "2026-11-01"
     },
     {
+      "company": "DNO Norge AS",
+      "url": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+      "label": "Google",
+      "added": "2026-11-01"
+    },
+    {
       "company": "Equinor Energy AS",
       "url": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
       "label": "Google RSS",
