@@ -8224,7 +8224,9 @@ function drawCompanyProfile() {
   licenceRows = buildLicenceRows(name);
   licenceSort = {key: 'name', dir: 1};
 
-  setProfile(`
+  // Key facts og Location står side om side i en pf-row2, så de får samme
+  // høyde på bred skjerm (spalteflyten ellers gir hvert kort sin egen høyde).
+  const keyFacts = `
     <div class="pf-card">
       <h3>Key facts</h3>
       <div class="pf-facts">
@@ -8236,8 +8238,11 @@ function drawCompanyProfile() {
         ${fact('Roles', roles.join(', '))}
       </div>
       <div class="lc-links">${factPageBtn('company', c.id)}${brregBtn(c.orgNumber)}</div>
-    </div>
-    ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
+    </div>`;
+  const map = companyMap(holdings);
+
+  setProfile(`
+    ${map ? `<div class="pf-row2">${keyFacts}<div class="pf-card"><h3>Location</h3>${map}</div></div>` : keyFacts}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
     ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
