@@ -20,9 +20,21 @@
    "company": "Vår Energi ASA",
    "title": "Cision News",
    "n": 24
+  },
+  "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no": {
+   "company": "Equinor Energy AS",
+   "title": "\"site:equinor.com\" - Google Nyheter",
+   "n": 63
   }
  },
  "items": [
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Dobler gassfunn i Nordsjøen - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTE5kZ295alZPSXNST3VVaUN2aV9Pb3Z1RzZPYXBBZkhWOWdvS0FrdVF2UE5seGotaFVRdEtDdDlqU01aeWdCZzZrRE5FcVBhVjdtbzFiS3NlTlNvWDRGc212b0ZpajNXVWVPN2JnQnI2UHZ2bGN6cmtNUzl0RQ?oc=5",
+   "d": "2026-10-29",
+   "s": "Dobler gassfunn i Nordsjøen Equinor"
+  },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Third quarter 2026 results",
@@ -36,6 +48,20 @@
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp--key-information-related-to-cash-dividend,c4416745",
    "d": "2026-10-29",
    "s": "The following sets out the cash dividends to be paid by Aker BP in the fourth quarter of 2026: Dividend amount: USD 0.6615 (NOK 6.14642) per share Declared currency: USD Last day of trading including right: 2 November 2026 Ex-date: 3 November 2026 Record date: 4 November 2026 Payment date: 12 …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor åpner testsenter for marin robotikk - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMihwFBVV95cUxNUGVoUXAzbmRKMFFkSkdWY1BvMHpjX1hVWTVOSVVpWDNMbUs3REhrbC1YNncwU1BhT0M1dUwwR3BGSVRxNi1uZEF4YVByaDNKZ05hdUdyNmpZYW8zUkZzN1NqVzUyaThsTENzSnJwVUo3bF84NmtpTVhzaGNGenhkSUI5Wm0zN1U?oc=5",
+   "d": "2026-10-28",
+   "s": "Equinor åpner testsenter for marin robotikk Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinors resultater for tredje kvartal 2026 - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxQdndWN0p2NnR0dEFVUlBTekhMa1plem1fRGxRMlFpZWt2aWlsdE5ZUkt4NV85OEZONHBKbkFwTkxDS2EtVjdqdWpxQzA0NXRFb2lZLTZuOHRnQmRad2dsM0lZRlE3MWNFUVdJV1ZHN2hmaHpFbU96dE1oN1lNZnlibDRMZjg?oc=5",
+   "d": "2026-10-28",
+   "s": "Equinors resultater for tredje kvartal 2026 Equinor"
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -57,6 +83,13 @@
    "u": "https://news.cision.com/aker-bp-asa/r/partnering-to-develop-challenging-discoveries,c4413125",
    "d": "2026-10-26",
    "s": "Equinor and Aker BP enter into a strategic collaboration on tight reservoirs on the Norwegian Continental Shelf. Through technology development, standardisation and greater scale, the companies aim to enable the profitable development of more discoveries and increase oil and gas recovery. …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor Q4 2026 and full year results - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTFBBX2pudG5hbENTNFhBa3dDUVhROUdEUURBZ3J0WFlUNll6ZFMweTBZMGluUExfY0ZVZV9BMkFiekE3aW1kM2pJSDJPNGxQRk9MekI5eGRsMUhEYzhKM1dXRUx2ckJoT0xuODdNZDR0ZEl3MVVT?oc=5",
+   "d": "2026-10-23",
+   "s": "Equinor Q4 2026 and full year results Equinor"
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -225,6 +258,13 @@
    "u": "https://akerbp.com/en/standing-committee-on-energy-and-the-environment-visits-aker-bp-for-dialogue-on-the-future-of-the-norwegian-continental-shelf/",
    "d": "2026-08-25",
    "s": "On Tuesday, 25 August, the Norwegian Parliament’s Energy and the Environment committee visited Aker BP in Stavanger to discuss the future of the Norwegian continental shelf, Norway’s role as an energy supplier to Europe, and how the industry can create as much value as possible with the lowest …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor og Uniper inngår 15-årig gassalgsavtale for leveranser til Tyskland - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQUUEwZVZ3U0w3S2xUN0hTYXV1YkRHWUxvMmc1SU04NERRdXducEdRMVE0VDd2T3VGY3EzZXM2VnJkV2tfZ3J6enROUHRZWXV5T0FVWkxxbm9zMDI0ZWdpeUN6c2REeV9ZX2hRVkg2bXZiT3JoNUd4dnEwcUk3TUpvUG9JaWQ0aU8weS1IRHZxd0NSRmNxYXc?oc=5",
+   "d": "2026-08-24",
+   "s": "Equinor og Uniper inngår 15-årig gassalgsavtale for leveranser til Tyskland Equinor"
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -444,11 +484,25 @@
    "s": "Sandnes, Norway, 2 July 2026: Vår Energi ASA (OSE:VAR, “Vår Energi”) has been assigned a long-term issuer credit rating of BBB by Fitch Ratings (“Fitch”), with a stable outlook. The rating highlights Vår Energi’s strong financial position and resilience, and confirms the Company’s solid investment …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor og Vår Energi bytter eiendeler i Troll- og Gjøa-områdene - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQOEJtUlhVbW5lb2o2SnFqQXZFSjJqMjFHQkRZMV9xbWR3WlQ2M21GdEhSY1AxVGFmR0U3U0d1MEp3THIxRVVLZENNdnBUZ1oxWnhVdzQ4M3dwMTJPdDdWZzhrTmE4aGZibXY3OTRzVE13cXI3RHJPV1hCc0NGR2NGc2pLUFJILUN5dGc?oc=5",
+   "d": "2026-06-30",
+   "s": "Equinor og Vår Energi bytter eiendeler i Troll- og Gjøa-områdene Equinor"
+  },
+  {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
    "t": "Vår Energi ASA strengthens its position in the Gjøa area and extends field life through an asset exchange with Equinor",
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-strengthens-its-position-in-the-gjoa-area-and-extends-field-life-through-an-asset-exc,c4368705",
    "d": "2026-06-30",
    "s": "Sandnes, Norway, 30 June 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) has entered into an agreement with Equinor Energy AS (“Equinor”) for an asset exchange on the Norwegian Continental Shelf (NCS), strengthening its position around the Gjøa area and supporting the extension of the field’s …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Forslag til program for konsekvensutredning for Wisting sendt på høring - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMikAFBVV95cUxNRUxtdzdlakNudHZqaGRXV0pBRVFpTUc2NG1lMFVXM1lPdEJVMU1pR1JkTE5fZTUwQWsyRE1ab0FVOVI3MXZXWHRCd3JhUm1sR0V5VGFYek5pNjVQMWtudXdPT2o3eEgycHlJYTV2RzVVMjZWZjhlOWd5V1A5cnM4Yk0tM2MwYVRlWmVJMWFUY1I?oc=5",
+   "d": "2026-06-25",
+   "s": "Forslag til program for konsekvensutredning for Wisting sendt på høring Equinor"
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -514,6 +568,13 @@
    "s": "(Trondheim, 11 May 2026) OKEA ASA (OSE: OKEA) On 11 May 2026 at 09.00 OKEA ASA held an annual general meeting as a digital meeting with online participation. All proposals from the board of directors on the agenda provided in the notice of the annual general meeting published on 15 April 2026, were …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinors resultater for første kvartal 2026 - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxPcjJtd2h3eG1NMXhOWVBNdU16TUFoeTVzd1lsc1lLdXBWbzJOd1VfY25lTkhsTk9wRFZUVllDeVJjM2ZjeHFPS2pON0gzMzIwNDhFbUxreHVXTTZqYVpRMnh0YTNscjkwMW15WGIyRmlvd1RBMlFpSFowVENaeHE0VS0tdmg?oc=5",
+   "d": "2026-05-05",
+   "s": "Equinors resultater for første kvartal 2026 Equinor"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA - First quarter 2026 financial results",
    "u": "https://news.cision.com/okea/r/okea-asa---first-quarter-2026-financial-results,c4341751",
@@ -577,11 +638,25 @@
    "s": "(Trondheim, 25 March 2026) - Reference is made to stock exchange notice dated 25 August 2025 with regards to the Talisker West discovery. Through further subsurface maturation of the Talisker Statfjord formation, recoverable resource estimates (P50) have increased from 19 to 28 million barrels of …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinors årsrapport for 2025 - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMifEFVX3lxTE54R3RoQVV1aGkzeGJmblJ3ZXhCQ2tSVER6VWJVNi05QmJnb3JxNUdyamI1ZzFWVmdXdXRzbmVpUy1yRktkbFJkZEFieUthYy1ueG41VGs4ZzQya2xvd2RmZmpha1dvSTBSdlhhaXdyck56R3hUSXdJWjlGdmc?oc=5",
+   "d": "2026-03-19",
+   "s": "Equinors årsrapport for 2025 Equinor"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA – Mandatory notification of trade",
    "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade,c4323058",
    "d": "2026-03-18",
    "s": "Trondheim, 18 March 2026. OKEA ASA (ticker: \"OKEA\"). Primary insider, Olav Bjarne Roksvaag, deputy member of the board (PDMR) of OKEA ASA, has on 17 March 2026 sold 6,100 shares in OKEA at a price of NOK 37.00 per share. Following the transaction, Olav Bjarne Roksvaag holds 31,371 shares in OKEA …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Oljefunn i Snorre-området – planlegger for rask utbygging - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTFBmMmxGTFZkalozVU1TLUlFeW1xdE8wbVFlUEd5a3Q5amxSMktIZjh5Zml6ejR3TmhKWXlHX2JpZG1BUzNoQ29RZktmOUVRUDFVQnZ5RkdSUXI0T08wN1k1aER4SlhSVGpoUGNMdElkeFBTcWliNEE?oc=5",
+   "d": "2026-03-02",
+   "s": "Oljefunn i Snorre-området – planlegger for rask utbygging Equinor"
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -596,6 +671,377 @@
    "u": "https://news.cision.com/okea/r/okea-fourth-quarter-2025-trading-update,c4297829",
    "d": "2026-01-27",
    "s": "(Trondheim, 27 January 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the fourth quarter of 2025 on Tuesday 3 February at 06:00 (CET). This trading update is provided to summarise production and sales volumes and related updates for the quarter. Fourth quarter 2025 production and …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Store oppdrag til norsk leverandørindustri - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxQNHRwZVpkVDNSYmFTMWZIZ2oxWkZDbklyd0VfYUF3WnZscDMzX1ZXSjFIajdJS3oxOWdFMTdvSHU4Nkx0TEowRVhObTdxX2NBSzFnU2lrTGxONFE4dzZ1aWxWSzZhU1ZvR1Y3UVZKMTVObmhld3pGSUxBWWJJZ0hGNG1JZXJxNkVPTzRiWmhsTQ?oc=5",
+   "d": "2026-01-08",
+   "s": "Store oppdrag til norsk leverandørindustri Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kunstig intelligens gav 1,3 milliarder kroner i besparelser i 2025 - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQc2JJYWl2VUNNUUZ4d3FoMXI1bmY1U3Vkcmo5Rzhkbng3Z1N1aUhPbXFULS1PN1dLbWRlQTFCMkJNN09UNUZ0d1EtNGJWVF9VdWx3NUpjR2hLTk9ESHJWUmZSSDkyUlJHX0kzRnZ6M3dESXN1QXR2eHZFTnZvQWhuVzVkV2tmSHJsX0U1bmdOaVJVdw?oc=5",
+   "d": "2026-01-07",
+   "s": "Kunstig intelligens gav 1,3 milliarder kroner i besparelser i 2025 Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor gjør nye funn i Nordsjøen - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE1POEdvREtKVmI0QVBCNnhwNVZFZEJ2ODQybkVHdGpwMjFtWXRkclJBUmN1ZFlheGJKWTVfcVlZTDNUVWJXRXZaaGxSalJZWS1YOUFseHEyM21yczU5VUcyR2xNZVZ1Ykl4aVFELXR1VW9Odw?oc=5",
+   "d": "2025-12-04",
+   "s": "Equinor gjør nye funn i Nordsjøen Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Vitensentrene & Equinor - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE9oNVZzbUJfbmRrX25tWE5YOHNOai0wdzdfbkptWEJnODBVVHlkU2hsYkI5TWtrRTVIc0FGQWZGcFNVT1NMYl9QTUhkdlM3cW82SWVMMXdZdi1wejRjVzNnRXFlbw?oc=5",
+   "d": "2025-09-27",
+   "s": "Vitensentrene & Equinor Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Nysgjerrighet former framtiden - Sponsorship - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiTEFVX3lxTE5CdFJmQVJrVTEzMlB6Q19pT19vSnVCMXBYUjkxUnpib3BxRmdGX2Z3dzI2VU5NLURDR3VjbDJZSEJIWHlOT2N6RmlXd1Q?oc=5",
+   "d": "2025-09-02",
+   "s": "Nysgjerrighet former framtiden - Sponsorship Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Oljefunn i Johan Castberg-området i Barentshavet - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE1UemhxNXF3VFZ6ckY2R2htMkxDd2VfU0pnZG1uVUVvRXRXcDRPbk4yUW5TdmtuTHVFNW5odXNVaWwweGdBSlJVU0JpVUNROXdjQzh5dEZNR0tHaU9YVlg5Q0FoOTFTWVhaTERPdWxVa1BfUkRwZHc?oc=5",
+   "d": "2025-06-30",
+   "s": "Oljefunn i Johan Castberg-området i Barentshavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Johan Castberg styrker Norge som langsiktig energieksportør - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQMmRFaHVzc1dXQ0dTbmJYUlBXaW5IbmtTQ0ExMTJ3Qi1UMzBNaXVxS3dZREx3YlVfandiMWJlLUpvM193d1RuZzZSNXRQbXJrbWdoSUhwUG9nV3VQdlEyOVpXbXd5SDd4MFdTelRMTmJZN05ZekRpZTg0Q2pCNXREbEZ5TnJsTTJWREhUYVhLRW4ya1hiSXN1Z3RKN0thUm9MNUVpaDln?oc=5",
+   "d": "2025-03-31",
+   "s": "Johan Castberg styrker Norge som langsiktig energieksportør Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Gassfunn i Norskehavet - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE1UNVJubEVkaTBWQXREXy03dUtEeVBBcGFLcW5SV2ZpYjRLQVJ3dExBVGM5d2g1U09ZS3R4aHVUSXluYkRNY1hBaHI3aml6Wi01ZFlHV1h1X1RTWXVZQmFsUmd4ZDcwSFhqRTV5bGtJWnl4Zw?oc=5",
+   "d": "2025-03-05",
+   "s": "Gassfunn i Norskehavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Informasjon om håndtering av oljeklumper - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMibkFVX3lxTFBMOHZLVmV4eHZJMHkzdHJxZEIzUTFuMzZLcjVPLUdYbnZrZ2t5VDRJd01sNW81RDJ2aGFHbXk0RTIwMVduWTBIaUp3cE1uaXJYaml1Y1lIcFFUYXpKc2lucGNYWWQ3Q3lXaUxmOVVB?oc=5",
+   "d": "2025-02-24",
+   "s": "Informasjon om håndtering av oljeklumper Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "FIRST® LEGO® LEAGUE & Equinor - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiVkFVX3lxTFBsRXNiekxyanI4MGEtcG1wOXpWVlR3X3V2VDJHX3RvOWJCbzlocjFSVG9razJqTTdqX1p5NjZnVkJ6LVQ2QmN4OHdhdFBDN3pfUFh4SE93?oc=5",
+   "d": "2024-11-21",
+   "s": "FIRST® LEGO® LEAGUE & Equinor Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Forskning, utvikling og testing - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE9FNkwxOUt0S1JIOTcwUm1qamY2bUdGajBsLTU1WEZCMUpxSVhXLVdMRHREVVBhYkdHV0RiRnNiU0taTmZFMUJJVDFYOW1fNFBmYm93U21ud29WQ0hYdDl6VWg2bXBXSF85Xzd5Uk9FanpOUQ?oc=5",
+   "d": "2024-11-12",
+   "s": "Forskning, utvikling og testing Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kårstø prosessanlegg - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE5STGNiSEJYeHd2ck8tTzNDTk50SzNDUUxlUFlfRFdqNFd3Y2xHajI4THJJTlg5ZER1Y1dzVU5UYzRBU3NxZDZmSlVrb190MElIS3c?oc=5",
+   "d": "2024-10-11",
+   "s": "Kårstø prosessanlegg Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Mongstad raffineri - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE9KUXhqQmdFZGZ5ejV1SGEzemZFYlpNaGdiSFFvT3VQaE85bGxraXRTM3NHUUw1bmF1aFlmcFpvVnZyekZ2MjBld0k3RE5zVHk2b0ZhVw?oc=5",
+   "d": "2024-10-09",
+   "s": "Mongstad raffineri Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Øygarden: Kollsnes, Sture og Northern Lights - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE1YS1IyVHBXMG03WFhOdXVBTnRyMlJLWU5LZUhPT3BBYVlDN0x4RV8tWkxOcVdiMHk2cklBN2JrQzJqT0xjNmJiM0xKYlBqdGJBN3NSbQ?oc=5",
+   "d": "2024-10-09",
+   "s": "Øygarden: Kollsnes, Sture og Northern Lights Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor skal ta i bruk verdens første ammoniakkdrevne forsyningsfartøy - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQb0dfZGpGUHRiNEN0VHRjdjdidTAwVDc3cU8tRW84NjRXV3NoQkZ2NkZ2Yks2Ni15NWdfMkJvYUxoSGZiTHMzanhFaERsNGR5Q3RESVFCMjE0QjRrWGFkQ0dUUi1GT1dVRXI0cGtTVVBua1Y2TUhObVZ1UEpJaG9tdHRIekc0SXdrODBURzR5S2hyWl8wd2c?oc=5",
+   "d": "2024-08-26",
+   "s": "Equinor skal ta i bruk verdens første ammoniakkdrevne forsyningsfartøy Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor sikrer utforskingstillatelse for CO2-lagring i Danmark - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQSkRGdUtta0Zfby1KSWhBSFNfdnljNkViSjVtd1B0czdvNGI0ZDBLZkNXX3dqemdIa0ZHV2VFQ016U2M1NGhnMUJ5YVcybk9mVDh2RkV4YWVJck9OMklPTEp6RUkxOHFHUElRVTJKZTEzeC1MLXljdnIxdjQySmFCZjN1NWdueUxWSTkxNXhSRkhTRlE?oc=5",
+   "d": "2024-06-20",
+   "s": "Equinor sikrer utforskingstillatelse for CO2-lagring i Danmark Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor og tyske SEFE inngår langsiktige gassalgsavtaler og planlegger hydrogenforsyning i stor skala - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPOXl6cm9Vc3BlTURpNnQ0WnM5UXdYam5FS3lZUzZKckV3bTV0UnprNFNjMDlueHZGU1U4RzNOV1JBb2hJQzA5ajBvRVFBczFBaWVBWVMxRnJpdFQwSzV4eHRwY2w3TFozbGRSQm5qMFJIcXNaZi1nb09sckVBaUpiQW5ZSlFoYWhtXy1sMmFiZWNvLUdC?oc=5",
+   "d": "2023-12-19",
+   "s": "Equinor og tyske SEFE inngår langsiktige gassalgsavtaler og planlegger hydrogenforsyning i stor skala Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Breidablikk starter produksjon foran plan - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTFAwQzAtR0tsQ21DRWF1LXItLWhtYU1kWEwzNG9aOHFNeVlUdlpXT19yQkJuQUZhVmRyeEJMcGFuWFpJV0NOSUdvMjFWUFpqbUdXLS1BY1RCOUZSWGQteG1oUTU4Y0dzVEdOeEktZk9GZVNVSWRh?oc=5",
+   "d": "2023-10-20",
+   "s": "Breidablikk starter produksjon foran plan Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Vårt summer internship-program - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMibkFVX3lxTE1BQUhLVGxucjA5Y21OaGp6cHk1Y05Cbm52NVpFNXFBNmItSmZOVldSR3JKZFliR1Q2N0QtWkNqcUR0VTZrOXllQWxsN0VtN1ZCN3VieVRLUDhqZTNRZ0lkU05IMVA3NUp2SkFVc0hR?oc=5",
+   "d": "2023-10-14",
+   "s": "Vårt summer internship-program Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Snøhvit Future-prosjektet godkjent av myndighetene - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE5MOF9NSzhpeW1fQnNOOV8yQkJFcWk0OE9FLVdWWjJKMzVtblFJRlZIcnZnbi12YWZ0cVZmendacE80MV9fVzFDY3Fscld4M1lGQkVtMjhTd1FhajNmeUpzdHBabVAyU1NNeko4MElEamxYVWtJZ1E?oc=5",
+   "d": "2023-08-08",
+   "s": "Snøhvit Future-prosjektet godkjent av myndighetene Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor utsetter videre utvikling av Trollvind - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxNeGxTVE0wZEw1aWJENlk5N21QVmY4bi1HSEJySF8tQjhqa19oTEdCQko5YTlWMWNkQS1ZeDBxU2RKUGhvQXF5d0hBU0EzMms2V291Rnh1Z0t6SFQ1SjZBYnFMd0x0QTMwRUVBaWlfTEZkWTdMS0k0ZjA3RG81V1dvelUweG9PMFF1ZlE?oc=5",
+   "d": "2023-05-22",
+   "s": "Equinor utsetter videre utvikling av Trollvind Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor går ut av Barents Blue-prosjektet idet avtale utløper og ny partner annonseres - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQUndfTEpaaWR1dnd0bGdtWGxBaHhjM1gtNzJTdkdUbFNNSHpVSjBYbUlWU241TDR3eGdGaU1tRWctSVRWS045ZXVfZ0E2WC1aR2xxX2N5M3Zkc1JYTnA2Y3ZXTHRpNlAwOG5KeUxqcWlQdzJPRkJoakRGLVRIWWl2UFZvTjBvRDM4eFEtYnB3?oc=5",
+   "d": "2023-01-31",
+   "s": "Equinor går ut av Barents Blue-prosjektet idet avtale utløper og ny partner annonseres Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor og det tyske energiselskapet RWE skal samarbeide om energisikkerhet og avkarbonisering - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTE9rRjI2NG5WSTRRSUpNcmZnWW5FR0RZUzZncm5TMThmM2JjYkE0N0xXRWx3SFFrT19XVWZxTXBhY1FXWTZlUEdWako1YVFVQmhuendjcUF1RDJha3NBREkyTHB6dURLVERQTHhHYlRKUWdlSDQ?oc=5",
+   "d": "2023-01-05",
+   "s": "Equinor og det tyske energiselskapet RWE skal samarbeide om energisikkerhet og avkarbonisering Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Irpa — sikrer gass til Europa og forlenger levetiden til Aasta Hansteen - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE55UUdTYklOM2lDd0JGMlFCYnQ5MVNGc1h6TlBteGQ3S0VENnFOczdUZTFweVF5LVVKZUtMYVNZT2lBVEtjLTBSN19nWkdaYkU?oc=5",
+   "d": "2022-11-22",
+   "s": "Irpa — sikrer gass til Europa og forlenger levetiden til Aasta Hansteen Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Nytt funn ved Johan Castberg-feltet i Barentshavet - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxNOE1wTDdTejlFc1dOU1hlQUw5MTZHUURTcFduODdCSjlDLUlCOHNldGFxZHdTSXFWWHJTZFRsS3pFSnV1eXZYTjMzTFdrT2MtUENsaFBlM3VVV1dOZGtYUWZMUmJwcERHZndrWnB5TEFOQXQwSlFnN05hR0lUTE9jX3pn?oc=5",
+   "d": "2022-05-24",
+   "s": "Nytt funn ved Johan Castberg-feltet i Barentshavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "CCS: Karbonfangst og -lagring — Slik kan vi oppnå netto null - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMid0FVX3lxTE9sVHNLY2tybE1iY1dBNnRMZTlTcW1meDZBdGtFcVVITms1T2hKLXRiSHRpT3pabGVnRGIyZEZGQVJJdTVDWFJIbFRJbDJJQUJhMWpYQ1d6RXlkdXpldW1GYVhuX2plamVoMFRtcy1mX0RPazREaHZ3?oc=5",
+   "d": "2022-04-22",
+   "s": "CCS: Karbonfangst og -lagring — Slik kan vi oppnå netto null Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Nøkkelinformasjon for leverandører - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMid0FVX3lxTE9LSVdJbUJJdnpIWGVYbE1VeWQ0MnNrVEg1NnQzNHhHcVZraGhydTlOMDdmTUpFSzZaalZ4N2ZranZIS0NXclBGdW5FNkxpMkZPcjl3SnEyLTdoX3U4alZRQU5rRXI0SDJqUmNGWkxuamo2dl9tY1g4?oc=5",
+   "d": "2022-04-22",
+   "s": "Nøkkelinformasjon for leverandører Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Sponsing og støtte - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiYkFVX3lxTFBNTWVaTjNOMl9hRk4tZTdrQms1aXQ1THhsOVk4VkhBaE9BTGFsMFBqcUhteHAwNF9aN3BDVWl4NGtJRHQwaUxCa05XRzdIUFFQb1gxeThpY0d4Z3AwMnJ3cHhn?oc=5",
+   "d": "2022-04-22",
+   "s": "Sponsing og støtte Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor Pensjon - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE5TczFZNGRMOGZoZTNHR3dhU3JpYVhTV0c2Tm9sbHM0eVlRT0U3QTdPM1BfalJlQXI1b1NHeEJmajdUSi1wWXFFTnpyTC1xM2ZQNnpxQlMxdVJRSGUybkE?oc=5",
+   "d": "2022-04-22",
+   "s": "Equinor Pensjon Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Northern Lights - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE1CNTg2SlhHQjBKdFc4RTRqV1lkRm9WUnBJU2Y0MndyS19ZWFkwWGtTZXRfR2U2WmRseGczbDQ4VFpoWE9kQWlmVTdXeU9yZU45OWFVOTBidUhsdlI2MWc?oc=5",
+   "d": "2022-04-22",
+   "s": "Northern Lights Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Johan Sverdrup-feltet - lønnsom drift og lave utslipp - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiXEFVX3lxTE8yT3h0OWxyUjRpNkpKZ1k1NnJQUkN6ZUFOdU5JZklxNThGa24xYWNlVjQzWDA1QkNCYmY5V1Mwa2Y1a3RMZ2NjWS1WY2p6ajVtc3E1aWxFY0RoRUVJ?oc=5",
+   "d": "2022-04-22",
+   "s": "Johan Sverdrup-feltet - lønnsom drift og lave utslipp Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Arbeid fra et eksternt sted - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE1WYXJBTG9oNGwwTTd2ZXhHWjE4YXN0MmRvOVcxQmpRN180YldpSkNldEVWTXpxaVR6OUJBTVBCWnZ4UzdNMEJxb2Nvb3B2eUpkMDRQTTltNHI?oc=5",
+   "d": "2022-04-22",
+   "s": "Arbeid fra et eksternt sted Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Slik kontakter du Equinor - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE1MWlMtSVlyM1NKOWhrY3dEenJJVHJGaUtiTzB0bEVwTFd3MDdGYmV5REI5ZXdEajJyZ2NmdUlvWnlwdlNLeHktWVItaE1PV0xBR2dHY3FldE0?oc=5",
+   "d": "2022-04-22",
+   "s": "Slik kontakter du Equinor Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "CVer for konsernets ledergruppe - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE93ZmVidWc2Q25xMTV6cDR6cmQyVlc5Ykt2RmdQMlJOSU1YR2NRVXQtMzl2OFZGTVp5ZHVnbmVKUmhYeDRkY3Z3bFZrTW1NMzlqXy1zNXl6LVZHS00?oc=5",
+   "d": "2022-04-22",
+   "s": "CVer for konsernets ledergruppe Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinors strategi - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE1BLWJ6NzVOZ09Ia1VHRVpRbk1EN2Y1d2JuVDRUMnJndFhCQ1k3elB3UDJOcHFhSmVCb0x1NEdMYWE0b2tsQVUyU1dPaUVpMkFteUt4MQ?oc=5",
+   "d": "2022-04-22",
+   "s": "Equinors strategi Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Åsgard ligger på Haltenbanken i Norskehavet - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiUkFVX3lxTFAwa05zaFpHdW9DYU1oQk9UdEhvV3pQazBPNkhwOVN0cS1tTFUzZmV4ZFhpYlZEcmJOVTZkVzhQSlU4NlNHb0hIdGJ0WHV3VGxUbFE?oc=5",
+   "d": "2022-04-22",
+   "s": "Åsgard ligger på Haltenbanken i Norskehavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Snøhvit-feltet - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiU0FVX3lxTFBvSExMQ1hOLV9ETmw0RTU5YTRHcE0wNERjVHF5dENWRl9Qb1JUMVp4ZVFZcDlLUGhpYndyN1dpcGd2Y3FBRkY5RXFPMGhTR3BJU2xn?oc=5",
+   "d": "2022-04-22",
+   "s": "Snøhvit-feltet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Presserom - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiTEFVX3lxTE50SERwMGFDQjJyS2ZJeklrR0V2OVF3ZmlZN0dzYWdiSkdtZENSSGRpekpTNHZCWFBlNzRNRDE2VVZtWjR0VTY5aFFJdDI?oc=5",
+   "d": "2022-04-22",
+   "s": "Presserom Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Konsekvensutredninger - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMia0FVX3lxTE14MkFvOXdtd2JBZHdHSi1GYnh1bnRPX19DUGxqMHhkTWhtVGVzWHplanRSd1FqdjRUOUdVY055cmZiUlZremg2VFlNcHlWU2h2cnprU0ZuSE1KajZHTXJFRnd4eXdOUGtwck1V?oc=5",
+   "d": "2022-04-21",
+   "s": "Konsekvensutredninger Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Etikk og etterlevelse i Equinor - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE5iTjRQa2N3RmNYemVsN3RETXphRlV6U0ppVmhmd1ZuVUVwRFE5VjhxWDI4MllibHl6YmF5Rk5waENubzRidjN2aGZybXRkUkRGRGItbjJHVGVNZGk5VHloWTZvODktQQ?oc=5",
+   "d": "2022-04-21",
+   "s": "Etikk og etterlevelse i Equinor Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvordan bli leverandør til Equinor - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTE84cEN0azJzMVdqRjFhdGZZTmFwVE9Mb0pGenQ2ZXAzQmZXZnNsaHFBQ0JUR3FvbGd2cnVzOWxoWkpWek9yOWwzQlFHNVNxa1g1aXdOVUg3dXJ5Skx0RnQ4WDFpMFE1Ukk?oc=5",
+   "d": "2022-04-21",
+   "s": "Hvordan bli leverandør til Equinor Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Johan Castberg - et felt i Barentshavet - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiXEFVX3lxTFBheWpPdFpNWk9OcmtwOC1EeUhxdmw4QWRpNWI3TzI5R01SakFONy0wOUQ4Mlg2RVFrbG5hSVdqamJybUxMNHQ3M0RKb3FHYUlMYTRUdm5kZGk2Szhx?oc=5",
+   "d": "2022-04-21",
+   "s": "Johan Castberg - et felt i Barentshavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Aasta Hansteen - felt i Norskehavet - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiXEFVX3lxTFBPa21PdzlhODluQVdmRWFFOWd2eXVGdHhPTXhFb3dSYWtGTTVwR3g5Wk1nRDFSQVYta2JMa040dHEwVDJxQXRJdTdCSGRGemlycTVFWXd6R0FGR0p4?oc=5",
+   "d": "2022-04-21",
+   "s": "Aasta Hansteen - felt i Norskehavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Flytende havvind - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5UWXYzZTB3X3BlbThkYlVJb2ZnN3BZemRPVU95OFlLSU5ob3pxRHh3WnlnSEhGY1U1UWdFVnRsRGxmMzFiWUdNRkpSaDJ1Ykx2OFM4MVVRVlRxWjh0RmQ4?oc=5",
+   "d": "2022-04-21",
+   "s": "Flytende havvind Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hywind Tampen - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE91Y3g0bE9OVVhfVWtQV0R1LVJnUm5ZTXpBSGtMbWRoQkVNa2x2c05MWnBWZmVoZGFXajJER1NieHBDOFZ4UWhqZmNmWFVVSkREbGswaS1xRkZWclE?oc=5",
+   "d": "2022-04-21",
+   "s": "Hywind Tampen Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Consensus - input from analysts - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE9vZ0FJR3JvQURXcVloWWdwQ2w5UXBjcGxPWjdMLUJ5Um5vSXlFZjlhLWtsZURUZFpocHhucnF4a3pHYk5VeEVZWm9CSTlQendBNnQ1cVV3?oc=5",
+   "d": "2022-04-21",
+   "s": "Consensus - input from analysts Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Norge | Energi, olje, gass og havvind - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE0tVE9aVnFZTzNmV2xkRDh0V1Awb2lISEVvSGRULWQzM3d5TTV6QmNGMU9ZMGVzSnVENUxBb0FZN0YxVDFSSlh2RG9wY1ZNLXNLMDJXY0tR?oc=5",
+   "d": "2022-04-21",
+   "s": "Norge | Energi, olje, gass og havvind Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Våre anlegg på land: Et viktig ledd i å få energi til mennesker - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE9rejlzcHpLVHUtcEZsYVh2eW15M0lMN3k5UDUxMkVNMjJHSkpRQ1g4TlNZdVAybVNueUNWaGJZVGl3VEFUN3JSWGFUdDVaS2VackFERzFERQ?oc=5",
+   "d": "2022-04-21",
+   "s": "Våre anlegg på land: Et viktig ledd i å få energi til mennesker Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Havvind - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE9HQ1RUTjlqUG1rclJtZnlwYllpaHUwdk1ZOUpYaEhiXzN6dk5IWjlMeXc2TWR1RHhfWXFKTVFESEVJSGhEcFRKNlZWZUpIWk1vTzVz?oc=5",
+   "d": "2022-04-21",
+   "s": "Havvind Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvor vi er - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE1pTkxFNkd1T0dyT3NCdlFBSVduem9oWE5IY2MtSWlqc1FTaGt2eEpjOVE0VjhoeXBjbnJpX2c0QVRJU0ZyNzlrNmJGdUIzdw?oc=5",
+   "d": "2022-04-21",
+   "s": "Hvor vi er Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Om oss - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiSEFVX3lxTFA0YTA0OFVGSkpFTVR5RWJ3eDctQ0tGdnJfYVRZYVlXMURYUDBVYXIxanR4ODBPVHlCMXN6RXBwU1FTb21sMG1WSg?oc=5",
+   "d": "2022-04-21",
+   "s": "Om oss Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Karriere i Equinor - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE41M3RZOEh6eEpBd2xjcFIwQ2V2WFR2d0owM0twLWx5RnIyd2wzRXVxZjRORktGbUFDdWRTcWZYOXFENVBaZWRQdzdfaw?oc=5",
+   "d": "2022-04-21",
+   "s": "Karriere i Equinor Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Equinor. Levere pålitelig energi til en verden i omstilling. - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiP0FVX3lxTE1ldWszTHNaRUVodWpZNXh5WG5rLWRFNlAzaDRkcDExVmtFSFREYzluVUtMbEZ2cnV5SC1GM05XNA?oc=5",
+   "d": "2018-05-16",
+   "s": "Equinor. Levere pålitelig energi til en verden i omstilling. Equinor"
   }
  ]
 }
