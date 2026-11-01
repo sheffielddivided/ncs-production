@@ -2623,7 +2623,8 @@ async function refreshCompanies() {
   }
   // Lisenstabellen trenger funndataene til lenkene i siste kolonne.
   if (companySubView === 'licences') {
-    await loadDiscoveries();
+    await Promise.all([loadDiscoveries(),
+      bundle.licence_outlines ? null : fetchBundle('licence_outlines').then(b => { bundle.licence_outlines = b; })]);
     drawChart();
     return;
   }
@@ -6459,6 +6460,9 @@ function investmentCard(ids, nameOf, opts = {}) {
           <td>${g.total ? bnNum(g.total) : '—'}</td><td>${g.hasExp ? bnNum(g.exp) : '—'}</td></tr>`).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td>${bnNum(total)}</td><td>${withExp.length ? bnNum(expSum) : '—'}</td></tr></tfoot>
     </table></div>` : '';
+  // I selskapsprofilen er hubtabellen lang og står kollapset under grafen.
+  const tableHtml = table && cmp
+    ? `<details class="hv-more"><summary>Show investments per hub (${per.length})</summary>${table}</details>` : table;
 
   const fixTxt = fixYears.join('/');
   const noun = cmp ? 'company' : ids.length > 1 ? 'hub' : 'field';
@@ -6469,7 +6473,7 @@ function investmentCard(ids, nameOf, opts = {}) {
       ${fact('Peak year', peak)}
       ${fact('Expected future investments', withExp.length ? `${nokBn(expSum)}${fixTxt ? ` (fixed ${fixTxt} prices)` : ''}` : '')}
     </div>
-    ${chart ? `<div class="pf-map-note">Annual investments, NOK bn (nominal)</div>${chart}` : ''}${legend}${table}
+    ${chart ? `<div class="pf-map-note">Annual investments, NOK bn (nominal)</div>${chart}` : ''}${legend}${tableHtml}
     <div class="pf-map-note">Annual investments as reported to Sodir, in nominal NOK, through ${last}.
       ${cmp ? `Each field's investments are multiplied by ${esc(cmp)}'s licence share in the middle of each year; the expected future figure uses today's share.` : ''}
       ${withExp.length ? `Expected future investments are Sodir's estimate of the remaining investments, in fixed ${fixTxt} prices. The two use different price bases and are kept apart rather than added up.` : `Sodir has no estimate of future investments for this ${noun}.`}
@@ -8218,6 +8222,7 @@ function drawCompanyLicences() {
   setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Source:</strong> Sodir layers 3000 and 3007`);
   setProfile(licenceRows.length ? `
     ${licenceSummaryCard(name, licenceRows, false)}
+    <div class="pf-card pf-wide"><h3>Licence map</h3>${licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})))}</div>
     <div class="pf-card pf-wide"><h3>All licences</h3>
       <div id="licenceBox">${licenceTableHtml(licenceRows)}</div>
       <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licences →</button></div></div>`
