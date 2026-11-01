@@ -30,6 +30,11 @@
    "company": "Petoro AS",
    "title": "Petoro AS - siste pressemeldinger",
    "n": 25
+  },
+  "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no": {
+   "company": "ConocoPhillips Skandinavia AS",
+   "title": "\"site:www.conocophillips.no\" - Google Nyheter",
+   "n": 42
   }
  },
  "items": [
@@ -174,6 +179,13 @@
    "s": "Aker BP has appointed a new executive management team, effective 1 January 2027. The new team will be organised around the company’s value chain, from exploration to production, to strengthen collaboration, reduce complexity and improve execution. Until year-end, the new executive management team …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Oppdatering om Norge og Teesside - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNd1gteWpnVU9YLWZYeXZXampMaXVsemJCaTJkTDdPWDN3M21aNTlqMXJCeEpoM0IyRGE1cWxLWHB6S2VzOU5QaXltVE1xY3BUbGhpdWtlM1NZQnJXdmFjYWliMHdueDlfZ3VtRFQ0OEZTcTZTN2xaTmd3aHBYUWJWYk9ER2FDeS1JLWltRjE0aDBhMlk?oc=5",
+   "d": "2026-10-01",
+   "s": "Oppdatering om Norge og Teesside ConocoPhillips Norway"
+  },
+  {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
    "t": "Vår Energi ASA completes acquisition of Pandion Energy AS’ portfolio",
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-completes-acquisition-of-pandion-energy-as--portfolio,c4404437",
@@ -291,6 +303,13 @@
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4386526",
    "d": "2026-08-24",
    "s": "Reference is made to Aker BP's press release from 15 July 2026, where the company announced its plan to buy up to 1,500,000 own shares in connection with the company's employee share saving plan. In the period from 17 to 21 August 2026, the company purchased 250,334 own shares at an average price …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "ConocoPhillips på ONS 2026 - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxPekJ3S1M5SzRTYnBRejZmSkptMlBHOHRYWUNsVDJmSEtnVE5yaDJGV3RITVpsZnhrRW1ITEFzeFBvM3FvZS1kWEpwQXdBN2RKTGtUWW1DbFJzVnBObi12Y3dRS1dKd0k2UG1uZ3ZpUWU3X0F6Z3pwZ0ZybmhlN09mV3ZZTFBzMkxvWnNv?oc=5",
+   "d": "2026-08-21",
+   "s": "ConocoPhillips på ONS 2026 ConocoPhillips Norway"
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -587,6 +606,13 @@
    "s": "I dag fyller Petoro 25 år. Selskapet markerer jubileet med å løfte frem betydningen av den norske petroleumsmodellen – et rammeverk som har bidratt til å gjøre naturressurser til fellesskapets formue."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Energidepartementet godkjenner gjenutbyggingen av tidligere produserte felt - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMizAFBVV95cUxOWng5UDkzNWJSdVBWeUlyNUVIUWZXRks2MVFuSERDVGtUT3dQbDZGeThNdHkwYlFHckd2eTVmOXAwMWtsY3VIUGNjbF9sSENkbk5MMkZKcmRqMU1PamtxbFloQkNVa294ZXdtanp1N0xoTjY3NnNxRUMzZ2lHa3MxTUpfQmJ2VjR4RTcydDREZ1EtYnpmU1cySzl1eFZMVmJYUWhWYUNkck5STURjRTkxdXN5cnFTbjNvamtZZnQ2VnFwOERtUHY2Yno5dzI?oc=5",
+   "d": "2026-05-05",
+   "s": "Energidepartementet godkjenner gjenutbyggingen av tidligere produserte felt ConocoPhillips Norway"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinors resultater for første kvartal 2026 - Equinor",
    "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxPcjJtd2h3eG1NMXhOWVBNdU16TUFoeTVzd1lsc1lLdXBWbzJOd1VfY25lTkhsTk9wRFZUVllDeVJjM2ZjeHFPS2pON0gzMzIwNDhFbUxreHVXTTZqYVpRMnh0YTNscjkwMW15WGIyRmlvd1RBMlFpSFowVENaeHE0VS0tdmg?oc=5",
@@ -685,6 +711,13 @@
    "s": "Oljefunn i Snorre-området – planlegger for rask utbygging Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Leverte planer for utbygging og drift for tidligere produserte felt-prosjektet i Ekofisk-området - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNY1c5SjlSczlWcHVRMGFJS0hoSjhPdVRJLXE0MWE5b0kycGctWFFXLUpEa2wwS01vMjNCSU41bXFpN3NoanhKSmRmMWM2TWhIWVprN2l6SzU3Zi1GNmhJWXV0NWhiSy16UmhHOURzWFJtSzVlbl9CRWpEZmkwcXpUcjVYc0JCN2t1UDhKSlFuR0FrMy1ZeWZ5a1JTRGR4RnpRNG9zY3l5ZUQzbFNXcW9kdF94dkkybEljOHE0ZHlzRVRnOWtpYWtYQi1pMzA2SFNVZ2xTSzF4UjdoYmhwTWxHeVdiUFpqWjky?oc=5",
+   "d": "2026-02-13",
+   "s": "Leverte planer for utbygging og drift for tidligere produserte felt-prosjektet i Ekofisk-området ConocoPhillips Norway"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA - Fourth quarter 2025 financial results",
    "u": "https://news.cision.com/okea/r/okea-asa---fourth-quarter-2025-financial-results,c4301570",
@@ -711,6 +744,13 @@
    "u": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQc2JJYWl2VUNNUUZ4d3FoMXI1bmY1U3Vkcmo5Rzhkbng3Z1N1aUhPbXFULS1PN1dLbWRlQTFCMkJNN09UNUZ0d1EtNGJWVF9VdWx3NUpjR2hLTk9ESHJWUmZSSDkyUlJHX0kzRnZ6M3dESXN1QXR2eHZFTnZvQWhuVzVkV2tmSHJsX0U1bmdOaVJVdw?oc=5",
    "d": "2026-01-07",
    "s": "Kunstig intelligens gav 1,3 milliarder kroner i besparelser i 2025 Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Endelig investeringsbeslutning for tidligere produserte felt-prosjektet - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMixwFBVV95cUxPSDdTYUh1OHRQUWs3aENuZ3JMVFlqMUZpVDlVU0FVT24tN0ZpUkFxYVktVVFJbXU4RVNHRkFZYVpOYWowV1l3NThZcC1GdlludlFoWGZ0dHRucG5TWmlGOFk1VmQxSzM4ZzNIUGlwNTl3SXZnYXh0WHY2eEI2N1NrcnR2NDVzTzBvcjhkUGNCeUZrcUdMby1HOUJyYkZHYVdxLUR4UFBzV1YyeWtnTERuRS16WEs5OGlaSE55N2ZsTHpOdE9mdThj?oc=5",
+   "d": "2025-12-16",
+   "s": "Endelig investeringsbeslutning for tidligere produserte felt-prosjektet ConocoPhillips Norway"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -755,6 +795,27 @@
    "s": "Johan Castberg styrker Norge som langsiktig energieksportør Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kontakt oss - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiakFVX3lxTFBIdEZxWHVKdndOMWozSHliMlg2MWN6V3pydUJRaVVpMkdFMkU0MUd6Mk00amJCQkxMUVU2c2V2SWU1SEQwNlMtQ3JWOW9lZnRMSWNMeXhNYmpVMlEwdlEwTUw5aXRWejlNSnc?oc=5",
+   "d": "2025-03-20",
+   "s": "Kontakt oss ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "HMS, etikk og retningslinjer - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMif0FVX3lxTFBqSEpVSnZsMnU0OHVPRFhZbGlDSDJPcll4M1J6UUVzc1Q0UFhrS3JGajd0N2NtWlVpY09kZjV1bXJRaVhTUnNMeHVMSmNxbFJEb3pZVUEyQ0xxYU9xNVM2Q3AzSWhLaHpOdUNWaENIY2pXLXRtRkgwUDlaQTVybUE?oc=5",
+   "d": "2025-03-19",
+   "s": "HMS, etikk og retningslinjer ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Leverandører - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiWkFVX3lxTFAxVDhEeFIza2VMX1pJRDJ3dTZKRlBnT21FS3lMUFlmUmZLMjRVTk4yNllnX1I1T1RCMXJDcy1XdGJ1d1RFZHJhUGw5TG92ekl6ZnVCUWlOMVdYdw?oc=5",
+   "d": "2025-03-18",
+   "s": "Leverandører ConocoPhillips Norway"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "1025 milliarder kroner fra SDØE til staten siden 2022",
    "u": "https://kommunikasjon.ntb.no/pressemelding/18458295/1025-milliarder-kroner-fra-sdoe-til-staten-siden-2022?lang=no",
@@ -776,6 +837,20 @@
    "s": "Informasjon om håndtering av oljeklumper Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Sikkerhet, helse og sikring - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiekFVX3lxTE1wRW1xY0pwZ3MtQXBiQi1adG9MdG1oRjFfaC1nOGdLWFhseEgyMHdJRUZ3NlFjZFRibTFqT01SSU42WHFoX3FDdlJvSTJLTW1XYjV0cmJkSmFubHNqV0VUckxoWTlJdGxiVU5ZN0h4MGFOZVZEdzZVUk1R?oc=5",
+   "d": "2025-01-17",
+   "s": "Sikkerhet, helse og sikring ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Sponsing og samfunn - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBSMm9ITWZIb18zQlNGUmRWTUd2OGdPOUo5Q1ZKYVR0Si1RQjgyU1Q2R0hCMkhsMjdrN21LOGVlbTNsUnVMSzF0TE9BZC1ESklvWWNEc1YzUjBFWS05S0RDcHZ4eVJyMVdUUjNMb0hfUjdaSEhVazFfZ0tSQQ?oc=5",
+   "d": "2025-01-17",
+   "s": "Sponsing og samfunn ConocoPhillips Norway"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "FIRST® LEGO® LEAGUE & Equinor - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiVkFVX3lxTFBsRXNiekxyanI4MGEtcG1wOXpWVlR3X3V2VDJHX3RvOWJCbzlocjFSVG9razJqTTdqX1p5NjZnVkJ6LVQ2QmN4OHdhdFBDN3pfUFh4SE93?oc=5",
@@ -790,6 +865,20 @@
    "s": "Forskning, utvikling og testing Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Ledergruppen - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE9OQVpyZ19sZVI4YVlycl9ldm5fTEVYV3JJbnktNFBueU9UTjZTWER4M1djcGwwWFdBbk11ZkZyaWZXelgyY00wU3MwOTBLM2kybW5TQlRsLW4tb19MdXloM3BoZjU1TjVS?oc=5",
+   "d": "2024-11-11",
+   "s": "Ledergruppen ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Pressekontakt - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE5zemE4TlFISjYzUGdmY0ZsSThlcVBkWTR5cFBrWGNHODRQOUlJd3hZalFFcERNVDF1UUpTbmx3SUhyY3d2bUlwbVd5Ykw4eklYY0NRY2hGajVsZWE0X0lhQWNpYm9OZG5fY3BiTl9OcEVjZw?oc=5",
+   "d": "2024-11-08",
+   "s": "Pressekontakt ConocoPhillips Norway"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "God drift ga sterk kontantstrøm fra SDØE-porteføljen",
    "u": "https://kommunikasjon.ntb.no/pressemelding/18309829/god-drift-ga-sterk-kontantstrom-fra-sdoe-portefoljen?lang=no",
@@ -797,11 +886,32 @@
    "s": "Petoro har levert en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 174 milliarder kroner per tredje kvartal 2024. For tredje kvartal isolert var den på 61 milliarder kroner. Kontantstrømmen overføres i sin helhet til staten."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Fotoarkiv - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMibEFVX3lxTE14UGFUQmQtSUtmdFBIMkp2SzlyanNMZ2JDYWpvcUZweFpWSjFFUGZKNUxodkN6S3kxeUhLOVBaQTdvWmpMQjh1QnlISDczN0s2SVBGN3hyNlFIZU0zejEzZkphbC1QXzJCTmRQRg?oc=5",
+   "d": "2024-10-26",
+   "s": "Fotoarkiv ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Publikasjoner og rapporter - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTFBSaUgyWmgxNl9OWHZaSEM1c1dfX20tcmFfckNFVHZhWlUzWk1TcU8zWTgwUnBMQlRneHFTVVBJclQ4VXFoM18taXU5U291UnZMaEhzeUpUV1NaSm9lZngzWG5mQWw2Rk9iLXNHVnJsczAtdw?oc=5",
+   "d": "2024-10-21",
+   "s": "Publikasjoner og rapporter ConocoPhillips Norway"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Kårstø prosessanlegg - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE5STGNiSEJYeHd2ck8tTzNDTk50SzNDUUxlUFlfRFdqNFd3Y2xHajI4THJJTlg5ZER1Y1dzVU5UYzRBU3NxZDZmSlVrb190MElIS3c?oc=5",
    "d": "2024-10-11",
    "s": "Kårstø prosessanlegg Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Nyheter og media - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE93RHI4TEdCR29wQnJFdWFmcm5hZnlZWHpET2hZa1ZVTmRKWXpFY3oxQ0E3anJZRTZHRW0xMXpWOU1tUC1tZTAya2dVWVFFUDN3UXpoeldfaFBSc1hyNXI4?oc=5",
+   "d": "2024-10-09",
+   "s": "Nyheter og media ConocoPhillips Norway"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -853,6 +963,48 @@
    "s": "I første kvartal 2024 leverte Petoro 60 milliarder kroner i kontantstrøm fra Statens direkte økonomiske engasjement (SDØE). Dette er 57 milliarder mindre enn i første kvartal 2023."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Utbygging og prosjekt - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTFBwY2FJTEJRWkYzcVljVzUwWS1vOEVZdWRMc1dPX3JvLTRYaHRkdzktUm5EcGFsS280N0JJdEZKdTZobTVad3FEMno4ZlNGcVpTRUhUMnpONHR6VmtaWmU1SjVabTA0MzIteTg5WExEanNUN1JjNVE?oc=5",
+   "d": "2024-04-04",
+   "s": "Utbygging og prosjekt ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Terminal og transport - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE1TZ3ZfcjFYQ2JRX1dOUEJfMEtiN3ZFMTRDRXQ1UXBPNlloWUlkME5yRFdwMXM3NmtCWkJGVzBLc081ZkJIOFp0NFFDUGtmRjNsZ0FwdEFrQVFGcXZCS2I0Nm5vTHFvZXJiMllDRkRmQVhtN0dkRnc?oc=5",
+   "d": "2024-04-04",
+   "s": "Terminal og transport ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Våre ansatte - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE9HQWh1Y0tqUXJMQWFWcHNrcEh1TDk2MU1OREFvU0wwa3FrR0JaMUVIYWZhR3VWYkFrZVV4eHNYTHJLQU5YZDlzQTJIZ2xGNTEwZlhfWlRYaDZrc05nT2IyUnJXUndiUE5w?oc=5",
+   "d": "2024-04-04",
+   "s": "Våre ansatte ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Produksjon og drift - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTE5PR0xjdzVqUkozVHlfbzczQk1YWFlrUDJ6YXVJWXFqYXB0WEdOOU8tSWxkZTBIQjJIcm1lbXdneDdLOUVaYzBsQjlVTXpEbEtsZDgxYm13S1BTbTMtazNPUnhVVkJFaW8?oc=5",
+   "d": "2024-04-04",
+   "s": "Produksjon og drift ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hva vi gjør - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBYU2VYWG0xRFI5YUd6a2dpQ0hxdDdXaHhSaUFiYnNKSHBXdWhVOVQ3Q3pnenZqeW53a3lneDVzcHVnblpMTVo5TndxX2dzbHZjZVpua1VQa20?oc=5",
+   "d": "2024-04-04",
+   "s": "Hva vi gjør ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Production & operations - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiYkFVX3lxTFBPOG5ONkM4X0FNYXNFWVVpMHo1eEhlaVg2S2RTdlA5cVIzdkc1eWVjT1c4ME1rSGZjeEljVVZWbEMyaU1zQUZPRVdYTi1LOFloR2lkXzB6WElrVUVIeHRBWmNR?oc=5",
+   "d": "2024-04-03",
+   "s": "Production & operations ConocoPhillips Norway"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "3000 milliarder kroner fra SDØE siden 2001",
    "u": "https://kommunikasjon.ntb.no/pressemelding/18056177/3000-milliarder-kroner-fra-sdoe-siden-2001?lang=no",
@@ -888,6 +1040,13 @@
    "s": "Vårt summer internship-program Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Tommeliten A-feltet leverer naturgass tidligere enn planlagt - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOUXdUVmptVl9zTlo0SU1oelBGM3B4T3QzX2RzaWhjX1lmVWFiMXk3Q3FrNFNmbGNkWGVFSTZFUzR4blBDTFJTUzFwQzFKMTU0RDR2UmJoZWhJREo5UjdFcXI3bWpaU3B2Y3ExSlMxLUZia1lmQ1ZQcmlnTk5ITlpYNHMwdjZacEVrdWJxdkhnRkV4bG5USFBoYkY3cHZ1UU1GX3NtV19yeWNkQkMwcE16OG9MR2VOWG55?oc=5",
+   "d": "2023-10-13",
+   "s": "Tommeliten A-feltet leverer naturgass tidligere enn planlagt ConocoPhillips Norway"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Snøhvit Future-prosjektet godkjent av myndighetene - Equinor",
    "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTE5MOF9NSzhpeW1fQnNOOV8yQkJFcWk0OE9FLVdWWjJKMzVtblFJRlZIcnZnbi12YWZ0cVZmendacE80MV9fVzFDY3Fscld4M1lGQkVtMjhTd1FhajNmeUpzdHBabVAyU1NNeko4MElEamxYVWtJZ1E?oc=5",
@@ -916,6 +1075,13 @@
    "s": "Petoro leverte 117 milliarder kroner i kontantstrøm til staten fra SDØE-porteføljen i første kvartal 2023. Dette er fire milliarder mer enn i første kvartal 2022 og 91 milliarder mer enn første kvartal 2021."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Fikk presentert framtidens Ekofisk - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPczJGRG0zNE9sWWhEX1ZKTWVPN0ZicWw5UzhuQ2tNRnA1amxwNlpTZ1otNG5kSnFpRm9MUjMtVXRlYnNxMzVsYV9BU0lSY1pDWjdEN01nY25SNVRPam0wWXhYM2c2dEVxU2lpNEctdnhzWXJUeTgtRzk3VTQwMGlkb2JWbGZaT1RIeWFyYzM2YkpaLVZSSHc?oc=5",
+   "d": "2023-04-18",
+   "s": "Fikk presentert framtidens Ekofisk ConocoPhillips Norway"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "528 milliarder til staten i unntaksåret 2022",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17959025/528-milliarder-til-staten-i-unntaksaret-2022?lang=no",
@@ -928,6 +1094,13 @@
    "u": "https://kommunikasjon.ntb.no/pressemelding/17959021/invitasjon-til-pressekonferanse---arsresultat-2022-for-sdoe?lang=no",
    "d": "2023-03-09",
    "s": "Petoro AS inviterer til pressekonferanse i forbindelse med offentliggjøring av resultat 2022 (SDØE)."
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Fortsetter bidrag til hjerteforskning - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMimgFBVV95cUxOVENTUHlBcUlrWE15aGh6aTJjMlMwZm93dDZHaFl5VVVyVVdsSTItUG85VnZLVjJEbEZ2dHp6aTNIMGp0Z3ZQb0dDcnNrNjJ5ZUhXcTRuMWh2ZW1LNmtlMU5IZm1SeGxxellXVHVFeVU3ZmtHWWNfd3YzenUzYVluYWVRM3hpSGwtNXZxRnV5SjRScXBDNmtTdFJR?oc=5",
+   "d": "2023-02-01",
+   "s": "Fortsetter bidrag til hjerteforskning ConocoPhillips Norway"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -1182,6 +1355,13 @@
    "s": "Petoro AS inviterer til fremleggelse av resultater SDØE og Petoro AS 2021, onsdag 9. mars, klokken 10:00"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Tre milliarder fat olje Fra Ekofisk - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPWV9QU0NiX21MRnVna0x6Z3VCZWJKN1dqcEEyVzFWQnNDdy13YS1RY0FPTmNZaHQ4SzR6M1RtNXo1elRsT2J1Vm1xY1NfUHZiQkstWU9IUWJOQm4zU3gxTjIxdEQxcjNQbjBhU1UwZ3dfaW9qdUFnWTVwZFVjYkQ1dnVfVGpMbUJWR2E0bVRIVW5fQ21UeS1v?oc=5",
+   "d": "2021-12-17",
+   "s": "Tre milliarder fat olje Fra Ekofisk ConocoPhillips Norway"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Resultat 3. kvartal SDØE: Ekstreme priser gir rekordhøy kontantstrøm",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17918584/resultat-3-kvartal-sdoe-ekstreme-priser-gir-rekordhoy-kontantstrom?lang=no",
@@ -1194,6 +1374,13 @@
    "u": "https://kommunikasjon.ntb.no/pressemelding/17912470/resultat-2-kvartal-sdoe-54-milliarder-til-staten-olje-og-gass-forblir-viktig-nar-norges-posisjon-som-energinasjon-skal-videreutvikles?lang=no",
    "d": "2021-07-30",
    "s": "Petoro leverte en kontantstrøm på 54 milliarder kroner per andre kvartal 2021. Dette er en økning på 20 milliarder i forhold til samme periode i fjor. - Kontantstrømmen fra Petoro i første halvår er nå nesten like høy som for hele 2020 til sammen, sier administrerende direktør Kristin Kragseth. - …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "ConocoPhillips markerer 50 års oljeproduksjon - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPUURzaGNZUmRPMnJlQXo4UmEtRlpGS0RoNGo5bHhUU3pJSHdCcTVMYUR2eDAwZ2ZjeUJvOTVhN2FkRWc3MU1LWTNocTgyNjU4TlB1bnZSb2hOYTdZZ0hhUlp1MUxlMTlPcE1pSTlOQkJLRGtuWGZibHhRNGl3ZHdWRkl4a3dVeGdWajNhUTFzSTVZM2dJeTZ4ZmljNXJZaVR3LTFYMg?oc=5",
+   "d": "2021-06-09",
+   "s": "ConocoPhillips markerer 50 års oljeproduksjon ConocoPhillips Norway"
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -1217,11 +1404,123 @@
    "s": "Petoro AS inviterer til fremleggelse av resultater SDØE og Petoro AS 2020, tirsdag 9. mars, klokken 10:00."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Ny tilværelse for pensjonist-juletre fra Ekofisk - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPSllhZjRNTGN1R1ZBa2EyaFB1ckRFQk5wd1ZQbW8ybXFGRm1SNnN6clBKdy0xVHhjeU95UnZYeUN4U1NFcEJ3ZklEVWRIdEtPcUxsVFZHangzcVAyT2JWQml6dzNZaU1kXzBoa2ZWRW1IU21zVnB5aGtTWmtzZTFEWUpPM3NFdW5OQzA1UXlmUXprUVI5VWhKTkxydE1VeUhzdmRfRFVBQmE2UQ?oc=5",
+   "d": "2020-12-16",
+   "s": "Ny tilværelse for pensjonist-juletre fra Ekofisk ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Helse, miljø og sikkerhet - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMifkFVX3lxTE14ZjU5ZVc0YV90RFZMelh3TUszTWI0T0RSWTIzY0RWalFUS3d6UGdqZjI3RENYaHRGUUVLTDJranJiSjA3NlRLd1YwVFZBc2dobTBwdm1DQWZiQ2MybzhhSUw3MmJXUUE4dHFodW1pRVRXRVVTR3dOS0hXNmhUQQ?oc=5",
+   "d": "2020-09-23",
+   "s": "Helse, miljø og sikkerhet ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Sponsing og samarbeid - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiekFVX3lxTE5VYkx5RW9RQmJHb1piYVpTRkdENUd5NXU4Unl1R2Nob1dTVVhJQ1lkQ2VxMEU1Yzdzc3pBbjBrUnAxRUV6Ym9XcUpHcHVpUERSR01yN2dJeUZOTjJMSm9PV3JHdmdSN2lWcGpDU3VGRFhfVV9XbmdnNFBB?oc=5",
+   "d": "2020-09-23",
+   "s": "Sponsing og samarbeid ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "SPIRIT-verdiene - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMibEFVX3lxTE1JTXR1dE5WZFM0Y01TSUw4TzdPOWxzcnA2Y0kwT3pGbU9hd3JKd21ZQzJMcWVMdVpKMUJUblIyck9KTWlnZTJJVGlFTWtvcGR3dVN3RUtwWllCdmJ6UDN1YXh4VXQtY2dYRmYwVg?oc=5",
+   "d": "2020-09-23",
+   "s": "SPIRIT-verdiene ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kontakt Norge - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiakFVX3lxTE1wUnpDMzk4aVZobE1pQlRNYmZ3SnlsVDJyY0Zmbld6cUI4bUtNSkd0czBHbWxpTWI5eGFMYnNNeFdiYUV3MmdJbk1VR2l0U09LTV9lbk9CR0N6QkZPcTRnMi1UX1NBTFc1bEE?oc=5",
+   "d": "2020-09-23",
+   "s": "Kontakt Norge ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Vår historie og visjon - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE1aT3hKOThLLVg4ZEluQUJvRzZwb0RlMlFlWTlOYnhscElmTWsxbW5zV3JSOVVjdDJaUmdmSDM4akVUSmNURm9nbWlCd1NEbHNDUXFUcGttSnZiWFp3VjM2WEJEZXQ4bV9p?oc=5",
+   "d": "2020-09-23",
+   "s": "Vår historie og visjon ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Contact Norway - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTE5rclk5OHdaWk9NREFLbExMZHo4SUFYVEkxbVVoVE5aZmJwZ0tiSVBWMmgySGZxRnV0bTRsMTN1bHV5ZGx6eG5ZNjhvR3FlOUdsd2tYUGpqbXE4SkVfYWtTSWZ6ZTFIaXc?oc=5",
+   "d": "2020-09-23",
+   "s": "Contact Norway ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hvem vi er - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE5WeFhyYTVGb0Ztb24xcVVNLW8xN2ZRSGlHR2k3Q1BrQW5uNElrMEYzSXZ3bVRmQVdTT2pDRW56dEdsal9zeWdxbjdOdkFNUzhiVFhxSGcwRQ?oc=5",
+   "d": "2020-09-22",
+   "s": "Hvem vi er ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "ConocoPhillips Norge - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiSEFVX3lxTE12SU9NUXQxZFdQbVZxYkNQcHY1d19NTmtQdUdSRWE1Nl9UQVoyWTFuMWl4RFNhanZMRDdUaDVLUlFxQ2Y2THE0Yg?oc=5",
+   "d": "2020-09-22",
+   "s": "ConocoPhillips Norge ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Steinar Våge er ny sjef i ConocoPhillips - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMingFBVV95cUxQNmwwRTdIazgwZDZLcG13dmYzZXpsaGFBUm5qTFNGT2FjeURGRC1xZkR2alFvQkEyeVVybnNZVEc1YXdhbjdCQm1CXzNUQ2RpR2hHTWU5ZTU3d0JYX0x3aE10RkhtZ3J6SlJaLTRpMVFtLXY3ZFB1cnA5dHMyRGhleUlOTUhSZE1zOUVCaWh5THZLek0zUzNENkx4TERZZw?oc=5",
+   "d": "2020-08-06",
+   "s": "Steinar Våge er ny sjef i ConocoPhillips ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "40 år siden Alexander L. Kielland-katastrofen - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiowFBVV95cUxQWnRhVjFQZGdacTc3YzBrSDdkQVFVUW01Ui0ycGxVYURLYmpOeWlpRDdQVGoxMjZSaG0xYVpuVHVWLUQtODBRRmdCcVE2eXVmT2hGNHR3SklVUUFQWFFpNXQtbkpxWkpteEY0V3UyRG1JSWJIUzRRckxzR3ExbERGSVU3NjkwRW5GVWs5bjZVNlZZWVBaall2RDBMdlhFeXc4V1RV?oc=5",
+   "d": "2020-03-27",
+   "s": "40 år siden Alexander L. Kielland-katastrofen ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "50 års verdiskapning fra Ekofisk - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQQ3BxSThQTkR1cDJ3Z1hTZEFjY1R4VjJYQTNqZmk2LTJYNGVuNTFnU3NKT2lXVk1Lc2VnSHhhd3dKVmpWa0JYRGJQZTRWMzI2dTI3NHl2S3NrbEdEX2FzUzYtOXJKVGc4Mm5mS21TTWFpUkRYS3lCZG0zMEVYRUtfRmhQVUd6ekJNdGpfVDFWbWkzSFE?oc=5",
+   "d": "2019-11-13",
+   "s": "50 års verdiskapning fra Ekofisk ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Industriminne Ekofisk oppdateres til 50-årsmarkering - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiogFBVV95cUxONlliR2ZqWmxLNDhGbnZWZ0Izak1XdnZJblktQWZtRXdKb3FTbGREdDBLQUU5MEpHa1cyM3BKZzNXZGtuYWVfYmh2THNEa0Y2R2lDeFpldm1Jbl9FS2daYUg3Yi1FVko4UzlvdTZJSXlRX3NIakxWTjVKbDZsN2Zad3lBU2xKRHdTOFB1RlZsamxkZmtzOWlIWE9iOURENFlKeVE?oc=5",
+   "d": "2018-12-13",
+   "s": "Industriminne Ekofisk oppdateres til 50-årsmarkering ConocoPhillips Norway"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor. Levere pålitelig energi til en verden i omstilling. - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiP0FVX3lxTE1ldWszTHNaRUVodWpZNXh5WG5rLWRFNlAzaDRkcDExVmtFSFREYzluVUtMbEZ2cnV5SC1GM05XNA?oc=5",
    "d": "2018-05-16",
    "s": "Equinor. Levere pålitelig energi til en verden i omstilling. Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "ConocoPhillips Norway - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMiREFVX3lxTE83Ykh4LWVYVkpuX29YWXFlekFGMy1hZkhodXRTV3JDZzdZbjZPQU95Zi1IcXlueFNtNm93VjZwVE9QVmVN?oc=5",
+   "d": "2017-12-01",
+   "s": "ConocoPhillips Norway ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "40år med gass fra Ekofisk til Europa - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMijAFBVV95cUxPSTY1ZE1VZWM4RTdKeklHMlZWb3JyeTEwdDV0UVJrbkZ3MFJ1U3ZiUFVfcl9sRzY2ZDVlXzFldFdibHlkTU5kYndybnBLTzM0cHk5R25LbGxJUUY1WklBOW5DbkhSbXlUVmlzaTlGc1ZnRHFaZjBzWFVHVXpiLVZPWHpKTDNra3dDdnkySw?oc=5",
+   "d": "2017-09-07",
+   "s": "40år med gass fra Ekofisk til Europa ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Årsresultat for ConocoPhillips Skandinavia AS - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxPMkNleENDbDVyU1k2cW9LR0dvV0pKdWxRSEh3ck5tY284S0pPNWl3T0tpdXJ5V05pa05aMnZOY0ZUS0hERlBrNUNzZElEMktqeWdUWEpsV25WWENscU00Z21WRkRCc1dCNzdkcnNfNmpiZUZHNmVzVmxmc0ZiZi0xTzIwVU04VWVjblNiY09DYTZPQlpTaWdqVA?oc=5",
+   "d": "2017-04-07",
+   "s": "Årsresultat for ConocoPhillips Skandinavia AS ConocoPhillips Norway"
   }
  ]
 }
