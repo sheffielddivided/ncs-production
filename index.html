@@ -9314,6 +9314,7 @@ const EXPL_TABS = [
 let explSubView = 'wells';
 let explWells = [], explOwners = [], explCompanies = [];
 let explWellCount = {};   // selskap -> antall brønner som operatør eller partner
+let explNameOv = {};   // brønn (wlbWell) -> navn satt for hånd, fra data/exploration_name_overrides.json
 let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
@@ -9367,6 +9368,11 @@ function explDiscoveryLabel(s) {
 // datoer og resultat summeres opp over alle grenene.
 const EX_RANK = {oilgas: 5, oil: 4, gas: 3, shows: 2, other: 1, dry: 0};
 
+function explGroupSub(g) {
+  const n = g.branches.length;
+  return [g.title !== g.key ? g.key : '', n > 1 ? `${n} wellbores` : ''].filter(Boolean).join(' · ');
+}
+
 function explGroup(bores) {
   const byWell = {};
   bores.forEach(w => { const k = w.well || w.name; (byWell[k] = byWell[k] || []).push(w); });
@@ -9403,7 +9409,10 @@ function explGroup(bores) {
     g.found = list.some(b => b.found);
     const label = dw ? explDiscoveryLabel(dw.discovery) : '';
     g.prospect = label ? '' : (list.map(b => b.prospect).find(Boolean) || '');
-    g.title = label || g.prospect || g.well || main.name;
+    g.key = g.well || main.name;
+    g.autoTitle = label || g.prospect || g.key;
+    g.nameOv = explNameOv[g.key] || '';   // navn satt for hånd går foran alt annet
+    g.title = g.nameOv || g.autoTitle;
     g.pressUrl = (dw && dw.pressUrl) || list.map(b => b.pressUrl).find(Boolean) || '';
     g.td = Math.max(0, ...list.map(b => b.td || 0)) || null;
     g.days = list.reduce((t, b) => t + (b.days || 0), 0) || null;
@@ -9411,9 +9420,9 @@ function explGroup(bores) {
     g.rigs = [...new Set(list.map(b => b.rig).filter(Boolean))];
     g.rig = g.rigs[0] || '';
     const n = list.length;
-    g.sub = [g.title !== (g.well || main.name) ? (g.well || main.name) : '',
-             n > 1 ? `${n} wellbores` : ''].filter(Boolean).join(' · ');
-    g.hay = list.map(b => b.hay).join('|');
+    g.sub = explGroupSub(g);
+    g.hayBase = list.map(b => b.hay).join('|');
+    g.hay = g.hayBase + (g.nameOv ? '|' + g.nameOv.toLowerCase() : '');
     return g;
   });
 }
@@ -9422,7 +9431,8 @@ function loadExploration() {
   if (explLoaded) return Promise.resolve();
   if (explLoading) return explLoading;
   explLoading = Promise.all([fetchBundle('exploration_wells'), loadDiscoveries().catch(() => {}),
-                             fetchBundle('exploration_prospects')]).then(([b, , prospects]) => {
+                             fetchBundle('exploration_prospects'), fetchBundle('exploration_name_overrides')]).then(([b, , prospects, nameOv]) => {
+    explNameOv = (nameOv && nameOv.names) || {};
     if (b) {
       explOwners = b.owners || [];
       const today = new Date().toISOString().slice(0, 10);
@@ -10547,6 +10557,91 @@ function explDetailMap(w) {
   });
 }
 
+// ── Navn satt for hånd ───────────────────────────────────────────────────────
+// Tørre brønner har ikke navn i Sodirs data. Et navn satt her lagres i
+// data/exploration_name_overrides.json (nøkkel: brønnen, «35/6-5») rett mot
+// GitHubs Contents API, med samme token som hub-innstillingene, og gjelder for
+// alle. Tomt navn fjerner overstyringen. Filen leses på nytt rett før hver
+// skriving, så to som lagrer hver sin brønn overskriver ikke hverandre.
+const EXPL_NAMES_PATH = 'data/exploration_name_overrides.json';
+
+function base64ToUtf8(b64) {
+  const bin = atob(b64.replace(/\s/g, ''));
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+
+async function explSaveName(key, name) {
+  let token = lsGet(GH_TOKEN_KEY);
+  if (!token) {
+    token = prompt(
+      `Paste a GitHub fine-grained token with "Contents: read and write" on ${GH_OWNER}/${GH_REPO}.\n\n` +
+      'The token is stored only in your own browser, never in the page source.');
+    if (!token) return false;
+    token = token.trim();
+    lsSet(GH_TOKEN_KEY, token);
+  }
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${EXPL_NAMES_PATH}`;
+  const headers = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json'};
+  const cur = await fetch(`${api}?ref=${GH_BRANCH}`, {headers, cache: 'no-store'});
+  if (cur.status === 401 || cur.status === 403) {
+    lsDel(GH_TOKEN_KEY);
+    throw new Error('The token was rejected. Try again and paste a new one.');
+  }
+  let sha, names = {};
+  if (cur.ok) {
+    const j = await cur.json();
+    sha = j.sha;
+    try { names = JSON.parse(base64ToUtf8(j.content)).names || {}; } catch (e) { names = {}; }
+  }
+  if (name) names[key] = name; else delete names[key];
+  const sorted = {};
+  Object.keys(names).sort().forEach(k => { sorted[k] = names[k]; });
+  const text = JSON.stringify({
+    version: 1,
+    updated: new Date().toISOString().slice(0, 10),
+    note: 'Navn satt for hånd i appen (Exploration → brønn → Edit name). Nøkkel: brønnen, uten sidesteg. Går foran funnnavn og prospektnavn.',
+    names: sorted,
+  }, null, 2) + '\n';
+  const res = await fetch(api, {
+    method: 'PUT', headers: {...headers, 'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      message: name ? `Navn på brønn ${key}: ${name}` : `Fjern navn på brønn ${key}`,
+      content: utf8ToBase64(text), branch: GH_BRANCH, ...(sha ? {sha} : {}),
+    }),
+  });
+  if (res.status === 409 || res.status === 422) throw new Error('The file was changed by someone else. Try again.');
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.message || res.status);
+  }
+  explNameOv = sorted;
+  return true;
+}
+
+async function explEditName(id) {
+  const w = explById[id];
+  if (!w) return;
+  const raw = prompt(
+    `Name for well ${w.key}\n\nShown instead of the Sodir name and saved for everyone. Leave empty to remove a manual name.`,
+    w.nameOv || w.title);
+  if (raw === null) return;
+  const name = raw.trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (name === w.nameOv || (!name && !w.nameOv)) return;
+  try {
+    if (!(await explSaveName(w.key, name))) return;
+  } catch (e) {
+    alert(`Saving failed: ${e.message}`);
+    return;
+  }
+  w.nameOv = explNameOv[w.key] || '';
+  w.title = w.nameOv || w.autoTitle;
+  w.sub = explGroupSub(w);
+  w.hay = w.hayBase + (w.nameOv ? '|' + w.nameOv.toLowerCase() : '');
+  openWell(id, true);
+  explRenderBody();
+  pptToast(w.nameOv ? 'Name saved. GitHub Pages publishes it for others in a couple of minutes.' : 'Manual name removed');
+}
+
 function openWell(id, quiet) {
   const w = explById[id];
   if (!w) return;
@@ -10568,6 +10663,7 @@ function openWell(id, quiet) {
   const links = [
     w.pressUrl ? `<a class="ex-btn ex-btn-main" href="${esc(w.pressUrl)}" target="_blank" rel="noopener">Press release at Sodir ↗</a>` : '',
     `<a class="ex-btn" href="https://factpages.sodir.no/wellbore/pageview/exploration/all/${w.id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>`,
+    `<button class="ex-btn" onclick="explEditName(${w.id})" title="Set a name for this well. Saved to the repository and shown to everyone.">Edit name ✎</button>`,
     w.discoveryId && known.has(w.discoveryId) ? `<button class="ex-btn" onclick="explOpenDiscovery(${w.discoveryId})">Discovery profile →</button>` : '',
     w.operator && allCompanies.includes(w.operator) ? `<button class="ex-btn" onclick="explOpenCompany(${esc(JSON.stringify(w.operator))})">Operator profile →</button>` : '',
   ].join('');
