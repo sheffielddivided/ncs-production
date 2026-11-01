@@ -7,6 +7,24 @@
       "url": "https://akerbp.com/en/news/",
       "label": "Aker BP news",
       "added": "2026-11-01"
+    },
+    {
+      "company": "Aker BP ASA",
+      "url": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+      "label": "Aker BP press releases (Cision)",
+      "added": "2026-11-01"
+    },
+    {
+      "company": "OKEA ASA",
+      "url": "https://news.cision.com/okea/ListItems?format=rss",
+      "label": "OKEA press releases (Cision)",
+      "added": "2026-11-01"
+    },
+    {
+      "company": "Vår Energi ASA",
+      "url": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+      "label": "Vår Energi press releases (Cision)",
+      "added": "2026-11-01"
     }
   ],
   "updated": "2026-11-01"

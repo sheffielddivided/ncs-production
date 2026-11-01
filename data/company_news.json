@@ -5,9 +5,87 @@
    "title": "Aker BP",
    "feed": "https://akerbp.com/en/feed/",
    "n": 10
+  },
+  "https://news.cision.com/aker-bp-asa/ListItems?format=rss": {
+   "company": "Aker BP ASA",
+   "title": "Cision News",
+   "n": 24
+  },
+  "https://news.cision.com/okea/ListItems?format=rss": {
+   "company": "OKEA ASA",
+   "title": "Cision News",
+   "n": 24
+  },
+  "https://news.cision.com/var-energi-asa/ListItems?format=rss": {
+   "company": "Vår Energi ASA",
+   "title": "Cision News",
+   "n": 24
   }
  },
  "items": [
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Third quarter 2026 results",
+   "u": "https://news.cision.com/aker-bp-asa/r/third-quarter-2026-results,c4416733",
+   "d": "2026-10-29",
+   "s": "Aker BP delivered strong earnings and cash flow in the third quarter, driven by efficient operations, higher sold volumes and strong realised prices. The Yggdrasil and Valhall PWP–Fenris projects passed major offshore milestones and remain on track for first production next summer, while the Skarv …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP: Key information related to cash dividend",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp--key-information-related-to-cash-dividend,c4416745",
+   "d": "2026-10-29",
+   "s": "The following sets out the cash dividends to be paid by Aker BP in the fourth quarter of 2026: Dividend amount: USD 0.6615 (NOK 6.14642) per share Declared currency: USD Last day of trading including right: 2 November 2026 Ex-date: 3 November 2026 Record date: 4 November 2026 Payment date: 12 …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP completes annual employee share programme",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-completes-annual-employee-share-programme,c4416965",
+   "d": "2026-10-28",
+   "s": "Reference is made to Aker BP's announcement on 28 September 2026 regarding the company’s annual share purchase programme for employees. The programme has now been completed, with a total of 672,988 shares sold to employees at a price of NOK 282.10 per share. This price reflects a 20 percent …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA third quarter 2026 trading update",
+   "u": "https://news.cision.com/okea/r/okea-third-quarter-2026-trading-update,c4415360",
+   "d": "2026-10-27",
+   "s": "(Trondheim, 27 October 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the third quarter of 2026 on Tuesday 3 November at 06:00 (CET). This trading update is provided to summarise production and sales volumes and related updates for the quarter. Third quarter 2026 production and …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Partnering to develop challenging discoveries",
+   "u": "https://news.cision.com/aker-bp-asa/r/partnering-to-develop-challenging-discoveries,c4413125",
+   "d": "2026-10-26",
+   "s": "Equinor and Aker BP enter into a strategic collaboration on tight reservoirs on the Norwegian Continental Shelf. Through technology development, standardisation and greater scale, the companies aim to enable the profitable development of more discoveries and increase oil and gas recovery. …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "Invitation to OKEA’s third quarter conference call, 3 November 2026",
+   "u": "https://news.cision.com/okea/r/invitation-to-okea-s-third-quarter-conference-call--3-november-2026,c4414433",
+   "d": "2026-10-23",
+   "s": "(Trondheim, 23 October 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the third quarter of 2026 on Tuesday 3 November at 06:00 CET. A trading update summarising key figures for the quarter will be published on Tuesday 27 October at 06:00 CET. A presentation of the results and a …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi reports strong financial results and increased shareholder returns, whilst continuing to build long-term value",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-reports-strong-financial-results-and-increased-shareholder-returns--whilst-continuing-to-,c4413344",
+   "d": "2026-10-21",
+   "s": "Sandnes, Norway, 21 October 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) reports strong financial results in the third quarter 2026 and announces increased shareholder returns, whilst continuing to build long-term value. Higher production expected in the fourth quarter · Solid performance on …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA: Notice of extraordinary general meeting",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa--notice-of-extraordinary-general-meeting,c4412558",
+   "d": "2026-10-21",
+   "s": "Sandnes, Norway, 21 October 2026: The board of directors of Vår Energi (OSE: VAR, the “Company”) hereby calls for an extraordinary general meeting (“EGM”) to be held on 11 November 2026 at 15:00 CET. The meeting will be held as a digital event. Shareholders can participate in the EGM via webcast …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Key information relating to cash dividend to be paid by Vår Energi ASA",
+   "u": "https://news.cision.com/var-energi-asa/r/key-information-relating-to-cash-dividend-to-be-paid-by-var-energi-asa,c4412557",
+   "d": "2026-10-21",
+   "s": "Sandnes, Norway, 21 October 2026: Reference is made to the announcement by Vår Energi ASA (OSE: VAR) on 21 October 2026 regarding the notice of an extraordinary general meeting (\"EGM\"), to be held on 11 November 2026 to approve a dividend of NOK 1.368 per outstanding share per 16 November 2026, …"
+  },
   {
    "f": "https://akerbp.com/en/news/",
    "t": "EU Innovation Fund awards EUR 223 million to Aker BP and Höegh Evi for the Atlas CO2 transport and storage project",
@@ -23,11 +101,53 @@
    "s": "On Monday, 19 October, Minister of Energy Terje Aasland officially opens the Skarv satellites at Skarv FPSO in the Norwegian Sea. The opening marks that the Alve Nord, Idun Nord and Ørn fields have started production. The three fields are tied into existing infrastructure at Skarv and reinforce the …"
   },
   {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA’s share saving plan allocates shares",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-s-share-saving-plan-allocates-shares,c4409560",
+   "d": "2026-10-15",
+   "s": "Sandnes, Norway, 15 October 2026: A total of 126 388 shares were purchased on behalf of employees in Vår Energi ASA (OSE: VAR) participating in the company’s employee share saving programme. The average purchase price was NOK 54.624 per share. The transactions are based on savings made in October …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Third quarter 2026 trading update",
+   "u": "https://news.cision.com/aker-bp-asa/r/third-quarter-2026-trading-update,c4408125",
+   "d": "2026-10-14",
+   "s": "Aker BP (OSE: AKRBP) will publish its report for the third quarter of 2026 on 29 October 2026. Today, the company provides preliminary production and sales figures for the quarter. Production and sales Aker BP’s equity production for the quarter averaged 374.3 thousand barrels of oil equivalent per …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi: Third quarter 2026 trading update",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi--third-quarter-2026-trading-update,c4407231",
+   "d": "2026-10-12",
+   "s": "Sandnes, Norway, 12 October 2026: Vår Energi ASA (OSE: VAR, the \"Company\") will publish its financial report for the third quarter 2026 on Wednesday 21 October. Today, the Company provides an update on production, sales volumes and other relevant items. Vår Energi’s net production of oil, liquids …"
+  },
+  {
    "f": "https://akerbp.com/en/news/",
    "t": "Ula turns 40: a story about people, technology and value creation",
    "u": "https://akerbp.com/en/ula-turns-40-a-story-about-people-technology-and-value-creation/",
    "d": "2026-10-06",
    "s": "On 6 October, it is 40 years since Ula started oil and gas production. The field was originally expected to produce for around 10–11 years. Four decades later, Ula is still in operation, thanks to technology development, continuous improvement and strong professional communities. When production …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP appoints new executive management team",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-appoints-new-executive-management-team,c4403917",
+   "d": "2026-10-02",
+   "s": "Aker BP has appointed a new executive management team, effective 1 January 2027. The new team will be organised around the company’s value chain, from exploration to production, to strengthen collaboration, reduce complexity and improve execution. Until year-end, the new executive management team …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA completes acquisition of Pandion Energy AS’ portfolio",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-completes-acquisition-of-pandion-energy-as--portfolio,c4404437",
+   "d": "2026-09-30",
+   "s": "Sandnes, 30 September 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”, “the Company”) has completed the acquisition of selected assets and licences from Pandion Energy AS, as announced on 18 June 2026. Through the acquisition, Vår Energi strengthens its position in the Gjøa and Åsgard areas through a …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Employee share programme completed",
+   "u": "https://news.cision.com/aker-bp-asa/r/employee-share-programme-completed,c4401257",
+   "d": "2026-09-28",
+   "s": "Aker BP employees have subscribed for approximately 675,000 shares under the company's annual employee share programme. The subscription price was NOK 282.10 per share, representing a 20 percent discount to the reference market price of NOK 352.62 per share. The shares are subject to a three-year …"
   },
   {
    "f": "https://akerbp.com/en/news/",
@@ -37,6 +157,41 @@
    "s": "When Stavanger Oilers played their first two home games of the season, it was about more than what happened on the ice. Together with Aker BP, Oilers invited children from Stavanger Ski Club and young people from Frøyland secondary school to enjoy sport, community, and meaningful conversations. …"
   },
   {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – OKEA strengthens its management team, including appointing Nikolai Lyngø as SVP Strategy & Business Development",
+   "u": "https://news.cision.com/okea/r/okea-asa---okea-strengthens-its-management-team--including-appointing-nikolai-lyngo-as-svp-strategy-,c4398402",
+   "d": "2026-09-21",
+   "s": "(Trondheim, 21 September 2026) – OKEA ASA (OSE: OKEA) is strengthening its ambitions for value-driven growth. To succeed, the company is adjusting its executive management team, including appointing Nikolai Lyngø to lead its strategy and business development. The new management team will, with …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA to present at Pareto Securities’ Annual Energy Conference",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-to-present-at-pareto-securities-annual-energy-conference,c4404527",
+   "d": "2026-09-16",
+   "s": "Sandnes, Norway, 16 September 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) ASA will present at Pareto Securities' 33[rd] Annual Energy Conference in Oslo today, 16 September 2026. The presentation will be held by Nick Walker, Chief Executive Officer. The presentation is attached and available on …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA’s share saving plan allocates shares",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-s-share-saving-plan-allocates-shares,c4396469",
+   "d": "2026-09-15",
+   "s": "Sandnes, Norway, 15 September 2026: A total of 124 143 shares were purchased on behalf of employees in Vår Energi ASA (OSE: VAR) participating in the company’s employee share saving programme. The average purchase price was NOK 54.3296 per share. The transactions are based on savings made in …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA announces pricing of the USD Senior Notes Offering",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-announces-pricing-of-the-usd-senior-notes-offering,c4396542",
+   "d": "2026-09-15",
+   "s": "Sandnes, Norway, 15 September 2026: Vår Energi ASA (OSE: VAR, the \"Company\") is pleased to announce that it has priced an offering (the “Offering”) of: · USD 750 million of 5.5% Senior Notes due 2029 (the “2029 Notes”). The 2029 Notes mature 22 September 2029 and carry an annual fixed coupon of …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA: Notice of conditional full redemption of notes",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa--notice-of-conditional-full-redemption-of-notes,c4396403",
+   "d": "2026-09-15",
+   "s": "Sandnes, Norway, 15 September 2026: Vår Energi ASA (OSE: VAR, the “Company”) has today issued a notice of conditional full redemption in respect of its USD 500 million 5.000% Senior Notes due 2027 (the “Notes”), which are admitted to trading on the regulated market of the Luxembourg Stock Exchange. …"
+  },
+  {
    "f": "https://akerbp.com/en/news/",
    "t": "Next generation party leaders visit the Edvard Grieg field offshore",
    "u": "https://akerbp.com/en/next-generation-party-leaders-visit-the-edvard-grieg-field-offshore/",
@@ -44,11 +199,95 @@
    "s": "Where were today’s party leaders for Young Conservatives, AUF, Progress Party Youth, Centre Youth, Socialist Youth, Young Liberals, Young Christian Democrats and Green Youth when the Edvard Grieg field started oil and gas production in 2016? How do these young politicians view the future of the …"
   },
   {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4392445",
+   "d": "2026-09-07",
+   "s": "Reference is made to Aker BP's press release from 15 July 2026, where the company announced its plan to buy up to 1,500,000 own shares in connection with the company's employee share saving plan. In the period from 31 August to 4 September 2026, the company purchased 7,121 own shares at an average …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4389704",
+   "d": "2026-08-31",
+   "s": "Reference is made to Aker BP's press release from 15 July 2026, where the company announced its plan to buy up to 1,500,000 own shares in connection with the company's employee share saving plan. In the period from 24 to 28 August 2026, the company purchased 250,000 own shares at an average price …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP has started production from the Skarv Satellites",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-has-started-production-from-the-skarv-satellites,c4382977",
+   "d": "2026-08-26",
+   "s": "Aker BP has started production from the Skarv Satellite Project, which comprises the Alve Nord, Idun Nord and Ørn fields in the Norwegian Sea. The project has been executed efficiently, with production starting one year ahead of the original schedule. The developments represent approximately 120 …"
+  },
+  {
    "f": "https://akerbp.com/en/news/",
    "t": "Standing Committee on Energy and the Environment visits Aker BP for dialogue on the future of the Norwegian continental shelf",
    "u": "https://akerbp.com/en/standing-committee-on-energy-and-the-environment-visits-aker-bp-for-dialogue-on-the-future-of-the-norwegian-continental-shelf/",
    "d": "2026-08-25",
    "s": "On Tuesday, 25 August, the Norwegian Parliament’s Energy and the Environment committee visited Aker BP in Stavanger to discuss the future of the Norwegian continental shelf, Norway’s role as an energy supplier to Europe, and how the industry can create as much value as possible with the lowest …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Equinor, Aker BP and Vår Energi join forces to search for Norway’s next major discoveries",
+   "u": "https://news.cision.com/var-energi-asa/r/equinor--aker-bp-and-var-energi-join-forces-to-search-for-norway-s-next-major-discoveries,c4387034",
+   "d": "2026-08-24",
+   "s": "Sandnes, Norway, 24 August: Equinor, Aker BP and Vår Energi are establishing a strategic exploration collaboration to pursue some of the largest remaining opportunities on the Norwegian continental shelf (NCS). The aim is to increase the chances of major discoveries that can support new standalone …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Equinor, Aker BP and Vår Energi join forces to search for Norway’s next major discoveries",
+   "u": "https://news.cision.com/aker-bp-asa/r/equinor--aker-bp-and-var-energi-join-forces-to-search-for-norway-s-next-major-discoveries,c4386670",
+   "d": "2026-08-24",
+   "s": "Equinor, Aker BP and Vår Energi are establishing a strategic exploration collaboration to pursue some of the largest remaining opportunities on the Norwegian continental shelf (NCS). The aim is to increase the chances of major discoveries that can support new standalone field developments and …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4386526",
+   "d": "2026-08-24",
+   "s": "Reference is made to Aker BP's press release from 15 July 2026, where the company announced its plan to buy up to 1,500,000 own shares in connection with the company's employee share saving plan. In the period from 17 to 21 August 2026, the company purchased 250,334 own shares at an average price …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA: Ex dividend Q2 2026",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa--ex-dividend-q2-2026,c4384778",
+   "d": "2026-08-21",
+   "s": "Sandnes, Norway, 21 August 2026: The shares in Vår Energi ASA (OSE: VAR) will be traded ex dividend of NOK 1.355 per share for the second quarter of 2026, as of today 21 August. The extraordinary general meeting held on 17 August in Vår Energi resolved to pay a dividend of NOK 1.355 per share, NOK …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP acquires interests in the Losgann/Froskelår and Slagugle discoveries",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-acquires-interests-in-the-losgann-froskelar-and-slagugle-discoveries,c4384128",
+   "d": "2026-08-19",
+   "s": "Aker BP has entered into two separate transactions that strengthen its positions close to existing infrastructure on the Norwegian Continental Shelf. In the North Sea, the company has agreed to acquire Apache’s interest in the Losgann/Froskelår discovery near the Alvheim area. In the Norwegian Sea, …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA’s share saving plan allocates shares",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-s-share-saving-plan-allocates-shares,c4384336",
+   "d": "2026-08-17",
+   "s": "Sandnes, Norway, 17 August 2026: A total of 138 922 shares were purchased on behalf of employees in Vår Energi ASA (OSE: VAR) participating in the company’s employee share saving programme. The average purchase price was NOK 48.55 per share. The transactions are based on savings made in August …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA: Extraordinary general meeting held",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa--extraordinary-general-meeting-held,c4384310",
+   "d": "2026-08-17",
+   "s": "Sandnes, Norway, 17 August 2026: The extraordinary general meeting of Vår Energi ASA (the \"Company\", OSE: VAR) was held today, 17 August 2026, at 15:00 (CEST). The meeting was held as a digital event. In accordance with the proposals made by the Board of directors, the general meeting approved a …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4383806",
+   "d": "2026-08-17",
+   "s": "Reference is made to Aker BP's press release from 15 July 2026, where the company announced its plan to buy up to 1,500,000 own shares in connection with the company's employee share saving plan. In the period from 10 to 14 August 2026, the company purchased 499,666 own shares at an average price …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Mandatory notification of trade by primary insider",
+   "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4381838",
+   "d": "2026-08-10",
+   "s": "Trondheim, 10 August 2026. OKEA ASA (ticker: \"OKEA\") primary insider sold shares in OKEA. Olav Bjarne Roksvaag, deputy member of the board and primary insider (PDMR) of OKEA ASA, has on 10 august 2026 sold 20,000 shares in OKEA at a price of NOK 35.48 per share. Following the transaction, Olav …"
   },
   {
    "f": "https://akerbp.com/en/news/",
@@ -72,11 +311,291 @@
    "s": "Most companies manage complex offshore projects through contracts. Aker BP manages them through alliances. Instead of dividing work between operator, contractors and service companies, Aker BP bring people together in integrated teams with shared goals, shared incentives and a common responsibility …"
   },
   {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "Completed purchases under long-term retention plan",
+   "u": "https://news.cision.com/okea/r/completed-purchases-under-long-term-retention-plan,c4379670",
+   "d": "2026-08-04",
+   "s": "(Trondheim, 4 August 2026) OKEA ASA (OSE: OKEA) completed share purchases 3 August, in connection with the long-term retention plan (LTRP). The share purchases on behalf of leading employees were made in accordance with the company’s LTRP. The shares are subject to a 24-month lock-up period. The …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Mandatory notification of trade by primary insider",
+   "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4378214",
+   "d": "2026-07-28",
+   "s": "Trondheim, 28 July 2026. OKEA ASA (ticker: \"OKEA\"), primary insiders purchased shares in OKEA. Sverre Nes, member of the board and primary insider (PDMR) of OKEA ASA, has on 28 July 2026 purchased 35,800 shares in OKEA at a price of NOK 33.50 per share. Following the transaction, Sverre Nes holds …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi to combine with BlueNord, building the largest independent producer of oil and gas in Europe",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-to-combine-with-bluenord--building-the-largest-independent-producer-of-oil-and-gas-in-eur,c4376331",
+   "d": "2026-07-21",
+   "s": "Sandnes, Norway, 21 July 2026: Vår Energi ASA (OSE: VAR, \"Vår Energi\", \"the Company\") and BlueNord ASA (OSE:BNOR, \"BlueNord\") have agreed on a combination of its businesses, making Vår Energi the largest independent producer of oil and gas in Europe. The transaction adds high-quality and long-life …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi reports record financial results in the second quarter 2026",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-reports-record-financial-results-in-the-second-quarter-2026,c4376316",
+   "d": "2026-07-21",
+   "s": "Sandnes, Norway, 21 July 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) reports record financial results in the second quarter 2026 and announces a combination with BlueNord, building the largest independent producer of oil and gas in Europe. On track to meet full year production guidance · Strong …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA: Notice of extraordinary general meeting",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa--notice-of-extraordinary-general-meeting,c4376297",
+   "d": "2026-07-21",
+   "s": "Sandnes, Norway, 21 July 2026: The board of directors of Vår Energi (OSE: VAR, the “Company”) hereby calls for an extraordinary general meeting (“EGM”) to be held on 17 August 2026 at 15:00 CEST to approve a dividend for the second quarter of 2026, based on the Company's audited interim balance …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Key information relating to cash dividend to be paid by Vår Energi ASA",
+   "u": "https://news.cision.com/var-energi-asa/r/key-information-relating-to-cash-dividend-to-be-paid-by-var-energi-asa,c4376298",
+   "d": "2026-07-21",
+   "s": "Sandnes, Norway, 21 July 2026: Reference is made to the announcement by Vår Energi ASA (OSE: VAR) on 21 July 2026 regarding the notice of an extraordinary general meeting (\"EGM\"), to be held on 17 August 2026 to approve a dividend of NOK 1.355 per share, NOK 3 382 630 463 in total, equivalent to …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP: Ex dividend USD 0.6615 today",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp--ex-dividend-usd-0-6615-today,c4374174",
+   "d": "2026-07-20",
+   "s": "The shares in Aker BP ASA (OSE:AKRBP, OTCQX: AKRBF) will be traded ex dividend USD 0.6615 (NOK 6.42588) per share as from today, 20 July 2026. The payment date will be on or about 28 July 2026."
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA - Second quarter 2026 financial results",
+   "u": "https://news.cision.com/okea/r/okea-asa---second-quarter-2026-financial-results,c4374879",
+   "d": "2026-07-16",
+   "s": "(Trondheim, 16 July 2026) - In the second quarter of 2026, OKEA ASA (OSE: OKEA) delivered operating income of USD 334 (239) million and EBITDA of USD 207 (129) million. Lower forward prices at balance sheet date resulted in impairments of USD 94 (reversal of 154) million with a net after tax impact …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Mandatory notification of trade by primary insider",
+   "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4375383",
+   "d": "2026-07-16",
+   "s": "Trondheim, 16 July 2026. OKEA ASA (ticker: \"OKEA\"), primary insiders purchased shares in OKEA. Rune Olav Pedersen, member of the board and primary insider (PDMR) of OKEA ASA, has on 16 July 2026 purchased 6,500 shares in OKEA at a price of NOK 31.00 per share. Following the transaction, Rune Olav …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA’s share saving plan allocates shares",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-s-share-saving-plan-allocates-shares,c4375050",
+   "d": "2026-07-15",
+   "s": "Sandnes, Norway, 15 July 2026: A total of 155 147 shares were purchased on behalf of employees in Vår Energi ASA (OSE: VAR) participating in the company’s employee share saving programme. The average purchase price was NOK 43.5321 per share. The transactions are based on savings made in July 2026, …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Second quarter 2026 results",
+   "u": "https://news.cision.com/aker-bp-asa/r/second-quarter-2026-results,c4374189",
+   "d": "2026-07-15",
+   "s": "Aker BP advanced its strategic growth agenda in the second quarter, combining strong operational delivery with continued maturation of new resources and important milestones across its major development projects. The quarter underlined the quality and resilience of the portfolio, with …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP to buy shares for employee plan",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-to-buy-shares-for-employee-plan,c4374506",
+   "d": "2026-07-15",
+   "s": "Aker BP plans to buy up to 1.500.000 own shares in connection with the company’s employee share saving plan. The minimum and maximum amount to be paid per share is NOK 50 and NOK 500 respectively, representing a maximum amount of NOK 750 million. The purchases will be completed by 30 September 2026."
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP: Key information related to cash dividend",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp--key-information-related-to-cash-dividend,c4374184",
+   "d": "2026-07-15",
+   "s": "The following sets out the cash dividends to be paid by Aker BP in the third quarter of 2026: Dividend amount: USD 0.6615 (NOK 6.42588) per share Declared currency: USD Last day of trading including right: 17 July 2026 Ex-date: 20 July 2026 Record date: 21 July 2026 Payment date: 28 July 2026 Date …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi: Second quarter 2026 trading update",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi--second-quarter-2026-trading-update,c4372533",
+   "d": "2026-07-09",
+   "s": "Sandnes, Norway, 9 July 2026: Vår Energi ASA (OSE: VAR, the \"Company\") will publish its financial report for the second quarter 2026 on Tuesday 21 July. Today, the Company provides an update on production, sales volumes and other relevant items. Average production in the first half of 2026 was 391 …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA second quarter 2026 trading update",
+   "u": "https://news.cision.com/okea/r/okea-second-quarter-2026-trading-update,c4372559",
+   "d": "2026-07-09",
+   "s": "(Trondheim, 9 July 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the second quarter of 2026 on Thursday 16 July at 06:00 (CEST). This trading update is provided to summarise production and sales volumes and related updates for the quarter. Second quarter 2026 production and …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "Invitation to OKEA’s second quarter conference call, 16 July 2026",
+   "u": "https://news.cision.com/okea/r/invitation-to-okea-s-second-quarter-conference-call--16-july-2026,c4371692",
+   "d": "2026-07-07",
+   "s": "(Trondheim, 7 July 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the second quarter of 2026 on Thursday 16 July at 06:00 CEST. A trading update summarising key figures for the quarter will be published on Thursday 9 July at 06:00 CEST. A presentation of the results and a Q&A …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Completion of historic project portfolio with major ripple effects in Verdal",
+   "u": "https://news.cision.com/aker-bp-asa/r/completion-of-historic-project-portfolio-with-major-ripple-effects-in-verdal,c4371309",
+   "d": "2026-07-06",
+   "s": "On Monday 06 July, the topside for the Hugin B platform in Yggdrasil sailed from Aker Solutions’ yard in Verdal. This marks the completion of an extensive portfolio of projects delivered to Aker BP from the yard over the past three and a half years. The projects have created thousands of man-years …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Second quarter 2026 trading update",
+   "u": "https://news.cision.com/aker-bp-asa/r/second-quarter-2026-trading-update,c4370642",
+   "d": "2026-07-03",
+   "s": "Aker BP (OSE: AKRBP) will publish its report for the second quarter of 2026 on 15 July 2026. Today, the company provides preliminary production and sales figures for the quarter. Production and sales Aker BP’s equity production for the quarter averaged 383.6 thousand barrels of oil equivalent per …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi receives investment grade credit rating from Fitch",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-receives-investment-grade-credit-rating-from-fitch,c4370252",
+   "d": "2026-07-02",
+   "s": "Sandnes, Norway, 2 July 2026: Vår Energi ASA (OSE:VAR, “Vår Energi”) has been assigned a long-term issuer credit rating of BBB by Fitch Ratings (“Fitch”), with a stable outlook. The rating highlights Vår Energi’s strong financial position and resilience, and confirms the Company’s solid investment …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA strengthens its position in the Gjøa area and extends field life through an asset exchange with Equinor",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-strengthens-its-position-in-the-gjoa-area-and-extends-field-life-through-an-asset-exc,c4368705",
+   "d": "2026-06-30",
+   "s": "Sandnes, Norway, 30 June 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) has entered into an agreement with Equinor Energy AS (“Equinor”) for an asset exchange on the Norwegian Continental Shelf (NCS), strengthening its position around the Gjøa area and supporting the extension of the field’s …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA submits Plan for Development and Operations for the Gjøa Subsea Projects",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-submits-plan-for-development-and-operations-for-the-gjoa-subsea-projects,c4367124",
+   "d": "2026-06-25",
+   "s": "Sandnes, Norway, 25 June 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) has taken final investment decision (FID) on the Gjøa Subsea Projects in the North Sea. Together with its partners, the Company has today submitted the Plan for Development and Operations (PDO) for the Ofelia and Gjøa Nord …"
+  },
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA high-grades the portfolio to strengthen long-term value creation",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-high-grades-the-portfolio-to-strengthen-long-term-value-creation,c4365069",
+   "d": "2026-06-18",
+   "s": "Sandnes, Norway, 18 June 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) has entered into a series of value accretive transactions on the Norwegian Continental Shelf (NCS) to further optimise its asset portfolio, including the acquisition of Pandion Energy AS’ portfolio, a swap agreement with DNO …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP welcomes agreement on Ringvei Vest development concept",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-welcomes-agreement-on-ringvei-vest-development-concept,c4365313",
+   "d": "2026-06-18",
+   "s": "Aker BP welcomes the announcement by Equinor, operator of Ringvei Vest, that the partners have agreed on the development concept for the project. Ringvei Vest is planned as a major subsea development tied back to the Troll B platform in the North Sea. The agreement marks an important milestone and …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Johan Sverdrup – phase 4 maturation",
+   "u": "https://news.cision.com/aker-bp-asa/r/johan-sverdrup---phase-4-maturation,c4363529",
+   "d": "2026-06-15",
+   "s": "Aker BP notes today’s announcement by Equinor, operator of Johan Sverdrup, regarding the maturation of a potential phase 4 development in the northern part of the field. Appraisal wells and sidetracks in the Tonjer and Geitungen areas have identified additional resources, with a preliminary …"
+  },
+  {
    "f": "https://akerbp.com/en/news/",
    "t": "Ran subsea operation from shore – reduced 14 days to 12 hours",
    "u": "https://akerbp.com/en/ran-subsea-operation-from-shore-reduced-14-days-to-12-hours/",
    "d": "2026-06-15",
    "s": "For the first time, Aker BP and DeepOcean have carried out an advanced subsea operation without sending key personnel offshore. A job that previously took two weeks offshore was completed in a single working day, controlled from a remote operations center in Haugesund. Together with strategic …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP increases ownership interest in Johan Sverdrup following redetermination",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-increases-ownership-interest-in-johan-sverdrup-following-redetermination,c4358738",
+   "d": "2026-06-08",
+   "s": "Aker BP ASA and its partners have completed the redetermination process for the Johan Sverdrup Unit. Following the redetermination, Aker BP’s ownership interest will be 31.7163 percent, compared with 31.5733 percent previously. The redetermination process was initiated in January 2025 and conducted …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "Aker BP and Equinor to unlock additional value on the Norwegian Continental Shelf",
+   "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-and-equinor-to-unlock-additional-value-on-the-norwegian-continental-shelf,c4350524",
+   "d": "2026-05-21",
+   "s": "Aker BP and Equinor have entered into a strategic collaboration aimed at increasing production and value creation across selected parts of their portfolios on the Norwegian Continental Shelf (NCS). As a first step, the companies have agreed on a set of transactions in the Ringvei Vest, Yggdrasil …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Mandatory notification of trade by primary insider",
+   "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4350660",
+   "d": "2026-05-20",
+   "s": "Trondheim, 20 May 2026. OKEA ASA (ticker: \"OKEA\"). Ragnhild Aas, employee elected member of the board and primary insider (PDMR) of OKEA ASA, has on 19 May 2026 sold 25,000 shares in OKEA at a price of NOK 40.00 per share. Following the transaction, Ragnhild Aas holds 92,273 shares in OKEA ASA. See …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA - Minutes of annual general meeting",
+   "u": "https://news.cision.com/okea/r/okea-asa---minutes-of-annual-general-meeting,c4346334",
+   "d": "2026-05-11",
+   "s": "(Trondheim, 11 May 2026) OKEA ASA (OSE: OKEA) On 11 May 2026 at 09.00 OKEA ASA held an annual general meeting as a digital meeting with online participation. All proposals from the board of directors on the agenda provided in the notice of the annual general meeting published on 15 April 2026, were …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA - First quarter 2026 financial results",
+   "u": "https://news.cision.com/okea/r/okea-asa---first-quarter-2026-financial-results,c4341751",
+   "d": "2026-04-29",
+   "s": "(Trondheim, 29 April 2026) - In the first quarter of 2026, OKEA ASA (OSE: OKEA) delivered operating income of USD 239 (107) million and EBITDA of USD 129 (50) million. Net profit amounted to USD 36 (loss of 18) million. Total cash ended at USD 269 (309) million. Guidance for 2026 and 2027 remains …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA first quarter 2026 trading update",
+   "u": "https://news.cision.com/okea/r/okea-first-quarter-2026-trading-update,c4338046",
+   "d": "2026-04-22",
+   "s": "(Trondheim, 22 April 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the first quarter of 2026 on Wednesday 29 April at 06:00 (CEST). This trading update is provided to summarise production and sales volumes and related updates for the quarter. First quarter 2026 production and …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Realising value from the Mistral discovery",
+   "u": "https://news.cision.com/okea/r/okea-asa---realising-value-from-the-mistral-discovery,c4336705",
+   "d": "2026-04-20",
+   "s": "(Trondheim, 20 April 2026) OKEA ASA (OSE: OKEA or “the company”) has entered into a sale and purchase agreement with Japex Norge AS for a 20% WI in PL1119 (Mistral) for a fixed consideration of USD 30 million. Effective date for the transaction is 1 January 2026. OKEA is selling its 20% WI in …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "Invitation to OKEA’s first quarter conference call, 29 April 2026",
+   "u": "https://news.cision.com/okea/r/invitation-to-okea-s-first-quarter-conference-call--29-april-2026,c4336344",
+   "d": "2026-04-17",
+   "s": "(Trondheim, 17 April 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the first quarter of 2026 on Wednesday 29 April at 06:00 CET. A trading update summarising key figures for the quarter will be published on Wednesday 22 April at 06:00 CET. A presentation of the results and a Q&A …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA - Notice of annual general meeting",
+   "u": "https://news.cision.com/okea/r/okea-asa---notice-of-annual-general-meeting,c4335349",
+   "d": "2026-04-15",
+   "s": "(Trondheim, 15 April 2026) OKEA ASA (OSE: OKEA) The annual general meeting in OKEA ASA will be held on Monday, 11 May 2025 at 09:00 (CEST) as a virtual meeting. The general meeting will be conducted as a virtual meeting only, accessible online via Lumi AGM. All shareholders will be able to …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Mandatory notification of trade by primary insider",
+   "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4328214",
+   "d": "2026-03-28",
+   "s": "Trondheim, 28 March 2026. OKEA ASA (ticker: \"OKEA\"). Eivind Sæterdal Bøyum, deputy member of the board and primary insider (PDMR) of OKEA ASA, has on 26 March 2026 purchased 3,320 shares in OKEA at a price of NOK 39.90 per share. Following the transaction, Eivind Sæterdal Bøyum holds 3,320 shares …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Publication of annual reports for 2025",
+   "u": "https://news.cision.com/okea/r/okea-asa---publication-of-annual-reports-for-2025,c4327566",
+   "d": "2026-03-27",
+   "s": "Trondheim, 27 March 2026 - OKEA ASA (OSE ticker: \"OKEA\") hereby publishes the following reports for 2025: Integrated report and annual statement of reserves and resources. The integrated report is published in both PDF and XHTML formats. The reports can also be found on the company's website at …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Mandatory notification of trade by primary insider",
+   "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4327555",
+   "d": "2026-03-26",
+   "s": "Trondheim, 26 March 2026. OKEA ASA (ticker: \"OKEA\"). Eivind Sæterdal Bøyum, deputy member of the board and primary insider (PDMR) of OKEA ASA, has on 26 March 2026 sold 6,381 shares in OKEA at a price of NOK 39.80 per share. Following the transaction, Eivind Sæterdal Bøyum holds 0 shares in OKEA …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Increased recoverable resource estimates from the Talisker West discoveries at the Brage field (PL 055)",
+   "u": "https://news.cision.com/okea/r/okea-asa---increased-recoverable-resource-estimates-from-the-talisker-west-discoveries-at-the-brage-,c4326120",
+   "d": "2026-03-25",
+   "s": "(Trondheim, 25 March 2026) - Reference is made to stock exchange notice dated 25 August 2025 with regards to the Talisker West discovery. Through further subsurface maturation of the Talisker Statfjord formation, recoverable resource estimates (P50) have increased from 19 to 28 million barrels of …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA – Mandatory notification of trade",
+   "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade,c4323058",
+   "d": "2026-03-18",
+   "s": "Trondheim, 18 March 2026. OKEA ASA (ticker: \"OKEA\"). Primary insider, Olav Bjarne Roksvaag, deputy member of the board (PDMR) of OKEA ASA, has on 17 March 2026 sold 6,100 shares in OKEA at a price of NOK 37.00 per share. Following the transaction, Olav Bjarne Roksvaag holds 31,371 shares in OKEA …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA ASA - Fourth quarter 2025 financial results",
+   "u": "https://news.cision.com/okea/r/okea-asa---fourth-quarter-2025-financial-results,c4301570",
+   "d": "2026-02-03",
+   "s": "(Trondheim, 3 February 2026) - In the fourth quarter of 2025, OKEA ASA (OSE: OKEA) delivered operating income of USD 107 (224) million and EBITDA of USD 50 (117) million. The net loss of USD 18 (37) million was largely a result of a significant underlift and impairments. The net cash position was …"
+  },
+  {
+   "f": "https://news.cision.com/okea/ListItems?format=rss",
+   "t": "OKEA fourth quarter 2025 trading update",
+   "u": "https://news.cision.com/okea/r/okea-fourth-quarter-2025-trading-update,c4297829",
+   "d": "2026-01-27",
+   "s": "(Trondheim, 27 January 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the fourth quarter of 2025 on Tuesday 3 February at 06:00 (CET). This trading update is provided to summarise production and sales volumes and related updates for the quarter. Fourth quarter 2025 production and …"
   }
  ]
 }
