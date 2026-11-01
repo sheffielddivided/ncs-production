@@ -25,6 +25,11 @@
    "company": "Equinor Energy AS",
    "title": "\"site:equinor.com\" - Google Nyheter",
    "n": 63
+  },
+  "https://www.globenewswire.com/rssfeed/organization/5C0f30oSsBwArLGJwM6n5A==": {
+   "company": "Equinor Energy AS",
+   "error": "403 Client Error: Forbidden for url: https://www.globenewswire.com/rssfeed/organization/5C0f30oSsBwArLGJwM6n5A==",
+   "since": "2026-11-01"
   }
  },
  "items": [
