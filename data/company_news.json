@@ -40,6 +40,11 @@
    "company": "TotalEnergies EP Norge AS",
    "title": "\"site:https://nordic.totalenergies.com/nb\" - Google Nyheter",
    "n": 100
+  },
+  "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no": {
+   "company": "DNO Norge AS",
+   "title": "\"site:dno.no\" - Google Nyheter",
+   "n": 59
   }
  },
  "items": [
@@ -590,6 +595,13 @@
    "s": "Sandnes, Norway, 30 June 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) has entered into an agreement with Equinor Energy AS (“Equinor”) for an asset exchange on the Norwegian Continental Shelf (NCS), strengthening its position around the Gjøa area and supporting the extension of the field’s …"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "PROTOKOLL FRA ORDINÆR GENERALFORSAMLING I DNO ASA MINUTES OF THE ANNUAL GENERAL MEETING OF DNO ASA Den 26. juni 2026 kl. 10:00 - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTFBEdHRTYl9UZVFuQ1FkckRIaXVZaERhRzl0UXZwRzhUa3dXUTVWVllhNnNRc0xIemd5RldpTzl4WTdSOGkxcE1sUUYyTi1mQlFPeXRueTRzeC1jeGhYdWtCTjFIUFhRRGFmVEpTb25Cbw?oc=5",
+   "d": "2026-06-26",
+   "s": "PROTOKOLL FRA ORDINÆR GENERALFORSAMLING I DNO ASA MINUTES OF THE ANNUAL GENERAL MEETING OF DNO ASA Den 26. juni 2026 kl. 10:00 DNO ASA"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Forslag til program for konsekvensutredning for Wisting sendt på høring - Equinor",
    "u": "https://news.google.com/rss/articles/CBMikAFBVV95cUxNRUxtdzdlakNudHZqaGRXV0pBRVFpTUc2NG1lMFVXM1lPdEJVMU1pR1JkTE5fZTUwQWsyRE1ab0FVOVI3MXZXWHRCd3JhUm1sR0V5VGFYek5pNjVQMWtudXdPT2o3eEgycHlJYTV2RzVVMjZWZjhlOWd5V1A5cnM4Yk0tM2MwYVRlWmVJMWFUY1I?oc=5",
@@ -1101,6 +1113,13 @@
    "s": "Hjelp og støtte - Auto TotalEnergies Nordic"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO Awarded 17 Licenses in Norway as It Keeps Up Pace of Exploration and Development-2026-01-13 - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxNU3JKUXNuR1MtTEVXLU1mUU4taWJPRUhXM2dhaUpGa2ExMDBucko1NXhKWGhXbmh1WmZlV1FmN3NsQk94SmhVUDc0b2tyUE9hOWd1MmRxcmdnZzdiR09ERDJnT3R6MVozLUZIc3V4YWZGaTE5UDloRDB0UGpCV3BPSnByWC16cG9Pa3RqeHlfaGZQUUxmQTFGN2xXM0JQYlUyaUxFV2M4YzhhWWZuZ1I3Tm9lZWN2X1Jta0ZWLXhMTFB0YWV1WDRta1BVNFNTY2x3VjlyZUFrT2g5Zw?oc=5",
+   "d": "2026-01-13",
+   "s": "DNO Awarded 17 Licenses in Norway as It Keeps Up Pace of Exploration and Development-2026-01-13 DNO ASA"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Store oppdrag til norsk leverandørindustri - Equinor",
    "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxQNHRwZVpkVDNSYmFTMWZIZ2oxWkZDbklyd0VfYUF3WnZscDMzX1ZXSjFIajdJS3oxOWdFMTdvSHU4Nkx0TEowRVhObTdxX2NBSzFnU2lrTGxONFE4dzZ1aWxWSzZhU1ZvR1Y3UVZKMTVObmhld3pGSUxBWWJJZ0hGNG1JZXJxNkVPTzRiWmhsTQ?oc=5",
@@ -1127,6 +1146,13 @@
    "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE1POEdvREtKVmI0QVBCNnhwNVZFZEJ2ODQybkVHdGpwMjFtWXRkclJBUmN1ZFlheGJKWTVfcVlZTDNUVWJXRXZaaGxSalJZWS1YOUFseHEyM21yczU5VUcyR2xNZVZ1Ykl4aVFELXR1VW9Odw?oc=5",
    "d": "2025-12-04",
    "s": "Equinor gjør nye funn i Nordsjøen Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Utbygging og drift av Kjøttkake Forslag til program for konsekvensutredning - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBMNS0yZFZnMXQxNnp1Yk05bzFTUXQzc09mbWRTbHVPZnhZbTVpaDloTkFsZXFRTEtMQmZ5NVllQVlsWDBVTEZ1OXp1RGVrN01WMGdjZFFUc0xGMDFVQl9pSUNOMXJTQzczQlZUMjUxczhURlBmOFRmdWY5dw?oc=5",
+   "d": "2025-11-28",
+   "s": "Utbygging og drift av Kjøttkake Forslag til program for konsekvensutredning dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -1234,6 +1260,13 @@
    "s": "Petoro leverte en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 220 milliarder kroner i 2024. Netto kontantstrøm for fjerde kvartal isolert, var på 46 milliarder kroner. Siden 2022 har Petoro overført 1025 milliarder kroner fra SDØE til staten."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO to Acquire Sval Energi in Transformative Transaction; Quadruples North Sea Output-2025-03-07 - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxQcHJuY3FOM2tCNzRBdnZ1bTlXSDF6ZWtNbnpIbjZMdnBaWWFWcHFuajZmSDNpdGhILU5fb1NwYXNEVGlteWM2dzlBZHZCTU5wTENtOVI2dFYxbUk5Y2dIc2RuQks2WXVsaVZZU3h3NDkzdFRLaVVhMER4QlNCUEZUMXU4LVYwdlE0TGw1bWFJdGVRbWg4TjN1dTlKMU5tQ3pyNUJVWlAzLTVHcTQtZjdhSjFEZW9Xek5PM25wY2o2S3lkY1A5X2x4cFJhYXpmaUd4ZENxbVYxZkpSdw?oc=5",
+   "d": "2025-03-07",
+   "s": "DNO to Acquire Sval Energi in Transformative Transaction; Quadruples North Sea Output-2025-03-07 dno.no"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Gassfunn i Norskehavet - Equinor",
    "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE1UNVJubEVkaTBWQXREXy03dUtEeVBBcGFLcW5SV2ZpYjRLQVJ3dExBVGM5d2g1U09ZS3R4aHVUSXluYkRNY1hBaHI3aml6Wi01ZFlHV1h1X1RTWXVZQmFsUmd4ZDcwSFhqRTV5bGtJWnl4Zw?oc=5",
@@ -1260,6 +1293,13 @@
    "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBSMm9ITWZIb18zQlNGUmRWTUd2OGdPOUo5Q1ZKYVR0Si1RQjgyU1Q2R0hCMkhsMjdrN21LOGVlbTNsUnVMSzF0TE9BZC1ESklvWWNEc1YzUjBFWS05S0RDcHZ4eVJyMVdUUjNMb0hfUjdaSEhVazFfZ0tSQQ?oc=5",
    "d": "2025-01-17",
    "s": "Sponsing og samfunn ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxOYUxfdllWVW5nNk1KLS1QSTlMb21zSkIzeWdORVczaDVvQkhnenJUSmZ2OVpuc0tTVnF3ckotRzg3NkhyZDBXRXFRT0k5TjY3eWlpOTJfMzk4Mk5kS29PZ3hkR1pza2V3eHg0WlN3VTd5QXNzUk5COVp6dW5nWDhrdFFSM1B2RXJSRjZKTmJKbko3RTZ6ZTRNTkx3emlmbHc3Ty1pamsxVTA5eUtreVZKSA?oc=5",
+   "d": "2025-01-14",
+   "s": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -1367,6 +1407,118 @@
    "s": "Øygarden: Kollsnes, Sture og Northern Lights Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Boring i West Heather området - mulig stor økning i DNO's oljereserver. | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMitwFBVV95cUxNWVZjaWpVNTVjRVNXaFpaUlUtLWxqTTA0WUtzM1VzVHhxLVlKS0FFYWQ4NDRvcThKUHNMQW9XT0lmeE5ocnUxS2FjNzcwSmlWVGgwWC1MYVAwLW5SbC1kNk5rWkNERmRiSC1EQUVMd0lDY0VNVDJScUNtUTBVNW5Ga0pBazVtSTF1UFdJTjAyOTNCZlFMelZIdG9KQjMxVTlzdTQwaTZBaVNDWm1ERmFJdkNoTmc3V00?oc=5",
+   "d": "2024-08-28",
+   "s": "Boring i West Heather området - mulig stor økning i DNO's oljereserver. | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "CREDIT RATING OG ESTIMATER AV PÅVISTE RESERVER - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNMUdhYzBHOXN5TnVSMFdyNDhXNXV2Yk9XamE3eEl1elhYVzhQZkxTRmNkX1FZVGloRW1hWndoQjFaVU9NZkp6S3FSZkEtUmlMLUFiRHJfSjhDb3BRX3VlV0xYak1NbUZobGdkYkp3ek9kejFodE5JVWs0Um5CMDBqc3dXd01rNGcyYWVQYk9URWxXZmtBV1J3Q095SjBIS1dkYlYtcw?oc=5",
+   "d": "2024-08-28",
+   "s": "CREDIT RATING OG ESTIMATER AV PÅVISTE RESERVER dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Presentasjon av resultat for 1. halvår 2001 - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNNWFzS2FHLXhYMkY4MnMzR1hGTElubTlwVmhKZzljd0Nrbl9LdjFGZkdkeUxBTjV5cTN2RE16TGN5UmJFcXJSTUdJSDhaWUplQld4cnk4Y0h1M0Vvek9IbG1NM1EzaWhlRlkyU0RsRFl4blpqOVl2M2hnZ3dJRERLcGk1OUNPVElhVEprNEc1Y0pxbDFCWUpERXZCVG9GRU0?oc=5",
+   "d": "2024-08-28",
+   "s": "Presentasjon av resultat for 1. halvår 2001 dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Nærståendes erverv og salg av aksjer i DNO ASA | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOemNlVVBXdms5d2VITU9MX0sxOWRjS1pwU0l3dnVOOU5kMkh3RC1VWEdFVUdQTXRpNVhYLWptUk4talpmWmk0SUZxTnkyWGw0QTJKS1NVeFFBaGE5VHJHTGxvMlh3OGNmYmlwR21KVWh3c3E1MzVrQVoxRWxFZ3EwelY3QnN1aWI3LWV3d2lvb2t0bTFxRmN3MWJhRQ?oc=5",
+   "d": "2024-08-28",
+   "s": "Nærståendes erverv og salg av aksjer i DNO ASA | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO - Produksjonsstart på Sharyoof-feltet i Yemen | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMimwFBVV95cUxNM1Y1aDhqVDhXRkpkOENCVndjRE03d1Y2WTJlbExWbWlZUnZCZlVpWlJRNXRHUkZualpRc3VMNDlDY2Q0UUtUWGpDUEJoMUZJZjY2ci15ak1KSmtiTnV6c19KNzZpSE9vSTZBUVhOdGdMNFZ2TVdJMDVkZWRHSGhZUm1lM2RSajZRMUFfR2xVcFRjbjBHQWlCWTZaQQ?oc=5",
+   "d": "2024-08-28",
+   "s": "DNO - Produksjonsstart på Sharyoof-feltet i Yemen | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO vurderer hale- og småfelt på norsk sokkel | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNaDVqVzh1aS0tbC1yYWxSTm5va2VLUFBCaU1EUUVKaDlaZzYtaWZEbjluOUVFaE5UUEZjLVdOWTBEbTd2R2dQWGNoX2ZmUUxLSklqT3RhZDRYczVrQ2YwOE1sV3JDeGFQWlF1ejdnUVlHQ2VCMGp0X1V6UUhRc0hMMlA2VllYeV9hSm1SUHFNTDk1NWlMYVBwcw?oc=5",
+   "d": "2024-08-28",
+   "s": "DNO vurderer hale- og småfelt på norsk sokkel | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNOs oljeproduksjon i august - 13.783 fat pr. dag | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQYmtYSE95SEJxOW8zWE8zNmdPN1JJNGtDQlE2bHdzcTNpX3hwdVdTUG9rdzlVdjVVSldaSW5JV1ZXRGFJU3lBMFpTaHhnUE5xaVJuMDBTdXppa3lucExyVnl3Sy1DS2hLRnI5ajZuMnlEN2VpNXBteUdyUUFBQzVKM045bWI0X3dhQ1V1elUweEpWc1VSYlQ4?oc=5",
+   "d": "2024-08-28",
+   "s": "DNOs oljeproduksjon i august - 13.783 fat pr. dag | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "2 nye operatørskap på norsk sokkel for DNO | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQVkdDTmZlWjNJcFkzX012TmdWelBlSkRLdE5CSHVVSUVGZHNHN1pLVkd4c0pxLTZPelA0YXZ2OVVqWHp4X1EzYjlIVnJLTmFfMVdUUEtfZ19NaDdua19UcjBtWXN6bTM5alRrMVRpY0dqcGozVlhWbV9KV0tDd3lxTklaSmpFdGhFaHFtdWZxRG5EeDB2UEE?oc=5",
+   "d": "2024-08-28",
+   "s": "2 nye operatørskap på norsk sokkel for DNO | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO godkjent som operatør på norsk sokkel | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPTlJ4UUhIUEpXNDFPcElXQkdUM2ZOUkZQYWhVaXRPOVpKdmM5OUxaZkh4YVNkWGFPeXR5VmlSSUM1eDI5VncxcGRhZG56M0pVMzd5UjlGWlVUVTZFTWMxaTNiRUNnTjRfUWtCVGNOZ196d0NDRjg5Y0RLeTBkZHhnQXFoS2tueUNIMlh0ZnhzbzludlNV?oc=5",
+   "d": "2024-08-28",
+   "s": "DNO godkjent som operatør på norsk sokkel | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Dom fra tingretten i sak mot Oslo Børs | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNZHpaN0hDWFVvMW1pWlBGV2pvNEpBMXRmNi15MS1oMmFYckdrWGh6OG51WTBLaG1XTEp1dm1pU1ZxYjBlelNyU1JzYU5tVHNERlotYkpqQzFCX2JQSFBQeHVaY0FaOUozOVU2Uk96NW50V0EtckxOemZyMzBvZ180U3lJWkNiY29QRlBGR24zYw?oc=5",
+   "d": "2024-08-28",
+   "s": "Dom fra tingretten i sak mot Oslo Børs | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "KJØP AV SMÅ AKSJEPOSTER - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMihwFBVV95cUxOWWRBal9UbW9nQlhXb09QdWVpZkwtQjV4NWJpLUxac3FfeUtiWmROWnN5OTI3T1BLcEZiV0FFWkF0cktMa0NIYlJmTWhGNF8yTTlKX0pjaV9HR2JBRE1IS2tPMzNlUzJieVhwcmx1ZU5hTUNFazVweDlEdk1DSlRoaFB0b3o4MFE?oc=5",
+   "d": "2024-08-28",
+   "s": "KJØP AV SMÅ AKSJEPOSTER dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO VIL TILBAKE PÅ NORSK SOKKEL | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxPcWhITmFMZFltT2t3b2tja0JMTVc3Mm95MGVqam1NQi1EZVlFdzJaNjBNZ3RrZmtXcEF1ekV5aXcwdk5fMGZYLWc3S01sMlprZ1h3SkRmMUFSek85R0QtZ0ZBajFtZ2IyMGo5MGFrRklwbXJJYkJRX2IzNnJNa2M4R0pzM3dIQQ?oc=5",
+   "d": "2024-08-28",
+   "s": "DNO VIL TILBAKE PÅ NORSK SOKKEL | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "KJØP AV EGNE AKSJER - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMigAFBVV95cUxNal9LRV9LVnJ6TG12RGkyLTVXLWxWcFVyN1VvbEVQUEpVaDllbHIyVURPakg1bUNXd2U1WFNNak9DeEJOVDEtbmg0NTlyckVpNTZmVm9lVWNLZVA1NnpHQjNKRmJzd3RRTlVaUGNpcGNsWml4ZTJ6SUR1V3pFQzBCVw?oc=5",
+   "d": "2024-08-28",
+   "s": "KJØP AV EGNE AKSJER dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Produksjonsøkning for DNO | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMifkFVX3lxTE1KcXJNMTE1YVN1YXBta0dKbkYxSGVrbGNXQlItb29KLU04TWZTQnVGZWlscTliMm5yeGdCTV9wRXZnMDUxaWV1eV9qd2tnZXY0b1pmSHBfOG1xbko2b3V2NmlTcU9vdlczWjJWWWJFMjM4anFfZWlOUjJDWjZYUQ?oc=5",
+   "d": "2024-08-28",
+   "s": "Produksjonsøkning for DNO | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "TILBAKE PÅ NORSK SOKKEL | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFA1c1cxUlZIMTJEcWJaNERPYXA1bG5sWWlaSjNFcnNKUzF4S2lyUGR4V2ZHOHBfYm90QXpVMnZDb2VsVFR4UHJwVUlTYmcycDF2cXIyV3BrWmloaVlWdDhUbVBWTzNkR25OSjRhOHZzUzlnU1RDMFVRcDJiSQ?oc=5",
+   "d": "2024-08-28",
+   "s": "TILBAKE PÅ NORSK SOKKEL | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO - Supplerende opplysninger - tvungen innløsning av aksjeeiere som eier 33 eller færre aksjer i DNO ASA - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMi5gFBVV95cUxNMjhhVzRfbldCQ19pR0JERmNvc1lBX3VFcXgxeTVnY0RiZjAzSG9vWThreWRveHViRzZnSHI0anlBel9ad0xCOXBDZGJXX0VJTk9vcjkxbFdjemJTTmZQOExwYzdSSW1TOVF4cUZ5U3MyT3Q1RXh3emhodUQxemxTX202eFd3MUg4ZjVjZm5WV2FZZW4wSmVTSUhsWGdCUTYxUV9sT0tSR0ZzYklaVzlQaW5WT2d4ZTlCdnJuMWh4eXNiV3ZRMTJFSkVQZVREYXdmVDVLY1BVTkRrcF9tYlNNVmpOODRCdw?oc=5",
+   "d": "2024-08-28",
+   "s": "DNO - Supplerende opplysninger - tvungen innløsning av aksjeeiere som eier 33 eller færre aksjer i DNO ASA dno.no"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor skal ta i bruk verdens første ammoniakkdrevne forsyningsfartøy - Equinor",
    "u": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQb0dfZGpGUHRiNEN0VHRjdjdidTAwVDc3cU8tRW84NjRXV3NoQkZ2NkZ2Yks2Ni15NWdfMkJvYUxoSGZiTHMzanhFaERsNGR5Q3RESVFCMjE0QjRrWGFkQ0dUUi1GT1dVRXI0cGtTVVBua1Y2TUhObVZ1UEpJaG9tdHRIekc0SXdrODBURzR5S2hyWl8wd2c?oc=5",
@@ -1451,6 +1603,13 @@
    "s": "Petoro leverte 277 milliarder kroner i kontantstrøm til staten i 2023. Det er den nest høyeste kontantstrømmen i selskapets historie. Siden Petoro ble opprettet i 2001 har selskapet levert over 3000 milliarder kroner til staten fra Statens direkte økonomiske engasjement (SDØE)."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO Receives 14 Awards in Norway's APA Licensing Round-2024-01-16 | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxPazBDVGxkVnhiRWVBVVdSM1VieUFaNlJRSnRFclp3QjNoM2JXWU9kSlloQ213MHREemJrVVpxcTl4aGExZGNwU1NZdTlCdVRucU5DQVFBRUQtRElQT2xlbjFqWm00dmd3bkxWMDhlQUM0S2J6eHhlb2ZVSkhVT1ZiNjZ4c0xGMnVhMUN3dUJWRzR4QTk0NmxOY2RuTmZSV1EtSkRTMXVVUUlQTzVSbUhjMQ?oc=5",
+   "d": "2024-01-16",
+   "s": "DNO Receives 14 Awards in Norway's APA Licensing Round-2024-01-16 | Announcements | Investors dno.no"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor og tyske SEFE inngår langsiktige gassalgsavtaler og planlegger hydrogenforsyning i stor skala - Equinor",
    "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPOXl6cm9Vc3BlTURpNnQ0WnM5UXdYam5FS3lZUzZKckV3bTV0UnprNFNjMDlueHZGU1U4RzNOV1JBb2hJQzA5ajBvRVFBczFBaWVBWVMxRnJpdFQwSzV4eHRwY2w3TFozbGRSQm5qMFJIcXNaZi1nb09sckVBaUpiQW5ZSlFoYWhtXy1sMmFiZWNvLUdC?oc=5",
@@ -1528,6 +1687,20 @@
    "s": "Petoro leverte en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 180 milliarder kroner per andre kvartal 2023. Netto kontantstrøm for andre kvartal isolert var på 63 milliarder kroner."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Norway logs largest hydrocarbon discovery in 10 years-2023-07-10 | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxNTHNTR1l4WWg5QVkzMVRySkpBRUl2RkJMVjBFdXdoUldRTnoyX05sc3dmRDc5bnlid2c5eG5LZTAtR2ktN1M3NnY3U2lra2o2U2FtWlFZLUpXQjhJY2JzYlozVUFKQmtBQjg0aDBkRWlkbWptSmVyeUhDOWxOZlZ1MGJfVDNBdXpsSjhtZmt5ay1FZWpCSWxVWlNMelBHS1A0bE41ZUdrdG5tb0tJRDJiMQ?oc=5",
+   "d": "2023-07-10",
+   "s": "Norway logs largest hydrocarbon discovery in 10 years-2023-07-10 | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "VEDTEKTER ARTICLES OF ASSOCIATION DNO ASA DNO ASA (sist endret 25. mai 2023) (last amended 25 May 2023) § 1 § 1 Selskapets n - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQSkVRd2lJdmt0X1dZX3FwcGZEMzZxdHNtTmtHY2NKaGI5aUZLNmlNRk0tNGlhT3pKVm9jMDZwTHF5b1RqbUZ4QjQxdDByRGpwT2h1Mks1Z2s1dDl1UFkzT3lhbUxjTW80WVN5cVNsUFk0SXNyRUdVZ1c4d0E4emttREREdDhPOU9CelotWloxcjZqYzZpbHlsRkplZU9fOGxXcHFrSWptUE5FVXN5RjVPRFNXRHlWaXJaaGtVOEgwUE9Xb1hMT3RIUkFUSG9sWENO?oc=5",
+   "d": "2023-05-25",
+   "s": "VEDTEKTER ARTICLES OF ASSOCIATION DNO ASA DNO ASA (sist endret 25. mai 2023) (last amended 25 May 2023) § 1 § 1 Selskapets n DNO ASA"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Equinor utsetter videre utvikling av Trollvind - Equinor",
    "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxNeGxTVE0wZEw1aWJENlk5N21QVmY4bi1HSEJySF8tQjhqa19oTEdCQko5YTlWMWNkQS1ZeDBxU2RKUGhvQXF5d0hBU0EzMms2V291Rnh1Z0t6SFQ1SjZBYnFMd0x0QTMwRUVBaWlfTEZkWTdMS0k0ZjA3RG81V1dvelUweG9PMFF1ZlE?oc=5",
@@ -1584,6 +1757,13 @@
    "s": "Equinor går ut av Barents Blue-prosjektet idet avtale utløper og ny partner annonseres Equinor"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO Receives 11 Awards in Norway's APA Licensing Round-2023-01-10 | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxQaUxxbDFVcXJlS2dLS2ZIdEc4SFQzbFlPd21IdW1JM1NsU0NJck05ajk3THUzUlpvUjBaNk1oM1hBaXltcDFjVUVOeFdNM3BCNXl5SXo4SEFjQnM3NEIyMDRKbzc1bHVoWUZZajNOOHdLb1hKNkdGU2ZsekNQVlNnUWJtUHdEaXJZcXpCV05GSDFERzhNQjdMbmR6dWxVMDBacDdfVExabVA1WEVSa3hHUg?oc=5",
+   "d": "2023-01-10",
+   "s": "DNO Receives 11 Awards in Norway's APA Licensing Round-2023-01-10 | Announcements | Investors dno.no"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "TotalEnergies reise mot fornybar energi - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMivgFBVV95cUxQQXFKRUF4VXptaWFvb1owazhUTmxqbllNMXpla3ZNRnAxNVN6V2lUSm1xZFBRd2g3VDBQLUZ6Y0pnUUl4cjlIQWZET2w4b0Y3TEI0YV9zLTR0ZXVKWHRHNTZZdVI3S3hpRXlTc2dFSmxLSy1tdVNOWEFzRW5wam51c005T3hzcFVsT2FxSFFGa2Z0V1lvRHhOcHdpQ3V5QTI1Q19ZVkU2Q25rLV9ZUU14M1dJTkFxTnIwNkZhRVVR?oc=5",
@@ -1633,6 +1813,27 @@
    "s": "TotalEnergies & Motorsport - The Track is our Lab TotalEnergies Nordic"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "”” etternavn + fornavn” - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTE1jRU1lZGNsMzlTakJVQzcyVEFLZHBzaGZXWnY1Zmo1cGdldHFmT3drV3VuVWFhRlRPTGltcXpBM0Voa3ZyM0taWnJKZVZob1ZGV09YMEhJcnVCdFZpZU5ONzRwY1dVR252OWZSdmtQZEQ?oc=5",
+   "d": "2022-09-19",
+   "s": "”” etternavn + fornavn” dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Untitled - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxPSGVFZUlVVEt0akVzTHlpQ1RxT041OHNXUkMtWU5HOFRaU2hvR1ZrX1czeGNCdFpydkwweHNRNVdfZnZVUWVacDMwOFg0Z19lWEYzTEVWbExBWTVkcWpJYjVoQjktMldoTjdpNzlhckdBTVVfeWpBMmN3NmZjUEVnVzhn?oc=5",
+   "d": "2022-09-13",
+   "s": "Untitled DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Presentations | Reports and presentations | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxQWUlQYUlfR3dweTViRUtQak56cWoxMzk0Q1l1bFh6MVVJeFBZYzc3clJrYnVOX1h3Y294UkxkY0JSTm5GejJCdFZfR2VBU0gzcWdhczdmWGZCMXJaeXh3ekxSZS1qamtRTHY1dXVESHlNZVdVUFFjcmtDTVRCOGh4UmpSZTVYLXlm?oc=5",
+   "d": "2022-09-06",
+   "s": "Presentations | Reports and presentations | Investors dno.no"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Resultat SDØE 2. kvartal 2022: 1,3 milliarder til AS Norge hver dag",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17938247/resultat-sdoe-2-kvartal-2022-13-milliarder-til-as-norge-hver-dag?lang=no",
@@ -1645,6 +1846,13 @@
    "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxNOE1wTDdTejlFc1dOU1hlQUw5MTZHUURTcFduODdCSjlDLUlCOHNldGFxZHdTSXFWWHJTZFRsS3pFSnV1eXZYTjMzTFdrT2MtUENsaFBlM3VVV1dOZGtYUWZMUmJwcERHZndrWnB5TEFOQXQwSlFnN05hR0lUTE9jX3pn?oc=5",
    "d": "2022-05-24",
    "s": "Nytt funn ved Johan Castberg-feltet i Barentshavet Equinor"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Senior management - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE1US2ZwOWZKS1ZJVXZGbUQ3cUJuSUtNY3Z1MUVuSHEyU1hVbjN4a0xBcU0zZF9QWGRBTU9ucWZpb1BqdDJVTkV5Vlh1SDFCY0xjNS1neVRrN25ZMF9lNHZB?oc=5",
+   "d": "2022-05-24",
+   "s": "Senior management dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -1857,6 +2065,13 @@
    "s": "The Distinguished Gentleman’s Ride i Norge - TotalEnergies TotalEnergies Nordic"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Quarterly reports | Reports and presentations | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQZFM0ZFJ2OFdTRjk5djVlQkJaajBhY2ZHdEtHT2d4SVhsaWV6WW9QY3daRDRROFBiQ3Y0SW5UelNEUlB4bm5QdFhHRV90SDJ4RGs0Wm5uVU5DdVd0MWJhcE85cFJQNTFITXlwUkJSRHA1RktwbXBwQWNQRmh2UUNwOVhNOU5DSXp4Z0VRRGx3?oc=5",
+   "d": "2022-04-10",
+   "s": "Quarterly reports | Reports and presentations | Investors dno.no"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Årsresultat Petoro/SDØE: 186 milliarder til staten – pålitelig energileveranse til Europa",
    "u": "https://kommunikasjon.ntb.no/pressemelding/17928151/arsresultat-petorosdoe-186-milliarder-til-staten-palitelig-energileveranse-til-europa?lang=no",
@@ -1906,11 +2121,25 @@
    "s": "Petoro leverte en kontantstrøm på 98 milliarder per tredje kvartal. Kontantstrømmen for tredjekvartalet isolert er på 44 milliarder, noe som er den høyeste for et kvartal i Petoros historie."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Fullmakt til erverv av egne aksjer - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNNEpZbXFBMm83dG51UTJGNlFqWk5pNDd6Z3RsenlRLXhUdkt6b2h1SV9Ha0JjbWJiR0pDMGstcEtMMlZmU0NGMXBSWDJIYjI3dGJNVXlPLWdFWjBtOHd3alExWUtIWWpBVDBfRFpXM2V6UWNVQ2ZUeUN3TEtqRWpxQ2p2RkFMeklEdlFOdTN3UHo0dTg?oc=5",
+   "d": "2021-09-23",
+   "s": "Fullmakt til erverv av egne aksjer dno.no"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Smøremidler for papir- og treindustrien | TotalEnergies - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxNZzMwV1pBWVozZnJYZjRnYW9id3Vzb2JnQy05SjJNRnl6RUxJTHE5eDNXcW51a1JyZ0lvREl0NzRCQnFBbHNxbjZKSWx3c2ppTEx2dGxEY2IzdFdFYzRXa1A0Q2JnWmRmVGlnODQ4T3hNM3RJckpIdnUxNHA3Z3pfejl6UUs?oc=5",
    "d": "2021-09-12",
    "s": "Smøremidler for papir- og treindustrien | TotalEnergies TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Calendar - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTFBaMXdpOUkxeV9NMmRBa0hQT1laSjNJQ0t4QUtVTDBIZlpZRzc4aEJpOTNwcVdDMHpKWWxLWWgwc3QyUnFDUlNiQnV0SGVabFNJSHdxbFpWcjlCTjdGbHZFbw?oc=5",
+   "d": "2021-08-22",
+   "s": "Calendar dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -1925,6 +2154,13 @@
    "u": "https://kommunikasjon.ntb.no/pressemelding/17912470/resultat-2-kvartal-sdoe-54-milliarder-til-staten-olje-og-gass-forblir-viktig-nar-norges-posisjon-som-energinasjon-skal-videreutvikles?lang=no",
    "d": "2021-07-30",
    "s": "Petoro leverte en kontantstrøm på 54 milliarder kroner per andre kvartal 2021. Dette er en økning på 20 milliarder i forhold til samme periode i fjor. - Kontantstrømmen fra Petoro i første halvår er nå nesten like høy som for hele 2020 til sammen, sier administrerende direktør Kristin Kragseth. - …"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Aksjeopsjoner til selskapets styre, ledelse og prosjektmedarbeidere | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiswFBVV95cUxOem82Zm80a3JvNGJkSWhGdkhNVFdRTS12bVhlX2ZDc216ZzZYUm9FU2ttTER0ZEw0UV9fTXJKX1hpT0ZnSUtrTFdVZ1IzdHVXbDd4Z0UxU3dlNHZmQXNwdlR0b0V3dHo5eTBqZ0t4VHhEVk5ZcFRJeFlYbXJtdUhRLVhwRlBkaWp2VFlVdGxqMkVhMlNabThTdGthWDM4UDU1MlRhek5YNU9FSzVoaEp6MFBrNA?oc=5",
+   "d": "2021-07-27",
+   "s": "Aksjeopsjoner til selskapets styre, ledelse og prosjektmedarbeidere | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2109,11 +2345,144 @@
    "s": "Petoro AS inviterer til fremleggelse av resultater SDØE og Petoro AS 2020, tirsdag 9. mars, klokken 10:00."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO Receives 10 Awards in Norway's APA Licensing Round (2) | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxOVHRqNE4tTTdRb29HOWl0MF9TRXdQMGEtbjZ2QU9ZR084S2IwNFRhVEk1Q1dxWFJvUHZvNVZDeXo2LV9TdktRWExtZ0pXdVdQY2R3UV9tTnNnejhmQk5KT1l2c3FqM2hIcEJMbi1tcFhBa2FDc2hiLWZ6UEtXOERDOENNNU1ZQm9lVWRlY0ttWFZ3Z2cyaUJxZzRjaERsT0VhRlRVRg?oc=5",
+   "d": "2021-01-19",
+   "s": "DNO Receives 10 Awards in Norway's APA Licensing Round (2) | Announcements | Investors dno.no"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Ny tilværelse for pensjonist-juletre fra Ekofisk - ConocoPhillips Norway",
    "u": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPSllhZjRNTGN1R1ZBa2EyaFB1ckRFQk5wd1ZQbW8ybXFGRm1SNnN6clBKdy0xVHhjeU95UnZYeUN4U1NFcEJ3ZklEVWRIdEtPcUxsVFZHangzcVAyT2JWQml6dzNZaU1kXzBoa2ZWRW1IU21zVnB5aGtTWmtzZTFEWUpPM3NFdW5OQzA1UXlmUXprUVI5VWhKTkxydE1VeUhzdmRfRFVBQmE2UQ?oc=5",
    "d": "2020-12-16",
    "s": "Ny tilværelse for pensjonist-juletre fra Ekofisk ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO foretar nye investeringer i oljeservice | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxNcWJQeG02bFNCTkh4WXZrZnU0VzJBQ1JSNXpCRVNqM1Q5VjhoU2NMWGpTaDE5T1FrUy1RYURkM3dGbThiT2hYSGdESE9zTkVxMlJDRGN4dmsxR1hkSXE5SmhpRUZUanlza0NrQjJodjRkQnk4aXJ3dFV2c0lfdEhpME1SckNTRjFnclB4VmFLODRLcWth?oc=5",
+   "d": "2020-12-09",
+   "s": "DNO foretar nye investeringer i oljeservice | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Fisjon av Offshore & Services - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQdkxXWjk5Z2ctLTJwbEFFMkVrOTlIdFdNOWUxMkxLWFF4cV9wLTVmaXhCa1hNaHdIRFdwRl9zVHhnNVJ1a3BBM3k2ZmFUalQ3MFZfSWlQUllST2VBQXh3NFZ6ZEUwRkpxYUhVMDc0T1FYNWRJeDFRaXlWb2dvWFFsUkZ4bFJxTWVveGc?oc=5",
+   "d": "2020-12-09",
+   "s": "Fisjon av Offshore & Services dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Status langsiktig finansiering - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOcjZfRGU2Sll1QVFsbUZWbnluRnFQS25SaXdGQVltWFpKRFdVQUNzZXVvUERQV3VNV3QtV3FrbkFNTUlCd0lTNFBPTm5oTzcwMkZzeUsxVnhmTnNCeGEzMnRtUUxjUm9odVVqc1Y3bkpZRkYzeTNlQTI4aDFzbXpPQW11dElLUlZiaW00Ukd3?oc=5",
+   "d": "2020-12-07",
+   "s": "Status langsiktig finansiering dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Rettet emisjon i DNO ASA | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBIQ0FCMUFTanFKS0RYUEtxNEJvUklVNmxWMzB5Z05US2F6N0x5MXRRX3YwVEhxcDEwb2hydmV3Y0tYQkpJZnVEdm5fT1pJTHA0Q3BUS1RJS29fOFdYSEVMQllsOE1mMm5BRllNbEpPYnNUZ0ZoRnBpTFd2RQ?oc=5",
+   "d": "2020-12-05",
+   "s": "Rettet emisjon i DNO ASA | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Presentasjon Pareto Oil and Offshore Conference - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPTnQ2ZFB4X3BWWFBma2RDekc2dFVPMW0wdUs5R1piUEEwelVpT3lNcGhhU0ZPWVJBeUtOUVNJWnFSRmVvNmNCYm5nZ0UzbGctdUlHZEIxb2g0TVc2cGdLOGpCdFJDVi1aMS1DaEhBRk9ObVJjSzVmV2JRdXVkVW1wYklMS09EZ1h2VVgwLWJDYnZGR2JyNVJSMjJJbFoyTWFsVllQNA?oc=5",
+   "d": "2020-11-19",
+   "s": "Presentasjon Pareto Oil and Offshore Conference dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Status - Yemen | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMia0FVX3lxTE93SFFLTHNQdVJDV1BPQkpMQ2lEYmNJSWhMVjJSNjBOd21DeG5oZ1RKOWJTZGFTaXg3aFNFam5fZURDNGo3eE5lQ0dkbHNfSFdkYS0zWDNsNE5RQ2UzSUVUVXBlTExubzNGRFc4?oc=5",
+   "d": "2020-11-19",
+   "s": "Status - Yemen | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "MØTESEDDEL FULLMAKT UTEN STEMMEINSTRUKS - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1pdWs4LTZDc3VOTHpid2lZeWhsX0F6ZkZweGhPcTBrUmRzREI5QVI1YlhUQmdGYm1ySkxhNTQ3eEJpWUhabjUtM01pSUdMalR1THc?oc=5",
+   "d": "2020-11-19",
+   "s": "MØTESEDDEL FULLMAKT UTEN STEMMEINSTRUKS dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO International ASA - Tom Bratlie joins DNO International ASA as communication director - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMizwFBVV95cUxOSHljLVhiY0dPbFdwV1RxYjBqcFhmV1FwVncyTGI1Y1c2SG9FSHZSNFltVElBdmdYYUVtM0tmc0tEMzFHS1FIWXpfSFFiYklOM1ROd011ZE90dHJSWmIyWHBVeEk3ZU1CWi1uTW1KaTJHM3BtR0tVdHJyd20wUTU3ZTd6Zl83NnVPMXJBRV9lSXUzV0IwNUNKbmhLV0I1anZKWXZPaWFWYkFkaDVseUVXcEI0Qm5waFZtQWFZZmYyXzc0dWFYX3VmZ28tbXdrRkU?oc=5",
+   "d": "2020-11-18",
+   "s": "DNO International ASA - Tom Bratlie joins DNO International ASA as communication director dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO International ASA - Presentation at Pareto Oil & Offshore Conference | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNNWtSamFMOEZNV0lUeFBHdGtpbWdMNzYwNFpMZ0hnLTVFWENTSE9IbklUWEowblR1dFFUcXdzOWlHNmZ6TWk2NFM5UnlBbGk0WTF4b0JwRmNodEwwN3Q2bWZJNmt2Qllyb1kwcFhFa2tHOF9RVWVvR1ZUcWV1cnhDdm1fUENQaE13SzlIRVItTkNDUzUwMlRKSDdrQkNqenF4TC1oQjZaZFJRSmN0MEFEbGpQcF92Zw?oc=5",
+   "d": "2020-11-18",
+   "s": "DNO International ASA - Presentation at Pareto Oil & Offshore Conference | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Utdeling av utbytte | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTE5fUTJIUU5MTzNuZndEY1Z6V2lESHV6OWIyMW1Qc3lEUjF6YjZfbFh0b041S1FiUWNsRzRtSUlsNEJ2dVpGUGx5eW41bVNxSFY5MGxtVDJ3cW1wZnFyUGxobFRTZmZ5Sm0yTFdPZ25RdU5JeW92?oc=5",
+   "d": "2020-11-18",
+   "s": "Utdeling av utbytte | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNA ASA - Status fisjonsprosess og regnskapsmessige disposisjoner | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQdVZlelNzOVlWaFo0aGdYU29TeGdjazUxcDg2Q1VlQlNZVnVVN2JVU0pHclhDTW9jdjViVXdBRk9kQTE0UzdPa2N2aURWSkE5cGJHcExhVUVzNkJRa2NzYnBBOV93LURlb1M1b21sVmxTUy1BOEtLZnBWSW9FTWhOMlJvNnhzbHRpbktDRjZHSVRDaHoxQU80N2M0VzBJSVpnN3c3UklBTW1wMzBGVkpN?oc=5",
+   "d": "2020-11-16",
+   "s": "DNA ASA - Status fisjonsprosess og regnskapsmessige disposisjoner | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO International ASA - Invitation to a market update | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMinwFBVV95cUxPMVBOMjhzNWRjUFNHc1ZSZWM0STZRN3RYS1VpTjZPbm5SSHhJN1Jac1ROa0RPVy1hSkx6dU9vQkVWZklBSDZsN0ZqVFZmanV2NlJHMUFuSHFESTBJeVJ0SHQ5VmR5WFJfNExyMDFzazd4ekhNeWVkblU2c3R1Y2t5dU1lTXdBUEFsQWREVE5na3FsNnJXX1BuR09aSzlMclU?oc=5",
+   "d": "2020-11-16",
+   "s": "DNO International ASA - Invitation to a market update | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Ekstraordinær generalforsamling | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxNLWlUM3dCN2JCbUx2dml3NjdkcDhsb1VOZ2xDMkhEOGFCWkgtY0kxQnRSOXMwZTJqSkhheTVSaTZmb2RWeUZDZDU5TnFlWi05ZmtaeGt6alhscXJFZmtDZ1Q5aF93TkQxeUxPYWtIbnc3OG1BWFIwM29XbXZ5akJ1UXltZ25rQQ?oc=5",
+   "d": "2020-11-15",
+   "s": "Ekstraordinær generalforsamling | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Generalforsamlinger i DNO ASA | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxOMG9OQi1EUHhzSzk0WEYzeWM0VUxxQWg2OENLb2pIMWNWUndYMkhTU0JqRS1LVjJrb3l4Y0pNZmk4ZEt6eElfdGFlTkw3RkJlZWw5RHdreENBdk14eTB4cnVNVlY0aS1XUFdXY016OG1PWU5Fa3VCdlpuWW01UmZPY05B?oc=5",
+   "d": "2020-11-13",
+   "s": "Generalforsamlinger i DNO ASA | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Status lisenser - Norsk sokkel | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMigAFBVV95cUxNRlppWW1UaFdqQ2dTNThUUWpnZkRBdUs3SGFRZ2RqYXh3aGFLd0tTTEhBMGJLMzgwSElSc1lpSGViajhrRExYQlpfNDNSMUJDcWxxbXpMd2x2SnNEN3B6akxGOTdKenQxcXR2VDZmbnlYOGZMd2FzaUJoMUhYMjY0UQ?oc=5",
+   "d": "2020-11-13",
+   "s": "Status lisenser - Norsk sokkel | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "All Announcements - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE9yVjctNDExZC1NMlFBS29oR0FHTHpjcHZzMDZRYW9oemxRRWFRUEoxVWNzMmtObVJoYlZvMkdQb3dlMVpZQ0I1YXRpU0xMTWowSzBla1QzUU90M1hMS1ZmQmlCbVIydw?oc=5",
+   "d": "2020-11-12",
+   "s": "All Announcements dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Contact us - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiSEFVX3lxTFA4UnZkWDJHekNsRDFQYk1KbE5va2NDQWx4NDBHXzJiRmhoUl95SXZDMDA4Y01pMjRfWVh4clh1R0I0NUduUEJWbg?oc=5",
+   "d": "2020-11-12",
+   "s": "Contact us dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiR0FVX3lxTFBXdFdOdmFCNVNQQVgzbG00b0dMbmhJcDF3Z0VpanNKRVhTRFhZTGJ6STN2ZFAyVGhKYmdNdUJWWno1TlVUN3U4?oc=5",
+   "d": "2020-11-12",
+   "s": "Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
@@ -2186,6 +2555,13 @@
    "s": "40 år siden Alexander L. Kielland-katastrofen ConocoPhillips Norway"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO Receives 10 Awards in Norway's APA Licensing Round (1) | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNNVlPMmpnQWtIRC1mdGtPMEowTXNpQVR5Z0d5NzgyVExlVmJuc2JBb0lRYTdVc1ZkbUVzbmN0V205ZzJnQVhycllmTm1iZzZvZm9vOE1wbFJrcmhtWVdMSU45WElibDZDOFdvTmRfZktXVFRZVTFDaXFva2wtMm1yV1NkdTFaNnlnSFZwaG1udXd2NGt2cjFRNE02RTZZaU1JMlhsaA?oc=5",
+   "d": "2020-01-14",
+   "s": "DNO Receives 10 Awards in Norway's APA Licensing Round (1) | Announcements | Investors dno.no"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
    "t": "50 års verdiskapning fra Ekofisk - ConocoPhillips Norway",
    "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQQ3BxSThQTkR1cDJ3Z1hTZEFjY1R4VjJYQTNqZmk2LTJYNGVuNTFnU3NKT2lXVk1Lc2VnSHhhd3dKVmpWa0JYRGJQZTRWMzI2dTI3NHl2S3NrbEdEX2FzUzYtOXJKVGc4Mm5mS21TTWFpUkRYS3lCZG0zMEVYRUtfRmhQVUd6ekJNdGpfVDFWbWkzSFE?oc=5",
@@ -2226,6 +2602,48 @@
    "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxPMkNleENDbDVyU1k2cW9LR0dvV0pKdWxRSEh3ck5tY284S0pPNWl3T0tpdXJ5V05pa05aMnZOY0ZUS0hERlBrNUNzZElEMktqeWdUWEpsV25WWENscU00Z21WRkRCc1dCNzdkcnNfNmpiZUZHNmVzVmxmc0ZiZi0xTzIwVU04VWVjblNiY09DYTZPQlpTaWdqVA?oc=5",
    "d": "2017-04-07",
    "s": "Årsresultat for ConocoPhillips Skandinavia AS ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO ASA | dno.no - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMiOkFVX3lxTE8yWjZmQWtfX3FVeUtMaC1PbVZwTmtJUkV5OWtwRVhkSE80cTZfYnVvNGl1TVVlbFMxMGc?oc=5",
+   "d": "2015-09-16",
+   "s": "DNO ASA | dno.no dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Notification - Holding of Synthetic Shares (4) - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMingFBVV95cUxNRkV3c0ZHN1g0S1JfeXBGek9LVXU1N0M0WGMycXJNQWFIdDQxQTkzT3REZGxCNG1aUDhTUFZSYy1oWW9vdXhoSGpKaFdZdDdQZjYyNDdrUkJNanowYmJHa0xobEswVTJrU2NvX0lHd0JEYm1pWWJPQlRra3FrMW01SHhqdEtkeU9ZZkpWZlZOeDRicjJzWUtlOTlaN0tfUQ?oc=5",
+   "d": "2015-05-07",
+   "s": "Notification - Holding of Synthetic Shares (4) dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "NAME CHANGE TO DNO ASA | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMieEFVX3lxTE93R2lJb0Q4OTB5N2NqcEo5Mm83QTFKLUl2b0l3cGljNUZmNDFjaHZlbkxIVHdXQUZpVnNlb2FNS3VxV1Q1eU5ZVkhfajFiS0NwRlIyWk42Nl9WeERuVDkxaGl1dkV3T3hqcWNGTkhPWVg4UlNIdFN3eQ?oc=5",
+   "d": "2014-06-06",
+   "s": "NAME CHANGE TO DNO ASA | Announcements | Investors dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Update on the Tawke Field in the Kurdistan region of Northern Iraq - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMivgFBVV95cUxOSHNIOGlrSTNLQ2N3SEdDaVl5dmYzSkZKVnFjSUx5MW81ODdodGxZMkZfdVl2RThRc3B0X2ZMbW1hN2hMLTJvQjJCUlNEUDVqa2JVVjJZaldnMlV3V0pobUpfUnNLM2ktNXN0TW1IZ092NjVyVUNVa2FxWHNoT2pmT2ZNanVETEx0MTZqdFVZWGdxS2dQbzR2SHlIc2hGelhmRmVYYmFUSjFJQjhiRVNTMXFQMV9pUFdaS2c1ZW93?oc=5",
+   "d": "2007-08-22",
+   "s": "Update on the Tawke Field in the Kurdistan region of Northern Iraq dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Det Norske Oljeselskap AS Private placement NOK 427-538 million 12 June 2007 - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTE1pQ3FQVzl2TXc0TGsxRUZXN3lNazhDZjVtWVE3elJqTUJaeFRXM0VGZGM1R1laeTVHck1Vd0JSc3d6MmdXTUdOemVreTh3NE9EQ3hWM1JuRFdQSFpPWGpObnAtY2RKb2dzbUMyZkYyQWs?oc=5",
+   "d": "2007-06-12",
+   "s": "Det Norske Oljeselskap AS Private placement NOK 427-538 million 12 June 2007 dno.no"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Informasjon til Markedet | Announcements | Investors - dno.no",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBLSko1SmY1YzE0b0JKQ2NpSS1oRjFoSUhKakpUakZ4WU01M1lZaE5FQkpDajMyVHJHZXRndUNWQlVIYW10VFlFMVJZcDBQQjBjMFdDdFFFVTd6ZmgyM3RYZ2hObGRCNUFTdlNjRE9QUnQ4SGhOUVpEekU1dw?oc=5",
+   "d": "2005-04-01",
+   "s": "Informasjon til Markedet | Announcements | Investors dno.no"
   }
  ]
 }
