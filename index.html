@@ -8232,9 +8232,10 @@ function drawCompanyProfile() {
     </div>
     ${(() => { const m = companyMap(holdings); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
-    ${investmentCard(ids, fieldNameOf, {company: name})}
     ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
+    ${investmentCard(ids, fieldNameOf, {company: name})}
+    <template id="explLinkSlot"></template>
     ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
       <div id="licenceBox">${licenceTableHtml(licenceRows)}</div>
       <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licences →</button></div></div>` : ''}
@@ -11809,7 +11810,9 @@ function explLinkCard(kind, key) {
     list = list.slice(0, 8);
     const old = document.getElementById('explLinkCard');
     if (old) old.remove();
-    document.getElementById('profileBox').insertAdjacentHTML('beforeend', `
+    // Selskapsprofilen har en usynlig plassholder foran Licences; ellers sist.
+    const slot = document.getElementById('explLinkSlot');
+    (slot || document.getElementById('profileBox')).insertAdjacentHTML(slot ? 'beforebegin' : 'beforeend', `
       <div class="pf-card pf-wide" id="explLinkCard"><h3>Exploration wells</h3>
         <div class="pf-scroll"><table class="res-table ex-table"><tbody>${list.map(w => `
           <tr class="ex-row" onclick="openExplorationWell(${w.id})"><td class="ex-name"><strong>${esc(w.title)}</strong>
