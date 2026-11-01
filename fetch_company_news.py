@@ -119,26 +119,53 @@ def save(path, data):
     print(f'  + {os.path.basename(path)} skrevet')
 
 
+class FeedError(RuntimeError):
+    """Feil som vises i feedlisten i appen; teksten er derfor på engelsk."""
+
+
+def http_message(code):
+    if code in (401, 403):
+        return (f'The site refuses automated reading (HTTP {code}). It blocks servers such as the GitHub '
+                'job that fetches the feeds, so this feed cannot be used. Try another source for the '
+                "company's news, e.g. its newswire page on Cision or a Google News search feed.")
+    if code == 404:
+        return 'Not found (HTTP 404). Check the address.'
+    if code == 410:
+        return 'The feed has been removed (HTTP 410).'
+    return f'The site answered HTTP {code}.'
+
+
 def get(url):
-    """(bytes, content-type, endelig adresse). Store svar avvises."""
+    """(bytes, content-type, endelig adresse). Store svar avvises.
+
+    Nettsteder som avviser automatiserte klienter (403 fra Akamai, Cloudflare
+    o.l.) gis opp med en forklaring; det forsøkes ikke å omgå sperren. Bare
+    nettverksfeil, 429 og 5xx prøves på nytt."""
     last = None
     for attempt in range(RETRIES):
         try:
             with requests.get(url, timeout=30, stream=True, headers={
                     'User-Agent': UA,
                     'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.8'}) as r:
-                r.raise_for_status()
+                if r.status_code >= 400:
+                    if r.status_code != 429 and r.status_code < 500:
+                        raise FeedError(http_message(r.status_code))
+                    raise RuntimeError(http_message(r.status_code))
                 buf = b''
                 for chunk in r.iter_content(65536):
                     buf += chunk
                     if len(buf) > MAX_BYTES:
-                        raise RuntimeError('svaret er større enn 4 MB')
+                        raise FeedError('The response is larger than 4 MB.')
                 return buf, r.headers.get('content-type', ''), r.url
+        except FeedError:
+            raise
+        except requests.RequestException as exc:
+            last = FeedError(f'Could not reach the site ({type(exc).__name__}).')
         except Exception as exc:  # noqa: BLE001
             last = exc
-            if attempt < RETRIES - 1:
-                time.sleep(2 ** (attempt + 1))
-    raise RuntimeError(str(last)[:200])
+        if attempt < RETRIES - 1:
+            time.sleep(2 ** (attempt + 1))
+    raise FeedError(str(last)[:300])
 
 
 # ── FEEDLESING ───────────────────────────────────────────────────────────────
@@ -197,7 +224,7 @@ def discover(page, base):
 def parse(body):
     """(kanalnavn, [{t, u, d, s}]) fra RSS 2.0, RSS 1.0 eller Atom."""
     if re.search(rb'<!ENTITY', body[:5000], re.I):
-        raise ValueError('feeden definerer XML-entiteter')
+        raise FeedError('The feed defines XML entities and is rejected.')
     root = ET.fromstring(body)
     channel = child(root, 'channel')
     title = text_of(channel if channel is not None else root, 'title')
@@ -235,13 +262,13 @@ def read_feed(url):
     if not is_feed(body):
         found = discover(body, final)
         if not found:
-            raise ValueError('ingen RSS- eller Atom-feed på adressen')
+            raise FeedError('No RSS or Atom feed at the address, and the page does not link to one.')
         body, ctype, final = get(found)
         if not is_feed(body):
-            raise ValueError('lenken på siden peker ikke på en feed')
+            raise FeedError('The page links to a feed, but the link does not return one.')
     title, items = parse(body)
     if not items:
-        raise ValueError('feeden har ingen saker')
+        raise FeedError('The feed has no items.')
     return final, title, items
 
 
@@ -355,7 +382,7 @@ def update_companies(only_new=False):
         try:
             final, title, got = read_feed(url)
         except Exception as exc:  # noqa: BLE001
-            msg = clean(str(exc), 200)
+            msg = clean(str(exc) if isinstance(exc, FeedError) else f'Could not read the feed: {exc}', 400)
             if st.get('error') != msg:
                 st['error'], st['since'] = msg, today()
             status[url] = st
