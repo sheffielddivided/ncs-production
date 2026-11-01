@@ -39,6 +39,12 @@
       "added": "2026-11-01"
     },
     {
+      "company": "TotalEnergies EP Norge AS",
+      "url": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+      "label": "Google",
+      "added": "2026-11-01"
+    },
+    {
       "company": "Vår Energi ASA",
       "url": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
       "label": "Vår Energi press releases (Cision)",
