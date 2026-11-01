@@ -1500,6 +1500,7 @@ const COMPANY_TABS = [
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'operated',      label:'Operated'},
   {id:'reserves',      label:'Reserves'},
+  {id:'licences',      label:'Licences'},
   {id:'exploration',   label:'Exploration'},
   {id:'profile',       label:'Profile'},
   {id:'news',          label:'News'},
@@ -2620,6 +2621,12 @@ async function refreshCompanies() {
     drawChart();
     return;
   }
+  // Lisenstabellen trenger funndataene til lenkene i siste kolonne.
+  if (companySubView === 'licences') {
+    await loadDiscoveries();
+    drawChart();
+    return;
+  }
   if (companySubView === 'news') {
     await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis()]);
     drawChart();
@@ -2730,6 +2737,7 @@ function drawChart() {
     else if (sv === 'operated')      drawCompaniesOperated();
     else if (sv === 'profile')       drawCompanyProfile();
     else if (sv === 'news')          drawCompanyNews();
+    else if (sv === 'licences')      drawCompanyLicences();
     else if (sv === 'valuation')     drawCompanyValuation();
   }
 }
@@ -5270,6 +5278,7 @@ function isReservesView() {
       || (topMode === 'companies' && companySubView === 'reserves')
       || (topMode === 'companies' && companySubView === 'exploration')
       || (topMode === 'companies' && companySubView === 'news')
+      || (topMode === 'companies' && companySubView === 'licences')
       || (topMode === 'companies' && companySubView === 'valuation');
 }
 
@@ -8017,20 +8026,27 @@ function companyPortfolio(name, holdings) {
     : (exact ? '' : '~') + v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + ' %';
   const vol = v => mmboe(v / BBL_PER_SM3);
   return `
-    <div class="pf-scroll"><table class="res-table">
+    <div class="grp-row"><button class="grp-btn" onclick="setAllPfHubs(true)">Expand all</button>
+      <button class="grp-btn" onclick="setAllPfHubs(false)">Collapse all</button></div>
+    <div class="pf-scroll"><table class="res-table" id="pfPortfolio">
       <caption>${rows.length} ${rows.length === 1 ? 'field' : 'fields'} in
         ${groups.length} ${groups.length === 1 ? 'hub' : 'hubs'} ·
         equity remaining reserves in million boe</caption>
       <thead><tr><th>Hub / field</th><th>Share</th><th>Status</th>
         <th>Operator</th><th>Remaining</th></tr></thead>
-      <tbody>${groups.map(g => `
-        <tr class="hub-row"><td>${hubLink(g.hub)}</td><td>${pct(g.pct, g.exact)}</td>
-          <td></td><td></td><td>${vol(g.oe)}</td></tr>` +
+      <tbody>${groups.map(g => {
+        const open = pfOpen.has(g.hub);
+        return `
+        <tr class="hub-row collapsible" tabindex="0" role="button" aria-expanded="${open}" data-g="${esc(g.hub)}"
+          onclick="togglePfHub(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePfHub(this)}">
+          <td><span class="grp-chev">${open ? '▾' : '▸'}</span>${hubLink(g.hub)} <span class="grp-count">${g.fields.length}</span></td>
+          <td>${pct(g.pct, g.exact)}</td><td></td><td></td><td>${vol(g.oe)}</td></tr>` +
         g.fields.map(r => `
-        <tr class="field-row"><td>${fieldLink(r.id, r.name)}</td>
+        <tr class="field-row"${open ? '' : ' hidden'}><td>${fieldLink(r.id, r.name)}</td>
           <td>${pct(r.share, true)}</td><td>${esc(r.status || '—')}</td>
           <td>${r.operator === name ? '<span class="pf-op-tag">Operator</span>' : r.operator ? companyLink(r.operator) : '—'}</td>
-          <td>${r.hasRes ? vol(r.rem) : '—'}</td></tr>`).join('')).join('')}</tbody>
+          <td>${r.hasRes ? vol(r.rem) : '—'}</td></tr>`).join('');
+      }).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td>
         <td>${vol(tot)}</td></tr></tfoot>
     </table></div>
@@ -8038,6 +8054,20 @@ function companyPortfolio(name, holdings) {
       is the company's licence interest; the hub share is its computed share of the whole
       hub's remaining reserves, across every member field — marked ~ because it is derived,
       not a licence interest.</div>`;
+}
+
+// Åpne huber i porteføljetabellen, på hubnavn. Tom = alt kollapset. Ligger i
+// minnet, så valget overlever at profilen tegnes på nytt.
+const pfOpen = new Set();
+function setPfHub(row, open) {
+  if (open) pfOpen.add(row.dataset.g); else pfOpen.delete(row.dataset.g);
+  row.setAttribute('aria-expanded', open);
+  row.querySelector('.grp-chev').textContent = open ? '▾' : '▸';
+  for (let r = row.nextElementSibling; r && !r.classList.contains('hub-row'); r = r.nextElementSibling) r.hidden = !open;
+}
+function togglePfHub(row) { setPfHub(row, row.getAttribute('aria-expanded') !== 'true'); }
+function setAllPfHubs(open) {
+  document.querySelectorAll('#pfPortfolio tr.collapsible').forEach(r => setPfHub(r, open));
 }
 
 function licenceInfo() {
@@ -8078,7 +8108,7 @@ function buildLicenceRows(name) {
   return lb.rows
     .filter(r => mine[r[li.name]] !== undefined)
     .map(r => ({
-      name: r[li.name], area: r[li.area] || '', phase: r[li.phase] || '',
+      name: r[li.name], area: r[li.area] || '', phase: r[li.phase] || '', km2: r[li.areaKm2] || 0,
       validTo: r[li.validTo], operator: r[li.operator] || '',
       share: mine[r[li.name]],
       fields: byField[r[li.name]] || [], discoveries: byDisc[r[li.name]] || [],
@@ -8132,6 +8162,66 @@ function licenceTableHtml(rows) {
     <div class="pf-map-note">Active production licences only; business arrangement areas are
       not included. The last column names the field the licence owns, then the discoveries
       that sit in it — most licences have neither and stay blank. Source: Sodir layer 3000.</div>`;
+}
+
+// Selskapsprofilen: lisensene oppsummert per havområde og totalt. Brutto
+// areal er lisensenes fulle areal i dag (Sodir prlCurrentArea), netto er det
+// ganget med selskapets andel — samme definisjon som i Licences. Hele tabellen
+// ligger i fanen Licences.
+const SEA_ORDER = ['North sea', 'Norwegian sea', 'Barents sea'];
+function licenceSummaryCard(name, rows, link = true) {
+  if (!rows.length) return '';
+  const blank = () => ({n: 0, op: 0, gross: 0, net: 0});
+  const by = {}, tot = blank();
+  rows.forEach(r => {
+    const a = by[r.area || '—'] = by[r.area || '—'] || blank();
+    [a, tot].forEach(x => {
+      x.n++;
+      if (r.operator === name) x.op++;
+      x.gross += r.km2 || 0;
+      x.net += (r.km2 || 0) * r.share / 100;
+    });
+  });
+  const areas = Object.keys(by).sort((a, b) => {
+    const i = SEA_ORDER.indexOf(a), j = SEA_ORDER.indexOf(b);
+    return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || a.localeCompare(b, 'en');
+  });
+  const km = v => Math.round(v).toLocaleString('en');
+  const row = (label, x, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${label}</td><td>${x.n}</td><td>${x.op}</td>
+    <td>${km(x.gross)}</td><td>${km(x.net)}</td></tr>`;
+  return `<div class="pf-card pf-wide"><h3>Licences</h3>
+    <div class="pf-scroll"><table class="res-table">
+      <caption>Active production licences · areas in km²</caption>
+      <thead><tr><th>Area</th><th>Licences</th><th>Operated</th><th>Gross area</th><th>Net area</th></tr></thead>
+      <tbody>${areas.map(a => row(esc(tc(a)), by[a])).join('')}</tbody>
+      <tfoot>${row('Total', tot, 'total-row')}</tfoot>
+    </table></div>
+    <div class="pf-map-note">Gross area is the licences' current area; net area is gross area times the company's share.
+      Business arrangement areas are not included.</div>
+    ${link ? `<div class="lc-links"><button class="grp-btn" onclick="setSubView('licences')">All ${tot.n} licences →</button></div>` : ''}</div>`;
+}
+
+// Companies → Licences: hele lisenstabellen, som før lå i profilen.
+function drawCompanyLicences() {
+  const names = [...selectedCompanyNames];
+  if (names.length !== 1) {
+    setChartEmpty(names.length ? 'Select a single company to see its licences.' : 'Tap the button below to select a company.');
+    setInfo('');
+    return;
+  }
+  const name = names[0];
+  licenceRows = buildLicenceRows(name);
+  licenceSort = {key: 'name', dir: 1};
+  setChartNone();
+  const op = licenceRows.filter(r => r.operator === name).length;
+  setChartTitle(name, `Licences · ${licenceRows.length} active production licence${licenceRows.length === 1 ? '' : 's'}, ${op} operated`);
+  setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Source:</strong> Sodir layers 3000 and 3007`);
+  setProfile(licenceRows.length ? `
+    ${licenceSummaryCard(name, licenceRows, false)}
+    <div class="pf-card pf-wide"><h3>All licences</h3>
+      <div id="licenceBox">${licenceTableHtml(licenceRows)}</div>
+      <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licences →</button></div></div>`
+    : '<div class="pf-card pf-wide"><div class="pf-map-note">The company holds no active production licences.</div></div>');
 }
 
 function setLicenceSort(key) {
@@ -8244,13 +8334,11 @@ function drawCompanyProfile() {
   setProfile(`
     ${map ? `<div class="pf-row2">${keyFacts}<div class="pf-card"><h3>Location</h3>${map}</div></div>` : keyFacts}
     ${(() => { const t = companyPortfolio(name, holdings); return t ? `<div class="pf-card pf-wide"><h3>Portfolio</h3>${t}</div>` : ''; })()}
-    ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true});
+    ${(() => { const r = companyDiscoveryTable([name], remOe, {link: true, limit: 10});
                return r ? `<div class="pf-card pf-wide"><h3>Resources</h3>${r}</div>` : ''; })()}
     ${investmentCard(ids, fieldNameOf, {company: name})}
     <template id="explLinkSlot"></template>
-    ${licenceRows.length ? `<div class="pf-card pf-wide"><h3>Licences</h3>
-      <div id="licenceBox">${licenceTableHtml(licenceRows)}</div>
-      <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licences →</button></div></div>` : ''}
+    ${licenceSummaryCard(name, licenceRows)}
   `);
   explLinkCard('company', name);
 }
@@ -8490,7 +8578,11 @@ function reserveTableHtml(groups, headLabel, caption, opts = {}) {
     : r.hub ? link(r, `openHubProfile(${esc(jsStr(r.hub))})`)
     : esc(r.name);
 
-  const body = groups.map(g => {
+  // opts.limit: bare de N største vises; resten skjules bak en knapp under
+  // tabellen. Summen gjelder fortsatt alle radene.
+  const cut = opts.limit && groups.length > opts.limit ? opts.limit : 0;
+  const body = groups.map((g, gi) => {
+    if (cut && gi >= cut) return `<tr class="hub-row more-row" hidden><td>${nm(g)}</td>${sh(g)}<td>${n(g.liq)}</td><td>${n(g.gas)}</td><td>${n(g.oe)}</td></tr>`;
     const kids = (g.children || []).filter(c => c.oe > 0);
     const single = kids.length === 1 && kids[0].name === g.name;
     // Kollapsbar: barna skjules til man klikker på gruppen. Tilstanden ligger i
@@ -8520,7 +8612,15 @@ function reserveTableHtml(groups, headLabel, caption, opts = {}) {
       <thead><tr><th>${headLabel}</th>${shHead}<th>Liquids</th><th>Gas</th><th>Total OE</th></tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr class="total-row"><td>Total</td>${shFoot}<td>${n(tot.liq)}</td><td>${n(tot.gas)}</td><td>${n(tot.oe)}</td></tr></tfoot>
-    </table>`;
+    </table>${cut ? `<button class="grp-btn ex-more" onclick="showAllRows(this)">Show all ${groups.length}</button>` : ''}`;
+}
+
+// «Show all» under en tabell med opts.limit: viser de skjulte radene og
+// fjerner knappen.
+function showAllRows(btn) {
+  const t = btn.previousElementSibling;   // tabellen står rett foran knappen
+  if (t) t.querySelectorAll('tr.more-row').forEach(r => { r.hidden = false; });
+  btn.remove();
 }
 
 // Companies-visningen: per hub, med medlemsfeltene under. Andelen er summen av
@@ -8600,7 +8700,7 @@ function companyDiscoveryTable(companies, reservesOe, opts = {}) {
     </div>`;
   return sum + reserveTableHtml(groups, 'Discovery',
     'Contingent resources in undeveloped discoveries · million boe · equity-adjusted · Sodir resource classes 4F, 5F and 7F',
-    {shareHead: 'Share'});
+    {shareHead: 'Share', limit: opts.limit});
 }
 
 // Hubs-visningen: per felt, med partnerne under. Her er grafen brutto, så
