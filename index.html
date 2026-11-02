@@ -3800,12 +3800,12 @@ function drawNcsExploration() {
 }
 
 function renderNcsExplTable(rows) {
-  const list = rows.filter(r => r.year === ncsF.year)
+  const list = rows.filter(r => r.year === ncsF.year && (!ncsF.vol || r.w.found))
     .sort((a, b) => (a.w.entry < b.w.entry ? -1 : a.w.entry > b.w.entry ? 1 : 0));
   if (!list.length) { setChartTable(''); return; }
   const disc = list.filter(r => r.w.found).length, dry = list.filter(r => r.w.resKey === 'dry').length;
   setChartTable(explYearTableHtml(list,
-    `${ncsF.year} · ${list.length} ${ncsF.wild ? 'wildcats' : 'exploration wells'}${ncsF.vol ? ' (volumes in million boe, gross)' : ''} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false, 'Gross '));
+    `${ncsF.year} · ${list.length} ${ncsF.vol ? 'discovery wells (volumes in million boe, gross)' : ncsF.wild ? 'wildcats' : 'exploration wells'} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false, 'Gross '));
 }
 
 // ── NCS: CREAMING ──
@@ -5265,13 +5265,13 @@ function explYearTableHtml(list, caption, withRole, volPrefix = 'Net ') {
 }
 
 function renderCmpExplTable(rows) {
-  const list = rows.filter(r => r.year === cmpExplYear)
+  const list = rows.filter(r => r.year === cmpExplYear && (!cmpExplVol || r.w.found))
     .sort((a, b) => (a.w.entry < b.w.entry ? -1 : a.w.entry > b.w.entry ? 1 : 0));
   if (!list.length) { setChartTable(''); return; }
   const nOp = list.filter(r => r.op).length;
   const disc = list.filter(r => r.w.found).length;
   setChartTable(explYearTableHtml(list,
-    `${cmpExplYear} · ${list.length} exploration wells${cmpExplVol ? ' (net volumes in million boe)' : ''} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}`, true));
+    `${cmpExplYear} · ${list.length} ${cmpExplVol ? 'discovery wells (net volumes in million boe)' : 'exploration wells'} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}`, true));
 }
 
 // ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
