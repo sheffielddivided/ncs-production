@@ -24,7 +24,7 @@
   "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no": {
    "company": "Equinor Energy AS",
    "title": "\"site:equinor.com\" - Google Nyheter",
-   "n": 63
+   "n": 64
   },
   "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318": {
    "company": "Petoro AS",
@@ -49,7 +49,7 @@
   "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=": {
    "company": "DNO Norge AS",
    "title": "NewsWeb · DNO ASA",
-   "n": 51
+   "n": 52
   },
   "https://newsweb.oslobors.no/search?category=&issuer=1309": {
    "company": "Equinor Energy AS",
@@ -73,6 +73,27 @@
   }
  },
  "items": [
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
+   "t": "Financial calendar",
+   "u": "https://newsweb.oslobors.no/message/685335",
+   "d": "2026-11-02",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
+   "t": "Finansiell kalender",
+   "u": "https://newsweb.oslobors.no/message/685334",
+   "d": "2026-11-02",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
+   "t": "Mandatory Notification of Trade",
+   "u": "https://newsweb.oslobors.no/message/685330",
+   "d": "2026-11-02",
+   "s": "Managers’ transaction"
+  },
   {
    "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
    "t": "ORLEN Confirms Significant Increase in Afrodite Gas Resources",
@@ -1425,6 +1446,13 @@
    "s": "CERAN smørefett​ - TotalEnergies TotalEnergies Nordic"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "TotalEnergies og Stellantis styrker sitt strategiske partnerskap - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxQNTJVSzZ5SUdZUUJtOVhNWkQzQkxSaWpBNEN4RGl2d2oyeUtXUXVhUVVSY2tFTEJIUHNUenh1Wi1MZklmcXI4X0ZPRnIzUGRQZ2RBSHhLZmE3REowV09jNjBuUFNxdFExQ2NvMk1IYjM3Z1VDUUx4V2d4emVJNmQ1djUwejZXd0NwRzJVT1BJVXVXOWJNb011LVduRmh0VEhsYWxObFNPU2N2cURXcEdLXzhlLUM3RnBLZ3dUNkpXY3N1YklxMkNQcUpnUGRsemRsM2dpN0RWZUd4WnA5b0RR?oc=5",
+   "d": "2026-06-15",
+   "s": "TotalEnergies og Stellantis styrker sitt strategiske partnerskap TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Johan Sverdrup – phase 4 maturation",
    "u": "https://news.cision.com/aker-bp-asa/r/johan-sverdrup---phase-4-maturation,c4363529",
@@ -1702,20 +1730,6 @@
    "t": "Key Information Relating to Cash Dividend",
    "u": "https://newsweb.oslobors.no/message/672610",
    "d": "2026-05-07",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
-  },
-  {
-   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
-   "t": "Equinor to commence second tranche of the 2026 share buy-back programme",
-   "u": "https://newsweb.oslobors.no/message/672447",
-   "d": "2026-05-06",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
-  },
-  {
-   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
-   "t": "Equinor vil starte andre transje av tilbakekjøpsprogrammet for aksjer for 2026",
-   "u": "https://newsweb.oslobors.no/message/672446",
-   "d": "2026-05-06",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
@@ -2228,6 +2242,13 @@
    "u": "https://news.google.com/rss/articles/CBMigAFBVV95cUxPMFlaZUhsNEkwcTc3ZGppSFJmZVdubEQ2SlZ1MW80SXQtWkt0SC14cjlxVHR3cVVHT25GblhIcjNNMmtVR2dSRUMzcF9KM24xMXNpT1V0ems5anlMMzZjVGNlamlReFNmVXlVY1R6T1JmQXZfbkF6cHlCMTFXVTFPUg?oc=5",
    "d": "2026-01-23",
    "s": "Hydraulikolie TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hydraulikkolje til industrien | Se hele utvalget - TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMifkFVX3lxTE1waVcwLUszUC1ybUhYbjAtMjk4RmNNM2ppd3dCTlN5cXBhNFVaQUx0VmxoQ2hUMFBrd01ORVNxTEc3MXhYZW05Ui1abmN1OWNJdTFDY25mWk9nOVBXMUFIRDRLQk1DaDczckMyalkxRWFUVkdTV2tvbVR2dkM5UQ?oc=5",
+   "d": "2026-01-23",
+   "s": "Hydraulikkolje til industrien | Se hele utvalget - TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -3280,6 +3301,13 @@
    "s": "Harbour Energy is pleased to announce that the Planning Inspectorate has accepted for extermination its application to build the Viking CSS onshore CO2 transportation pipeline – a key component needed to decarbonise and rejuvenate the industries of the Humber."
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "TotalEnergies tar kjølevæsker til neste nivå: Cartech - Plus EVO - Neotech - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxPZWh4VDBWb3BBVlRjSFJfbjVpZVZCTTRlZFE5bXI5QXlqY2otWHpyczJsZW9NelB6aHNMMmJpVEdCbFNKX19lOTdMcnUya2RjeG1HV09OUENCcEQ2UTBvdzRwaHRqREFqUDFnZW00NEV5YUdQV01SaDdscXZwRGZic21zVTYtcGdUZTB3cVZjNUszSXZMa0pMM3d0d190TjZSZjN5cUlVZ2VwaGM1TkhvR0JvNkJlYzk3VG5Jb0FrNTdPcU4weUNETl9qbG1JZEpa?oc=5",
+   "d": "2023-11-16",
+   "s": "TotalEnergies tar kjølevæsker til neste nivå: Cartech - Plus EVO - Neotech TotalEnergies Nordic"
+  },
+  {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
    "t": "Fortsatt sterk kontantstrøm tross lavere gasspriser og vedlikehold",
    "u": "https://kommunikasjon.ntb.no/pressemelding/18017718/fortsatt-sterk-kontantstrom-tross-lavere-gasspriser-og-vedlikehold?lang=no",
@@ -3327,6 +3355,13 @@
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/sale-of-vietnam-business/",
    "d": "2023-08-10",
    "s": "Harbour Energy announces it has entered into Sale and Purchase Agreements to sell its Vietnam business, subject to approvals, has an effective date of 1 January 2023 and consideration of $84 million."
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bitumen for industribruk | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMickFVX3lxTFBENC1fM0VPLWtyVUowdDZfYTdua1dZZzRkSTBMU0tfTHJ3UHNfZ0dlRWRTOVdvR0pDaVdKN1MxQzJhMHVaOGJzamNKajByVVRTejBpNHBLNGxWU2V0VzRJQ1JrRE9WSUZVbkdCZERqOUVKZw?oc=5",
+   "d": "2023-08-09",
+   "s": "Bitumen for industribruk | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -3712,6 +3747,13 @@
    "u": "https://kommunikasjon.ntb.no/pressemelding/17932784/resultat-sdoe-1-kvartal-2022-petoro-leverer-113-milliarder-og-setter-hoye-klimamal?lang=no",
    "d": "2022-05-11",
    "s": "Petoro leverte rekordhøye 113 milliarder kroner i kontantstrøm til staten fra SDØE-porteføljen i første kvartal 2022. Dette er 87 milliarder mer enn i første kvartal 2021. Årsaken til rekordresultatet skyldes god drift og eksepsjonelt høye produktpriser som følge av krigen i Ukraina."
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
+   "t": "Bærekraft i Equinor - Equinor",
+   "u": "https://news.google.com/rss/articles/CBMiTkFVX3lxTFBSaW9sTXE4YVU2OGMwbXN0WlhRVnFqRjg5azBnZEpPa2E0eDNJYm9Mak1XWmpvcGFUTWVSbGxrYnUxVGFvcmNOVkxKaFlkZw?oc=5",
+   "d": "2022-04-24",
+   "s": "Bærekraft i Equinor Equinor"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -4170,6 +4212,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Kontakt: teknisk støtte - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiakFVX3lxTE1VdU1QcjBqZWdIOEpLZW9UN21LSDFFR3JneHZ3UUdSdnBpMnRGWVRNa09ibDQyRXM3M1RUdnhXYlVLYXUtTTdnNVBJVF9SRGUybUhGdnlkUlVSbEdzOG5PNXVGMkVZZGo4eFE?oc=5",
+   "d": "2021-06-10",
+   "s": "Kontakt: teknisk støtte TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "LubAnac - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTFBxeFZoYUFrRE1OVU9yZThSSUd6M0ZacW9qUDRodVl6QTRKVzB6NmJXOGNLQXMyRk9iY2dvZHloSDJYZ0s0WWtKTjB2clFPZ01xMGVkaF9wbnZoOFdIM0JzelJsNzQydkdj?oc=5",
    "d": "2021-06-10",
@@ -4219,6 +4268,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Turbin- og sirkulasjonsoljer - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxNRDNhYWlHZzI0QmxfQlZkSXpKWlZsdUVMbHNCQzBUVVlfQWZOTFdBOWktbXNLbXNlYnZhcXVNaWcybjJGRWFtYVc0TmdqTVNUdUtvZF9lY25OX0VkWDZZZl9uWTRZb3hKY1VTM0hMUGdUOG5lamJfX2VlRl8wWE91clpSUmNHWEloekE?oc=5",
+   "d": "2021-06-01",
+   "s": "Turbin- og sirkulasjonsoljer TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Bruk riktig girolje for din maskin | TotalEnergies - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTE5YSGxUa3pseG9jVUlURG1meEtFYUVKbV9FYXA1eTRiSjdVRGhoOEY4cmNOUXFEUjlKaEZkNXN1c3RtOHpHRG9vOGt1cVZNWk5EQVNOX1RBOHByeTh4N2tWTFdmVE14UF8zNk1uQmhZMA?oc=5",
    "d": "2021-06-01",
@@ -4230,48 +4286,6 @@
    "u": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE5xVzVIaFg5T3VuN2pqdnFEcVVwN201X3ZXVEJaSmtja2V4cERUODItR3NaZlVNelpYeG9JQUJfWmNodHdfNzJXdWxST1Atek1WWjhsbE9vQkxHUGpkR0NJSnJ3VQ?oc=5",
    "d": "2021-06-01",
    "s": "Bestill produkter online via e-Lub | TotalEnergies TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "E-faktura - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTFBuc1R5NC1ZSXpQbGtyLThycWtRTlpkTmJqTmZUQ1dsanIwNU1Ob3BJZUdGNWphSlVrOWFWdjA5SVUxQU91Q0pUbjBtX3ZPLUJLb1BKUzhoS1psZ3ZWQzVWclllT1hKQQ?oc=5",
-   "d": "2021-05-31",
-   "s": "E-faktura TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Smørefett - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE9UQUNuNy10eEF6T1J0SGVSZmxXS1RlZWQtcVJjWkMtbUV1UV9uS3Y4SG9nMEtVMDNhTTRJc1FUcmc4TnNGeV84cDdHcDNpX0x0N3ZIamI1dlh6ZGdrQWZnUWc4OHFndw?oc=5",
-   "d": "2021-05-31",
-   "s": "Smørefett TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Bli en TotalEnergies distributør - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE5mckRONnNWQUVMbjJPR0txdlhadXdvU2h0MmZjdmRONmstclF0OHlzc0E2OU5WMm9tRXJ4cVVFdjVoZDN3Vk8zUkhyS3o4Z2d3Vkd6T2Mxc0F0c2M?oc=5",
-   "d": "2021-05-31",
-   "s": "Bli en TotalEnergies distributør TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Smøremidler, spesialvæsker og bitumen - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE1PcnAySGRzTVQwVHB5Yi1ob2xJb0lVM3pLd2hyeDVYSHE2SDBnS1JQRnRKbVJUM1kxSmRIR0pRcHE3VmpwWUMwclNrVQ?oc=5",
-   "d": "2021-05-31",
-   "s": "Smøremidler, spesialvæsker og bitumen TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Du kan kontakte vår kundeservice | TotalEnergies - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiXEFVX3lxTFA3TEVfb2dvRFpHM2xtYUthQmRLZXAyTGFvend5d3k5R1VHYWdqdmpKOTNnUk1keXBQVS1LUlhySG5XajN3RU5NNi1pczE2bGFVWUlReVd5TWl1R2FB?oc=5",
-   "d": "2021-05-30",
-   "s": "Du kan kontakte vår kundeservice | TotalEnergies TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Services | TotalEnergies - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE14bWZjU0t4SEU2V2ZnaHA2T29BMGhiN2xkTDNFd3F3d2VuYzlfck1nZHY0QXM1cnFnU05WZHNTQ2oxcGtvcTBDWnU4S0FDM3BuU2pIaThuNk4?oc=5",
-   "d": "2021-05-30",
-   "s": "Services | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
