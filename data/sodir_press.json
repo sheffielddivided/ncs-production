@@ -8,6 +8,21 @@
  "items": [
   {
    "k": "result",
+   "t": "Dry appraisal well in the North Sea (15/6-18 S)",
+   "u": "https://www.sodir.no/en/whats-new/news/exploration-drilling-results/2026/dry-appraisal-well-in-the-north-sea-156-18-s/",
+   "d": "2026-11-02",
+   "s": "Aker BP and its partner Equinor have drilled appraisal well 15/6-18 S on the 15/6-10 \"Freke\" discovery, which was made in 2009.",
+   "wells": [
+    "15/6-18 S",
+    "15/6-10"
+   ],
+   "cmp": [
+    "Aker BP ASA",
+    "Equinor Energy AS"
+   ]
+  },
+  {
+   "k": "result",
    "t": "The 34/12-1 \"Afrodite\" discovery in the North Sea has been confirmed (35/7-2)",
    "u": "https://www.sodir.no/en/whats-new/news/exploration-drilling-results/2026/the-afrodite-discovery-in-the-north-sea-has-been-confirmed-357-2/",
    "d": "2026-10-29",
