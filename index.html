@@ -10638,9 +10638,9 @@ function explReset() {
 // feltets operatørhistorikk på spuddatoen. Totaldybden er målt dybde (MD), så
 // lange avviksbrønner kommer godt ut. Brønner under noen få dager gir
 // tilfeldige ytterverdier, og kan utelates med «Min days».
-const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm']];
+const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm'], ['view', 'dv'], ['minw', 'dn']];
 const DRILL_HL = '#e6007e', DRILL_GREY = '#c3cad3';
-const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5'});
+const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5', view: 'well', minw: '3'});
 let drillF = drillDefaults();
 let drillRows = null, drillLoading = null, drillLimit = 50;
 
@@ -10735,6 +10735,12 @@ function drillRenderBar() {
       <select class="year-select" onchange="drillSet('to', this.value, true)" aria-label="To year">
         ${years.map(y => opt(y, f.to, `To ${y}`)).join('')}
       </select>
+      <select class="year-select" onchange="drillSet('view', this.value, true)" aria-label="View">
+        ${opt('well', f.view, 'Per wellbore')}${opt('op', f.view, 'Average per operator')}
+      </select>
+      ${f.view === 'op' ? `<select class="year-select" onchange="drillSet('minw', this.value, true)" aria-label="Minimum wellbores">
+        ${['1', '3', '5', '10'].map(v => opt(v, f.minw, `Min ${v} ${v === '1' ? 'wellbore' : 'wellbores'}`)).join('')}
+      </select>` : ''}
       <select class="year-select" onchange="drillSet('cat', this.value, true)" aria-label="Wellbore type">
         ${opt('all', f.cat, 'Exploration + development')}${opt('Exploration', f.cat, 'Exploration only')}${opt('Development', f.cat, 'Development only')}
       </select>
@@ -10748,18 +10754,31 @@ function drillRenderBar() {
 function drillRenderPerf() {
   const box = document.getElementById('explBody');
   if (!drillRows) { box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>'; dockBar('explBody'); return; }
-  const list = drillFiltered().sort((a, b) => a.mpd - b.mpd || (a.entry < b.entry ? -1 : 1));
+  const wells = drillFiltered().sort((a, b) => a.mpd - b.mpd || (a.entry < b.entry ? -1 : 1));
+  const byOp = drillF.view === 'op';
+  let list = wells;
+  if (byOp) {
+    // Gjennomsnitt per operatør: samlet dybde ÷ samlede dager (veid mot varighet).
+    const agg = {};
+    wells.forEach(w => {
+      if (!w.op) return;
+      const a = agg[w.op] = agg[w.op] || {id: w.op, name: w.op, op: w.op, n: 0, td: 0, days: 0};
+      a.n++; a.td += w.td; a.days += w.days;
+    });
+    list = Object.values(agg).filter(a => a.n >= (+drillF.minw || 1)).map(a => ({...a, mpd: a.td / a.days}))
+      .sort((a, b) => a.mpd - b.mpd || (a.name < b.name ? -1 : 1));
+  }
   const hl = drillF.hl, isHl = w => !!hl && w.op === hl;
   const span = drillF.from === drillF.to ? drillF.from : `${drillF.from}–${drillF.to}`;
   if (!list.length) {
     box.innerHTML = `<div class="pf-card"><h3>Drilling performance · ${span}</h3><div class="ex-slot"></div>
-      <div class="ex-sum">No wellbores match the filters.</div></div>`;
+      <div class="ex-sum">${byOp ? 'No operators match the filters.' : 'No wellbores match the filters.'}</div></div>`;
     dockBar('explBody'); return;
   }
   const n = list.length, med = list[Math.floor(n / 2)].mpd;
-  const avg = list.reduce((s, w) => s + w.td, 0) / list.reduce((s, w) => s + w.days, 0);
+  const avg = wells.reduce((s, w) => s + w.td, 0) / wells.reduce((s, w) => s + w.days, 0);
   const rank = new Map(); [...list].reverse().forEach((w, i) => rank.set(w.id, i + 1));
-  const mine = list.filter(isHl);
+  const mine = wells.filter(isHl), mineBars = list.filter(isHl);
   const myAvg = mine.length ? mine.reduce((s, w) => s + w.td, 0) / mine.reduce((s, w) => s + w.days, 0) : 0;
   const fmt = v => v >= 100 ? v.toFixed(0) : v.toFixed(1);
   // Diagram
@@ -10772,15 +10791,16 @@ function drillRenderPerf() {
   const bar = w => {
     const i = idx.get(w), h = Math.max(0.5, w.mpd / top * ph);
     return `<rect x="${(L + i * bw).toFixed(2)}" y="${(T + ph - h).toFixed(2)}" width="${Math.max(0.6, bw - gap).toFixed(2)}" height="${h.toFixed(2)}"
-      fill="${isHl(w) ? DRILL_HL : DRILL_GREY}" style="cursor:pointer" onclick="window.open('${drillUrl(w)}','_blank','noopener')">
-      <title>${esc(w.name)} · ${esc(w.op || 'unknown operator')} · ${fmt(w.mpd)} m/day (${Math.round(w.td)} m in ${w.days} days) · #${rank.get(w.id)} of ${n}</title></rect>`;
+      fill="${isHl(w) ? DRILL_HL : DRILL_GREY}" style="cursor:pointer" onclick="${byOp ? `drillSet('hl', ${esc(JSON.stringify(w.op))}, true)` : `window.open('${drillUrl(w)}','_blank','noopener')`}">
+      <title>${byOp ? `${esc(w.name)} · ${fmt(w.mpd)} m/day (${Math.round(w.td).toLocaleString('en-US')} m in ${w.days} days, ${w.n} wellbores)`
+        : `${esc(w.name)} · ${esc(w.op || 'unknown operator')} · ${fmt(w.mpd)} m/day (${Math.round(w.td)} m in ${w.days} days)`} · #${rank.get(w.id)} of ${n}</title></rect>`;
   };
   let ticks = '';
   for (let v = 0; v <= top; v += step) {
     ticks += `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#e4e8ee"/>
       <text x="${L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7785">${v}</text>`;
   }
-  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Wellbores ranked by metres drilled per day">
+  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="${byOp ? 'Operators' : 'Wellbores'} ranked by metres drilled per day">
     ${ticks}
     ${list.filter(w => !isHl(w)).map(bar).join('')}${list.filter(isHl).map(bar).join('')}
     <line x1="${L}" x2="${W - R}" y1="${y(med).toFixed(1)}" y2="${y(med).toFixed(1)}" stroke="#1a2332" stroke-dasharray="4 3" stroke-width="1"/>
@@ -10789,7 +10809,10 @@ function drillRenderPerf() {
     <text x="${W - R}" y="${H - 8}" font-size="10" fill="#6b7785" text-anchor="end">Fastest</text>
     <text x="12" y="${T + ph / 2}" font-size="10" fill="#6b7785" transform="rotate(-90 12 ${T + ph / 2})" text-anchor="middle">m / day</text>
   </svg>`;
-  const rows = [...list].reverse().slice(0, drillLimit).map(w => `
+  const rows = [...list].reverse().slice(0, drillLimit).map(w => byOp ? `
+    <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
+      <td>${rank.get(w.id)}</td><td class="ex-l">${companyLink(w.op)}</td><td>${w.n}</td>
+      <td>${Math.round(w.td).toLocaleString('en-US')}</td><td>${w.days.toLocaleString('en-US')}</td><td><strong>${fmt(w.mpd)}</strong></td></tr>` : `
     <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
       <td>${rank.get(w.id)}</td>
       <td class="ex-l"><a class="row-link" href="${drillUrl(w)}" target="_blank" rel="noopener">${esc(w.name)} ↗</a></td>
@@ -10800,20 +10823,21 @@ function drillRenderPerf() {
   const more = n > drillLimit
     ? `<button class="grp-btn ex-more" onclick="drillLimit+=100;drillRenderPerf()">Show more (${n - drillLimit} remaining)</button>` : '';
   const legend = `<div class="ex-legend">
-      <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_HL}"></span>${hl ? esc(hl) + ` (${mine.length})` : 'Highlighted operator (pick one above)'}</span>
-      <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_GREY}"></span>Other wellbores (${n - mine.length})</span></div>`;
+      <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_HL}"></span>${hl ? esc(hl) + (byOp ? '' : ` (${mineBars.length})`) : 'Highlighted operator (pick one above)'}</span>
+      <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_GREY}"></span>${byOp ? 'Other operators' : 'Other wellbores'} (${n - mineBars.length})</span></div>`;
   box.innerHTML = `
     <div class="pf-card"><h3>Drilling performance · metres per day · ${span}</h3><div class="ex-slot"></div>
-      <div class="ex-sum"><strong>${n}</strong> wellbores ranked by metres drilled per day, slowest to fastest · NCS average <strong>${fmt(avg)}</strong> m/day
+      <div class="ex-sum"><strong>${n}</strong> ${byOp ? `operators (min ${drillF.minw} ${drillF.minw === '1' ? 'wellbore' : 'wellbores'}, ${wells.length} wellbores in total)` : 'wellbores'} ranked by metres drilled per day, slowest to fastest · NCS average <strong>${fmt(avg)}</strong> m/day
         (total depth ÷ days) · median <strong>${fmt(med)}</strong> m/day${mine.length
-          ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, average ${fmt(myAvg)} m/day, best rank #${Math.min(...mine.map(w => rank.get(w.id)))}</span>` : ''}</div>
+          ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, average ${fmt(myAvg)} m/day${byOp ? '' : `, best rank #${Math.min(...mineBars.map(w => rank.get(w.id)))}`}</span>` : ''}</div>
       ${svg}${legend}
-      <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>${byOp ? `
+        <th>Rank</th><th class="ex-l">Operator</th><th>Wellbores</th><th>Total TD (m)</th><th>Days</th><th>m/day</th>` : `
         <th>Rank</th><th class="ex-l">Wellbore</th><th class="ex-l">Operator</th><th class="ex-l">Type</th><th class="ex-l">Purpose</th>
-        <th>Spud</th><th>Days</th><th>TD (m)</th><th>m/day</th></tr></thead><tbody>${rows}</tbody></table></div>${more}
+        <th>Spud</th><th>Days</th><th>TD (m)</th><th>m/day</th>`}</tr></thead><tbody>${rows}</tbody></table></div>${more}
       <div class="ex-note">Metres per day = total depth (measured depth) divided by days from spud to completion, for completed wellbores by spud year.
         Sidetracks count as their own wellbores. Development-well operators come from the field's operator history on the spud date.
-        Click a bar for the Sodir FactPage. Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
+        ${byOp ? 'Operator average = total depth ÷ total days over the operator\'s wellbores (longer wells weigh more). Click a bar to highlight the operator.' : 'Click a bar for the Sodir FactPage.'} Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
   dockBar('explBody');
 }
 const drillUrl = w => `https://factpages.sodir.no/wellbore/pageview/${w.dev ? 'development' : 'exploration'}/all/${w.id}`;
