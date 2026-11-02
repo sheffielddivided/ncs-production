@@ -597,7 +597,7 @@ def build_field_wells():
         WELL_LAYER,
         'wlbNpdidWellbore,wlbWellboreName,fldNpdidField,wlbPurpose,wlbStatus,wlbContent,'
         'wlbEntryDate,wlbCompletionDate,wlbTotalDepth,wlbDrillingFacility,'
-        'wlbNsDecDeg,wlbEwDecDeg,wlbFactPageUrl',
+        'wlbNsDecDeg,wlbEwDecDeg,wlbFactPageUrl,wlbDrillingOperator,wlbKickOffPoint,wlbDrillingDays',
         'fldNpdidField IS NOT NULL',
     )
     out = []
@@ -613,10 +613,13 @@ def build_field_wells():
             num(r.get('wlbTotalDepth')), _clean(r.get('wlbDrillingFacility')),
             round(lon, 4) if lon is not None else None, round(lat, 4) if lat is not None else None,
             1 if '/development/' in (r.get('wlbFactPageUrl') or '') else 0,
+            _clean(r.get('wlbDrillingOperator')), num(r.get('wlbKickOffPoint')) or None,
+            as_int(r.get('wlbDrillingDays')),
         ])
     out.sort(key=lambda x: (x[2], x[1]))
     return {'columns': ['id', 'name', 'fieldId', 'purpose', 'status', 'content', 'entry',
-                        'completion', 'totalDepth', 'rig', 'lon', 'lat', 'dev'],
+                        'completion', 'totalDepth', 'rig', 'lon', 'lat', 'dev',
+                        'operator', 'kop', 'ddays'],
             'rows': out}
 
 
@@ -1013,7 +1016,7 @@ def build_exploration_wells():
         'wlbEntryDate,wlbCompletionDate,wlbEntryDatePlanned,wlbDiscovery,wlbDiscoveryWellbore,'
         'dscNpdidDiscovery,wlbField,wlbNsDecDeg,wlbEwDecDeg,wlbMainArea,wlbWaterDepth,'
         'wlbTotalDepth,wlbDrillingDays,wlbFormationAtTd,wlbAgeAtTd,wlbFormationWithHc1,'
-        'wlbAgeWithHc1,wlbPressReleaseUrl,wlbDrillPermit',
+        'wlbAgeWithHc1,wlbPressReleaseUrl,wlbDrillPermit,wlbKickOffPoint',
         f"(wlbPurpose IN ({EXPL_PURPOSES}) OR wlbPurposePlanned IN ({EXPL_PURPOSES}))"
         " AND (wlbStatus IS NULL OR wlbStatus <> 'WILL NEVER BE DRILLED')",
     )
@@ -1076,13 +1079,14 @@ def build_exploration_wells():
             _clean(r.get('wlbFormationWithHc1')), _clean(r.get('wlbAgeWithHc1')),
             _clean(r.get('wlbPressReleaseUrl')), _clean(r.get('wlbDrillPermit')),
             owners_at(lic, entry),
+            num(r.get('wlbKickOffPoint')) or None,
         ])
     out.sort(key=lambda x: x[0])
     return {'columns': ['id', 'name', 'licence', 'well', 'purpose', 'status', 'content', 'operator',
                         'rig', 'rigType', 'entry', 'completion', 'planned',
                         'discoveryId', 'discovery', 'discoveryWell', 'field', 'lat', 'lon',
                         'area', 'waterDepth', 'td', 'days', 'formationAtTd', 'ageAtTd',
-                        'hcFormation', 'hcAge', 'pressUrl', 'permit', 'owners'],
+                        'hcFormation', 'hcAge', 'pressUrl', 'permit', 'owners', 'kop'],
             'rows': out, 'owners': owners}
 
 
