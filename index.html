@@ -5044,9 +5044,12 @@ function cmpExplWells() {
     const share = w.partners.filter(p => want.has(p.name)).reduce((t, p) => t + p.share, 0);
     if (!op && !share) return;
     const row = {w, op, share, year: w.entry.slice(0, 4)};
-    if (cmpExplVol && w.found && w.discoveryId) {
-      const v = discoveryVolume(w.discoveryId), f = share / 100;
-      row.vol = {oil: v.oil * f, gas: v.gas * f};
+    if (cmpExplVol && w.found) {
+      // En brønn med sidesteg kan ha påvist flere funn (25/1-14: Omega, Alfa, Sigma NE …).
+      const ids = new Set(w.branches.filter(b => b.discoveryWell && b.discovery && b.discoveryId).map(b => b.discoveryId));
+      const f = share / 100, vol = {oil: 0, gas: 0};
+      ids.forEach(id => { const v = discoveryVolume(id); vol.oil += v.oil * f; vol.gas += v.gas * f; });
+      row.vol = vol;
     } else if (cmpExplVol) row.vol = {oil: 0, gas: 0};
     out.push(row);
   });
@@ -5112,7 +5115,7 @@ function drawCompaniesExploration() {
     ],
   });
   const totVol = cmpExplVol ? Object.values(per).reduce((t, p) => t + p.oil + p.gas, 0) : 0;
-  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; ${cmpExplVol ? `<strong>Net discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe — each discovery well counts the discovery's recoverable volume (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources) times the company's interest in the well; a field with several discoveries counts on the oldest; oil = liquids &nbsp;|&nbsp; ` : ''}<strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
+  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; ${cmpExplVol ? `<strong>Net discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe — each discovery well counts the discovery's recoverable volume (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources) times the company's interest in the well; a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; ` : ''}<strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
   renderCmpExplTable(rows);
 }
 
@@ -5133,28 +5136,31 @@ function discoveryVolume(id) {
     discVolMap = {};
     const b = bundle.discoveries, bf = bundle.fields;
     if (b) {
-      const ci = b.columns, iId = ci.indexOf('id'), iY = ci.indexOf('year'), iF = ci.indexOf('field');
+      const ci = b.columns, iId = ci.indexOf('id'), iY = ci.indexOf('year'), iF = ci.indexOf('field'), iSt = ci.indexOf('status');
       const fid = {};
       (bf ? bf.rows : []).forEach(([i, n]) => { fid[String(n).toUpperCase()] = i; });
+      // Feltets volum hører til funnet som ble feltet: det eldste funnet med
+      // feltets navn som ikke er «inkludert i et annet funn».
       const first = {};
       b.rows.forEach(r => {
         const f = r[iF];
-        if (!f) return;
+        if (!f || r[iSt] === 'Included in other discovery') return;
         const cur = first[f];
         if (!cur || r[iY] < cur[iY] || (r[iY] === cur[iY] && r[iId] < cur[iId])) first[f] = r;
       });
       const prim = {};
       Object.entries(first).forEach(([f, r]) => { prim[r[iId]] = fid[String(f).toUpperCase()]; });
+      // Funnets egne betingede ressurser, pluss feltets utvinnbare volum for
+      // funnet som ble feltet. Nyere funn som er knyttet til et felt har egne ressurser.
       b.rows.forEach(r => {
-        const id = r[iId];
-        if (r[iF]) {
-          const fi = prim[id], rows = fi != null && fieldReserves && fieldReserves[fi];
-          if (!rows || !rows.length) return;
-          const last = rows[rows.length - 1], gas = (last.raw.fldRecoverableGas || 0) * BBL_PER_SM3;
-          discVolMap[id] = {oil: Math.max(0, last.recoverableOE * BBL_PER_SM3 - gas), gas};
-        } else if (discoveryRes[id]) {
-          discVolMap[id] = {oil: discoveryRes[id].liq * BBL_PER_SM3, gas: discoveryRes[id].gas * BBL_PER_SM3};
+        const id = r[iId], own = discoveryRes[id];
+        let oil = own ? own.liq * BBL_PER_SM3 : 0, gas = own ? own.gas * BBL_PER_SM3 : 0;
+        const fi = prim[id], rows = fi != null && fieldReserves && fieldReserves[fi];
+        if (rows && rows.length) {
+          const last = rows[rows.length - 1], g = (last.raw.fldRecoverableGas || 0) * BBL_PER_SM3;
+          oil += Math.max(0, last.recoverableOE * BBL_PER_SM3 - g); gas += g;
         }
+        if (oil || gas) discVolMap[id] = {oil, gas};
       });
     }
   }
