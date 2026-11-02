@@ -585,6 +585,7 @@
       <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Company</button>
       <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
+      <button class="mode-btn" id="modeBtnDrilling" onclick="switchMode('drilling')">Drilling</button>
       <button class="mode-btn" id="modeBtnLicences" onclick="switchMode('licences')">Licences</button>
       <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Prices</button>
     </div>
@@ -1518,11 +1519,12 @@ function renderViewTabs() {
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
              : topMode === 'discoveries' ? DISCOVERY_TABS
              : topMode === 'exploration' ? EXPL_TABS
+             : topMode === 'drilling' ? DRILL_TABS
              : topMode === 'licences' ? LIC_TABS
              : topMode === 'ncs' ? NCS_TABS
              : topMode === 'prices' ? PRICE_TABS : COMPANY_TABS;
   const cur  = currentSubView();
-  document.body.classList.toggle('expl', topMode === 'exploration');
+  document.body.classList.toggle('expl', explMode());
   document.body.classList.toggle('lic', topMode === 'licences');
   document.body.classList.toggle('ncs', topMode === 'ncs');
   document.body.classList.toggle('prices', topMode === 'prices');
@@ -1549,7 +1551,7 @@ function setSubView(v) {
   if (topMode === 'fields') { fieldSubView = v; syncFieldSelection(); }
   else if (topMode === 'hubs') { hubSubView = v; syncHubSelection(); }
   else if (topMode === 'discoveries') { discoverySubView = v; syncDiscoverySelection(); }
-  else if (topMode === 'exploration') explSubView = v;
+  else if (explMode()) explSubView = v;
   else if (topMode === 'licences') licSubView = v;
   else if (topMode === 'ncs') ncsSubView = v;
   else if (topMode === 'prices') priceSubView = v;
@@ -1642,6 +1644,7 @@ function switchMode(m) {
   if (topMode === 'ncs') ncsLeavePeriod();
   if (m === 'ncs') ncsEnterPeriod();
   topMode = m;
+  explFixSubView();
   syncModeButtons();
   if (sheetOpen) closeSheet();
   if (m === 'discoveries') syncDiscoverySelection();
@@ -1655,7 +1658,7 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
-  if (['exploration', 'licences', 'ncs', 'prices'].includes(topMode)) return;   // filtrene ligger i selve visningen
+  if (['exploration', 'drilling', 'licences', 'ncs', 'prices'].includes(topMode)) return;   // filtrene ligger i selve visningen
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
               : topMode === 'discoveries' ? selectedDiscoveryIds.size
@@ -2192,7 +2195,7 @@ function currentSubView() {
   return topMode === 'fields' ? fieldSubView
        : topMode === 'hubs'   ? hubSubView
        : topMode === 'discoveries' ? discoverySubView
-       : topMode === 'exploration' ? explSubView
+       : explMode() ? explSubView
        : topMode === 'licences' ? licSubView
        : topMode === 'ncs' ? ncsSubView
        : topMode === 'prices' ? priceSubView
@@ -2211,7 +2214,7 @@ function stateToHash() {
   if (topMode === 'fields')    q.set('f', [...selectedFieldIds].join(','));
   else if (topMode === 'hubs') q.set('h', [...selectedHubNames].join(SEP));
   else if (topMode === 'discoveries') q.set('d', [...selectedDiscoveryIds].join(','));
-  else if (topMode === 'exploration') {
+  else if (explMode()) {
     // Bare avvik fra standardfiltrene skrives, så lenken holdes kort.
     const dflt = explDefaults();
     [['company','xc'],['role','xr'],['status','xs'],['result','xz'],['purpose','xp'],['from','xy'],['q','xq'],['lic','xl']]
@@ -2221,6 +2224,10 @@ function stateToHash() {
     if (!explF.aisOnly) q.set('xo', '0');
     if (explF.fixed) q.set('xf', '1');
     if (!explF.modu) q.set('xm', '0');
+    if (topMode === 'drilling') {
+      const dd = drillDefaults();
+      DRILL_PARAMS.forEach(([k, p]) => { if (drillF[k] !== dd[k]) q.set(p, drillF[k]); });
+    }
   }
   else if (topMode === 'licences') {
     const dflt = licDefaults();
@@ -2279,7 +2286,7 @@ function syncUrl() {
 // Brønn- eller riggpanelet fra adressen. Exploration åpner det selv i
 // refreshExploration; over de andre sidene gjøres det her.
 function openOverlayFromState() {
-  if (topMode === 'exploration') return;
+  if (explMode()) return;
   if (explF.rig) openRigProfile(explF.rig, true);
   else if (explF.open) loadExploration().then(() => { if (explF.open) openWell(explF.open, true); });
 }
@@ -2346,9 +2353,12 @@ function pageSources() {
   if (m === 'fields' && v === 'havtil') add('havtil');
   if (m === 'companies' && v === 'news') add('havtil', 'ais');
   if (m === 'exploration') {
-    if (['map', 'fleet'].includes(v)) add('ne');
-    if (['rigs', 'fleet', 'news'].includes(v)) add('ais');
-    if (v === 'news') add('havtil');
+    if (v === 'map') add('ne');
+    if (v === 'news') add('ais', 'havtil');
+  }
+  if (m === 'drilling') {
+    if (v === 'fleet') add('ne');
+    if (['rigs', 'fleet'].includes(v)) add('ais');
   }
   if (m === 'licences' && ['company', 'map', 'overlap', 'licence'].includes(v)) add('ne');
   return out;
@@ -2372,14 +2382,18 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['ncs','fields','hubs','discoveries','companies','exploration','licences','prices'].includes(m)) {
+  if (['ncs','fields','hubs','discoveries','companies','exploration','drilling','licences','prices'].includes(m)) {
     topMode = m;
+    // Gamle lenker til Exploration → Rigs/Fleet bor nå under Drilling.
+    if (m === 'exploration' && ['rigs', 'fleet'].includes(q.get('v'))) topMode = 'drilling';
+    explFixSubView();
     syncModeButtons();
   }
 
   const tabs = topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
              : topMode === 'discoveries' ? DISCOVERY_TABS
              : topMode === 'exploration' ? EXPL_TABS
+             : topMode === 'drilling' ? DRILL_TABS
              : topMode === 'licences' ? LIC_TABS
              : topMode === 'ncs' ? NCS_TABS
              : topMode === 'prices' ? PRICE_TABS : COMPANY_TABS;
@@ -2389,7 +2403,7 @@ function applyHash() {
     if (topMode === 'fields') fieldSubView = v;
     else if (topMode === 'hubs') hubSubView = v;
     else if (topMode === 'discoveries') discoverySubView = v;
-    else if (topMode === 'exploration') explSubView = v;
+    else if (explMode()) explSubView = v;
     else if (topMode === 'licences') licSubView = v;
     else if (topMode === 'ncs') ncsSubView = v;
     else if (topMode === 'prices') priceSubView = v;
@@ -2408,7 +2422,7 @@ function applyHash() {
     if (licF.date && !/^\d{4}-\d{2}-\d{2}$/.test(licF.date)) licF.date = '';
   }
 
-  if (topMode === 'exploration') {
+  if (explMode()) {
     explF = {...explDefaults(), open: null};
     const g = k => q.get(k);
     if (g('xc')) explF.company = g('xc');
@@ -2418,6 +2432,8 @@ function applyHash() {
     if (['WILDCAT','APPRAISAL'].includes(g('xp'))) explF.purpose = g('xp');
     if (g('xy') === 'all') explF.from = '';
     else if (/^\d{4}$/.test(g('xy') || '')) explF.from = g('xy');
+    drillF = {...drillDefaults()};
+    DRILL_PARAMS.forEach(([k, p]) => { if (q.has(p)) drillF[k] = q.get(p); });
     if (g('xq')) explF.q = g('xq');
     if (g('xl')) explF.lic = g('xl');
     if (g('xd') === '0') explF.dev = false;
@@ -2526,7 +2542,7 @@ async function refresh() {
   if (topMode === 'fields') await refreshFields();
   else if (topMode === 'hubs') await refreshHubs();
   else if (topMode === 'discoveries') await refreshDiscoveries();
-  else if (topMode === 'exploration') await refreshExploration();
+  else if (explMode()) await refreshExploration();
   else if (topMode === 'licences') await refreshLicences();
   else if (topMode === 'ncs') await refreshNcs();
   else if (topMode === 'prices') await refreshPrices();
@@ -5286,7 +5302,7 @@ let fieldReservesLoaded = false;
 
 // Visninger uten tidsakse: periode- og årsvelgeren gjelder ikke for dem.
 function isReservesView() {
-  return topMode === 'discoveries' || topMode === 'exploration'
+  return topMode === 'discoveries' || explMode()
       || (topMode === 'ncs' && ncsSubView !== 'production')
       || topMode === 'prices'
       || (topMode === 'fields'    && fieldSubView   === 'profile')
@@ -8014,6 +8030,7 @@ function openProfileIn(mode, setup) {
     topMode = mode;
   }
   setup();
+  explFixSubView();
   syncModeButtons();
   renderViewTabs();
   updateFab();
@@ -9438,7 +9455,7 @@ function pptSvgMeta(card) {
   const overlay = card.closest('#wdOverlay');
   let title;
   if (overlay) title = (overlay.querySelector('h2') || {}).textContent || '';
-  else if (topMode === 'exploration' || topMode === 'licences') {
+  else if (explMode() || topMode === 'licences') {
     const mode = document.querySelector('.mode-btn.active'), tab = document.querySelector('.view-tab.active');
     title = [mode && mode.textContent, tab && tab.textContent].filter(Boolean).join(' · ');
   } else title = pptMeta().title;
@@ -10115,16 +10132,21 @@ async function saveFeeds() {
 const EXPL_TABS = [
   {id:'wells', label:'Wells'},
   {id:'map',   label:'Map'},
-  {id:'rigs',  label:'Rigs'},
-  {id:'fleet', label:'Fleet'},
   {id:'news',  label:'News'},
 ];
+// Drilling: boreytelse per brønn, og riggene (flyttet fra Exploration).
+const DRILL_TABS = [
+  {id:'perf',  label:'Performance'},
+  {id:'rigs',  label:'Rigs'},
+  {id:'fleet', label:'Fleet'},
+];
+const explMode = () => topMode === 'exploration' || topMode === 'drilling';
 let explSubView = 'wells';
 let explWells = [], explOwners = [], explCompanies = [];
 let explWellCount = {};   // selskap -> antall brønner som operatør eller partner
 let explNameOv = {};   // brønn (wlbWell) -> navn satt for hånd, fra data/exploration_name_overrides.json
 let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
-let explLoaded = false, explLoading = null;
+let explLoaded = false, explLoading = null, explRaw = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
                              purpose:'all', from:String(currentYear - 2), q:'', lic:'',
                              dev:true, fixed:false, aisOnly:true, modu:true});   // dev/fixed/aisOnly/modu: bare riggfanen
@@ -10246,6 +10268,7 @@ function loadExploration() {
                              fetchBundle('exploration_prospects'), fetchBundle('exploration_name_overrides')]).then(([b, , prospects, nameOv]) => {
     explNameOv = (nameOv && nameOv.names) || {};
     if (b) {
+      explRaw = b;
       explOwners = b.owners || [];
       const today = new Date().toISOString().slice(0, 10);
       const bores = b.rows.map(r => {
@@ -10330,6 +10353,7 @@ function explSet(key, val, rebuildBar) {
 }
 
 function explRenderBar() {
+  if (explSubView === 'perf') return drillRenderBar();
   const f = explF, wells = explSubView === 'wells', map = explSubView === 'map';
   const opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
   const years = [''].concat(Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i)));
@@ -10524,12 +10548,202 @@ function explReset() {
   explRenderBody();
 }
 
+// ── DRILLING · PERFORMANCE ───────────────────────────────────────────────────
+// Alle brønnbaner (letebrønner fra data/exploration_wells.json og
+// utbyggingsbrønner fra data/field_wells.json, dev = 1) rangert etter meter
+// boret per dag: total dybde (TD) delt på dager fra spudd til ferdigstilt.
+// Stolpene vises i stigende rekkefølge; ett operatørselskap kan utheves i magenta.
+// Utbyggingsbrønnene har ikke operatør i Sodirs brønnlag, så den hentes fra
+// feltets operatørhistorikk på spuddatoen. Totaldybden er målt dybde (MD), så
+// lange avviksbrønner kommer godt ut. Brønner under noen få dager gir
+// tilfeldige ytterverdier, og kan utelates med «Min days».
+const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm']];
+const DRILL_HL = '#e6007e', DRILL_GREY = '#c3cad3';
+const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5'});
+let drillF = drillDefaults();
+let drillRows = null, drillLoading = null, drillLimit = 50;
+
+function explFixSubView() {
+  if (!explMode()) return;
+  const ids = (topMode === 'drilling' ? DRILL_TABS : EXPL_TABS).map(t => t.id);
+  if (!ids.includes(explSubView)) explSubView = topMode === 'drilling' ? 'perf' : 'wells';
+}
+
+const drillDays = (a, b) => Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86400000));
+
+function loadDrill() {
+  if (drillRows) return Promise.resolve();
+  if (drillLoading) return drillLoading;
+  drillLoading = Promise.all([loadExploration(), fetchBundle('field_wells')]).then(([, fw]) => {
+    const out = [], seen = new Set();
+    const add = (o) => {
+      if (!o.entry || !o.completion || !(o.td > 0)) return;
+      o.days = drillDays(o.entry, o.completion);
+      o.mpd = o.td / o.days;
+      o.year = o.entry.slice(0, 4);
+      out.push(o);
+    };
+    if (explRaw) {
+      explRaw.rows.forEach(r => {
+        const w = {};
+        explRaw.columns.forEach((c, i) => { w[c] = r[i]; });
+        seen.add(w.id);
+        add({id: w.id, name: w.name, op: w.operator || '', cat: 'Exploration', purpose: w.purpose,
+             entry: w.entry, completion: w.completion, td: w.td, rig: w.rig});
+      });
+    }
+    if (fw) {
+      fw.rows.forEach(r => {
+        const w = {};
+        fw.columns.forEach((c, i) => { w[c] = r[i]; });
+        if (!w.dev || seen.has(w.id) || !w.entry) return;
+        add({id: w.id, name: w.name, op: fieldOperatorAt(w.fieldId, new Date(w.entry)) || '', cat: 'Development',
+             purpose: w.purpose, entry: w.entry, completion: w.completion, td: w.totalDepth, rig: w.rig, dev: 1});
+      });
+    }
+    drillRows = out;
+  });
+  return drillLoading;
+}
+
+function drillFiltered(ignoreHl) {
+  const f = drillF, from = +f.from || 0, to = +f.to || 9999, min = +f.min || 0;
+  return (drillRows || []).filter(w => {
+    const y = +w.year;
+    if (y < from || y > to) return false;
+    if (f.cat !== 'all' && w.cat !== f.cat) return false;
+    if (w.days < min) return false;
+    return true;
+  });
+}
+
+function drillSet(key, val, rebuildBar) {
+  const keep = barFocus();
+  drillF[key] = val;
+  drillLimit = 50;
+  if (key === 'from' && +drillF.to < +val) drillF.to = val;
+  if (key === 'to' && +drillF.from > +val) drillF.from = val;
+  syncUrl();
+  if (rebuildBar) drillRenderBar();
+  drillRenderPerf();
+  restoreBarFocus(keep);
+}
+function drillReset() {
+  drillF = drillDefaults();
+  drillLimit = 50;
+  syncUrl();
+  drillRenderBar();
+  drillRenderPerf();
+}
+
+function drillRenderBar() {
+  const f = drillF;
+  const opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
+  const years = Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i));
+  const count = {};
+  drillFiltered().forEach(w => { if (w.op) count[w.op] = (count[w.op] || 0) + 1; });
+  const ops = Object.keys(count).sort((a, b) => count[b] - count[a] || a.localeCompare(b));
+  setBar('explBar', `
+    <div class="ex-bar">
+      ${pickerHtml({id: 'drillOp', value: f.hl, placeholder: 'Highlight operator…', label: 'Highlight operator', allowEmpty: true,
+        items: ops.map(n => ({v: n, sub: `${count[n]} ${count[n] === 1 ? 'well' : 'wells'}`})),
+        pick: v => drillSet('hl', v)})}
+      <select class="year-select" onchange="drillSet('from', this.value, true)" aria-label="From year">
+        ${years.map(y => opt(y, f.from, `From ${y}`)).join('')}
+      </select>
+      <select class="year-select" onchange="drillSet('to', this.value, true)" aria-label="To year">
+        ${years.map(y => opt(y, f.to, `To ${y}`)).join('')}
+      </select>
+      <select class="year-select" onchange="drillSet('cat', this.value, true)" aria-label="Wellbore type">
+        ${opt('all', f.cat, 'Exploration + development')}${opt('Exploration', f.cat, 'Exploration only')}${opt('Development', f.cat, 'Development only')}
+      </select>
+      <select class="year-select" onchange="drillSet('min', this.value, true)" aria-label="Minimum days">
+        ${['0', '5', '10', '20'].map(v => opt(v, f.min, v === '0' ? 'Any duration' : `Min ${v} days`)).join('')}
+      </select>
+      <button class="grp-btn" onclick="drillReset()">Reset</button>
+    </div>`);
+}
+
+function drillRenderPerf() {
+  const box = document.getElementById('explBody');
+  if (!drillRows) { box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>'; dockBar('explBody'); return; }
+  const list = drillFiltered().sort((a, b) => a.mpd - b.mpd || (a.entry < b.entry ? -1 : 1));
+  const hl = drillF.hl, isHl = w => !!hl && w.op === hl;
+  const span = drillF.from === drillF.to ? drillF.from : `${drillF.from}–${drillF.to}`;
+  if (!list.length) {
+    box.innerHTML = `<div class="pf-card"><h3>Drilling performance · ${span}</h3><div class="ex-slot"></div>
+      <div class="ex-sum">No wellbores match the filters.</div></div>`;
+    dockBar('explBody'); return;
+  }
+  const n = list.length, med = list[Math.floor(n / 2)].mpd;
+  const avg = list.reduce((s, w) => s + w.td, 0) / list.reduce((s, w) => s + w.days, 0);
+  const rank = new Map(); [...list].reverse().forEach((w, i) => rank.set(w.id, i + 1));
+  const mine = list.filter(isHl);
+  const myAvg = mine.length ? mine.reduce((s, w) => s + w.td, 0) / mine.reduce((s, w) => s + w.days, 0) : 0;
+  const fmt = v => v >= 100 ? v.toFixed(0) : v.toFixed(1);
+  // Diagram
+  const W = 1000, H = 360, L = 46, R = 8, T = 14, B = 26, pw = W - L - R, ph = H - T - B;
+  const maxV = list[n - 1].mpd;
+  const step = [10, 20, 25, 50, 100, 200, 250, 500].find(s => maxV / s <= 6) || 500;
+  const top = Math.ceil(maxV / step) * step, y = v => T + ph - v / top * ph;
+  const bw = pw / n, gap = bw > 4 ? 1 : 0;
+  const idx = new Map(list.map((w, i) => [w, i]));
+  const bar = w => {
+    const i = idx.get(w), h = Math.max(0.5, w.mpd / top * ph);
+    return `<rect x="${(L + i * bw).toFixed(2)}" y="${(T + ph - h).toFixed(2)}" width="${Math.max(0.6, bw - gap).toFixed(2)}" height="${h.toFixed(2)}"
+      fill="${isHl(w) ? DRILL_HL : DRILL_GREY}" style="cursor:pointer" onclick="window.open('${drillUrl(w)}','_blank','noopener')">
+      <title>${esc(w.name)} · ${esc(w.op || 'unknown operator')} · ${fmt(w.mpd)} m/day (${Math.round(w.td)} m in ${w.days} days) · #${rank.get(w.id)} of ${n}</title></rect>`;
+  };
+  let ticks = '';
+  for (let v = 0; v <= top; v += step) {
+    ticks += `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#e4e8ee"/>
+      <text x="${L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7785">${v}</text>`;
+  }
+  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Wellbores ranked by metres drilled per day">
+    ${ticks}
+    ${list.filter(w => !isHl(w)).map(bar).join('')}${list.filter(isHl).map(bar).join('')}
+    <line x1="${L}" x2="${W - R}" y1="${y(med).toFixed(1)}" y2="${y(med).toFixed(1)}" stroke="#1a2332" stroke-dasharray="4 3" stroke-width="1"/>
+    <text x="${W - R - 4}" y="${(y(med) - 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#1a2332">median ${fmt(med)} m/day</text>
+    <text x="${L}" y="${H - 8}" font-size="10" fill="#6b7785">Slowest</text>
+    <text x="${W - R}" y="${H - 8}" font-size="10" fill="#6b7785" text-anchor="end">Fastest</text>
+    <text x="12" y="${T + ph / 2}" font-size="10" fill="#6b7785" transform="rotate(-90 12 ${T + ph / 2})" text-anchor="middle">m / day</text>
+  </svg>`;
+  const rows = [...list].reverse().slice(0, drillLimit).map(w => `
+    <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
+      <td>${rank.get(w.id)}</td>
+      <td class="ex-l"><a class="row-link" href="${drillUrl(w)}" target="_blank" rel="noopener">${esc(w.name)} ↗</a></td>
+      <td class="ex-l">${w.op ? companyLink(w.op) : '—'}</td>
+      <td class="ex-l">${w.cat}</td><td class="ex-l">${esc(tc(w.purpose || ''))}</td>
+      <td>${fmtShort(w.entry)}</td><td>${w.days}</td><td>${Math.round(w.td).toLocaleString('en-US')}</td>
+      <td><strong>${fmt(w.mpd)}</strong></td></tr>`).join('');
+  const more = n > drillLimit
+    ? `<button class="grp-btn ex-more" onclick="drillLimit+=100;drillRenderPerf()">Show more (${n - drillLimit} remaining)</button>` : '';
+  const legend = `<div class="ex-legend">
+      <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_HL}"></span>${hl ? esc(hl) + ` (${mine.length})` : 'Highlighted operator (pick one above)'}</span>
+      <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_GREY}"></span>Other wellbores (${n - mine.length})</span></div>`;
+  box.innerHTML = `
+    <div class="pf-card"><h3>Drilling performance · metres per day · ${span}</h3><div class="ex-slot"></div>
+      <div class="ex-sum"><strong>${n}</strong> wellbores ranked by metres drilled per day, slowest to fastest · NCS average <strong>${fmt(avg)}</strong> m/day
+        (total depth ÷ days) · median <strong>${fmt(med)}</strong> m/day${mine.length
+          ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, average ${fmt(myAvg)} m/day, best rank #${Math.min(...mine.map(w => rank.get(w.id)))}</span>` : ''}</div>
+      ${svg}${legend}
+      <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+        <th>Rank</th><th class="ex-l">Wellbore</th><th class="ex-l">Operator</th><th class="ex-l">Type</th><th class="ex-l">Purpose</th>
+        <th>Spud</th><th>Days</th><th>TD (m)</th><th>m/day</th></tr></thead><tbody>${rows}</tbody></table></div>${more}
+      <div class="ex-note">Metres per day = total depth (measured depth) divided by days from spud to completion, for completed wellbores by spud year.
+        Sidetracks count as their own wellbores. Development-well operators come from the field's operator history on the spud date.
+        Click a bar for the Sodir FactPage. Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
+  dockBar('explBody');
+}
+const drillUrl = w => `https://factpages.sodir.no/wellbore/pageview/${w.dev ? 'development' : 'exploration'}/all/${w.id}`;
+
 // ── Hovedvisning ─────────────────────────────────────────────────────────────
 async function refreshExploration() {
   const box = document.getElementById('explBody');
   if (!explLoaded) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>'; dockBar('explBody');
   setInfo('');
   await loadExploration();
+  if (explSubView === 'perf') await loadDrill();
   if (explSubView === 'rigs') await loadRigWells();
   if (explSubView === 'rigs' || explSubView === 'fleet' || explF.rig) await loadRigAis();
   if (!explWells.length) {
@@ -10544,6 +10758,7 @@ async function refreshExploration() {
 }
 
 function explRenderBody() {
+  if (explSubView === 'perf') return drillRenderPerf();
   if (explSubView === 'map') return explRenderMap();
   if (explSubView === 'rigs') return explRenderRigs();
   if (explSubView === 'fleet') return explRenderFleet();
@@ -12097,7 +12312,7 @@ function rigZoomRig() {
 
 // ── Hopp til/fra andre moduser ───────────────────────────────────────────────
 function syncModeButtons() {
-  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'licences', 'prices'].forEach(m =>
+  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'drilling', 'licences', 'prices'].forEach(m =>
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
 }
 
@@ -13679,7 +13894,7 @@ async function init() {
     if (sheetOpen && topMode === 'companies') renderCompanyList();
     if (topMode === 'companies') updateFab();   // søkefeltets liste får samme rekkefølge
     // Exploration bruker samme rekkefølge, og kan være åpnet før reservene kom.
-    if (topMode === 'exploration' && explLoaded && explWells.length) explRenderBar();
+    if (explMode() && explLoaded && explWells.length) explRenderBar();
   });
 
   // ── Phase 4: Background prefetch all fields quietly ──
