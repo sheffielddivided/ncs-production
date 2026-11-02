@@ -93,6 +93,10 @@
     .ppt-add{position:absolute;top:8px;right:8px;z-index:2;padding:2px 8px;border:1px solid var(--green);border-radius:6px;
       background:#fff;color:var(--green);font-size:0.68rem;font-weight:600;cursor:pointer;opacity:0.75;}
     .ppt-add:hover{opacity:1;}
+    .ppt-card > h3{padding-right:58px;}   /* tittelen skal ikke gå inn under «+ PPT» */
+    /* Drilling · Performance: grafen holder lesbar tekst på smale skjermer og ruller sidelengs i stedet. */
+    .dr-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .dr-scroll > svg{min-width:640px;}
     .ppt-basket{position:relative;}
     .ppt-basket-btn{background:var(--green);color:#fff;}
     .ppt-panel{display:none;position:absolute;right:0;bottom:calc(100% + 6px);z-index:90;width:min(420px,calc(100vw - 24px));
@@ -3779,13 +3783,17 @@ function drawNcsExploration() {
   // fortsatt bores står som funn i søylen, men ikke i raten.
   labels.forEach(y => { per[y].discDone = rows.filter(r => r.year === y && r.w.found && r.w.state === 'completed').length; });
   const rate = labels.map(y => per[y].done ? +(per[y].discDone / per[y].done * 100).toFixed(1) : null);
-  if (!ncsF.year || !per[ncsF.year] || !(per[ncsF.year].disc + per[ncsF.year].dry + per[ncsF.year].other)) {
-    ncsF.year = [...labels].reverse().find(y => per[y].disc + per[y].dry + per[y].other);
+  const anyRows = y => per[y].disc + per[y].dry + per[y].other > 0;
+  const hasRows = y => ncsF.vol ? per[y].oil + per[y].gas > 0 : anyRows(y);
+  if (!ncsF.year || !per[ncsF.year] || !hasRows(ncsF.year)) {
+    // Nyeste år med volum; ferske funn har ofte ikke ressursanslag ennå.
+    ncsF.year = [...labels].reverse().find(hasRows) || [...labels].reverse().find(anyRows);
+    syncUrl();   // året i adressen skal følge det som vises
   }
   explYearChart({
     toggle, labels, rate, selected: () => ncsF.year, onPick: ncsPickYear,
     per: Object.fromEntries(labels.map(y => [y, {disc: per[y].discDone, done: per[y].done}])),
-    unit: ncsF.vol ? 'million boe' : 'wells',
+    unit: ncsF.vol ? 'million boe' : 'wells', yTitle: ncsF.vol ? 'million boe, gross' : 'wells',
     stacks: ncsF.vol ? [
       {label: 'Oil (liquids)', color: CMP_VOL_OIL, data: labels.map(y => +per[y].oil.toFixed(1))},
       {label: 'Gas', color: CMP_VOL_GAS, data: labels.map(y => +per[y].gas.toFixed(1))},
@@ -3802,10 +3810,11 @@ function drawNcsExploration() {
 function renderNcsExplTable(rows) {
   const list = rows.filter(r => r.year === ncsF.year && (!ncsF.vol || r.w.found))
     .sort((a, b) => (a.w.entry < b.w.entry ? -1 : a.w.entry > b.w.entry ? 1 : 0));
-  if (!list.length) { setChartTable(''); return; }
+  if (!list.length) { setChartTable(ncsF.vol && ncsF.year ? explNoDiscHtml(ncsF.year) : ''); return; }
   const disc = list.filter(r => r.w.found).length, dry = list.filter(r => r.w.resKey === 'dry').length;
-  setChartTable(explYearTableHtml(list,
-    `${ncsF.year} · ${list.length} ${ncsF.vol ? 'discovery wells (volumes in million boe, gross)' : ncsF.wild ? 'wildcats' : 'exploration wells'} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false, 'Gross '));
+  setChartTable(explYearTableHtml(list, ncsF.vol
+    ? `${ncsF.year} · ${list.length} discovery ${list.length === 1 ? 'well' : 'wells'} · ${explVolSum(list)} million boe discovered (gross)`
+    : `${ncsF.year} · ${list.length} ${ncsF.wild ? 'wildcats' : 'exploration wells'} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false, 'Gross '));
 }
 
 // ── NCS: CREAMING ──
@@ -5097,23 +5106,29 @@ function drawCompaniesExploration() {
   const y1 = Math.max(currentYear, +rows.reduce((m, r) => r.year > m ? r.year : m, '0'));
   const labels = [];
   for (let y = y0; y <= y1; y++) labels.push(String(y));
-  const per = Object.fromEntries(labels.map(y => [y, {op: 0, nonop: 0, oil: 0, gas: 0, done: 0, disc: 0}]));
+  const per = Object.fromEntries(labels.map(y => [y, {op: 0, nonop: 0, oil: 0, gas: 0, done: 0, disc: 0, found: 0}]));
   rows.forEach(r => {
     const p = per[r.year];
     if (r.op) p.op++; else p.nonop++;
+    if (r.w.found) p.found++;
     if (r.vol) { p.oil += r.vol.oil; p.gas += r.vol.gas; }
     if (r.w.state === 'completed') { p.done++; if (r.w.found) p.disc++; }
   });
   const rate = labels.map(y => per[y].done ? +(per[y].disc / per[y].done * 100).toFixed(1) : null);
   const tot = Object.values(per).reduce((t, p) => ({done: t.done + p.done, disc: t.disc + p.disc}), {done: 0, disc: 0});
-  if (!cmpExplYear || !per[cmpExplYear] || !(per[cmpExplYear].op + per[cmpExplYear].nonop)) {
-    cmpExplYear = [...labels].reverse().find(y => per[y].op + per[y].nonop);
+  // Volumvisningen lister bare funnbrønner, så der velges et år med funn.
+  const hasRows = y => cmpExplVol ? per[y].oil + per[y].gas > 0 : per[y].op + per[y].nonop > 0;
+  if (!cmpExplYear || !per[cmpExplYear] || !hasRows(cmpExplYear)) {
+    // Nyeste år med volum; ferske funn har ofte ikke ressursanslag ennå.
+    cmpExplYear = [...labels].reverse().find(hasRows) || [...labels].reverse().find(y => per[y].found)
+      || [...labels].reverse().find(y => per[y].op + per[y].nonop);
+    syncUrl();   // året i adressen skal følge det som vises
   }
 
   const nOp = rows.filter(r => r.op).length;
   explYearChart({
     toggle, labels, per, rate, selected: () => cmpExplYear, onPick: setCmpExplYear,
-    unit: cmpExplVol ? 'million boe' : 'wells',
+    unit: cmpExplVol ? 'million boe' : 'wells', yTitle: cmpExplVol ? 'million boe, net' : 'wells',
     stacks: cmpExplVol ? [
       {label: 'Oil (liquids)', color: CMP_VOL_OIL, data: labels.map(y => +per[y].oil.toFixed(1))},
       {label: 'Gas', color: CMP_VOL_GAS, data: labels.map(y => +per[y].gas.toFixed(1))},
@@ -5138,6 +5153,10 @@ const cmpExplModePills = () => `<div class="pill-group" style="margin-bottom:10p
 // produsert) eller betingede ressurser i et funn som ikke er felt ennå, delt
 // på olje (væske) og gass, millioner boe. Et felt med flere funn teller på det
 // eldste funnet. Sidesteg slått sammen, som ellers.
+const explVolSum = list => list.reduce((t, r) => t + (r.vol ? r.vol.oil + r.vol.gas : 0), 0)
+  .toLocaleString('en', {maximumFractionDigits: 1});
+const explNoDiscHtml = y => `<div class="pf-map-note" style="margin:0 12px 10px">No discovery wells spudded in ${esc(y)}. Click another year.</div>`;
+
 // Funnvolumet til en gruppert brønn (alle funn påvist i sidestegene) ganger f.
 function explFoundVolume(w, f) {
   const vol = {oil: 0, gas: 0};
@@ -5148,6 +5167,9 @@ function explFoundVolume(w, f) {
 }
 let discVolMap = null;
 function discoveryVolume(id) {
+  // Bygges først når både funn og feltreserver er lastet, ellers ville et
+  // tidlig kall lagret et kart uten feltvolumene for resten av økten.
+  if (!discVolMap && !(discoveriesLoaded && fieldReservesLoaded)) return {oil: 0, gas: 0};
   if (!discVolMap) {
     discVolMap = {};
     const b = bundle.discoveries, bf = bundle.fields;
@@ -5187,7 +5209,7 @@ function discoveryVolume(id) {
 // som linje på høyre akse. per[år] må ha done og disc til verktøytipset.
 // Valgt år (selected()) markeres ved at de andre stolpene tones ned; et
 // klikk kaller onPick med året.
-function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells'}) {
+function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells', yTitle}) {
   const vol = unit !== 'wells', f1 = v => v.toLocaleString('en', {maximumFractionDigits: 1});
   setChartTable(''); setProfile('');
   lastLabels = labels;
@@ -5210,7 +5232,8 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
     data: {labels, datasets: [
       ...(vol ? [] : [{type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
        backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0}]),
-      ...stacks.map(st => ({type: 'bar', label: st.label, data: st.data, stack: 's', order: 1,
+      // _noEst: nedtoningen markerer valgt år, ikke estimater; PowerPoint-eksporten skal ikke lage «(estimate)»-serier av den.
+      ...stacks.map(st => ({type: 'bar', label: st.label, data: st.data, stack: 's', order: 1, _noEst: true,
         backgroundColor: ctx => dim(st.color, ctx.dataIndex), borderWidth: 0})),
     ]},
     options: {
@@ -5232,7 +5255,7 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
       },
       scales: {
         x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
-        y: {stacked: true, beginAtZero: true, title: {display: true, text: vol ? unit + ', net' : 'wells', color: '#4a5568', font: {size: 10}},
+        y: {stacked: true, beginAtZero: true, title: {display: true, text: yTitle || unit, color: '#4a5568', font: {size: 10}},
             ticks: vol ? {font: {size: 9}} : {precision: 0, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
         y1: {display: !vol, position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
              ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
@@ -5246,7 +5269,9 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
 // withRole vises selskapenes rolle og andel (Companies); ellers ikke (NCS).
 function explYearTableHtml(list, caption, withRole, volPrefix = 'Net ') {
   const hasVol = list.some(r => r.vol);
-  const fv = v => v ? v.toLocaleString('en', {maximumFractionDigits: 1}) : '—';
+  if (hasVol && list.some(r => r.vol && !(r.vol.oil + r.vol.gas))) caption += ' · — = no Sodir resource estimate yet';
+  // «—» bare når brønnen ikke har noe anslag i det hele tatt; ellers vises 0.
+  const fv = (v, vol) => vol && vol.oil + vol.gas ? (v || 0).toLocaleString('en', {maximumFractionDigits: 1}) : '—';
   return `
     <div class="pf-scroll"><table class="res-table ex-table">
       <caption>${caption}</caption>
@@ -5260,18 +5285,19 @@ function explYearTableHtml(list, caption, withRole, volPrefix = 'Net ') {
           <td class="ex-l">${esc(tc(w.purpose))}</td>
           <td class="ex-l">${explResultCell(w)}${w.found ? ' <small>discovery</small>' : ''}</td>
           <td class="ex-l">${esc(w.operator || '—')}</td>
-          <td class="ex-l">${esc(w.rig) || '—'}</td><td>${fmtShort(w.entry)}</td>${hasVol ? `<td>${fv(vol && vol.oil)}</td><td>${fv(vol && vol.gas)}</td>` : ''}</tr>`).join('')}</tbody>
+          <td class="ex-l">${esc(w.rig) || '—'}</td><td>${fmtShort(w.entry)}</td>${hasVol ? `<td>${fv(vol && vol.oil, vol)}</td><td>${fv(vol && vol.gas, vol)}</td>` : ''}</tr>`).join('')}</tbody>
     </table></div>`;
 }
 
 function renderCmpExplTable(rows) {
   const list = rows.filter(r => r.year === cmpExplYear && (!cmpExplVol || r.w.found))
     .sort((a, b) => (a.w.entry < b.w.entry ? -1 : a.w.entry > b.w.entry ? 1 : 0));
-  if (!list.length) { setChartTable(''); return; }
+  if (!list.length) { setChartTable(cmpExplVol && cmpExplYear ? explNoDiscHtml(cmpExplYear) : ''); return; }
   const nOp = list.filter(r => r.op).length;
   const disc = list.filter(r => r.w.found).length;
-  setChartTable(explYearTableHtml(list,
-    `${cmpExplYear} · ${list.length} ${cmpExplVol ? 'discovery wells (net volumes in million boe)' : 'exploration wells'} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}`, true));
+  setChartTable(explYearTableHtml(list, cmpExplVol
+    ? `${cmpExplYear} · ${list.length} discovery ${list.length === 1 ? 'well' : 'wells'} · ${nOp} operated · ${explVolSum(list)} million boe net`
+    : `${cmpExplYear} · ${list.length} exploration wells · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}`, true));
 }
 
 // ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
@@ -9293,7 +9319,7 @@ function pptSpecFromChart(ch) {
     const s = {name: d.label, type: line ? 'line' : 'bar', secondary: d.yAxisID === 'y1', dash: !!(d.borderDash && d.borderDash.length),
       values: d.data.map(v => (v == null || v === '' || isNaN(+v) ? null : +v)),
       color: pptColor(line ? (d.borderColor || d.backgroundColor) : d.backgroundColor, labels.length)};
-    if (!line) {
+    if (!line && !d._noEst) {
       const est = pptEstimatePoints(ch, d, di, labels.length);
       if (est) { s.est = est.est; if (est.color) s.color = est.color; }
     }
@@ -10699,7 +10725,7 @@ function loadDrill() {
   return drillLoading;
 }
 
-function drillFiltered(ignoreHl) {
+function drillFiltered() {
   const f = drillF, from = +f.from || 0, to = +f.to || 9999, min = +f.min || 0;
   return (drillRows || []).filter(w => {
     const y = +w.year;
@@ -10797,7 +10823,7 @@ function drillRenderPerf() {
   const span = drillF.from === drillF.to ? drillF.from : `${drillF.from}–${drillF.to}`;
   if (!list.length) {
     box.innerHTML = `<div class="pf-card"><h3>Drilling performance · ${span}</h3><div class="ex-slot"></div>
-      <div class="ex-sum">${byOp ? 'No operators match the filters.' : 'No wellbores match the filters.'}</div></div>`;
+      <div class="ex-sum">${byOp ? `No operators with at least ${esc(drillF.minw)} wellbores match the filters.` : 'No wellbores match the filters.'}</div></div>`;
     dockBar('explBody'); return;
   }
   const n = list.length, med = list[Math.floor(n / 2)].mpd;
@@ -10825,7 +10851,7 @@ function drillRenderPerf() {
     ticks += `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#e4e8ee"/>
       <text x="${L - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7785">${v}</text>`;
   }
-  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="${byOp ? 'Operators' : 'Wellbores'} ranked by metres drilled per day">
+  const svg = `<div class="dr-scroll"><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="${byOp ? 'Operators' : 'Wellbores'} ranked by metres drilled per day">
     ${ticks}
     ${list.filter(w => !isHl(w)).map(bar).join('')}${list.filter(isHl).map(bar).join('')}
     <line x1="${L}" x2="${W - R}" y1="${y(med).toFixed(1)}" y2="${y(med).toFixed(1)}" stroke="#1a2332" stroke-dasharray="4 3" stroke-width="1"/>
@@ -10833,7 +10859,7 @@ function drillRenderPerf() {
     <text x="${L}" y="${H - 8}" font-size="10" fill="#6b7785">Slowest</text>
     <text x="${W - R}" y="${H - 8}" font-size="10" fill="#6b7785" text-anchor="end">Fastest</text>
     <text x="12" y="${T + ph / 2}" font-size="10" fill="#6b7785" transform="rotate(-90 12 ${T + ph / 2})" text-anchor="middle">m / day</text>
-  </svg>`;
+  </svg></div>`;
   const rows = [...list].reverse().slice(0, drillLimit).map(w => byOp ? `
     <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
       <td>${rank.get(w.id)}</td><td class="ex-l">${companyLink(w.op)}</td><td>${w.n}</td>
@@ -10850,10 +10876,20 @@ function drillRenderPerf() {
   const legend = `<div class="ex-legend">
       <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_HL}"></span>${hl ? esc(hl) + (byOp ? '' : ` (${mineBars.length})`) : 'Highlighted operator (pick one above)'}</span>
       <span class="ex-leg"><span class="ex-dot" style="background:${DRILL_GREY}"></span>${byOp ? 'Other operators' : 'Other wellbores'} (${n - mineBars.length})</span></div>`;
+  // PowerPoint: ekte søylegraf, uthevet operatør som egen serie (stablet, så
+  // stolpene står på samme plass) og medianen som linje.
+  pptCardSpecs.drillPerf = {kind: 'cat', dir: 'col', stacked: true, labels: list.map(w => w.name), yTitle: 'metres per day',
+    subtitle: `${byOp ? 'Average per operator' : 'Wellbores'} ranked by metres drilled per day · ${span}${drillPptFilters()}`,
+    series: [
+      ...(mineBars.length ? [{name: hl, type: 'bar', color: pptHex(DRILL_HL), values: list.map(w => isHl(w) ? +w.mpd.toFixed(1) : null)}] : []),
+      {name: hl ? (byOp ? 'Other operators' : 'Other wellbores') : (byOp ? 'Operators' : 'Wellbores'), type: 'bar', color: pptHex(DRILL_GREY),
+       values: list.map(w => isHl(w) ? null : +w.mpd.toFixed(1))},
+      {name: 'Median', type: 'line', dash: true, color: '1A2332', values: list.map(() => +med.toFixed(1))},
+    ]};
   box.innerHTML = `
-    <div class="pf-card"><h3>Drilling performance · metres per day · ${span}</h3><div class="ex-slot"></div>
-      <div class="ex-sum"><strong>${n}</strong> ${byOp ? `operators (min ${drillF.minw} ${drillF.minw === '1' ? 'wellbore' : 'wellbores'}, ${wells.length} wellbores in total)` : 'wellbores'} ranked by metres drilled per day, slowest to fastest · NCS average <strong>${fmt(avg)}</strong> m/day
-        (metres drilled ÷ days) · median <strong>${fmt(med)}</strong> m/day${mine.length
+    <div class="pf-card" data-ppt-spec="drillPerf"><h3>Drilling performance · metres per day · ${span}</h3><div class="ex-slot"></div>
+      <div class="ex-sum"><strong>${n}</strong> ${byOp ? `operators (min ${drillF.minw} ${drillF.minw === '1' ? 'wellbore' : 'wellbores'}, ${wells.length} wellbores in total)` : 'wellbores'} ranked by metres drilled per day, slowest to fastest · average across the wellbores <strong>${fmt(avg)}</strong> m/day
+        (metres drilled ÷ days) · median ${byOp ? 'operator' : 'wellbore'} <strong>${fmt(med)}</strong> m/day${mine.length
           ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, average ${fmt(myAvg)} m/day${byOp ? '' : `, best rank #${Math.min(...mineBars.map(w => rank.get(w.id)))}`}</span>` : ''}</div>
       ${svg}${legend}
       <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>${byOp ? `
@@ -10862,9 +10898,20 @@ function drillRenderPerf() {
         <th>Spud</th><th>Days</th><th>TD (m)</th><th>Drilled (m)</th><th>m/day</th>`}</tr></thead><tbody>${rows}</tbody></table></div>${more}
       <div class="ex-note">Metres per day = metres drilled divided by drilling days, for completed wellbores by spud year. Metres drilled = total depth (measured) minus the
         kick-off point for sidetracks, so the section inherited from the parent wellbore is not counted. Days = the shorter of Sodir's drilling days and spud-to-completion
-        (either can be wrong on single wellbores). Sidetracks count as their own wellbores. Development-well operators come from the field's operator history on the spud date.
+        (either can be wrong on single wellbores). Sidetracks count as their own wellbores. Operator = Sodir's drilling operator for the wellbore. Rig type: platform rigs are fixed installations (jacket, Condeep, TLP and floaters Sodir marks as fixed); the rest are mobile rigs (MODU).
         ${byOp ? 'Operator average = metres drilled ÷ total days over the operator\'s wellbores (longer wells weigh more); the median wellbore is shown beside it, since a few fast sidetracks can lift the average. Click a bar to highlight the operator.' : 'Click a bar for the Sodir FactPage.'} Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
   dockBar('explBody');
+}
+// Aktive filtre i undertittelen på lysbildet, så grafen kan leses alene.
+function drillPptFilters() {
+  const f = drillF, out = [];
+  if (f.cat !== 'all') out.push(f.cat.toLowerCase() + ' wells');
+  if (f.purpose !== 'all') out.push(tc(f.purpose).toLowerCase());
+  if (f.bore !== 'all') out.push(f.bore === 'side' ? 'sidetracks' : 'main bores');
+  if (f.rig !== 'all') out.push(f.rig === 'fixed' ? 'platform rigs' : 'mobile rigs');
+  if (+f.min) out.push(`min ${f.min} days`);
+  if (f.view === 'op') out.push(`min ${f.minw} wellbores`);
+  return out.length ? ' · ' + out.join(', ') : '';
 }
 const drillUrl = w => `https://factpages.sodir.no/wellbore/pageview/${w.dev ? 'development' : 'exploration'}/all/${w.id}`;
 
