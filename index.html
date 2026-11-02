@@ -2254,6 +2254,7 @@ function stateToHash() {
   }
   if (topMode === 'companies' && companySubView === 'exploration') {
     if (cmpExplWildcat) q.set('cw', '1');
+    if (cmpExplVol) q.set('cv', '1');
     if (cmpExplYear) q.set('cy', cmpExplYear);
   }
   // Brønn- og riggpanelet kan åpnes over alle sidene (fra profilene også).
@@ -2469,6 +2470,7 @@ function applyHash() {
   if (topMode === 'companies') {
     cmpExplWildcat = q.get('cw') === '1';
     if (/^\d{4}$/.test(q.get('cy') || '')) cmpExplYear = q.get('cy');
+    cmpExplVol = q.get('cv') === '1';
   }
 
   const pr = q.get('p');
@@ -2650,7 +2652,7 @@ async function refreshCompanies() {
   showSpinner();
   // Reservevisningen trenger eierandelene, men ikke produksjonstidsseriene.
   if (companySubView === 'exploration') {
-    await loadExploration();
+    await Promise.all([loadExploration(), ...(cmpExplVol ? [loadFieldReserves(), loadDiscoveries()] : [])]);
     drawChart();
     return;
   }
@@ -5029,6 +5031,7 @@ function drawCompaniesOperated() {
 // avsluttede brønnene i året. Brønner som fortsatt bores er med i stolpene,
 // men ikke i nevneren.
 let cmpExplWildcat = false;
+let cmpExplVol = false;   // true: netto påviste volumer per år i stedet for brønner
 let cmpExplYear = null;   // året brønnlisten under grafen viser
 const CMP_EXPL_OP = 'rgba(0,48,87,0.85)';
 const CMP_EXPL_NONOP = 'rgba(73,147,180,0.6)';
@@ -5048,6 +5051,12 @@ function cmpExplWells() {
   return out;
 }
 
+function setCmpExplVol(v) {
+  cmpExplVol = v;
+  syncUrl();
+  drawCompaniesExploration();
+}
+
 function setCmpExplWildcat(v) {
   cmpExplWildcat = v;
   syncUrl();
@@ -5062,11 +5071,12 @@ function setCmpExplYear(y) {
 }
 
 function drawCompaniesExploration() {
+  if (cmpExplVol) return drawCompaniesDiscovered();
   const companies = [...selectedCompanyNames];
   const cmpStr = companies.join(', ');
   const title = companies.length === 1 ? companies[0] : companies.length + ' companies';
   const kind = cmpExplWildcat ? 'wildcats' : 'exploration wells';
-  const toggle = `<div class="pill-group" style="margin-bottom:10px;width:max-content">
+  const toggle = cmpExplModePills() + `<div class="pill-group" style="margin-bottom:10px;width:max-content">
       <button class="pill-btn${cmpExplWildcat ? '' : ' active'}" onclick="setCmpExplWildcat(false)">All exploration wells</button>
       <button class="pill-btn${cmpExplWildcat ? ' active' : ''}" onclick="setCmpExplWildcat(true)">Wildcats only</button></div>`;
   const rows = cmpExplWells();
@@ -5103,6 +5113,78 @@ function drawCompaniesExploration() {
   });
   setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
   renderCmpExplTable(rows);
+}
+
+const cmpExplModePills = () => `<div class="pill-group" style="margin-bottom:10px;width:max-content">
+      <button class="pill-btn${cmpExplVol ? '' : ' active'}" onclick="setCmpExplVol(false)">Wells</button>
+      <button class="pill-btn${cmpExplVol ? ' active' : ''}" onclick="setCmpExplVol(true)">Net discovered volume</button></div>`;
+
+// Netto påviste volumer per år (Companies → Exploration → Net discovered volume):
+// selskapets andel av utvinnbare volumer i felt (siste Sodir-estimat, på
+// funnåret) og av betingede ressurser i funn som ikke er felt ennå, delt på
+// olje (væske) og gass. Andelen er dagens eierandel i feltet, eller
+// eierandelen ved utgangen av funnåret om selskapet ikke lenger er med. For
+// funn er det lisensens andeler. Millioner boe.
+function drawCompaniesDiscovered() {
+  const companies = [...selectedCompanyNames];
+  const title = companies.length === 1 ? companies[0] : companies.length + ' companies';
+  const toggle = cmpExplModePills();
+  setChartTitle(`${title} · Exploration`, 'Net discovered volume per year · oil and gas · million boe');
+  const vol = {};   // år -> {oil, gas}
+  const add = (y, liq, gas) => { const r = vol[y] = vol[y] || {oil: 0, gas: 0}; r.oil += liq; r.gas += gas; };
+  const now = new Date();
+  const ids = [...new Set([...allLicRecords.filter(r => selectedCompanyNames.has(r.cmpLongName)).map(r => r.fldNpdidField),
+    ...Object.entries(TRIAL_PROD_OWNERSHIP).filter(([, o]) => companies.some(c => (o[c] || 0) > 0)).map(([id]) => +id)])];
+  ids.forEach(id => {
+    const p = profileRow(id), rows = (fieldReserves && fieldReserves[id]) || [];
+    if (!p || !p.discoveryYear || !rows.length) return;
+    const at = new Date(Date.UTC(p.discoveryYear, 11, 31));
+    let share = 0;
+    companies.forEach(c => { share += (getShare(id, now, c) || getShare(id, at, c)) / 100; });
+    if (!share) return;
+    const last = rows[rows.length - 1], gas = (last.raw.fldRecoverableGas || 0) * BBL_PER_SM3 * share;
+    add(p.discoveryYear, Math.max(0, last.recoverableOE * BBL_PER_SM3 * share - gas), gas);
+  });
+  (allDiscoveries || []).forEach(d => {
+    const v = discoveryRes[d.id];
+    if (!v || !d.year) return;
+    const share = discoveryPartners(d).filter(x => selectedCompanyNames.has(x.name)).reduce((t, x) => t + x.share, 0) / 100;
+    if (!share) return;
+    add(d.year, v.liq * BBL_PER_SM3 * share, v.gas * BBL_PER_SM3 * share);
+  });
+  const ys = Object.keys(vol).map(Number);
+  if (!ys.length) {
+    setChartEmpty(`No discovered volumes found for ${esc(companies.join(', '))}.`);
+    document.getElementById('chartArea').insertAdjacentHTML('afterbegin', toggle);
+    setInfo(''); return;
+  }
+  const labels = [];
+  for (let y = Math.min(...ys); y <= Math.max(currentYear, ...ys); y++) labels.push(String(y));
+  const OIL_C = 'rgba(0,48,87,0.85)', GAS_C = 'rgba(246,141,46,0.85)';
+  const oil = labels.map(y => +((vol[y] || {}).oil || 0).toFixed(1)), gas = labels.map(y => +((vol[y] || {}).gas || 0).toFixed(1));
+  setChartTable(''); setProfile('');
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = [{label: 'Oil, million boe', data: oil}, {label: 'Gas, million boe', data: gas}];
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${[['Oil (liquids)', OIL_C], ['Gas', GAS_C]].map(([l, c]) => `
+      <div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>`;
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'bar',
+    data: {labels, datasets: [
+      {label: 'Oil', data: oil, backgroundColor: OIL_C, borderWidth: 0, stack: 's'},
+      {label: 'Gas', data: gas, backgroundColor: GAS_C, borderWidth: 0, stack: 's'}]},
+    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: c => ` ${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 1})} million boe`,
+        footer: items => `Total: ${(items[0].parsed.y + (items[1] ? items[1].parsed.y : 0)).toLocaleString('en', {maximumFractionDigits: 1})} million boe`}}},
+      scales: {x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+               y: {stacked: true, beginAtZero: true, title: {display: true, text: 'million boe, net', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}}}},
+  });
+  document.getElementById('downloadBtn').disabled = false;
+  const tO = oil.reduce((a, b) => a + b, 0), tG = gas.reduce((a, b) => a + b, 0);
+  setInfo(`<strong>Companies:</strong> ${esc(companies.join(', '))} &nbsp;|&nbsp; <strong>Net discovered:</strong> ${Math.round(tO + tG).toLocaleString('en')} million boe (${Math.round(tO).toLocaleString('en')} oil, ${Math.round(tG).toLocaleString('en')} gas) &nbsp;|&nbsp; <strong>Volumes:</strong> recoverable volumes in fields (latest Sodir estimate, incl. produced) on the field's discovery year, plus contingent resources in undeveloped discoveries on their discovery year &nbsp;|&nbsp; <strong>Share:</strong> the company's current interest in the field (interest at year end of the discovery year if it has left), licence interests for discoveries &nbsp;|&nbsp; <strong>Oil</strong> = liquids (oil, condensate, NGL)`);
 }
 
 // Felles graf for letebrønner per år: stablede søyler (stacks) og funnraten
