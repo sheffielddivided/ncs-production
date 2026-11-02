@@ -10648,7 +10648,7 @@ let drillRows = null, drillLoading = null, drillLimit = 50;
 function explFixSubView() {
   if (!explMode()) return;
   const ids = (topMode === 'drilling' ? DRILL_TABS : EXPL_TABS).map(t => t.id);
-  if (!ids.includes(explSubView)) explSubView = topMode === 'drilling' ? 'perf' : 'wells';
+  if (!ids.includes(explSubView)) explSubView = topMode === 'drilling' ? 'rigs' : 'wells';
 }
 
 const drillDays = (a, b) => Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86400000));
