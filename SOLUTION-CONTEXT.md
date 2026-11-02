@@ -2681,3 +2681,15 @@ egner seg godt til nettopp det.
 Repoet har **ingen LICENSE-fil**. Opphavsretten ligger dermed hos
 repo-eieren (`sheffielddivided`), uten noen bruksrettighet gitt til andre.
 Bør avklares før sammenslåing.
+
+**Drilling (ny modus etter Exploration):** fanene *Performance*, *Rigs* og *Fleet*.
+Rigs og Fleet er flyttet hit fra Exploration og bruker samme kode og `#explBox`
+(`explMode()` gjelder både `exploration` og `drilling`; `explSubView` deles, og
+`explFixSubView()` nullstiller til riktig standardfane ved moduskifte). Gamle lenker
+`m=exploration&v=rigs|fleet` sendes til Drilling. *Performance* rangerer alle
+brønnbaner (letebrønner fra `exploration_wells.json` + utbyggingsbrønner fra
+`field_wells.json` med `dev = 1`) etter meter per dag = total dybde ÷ dager fra spudd til
+ferdig, stigende i stolpegraf. Operatør kan utheves i magenta (`dh=`), øvrige er grå;
+filtre: fra/til-år (`df`/`dt`), type (`dc`), minste varighet (`dm`, standard 5 dager for å
+dempe urealistiske ytterverdier fra Sodirs datoer). Utbyggingsbrønnenes operatør
+hentes fra feltets operatørhistorikk (`fieldOperatorAt`) på spuddatoen.
