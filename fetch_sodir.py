@@ -597,7 +597,8 @@ def build_field_wells():
         WELL_LAYER,
         'wlbNpdidWellbore,wlbWellboreName,fldNpdidField,wlbPurpose,wlbStatus,wlbContent,'
         'wlbEntryDate,wlbCompletionDate,wlbTotalDepth,wlbDrillingFacility,'
-        'wlbNsDecDeg,wlbEwDecDeg,wlbFactPageUrl,wlbDrillingOperator,wlbKickOffPoint,wlbDrillingDays',
+        'wlbNsDecDeg,wlbEwDecDeg,wlbFactPageUrl,wlbDrillingOperator,wlbKickOffPoint,wlbDrillingDays,'
+        'wlbFacilityTypeDrilling,wlbDrillingFacilityFixedOrMove',
         'fldNpdidField IS NOT NULL',
     )
     out = []
@@ -615,11 +616,12 @@ def build_field_wells():
             1 if '/development/' in (r.get('wlbFactPageUrl') or '') else 0,
             _clean(r.get('wlbDrillingOperator')), num(r.get('wlbKickOffPoint')) or None,
             as_int(r.get('wlbDrillingDays')),
+            _clean(r.get('wlbFacilityTypeDrilling')), _clean(r.get('wlbDrillingFacilityFixedOrMove')),
         ])
     out.sort(key=lambda x: (x[2], x[1]))
     return {'columns': ['id', 'name', 'fieldId', 'purpose', 'status', 'content', 'entry',
                         'completion', 'totalDepth', 'rig', 'lon', 'lat', 'dev',
-                        'operator', 'kop', 'ddays'],
+                        'operator', 'kop', 'ddays', 'rigType', 'fixedMove'],
             'rows': out}
 
 

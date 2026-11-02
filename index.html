@@ -10639,9 +10639,9 @@ function explReset() {
 // feilverdier på enkeltbrønner. Operatør: Sodirs wlbDrillingOperator, ellers
 // feltets operatørhistorikk. Brønner på noen få dager gir tilfeldige
 // ytterverdier, og kan utelates med «Min days».
-const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm'], ['view', 'dv'], ['minw', 'dn']];
+const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm'], ['view', 'dv'], ['minw', 'dn'], ['purpose', 'dp'], ['bore', 'db'], ['rig', 'dr']];
 const DRILL_HL = '#e6007e', DRILL_GREY = '#c3cad3';
-const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5', view: 'well', minw: '3'});
+const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5', view: 'well', minw: '5', purpose: 'all', bore: 'all', rig: 'all'});
 let drillF = drillDefaults();
 let drillRows = null, drillLoading = null, drillLimit = 50;
 
@@ -10670,6 +10670,9 @@ function loadDrill() {
       const dd = drillDays(o.entry, o.completion);
       o.days = o.ddays > 0 ? Math.min(o.ddays, dd) : dd;
       o.mpd = o.m / o.days;
+      o.side = o.kop > 0;
+      // Fast = plattformens eget boreanlegg (jacket, Condeep, TLP, eller Sodir-merket FIXED, f.eks. flytere som Visund).
+      o.fixed = o.fixedMove === 'FIXED' || (!!o.rigType && !MODU_TYPE.test(o.rigType));
       o.year = o.entry.slice(0, 4);
       out.push(o);
     };
@@ -10679,7 +10682,7 @@ function loadDrill() {
         explRaw.columns.forEach((c, i) => { w[c] = r[i]; });
         seen.add(w.id);
         add({id: w.id, name: w.name, op: w.operator || '', cat: 'Exploration', purpose: w.purpose,
-             entry: w.entry, completion: w.completion, td: w.td, kop: w.kop, ddays: w.days, rig: w.rig});
+             entry: w.entry, completion: w.completion, td: w.td, kop: w.kop, ddays: w.days, rig: w.rig, rigType: w.rigType});
       });
     }
     if (fw) {
@@ -10688,7 +10691,7 @@ function loadDrill() {
         fw.columns.forEach((c, i) => { w[c] = r[i]; });
         if (!w.dev || seen.has(w.id) || !w.entry) return;
         add({id: w.id, name: w.name, op: w.operator || fieldOperatorAt(w.fieldId, new Date(w.entry)) || '', cat: 'Development',
-             purpose: w.purpose, entry: w.entry, completion: w.completion, td: w.totalDepth, kop: w.kop, ddays: w.ddays, rig: w.rig, dev: 1});
+             purpose: w.purpose, entry: w.entry, completion: w.completion, td: w.totalDepth, kop: w.kop, ddays: w.ddays, rig: w.rig, rigType: w.rigType, fixedMove: w.fixedMove, dev: 1});
       });
     }
     drillRows = out;
@@ -10703,6 +10706,9 @@ function drillFiltered(ignoreHl) {
     if (y < from || y > to) return false;
     if (f.cat !== 'all' && w.cat !== f.cat) return false;
     if (w.days < min) return false;
+    if (f.purpose !== 'all' && w.purpose !== f.purpose) return false;
+    if (f.bore !== 'all' && (f.bore === 'side') !== w.side) return false;
+    if (f.rig !== 'all' && (f.rig === 'fixed') !== w.fixed) return false;
     return true;
   });
 }
@@ -10753,6 +10759,16 @@ function drillRenderBar() {
       <select class="year-select" onchange="drillSet('cat', this.value, true)" aria-label="Wellbore type">
         ${opt('all', f.cat, 'Exploration + development')}${opt('Exploration', f.cat, 'Exploration only')}${opt('Development', f.cat, 'Development only')}
       </select>
+      <select class="year-select" onchange="drillSet('purpose', this.value, true)" aria-label="Purpose">
+        ${opt('all', f.purpose, 'All purposes')}${[['PRODUCTION', 'Production'], ['INJECTION', 'Injection'], ['OBSERVATION', 'Observation'], ['WILDCAT', 'Wildcat'], ['APPRAISAL', 'Appraisal']]
+          .map(([v, l]) => opt(v, f.purpose, l)).join('')}
+      </select>
+      <select class="year-select" onchange="drillSet('bore', this.value, true)" aria-label="Main bore or sidetrack">
+        ${opt('all', f.bore, 'Main bores + sidetracks')}${opt('main', f.bore, 'Main bores only')}${opt('side', f.bore, 'Sidetracks only')}
+      </select>
+      <select class="year-select" onchange="drillSet('rig', this.value, true)" aria-label="Rig type">
+        ${opt('all', f.rig, 'All rigs')}${opt('modu', f.rig, 'Mobile rigs (MODU)')}${opt('fixed', f.rig, 'Platform rigs')}
+      </select>
       <select class="year-select" onchange="drillSet('min', this.value, true)" aria-label="Minimum days">
         ${['0', '5', '10', '20'].map(v => opt(v, f.min, v === '0' ? 'Any duration' : `Min ${v} days`)).join('')}
       </select>
@@ -10771,10 +10787,10 @@ function drillRenderPerf() {
     const agg = {};
     wells.forEach(w => {
       if (!w.op) return;
-      const a = agg[w.op] = agg[w.op] || {id: w.op, name: w.op, op: w.op, n: 0, td: 0, days: 0};
-      a.n++; a.td += w.m; a.days += w.days;
+      const a = agg[w.op] = agg[w.op] || {id: w.op, name: w.op, op: w.op, n: 0, td: 0, days: 0, all: []};
+      a.n++; a.td += w.m; a.days += w.days; a.all.push(w.mpd);
     });
-    list = Object.values(agg).filter(a => a.n >= (+drillF.minw || 1)).map(a => ({...a, mpd: a.td / a.days}))
+    list = Object.values(agg).filter(a => a.n >= (+drillF.minw || 1)).map(a => ({...a, mpd: a.td / a.days, med: a.all.slice().sort((x, y) => x - y)[Math.floor(a.all.length / 2)]}))
       .sort((a, b) => a.mpd - b.mpd || (a.name < b.name ? -1 : 1));
   }
   const hl = drillF.hl, isHl = w => !!hl && w.op === hl;
@@ -10801,7 +10817,7 @@ function drillRenderPerf() {
     const i = idx.get(w), h = Math.max(0.5, w.mpd / top * ph);
     return `<rect x="${(L + i * bw).toFixed(2)}" y="${(T + ph - h).toFixed(2)}" width="${Math.max(0.6, bw - gap).toFixed(2)}" height="${h.toFixed(2)}"
       fill="${isHl(w) ? DRILL_HL : DRILL_GREY}" style="cursor:pointer" onclick="${byOp ? `drillSet('hl', ${esc(JSON.stringify(w.op))}, true)` : `window.open('${drillUrl(w)}','_blank','noopener')`}">
-      <title>${byOp ? `${esc(w.name)} · ${fmt(w.mpd)} m/day (${Math.round(w.td).toLocaleString('en-US')} m in ${w.days} days, ${w.n} wellbores)`
+      <title>${byOp ? `${esc(w.name)} · ${fmt(w.mpd)} m/day (${Math.round(w.td).toLocaleString('en-US')} m in ${w.days} days, ${w.n} wellbores) · median wellbore ${fmt(w.med)} m/day`
         : `${esc(w.name)} · ${esc(w.op || 'unknown operator')} · ${fmt(w.mpd)} m/day (${Math.round(w.m)} m in ${w.days} days)`} · #${rank.get(w.id)} of ${n}</title></rect>`;
   };
   let ticks = '';
@@ -10821,7 +10837,7 @@ function drillRenderPerf() {
   const rows = [...list].reverse().slice(0, drillLimit).map(w => byOp ? `
     <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
       <td>${rank.get(w.id)}</td><td class="ex-l">${companyLink(w.op)}</td><td>${w.n}</td>
-      <td>${Math.round(w.td).toLocaleString('en-US')}</td><td>${w.days.toLocaleString('en-US')}</td><td><strong>${fmt(w.mpd)}</strong></td></tr>` : `
+      <td>${Math.round(w.td).toLocaleString('en-US')}</td><td>${w.days.toLocaleString('en-US')}</td><td><strong>${fmt(w.mpd)}</strong></td><td>${fmt(w.med)}</td></tr>` : `
     <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
       <td>${rank.get(w.id)}</td>
       <td class="ex-l"><a class="row-link" href="${drillUrl(w)}" target="_blank" rel="noopener">${esc(w.name)} ↗</a></td>
@@ -10841,13 +10857,13 @@ function drillRenderPerf() {
           ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, average ${fmt(myAvg)} m/day${byOp ? '' : `, best rank #${Math.min(...mineBars.map(w => rank.get(w.id)))}`}</span>` : ''}</div>
       ${svg}${legend}
       <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>${byOp ? `
-        <th>Rank</th><th class="ex-l">Operator</th><th>Wellbores</th><th>Drilled (m)</th><th>Days</th><th>m/day</th>` : `
+        <th>Rank</th><th class="ex-l">Operator</th><th>Wellbores</th><th>Drilled (m)</th><th>Days</th><th>m/day (avg)</th><th>Median wellbore</th>` : `
         <th>Rank</th><th class="ex-l">Wellbore</th><th class="ex-l">Operator</th><th class="ex-l">Type</th><th class="ex-l">Purpose</th>
         <th>Spud</th><th>Days</th><th>TD (m)</th><th>Drilled (m)</th><th>m/day</th>`}</tr></thead><tbody>${rows}</tbody></table></div>${more}
       <div class="ex-note">Metres per day = metres drilled divided by drilling days, for completed wellbores by spud year. Metres drilled = total depth (measured) minus the
         kick-off point for sidetracks, so the section inherited from the parent wellbore is not counted. Days = the shorter of Sodir's drilling days and spud-to-completion
         (either can be wrong on single wellbores). Sidetracks count as their own wellbores. Development-well operators come from the field's operator history on the spud date.
-        ${byOp ? 'Operator average = metres drilled ÷ total days over the operator\'s wellbores (longer wells weigh more). Click a bar to highlight the operator.' : 'Click a bar for the Sodir FactPage.'} Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
+        ${byOp ? 'Operator average = metres drilled ÷ total days over the operator\'s wellbores (longer wells weigh more); the median wellbore is shown beside it, since a few fast sidetracks can lift the average. Click a bar to highlight the operator.' : 'Click a bar for the Sodir FactPage.'} Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
   dockBar('explBody');
 }
 const drillUrl = w => `https://factpages.sodir.no/wellbore/pageview/${w.dev ? 'development' : 'exploration'}/all/${w.id}`;
