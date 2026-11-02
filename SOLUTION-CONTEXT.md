@@ -2682,14 +2682,36 @@ Repoet har **ingen LICENSE-fil**. Opphavsretten ligger dermed hos
 repo-eieren (`sheffielddivided`), uten noen bruksrettighet gitt til andre.
 Bør avklares før sammenslåing.
 
-**Drilling (ny modus etter Exploration):** fanene *Performance*, *Rigs* og *Fleet*.
-Rigs og Fleet er flyttet hit fra Exploration og bruker samme kode og `#explBox`
-(`explMode()` gjelder både `exploration` og `drilling`; `explSubView` deles, og
+**Drilling (ny modus etter Exploration):** fanene *Rigs* (standard), *Fleet* og
+*Performance*. Rigs og Fleet er flyttet hit fra Exploration og bruker samme kode og
+`#explBox` (`explMode()` gjelder både `exploration` og `drilling`; `explSubView` deles, og
 `explFixSubView()` nullstiller til riktig standardfane ved moduskifte). Gamle lenker
-`m=exploration&v=rigs|fleet` sendes til Drilling. *Performance* rangerer alle
-brønnbaner (letebrønner fra `exploration_wells.json` + utbyggingsbrønner fra
-`field_wells.json` med `dev = 1`) etter meter per dag = total dybde ÷ dager fra spudd til
-ferdig, stigende i stolpegraf. Operatør kan utheves i magenta (`dh=`), øvrige er grå;
-filtre: fra/til-år (`df`/`dt`), type (`dc`), minste varighet (`dm`, standard 5 dager for å
-dempe urealistiske ytterverdier fra Sodirs datoer). Utbyggingsbrønnenes operatør
-hentes fra feltets operatørhistorikk (`fieldOperatorAt`) på spuddatoen.
+`m=exploration&v=rigs|fleet` sendes til Drilling.
+
+*Performance* rangerer alle brønnbaner (letebrønner fra `exploration_wells.json` +
+utbyggingsbrønner fra `field_wells.json` med `dev = 1`) etter meter per dag, stigende i
+en SVG-stolpegraf; valgt operatør i magenta (`dh=`), øvrige grå. Beregningen:
+- *Boret strekning* = total dybde (MD) minus kick-off point (`kop`) for sidesteg. Uten
+  dette telles foreldrebrønnen på nytt, og sidesteg på noen få dager fikk tusenvis av m/dag.
+- *Dager* = den korteste av Sodirs borevarighet (`days`/`ddays`) og spudd → ferdig; begge
+  har feilverdier på enkeltbrønner (negative, eller hundrevis av dager for et kort sidesteg).
+- *Operatør* = Sodirs `wlbDrillingOperator` (`operator`), ellers feltets operatørhistorikk.
+- *Rigg-type*: plattformrigg når Sodir merker anlegget FIXED eller typen ikke er MODU
+  (`MODU_TYPE`); `field_wells.json` har `rigType` og `fixedMove` for dette.
+Filtre: år (`df`/`dt`), visning per brønn / snitt per operatør (`dv`, med minste antall
+brønnbaner `dn`, standard 5), type (`dc`), formål (`dp`), hovedbrønn/sidesteg (`db`),
+rigg-type (`dr`) og minste varighet (`dm`, standard 5 dager). Operatørsnittet er samlet
+boret ÷ samlede dager; medianbrønnen vises ved siden av. Kortet har «+ PPT» som ekte
+PowerPoint-graf (`pptCardSpecs.drillPerf`: uthevet operatør som egen stablet serie, median
+som linje).
+
+**Netto/brutto påvist volum (Company → Exploration og NCS → Exploration):** veksleren
+*Wells / Net discovered volume* (`cv=1`) og *Wells / Discovered volume* (`nv=1`). Samme
+brønner og år som brønngrafen, men hver funnbrønn teller volumet av alle funn påvist i
+sidestegene (`explFoundVolume`), for selskapet ganget med andelen i brønnen på
+spuddatoen. `discoveryVolume` gir funnets egne betingede ressurser, pluss feltets
+utvinnbare volum for funnet som ble feltet (eldste funn med feltnavnet som ikke er
+«Included in other discovery»); kartet bygges først når funn og feltreserver er lastet.
+Ingen funnrate i volumvisningen, og tabellen lister bare funnbrønner. Standardåret er
+siste år med volum, siden ferske funn ofte mangler ressursanslag. Nedtoningen av ikke-valgte
+år er merket `_noEst`, så PowerPoint-eksporten ikke gjør den om til «(estimate)»-serier.
