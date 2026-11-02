@@ -2457,6 +2457,7 @@ function applyHash() {
     if (q.get('np') === 'area') ncsF.prod = 'area';
     if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
     ncsF.wild = q.get('nw') === '1';
+    ncsF.vol = q.get('nv') === '1';
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
     if (['all', 'prod'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
@@ -3446,10 +3447,10 @@ let ncsSubView = 'production';
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'timeline'
 // · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, vol: false, year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', ec: 'employment', es: 'rev', inv: 'nom'});
-let ncsF = ncsDefaults();
-const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['year', 'ny'], ['rank', 'nk'],
+let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
+const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['vol', 'nv'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['ec', 'ne'], ['es', 'ns'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -3470,9 +3471,10 @@ function ncsFieldIds() {
   return [...ids];
 }
 
-function ncsSet(key, val) {
+async function ncsSet(key, val) {
   ncsF[key] = val;
   syncUrl();
+  if (key === 'vol' && val) await Promise.all([loadFieldReserves(), loadDiscoveries()]);
   if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
   drawChart();
 }
@@ -3495,7 +3497,7 @@ async function refreshNcs() {
   else if (v === 'creaming') await Promise.all([loadExploration(), loadFieldReserves(), loadDiscoveries()]);
   else if (v === 'economy') await loadSsb();
   else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
-  else if (v === 'exploration') await loadExploration();
+  else if (v === 'exploration') await Promise.all([loadExploration(), ...(ncsF.vol ? [loadFieldReserves(), loadDiscoveries()] : [])]);
   else if (v === 'investments') { if (!ncsCpi) ncsCpi = await fetchBundle('cpi'); }
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries(), loadProdForFields(ncsFieldIds())]);
   drawChart();
@@ -3743,7 +3745,7 @@ const ncsExplCat = w => w.found ? 'disc' : w.resKey === 'dry' ? 'dry' : 'other';
 
 function ncsExplWells() {
   return explWells.filter(w => w.state !== 'planned' && w.entry && (!ncsF.wild || w.purpose === 'WILDCAT'))
-    .map(w => ({w, year: w.entry.slice(0, 4)}));
+    .map(w => ({w, year: w.entry.slice(0, 4), vol: ncsF.vol ? explFoundVolume(w, 1) : null}));
 }
 
 function ncsPickYear(y) {
@@ -3756,17 +3758,21 @@ function ncsPickYear(y) {
 function drawNcsExploration() {
   const rows = ncsExplWells();
   const kind = ncsF.wild ? 'wildcats' : 'exploration wells';
-  const toggle = ncsPills('wild', [[false, 'All exploration wells'], [true, 'Wildcats only']]);
-  setChartTitle('Norwegian Continental Shelf · Exploration', `${ncsF.wild ? 'Wildcats' : 'Exploration wells'} per year · discovery rate`);
+  const toggle = ncsPills('vol', [[false, 'Wells'], [true, 'Discovered volume']])
+    + ncsPills('wild', [[false, 'All exploration wells'], [true, 'Wildcats only']]);
+  setChartTitle('Norwegian Continental Shelf · Exploration', ncsF.vol
+    ? `Discovered volume per year, ${ncsF.wild ? 'wildcats' : 'exploration wells'} · oil and gas · million boe`
+    : `${ncsF.wild ? 'Wildcats' : 'Exploration wells'} per year · discovery rate`);
   if (!rows.length) { setChartEmpty('No exploration wells available.'); ncsToggleAbove(toggle); setInfo(''); return; }
   const y0 = +rows.reduce((m, r) => r.year < m ? r.year : m, '9999');
   const y1 = Math.max(currentYear, +rows.reduce((m, r) => r.year > m ? r.year : m, '0'));
   const labels = [];
   for (let y = y0; y <= y1; y++) labels.push(String(y));
-  const per = Object.fromEntries(labels.map(y => [y, {disc: 0, dry: 0, other: 0, done: 0}]));
+  const per = Object.fromEntries(labels.map(y => [y, {disc: 0, dry: 0, other: 0, done: 0, oil: 0, gas: 0}]));
   rows.forEach(r => {
     const p = per[r.year];
     p[ncsExplCat(r.w)]++;
+    if (r.vol) { p.oil += r.vol.oil; p.gas += r.vol.gas; }
     if (r.w.state === 'completed') p.done++;
   });
   // Funnraten teller funnbrønner blant de avsluttede; en funnbrønn som
@@ -3779,10 +3785,17 @@ function drawNcsExploration() {
   explYearChart({
     toggle, labels, rate, selected: () => ncsF.year, onPick: ncsPickYear,
     per: Object.fromEntries(labels.map(y => [y, {disc: per[y].discDone, done: per[y].done}])),
-    stacks: NCS_EXPL_CAT.map(c => ({label: c.label, color: c.color, data: labels.map(y => per[y][c.key])})),
+    unit: ncsF.vol ? 'million boe' : 'wells',
+    stacks: ncsF.vol ? [
+      {label: 'Oil (liquids)', color: CMP_VOL_OIL, data: labels.map(y => +per[y].oil.toFixed(1))},
+      {label: 'Gas', color: CMP_VOL_GAS, data: labels.map(y => +per[y].gas.toFixed(1))},
+    ] : NCS_EXPL_CAT.map(c => ({label: c.label, color: c.color, data: labels.map(y => per[y][c.key])})),
   });
+  const totVol = ncsF.vol ? labels.reduce((t, y) => t + per[y].oil + per[y].gas, 0) : 0;
   const done = labels.reduce((t, y) => t + per[y].done, 0), disc = labels.reduce((t, y) => t + per[y].discDone, 0);
-  setInfo(`<strong>Wells:</strong> ${rows.length} ${kind}, sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${done ? (disc / done * 100).toFixed(0) : '—'} % overall (${disc} discoveries in ${done} completed wells) &nbsp;|&nbsp; <strong>Discovery</strong> = Sodir's discovery well flag; <strong>Other</strong> = shows, appraisal wells with hydrocarbons in a known discovery, and wells still drilling &nbsp;|&nbsp; <strong>Basis:</strong> Sodir exploration wellbores by spud year`);
+  setInfo(ncsF.vol
+    ? `<strong>Wells:</strong> ${rows.length} ${kind}, sidetracks merged &nbsp;|&nbsp; <strong>Discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe (gross) — each discovery well counts the recoverable volume of the discoveries it proved (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources); a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; <strong>Basis:</strong> Sodir exploration wellbores by spud year`
+    : `<strong>Wells:</strong> ${rows.length} ${kind}, sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${done ? (disc / done * 100).toFixed(0) : '—'} % overall (${disc} discoveries in ${done} completed wells) &nbsp;|&nbsp; <strong>Discovery</strong> = Sodir's discovery well flag; <strong>Other</strong> = shows, appraisal wells with hydrocarbons in a known discovery, and wells still drilling &nbsp;|&nbsp; <strong>Basis:</strong> Sodir exploration wellbores by spud year`);
   renderNcsExplTable(rows);
 }
 
@@ -3792,7 +3805,7 @@ function renderNcsExplTable(rows) {
   if (!list.length) { setChartTable(''); return; }
   const disc = list.filter(r => r.w.found).length, dry = list.filter(r => r.w.resKey === 'dry').length;
   setChartTable(explYearTableHtml(list,
-    `${ncsF.year} · ${list.length} ${ncsF.wild ? 'wildcats' : 'exploration wells'} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false));
+    `${ncsF.year} · ${list.length} ${ncsF.wild ? 'wildcats' : 'exploration wells'}${ncsF.vol ? ' (volumes in million boe, gross)' : ''} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false, 'Gross '));
 }
 
 // ── NCS: CREAMING ──
@@ -5044,13 +5057,8 @@ function cmpExplWells() {
     const share = w.partners.filter(p => want.has(p.name)).reduce((t, p) => t + p.share, 0);
     if (!op && !share) return;
     const row = {w, op, share, year: w.entry.slice(0, 4)};
-    if (cmpExplVol && w.found) {
-      // En brønn med sidesteg kan ha påvist flere funn (25/1-14: Omega, Alfa, Sigma NE …).
-      const ids = new Set(w.branches.filter(b => b.discoveryWell && b.discovery && b.discoveryId).map(b => b.discoveryId));
-      const f = share / 100, vol = {oil: 0, gas: 0};
-      ids.forEach(id => { const v = discoveryVolume(id); vol.oil += v.oil * f; vol.gas += v.gas * f; });
-      row.vol = vol;
-    } else if (cmpExplVol) row.vol = {oil: 0, gas: 0};
+    // En brønn med sidesteg kan ha påvist flere funn (25/1-14: Omega, Alfa, Sigma NE …).
+    if (cmpExplVol) row.vol = explFoundVolume(w, share / 100);
     out.push(row);
   });
   return out;
@@ -5077,7 +5085,7 @@ function drawCompaniesExploration() {
   const kind = 'exploration wells';
   const toggle = cmpExplModePills();
   const rows = cmpExplWells();
-  setChartTitle(`${title} · Exploration`, cmpExplVol ? `Net discovered volume per year, exploration wells · oil and gas · million boe · discovery rate`
+  setChartTitle(`${title} · Exploration`, cmpExplVol ? `Net discovered volume per year, exploration wells · oil and gas · million boe`
     : `Exploration wells per year · discovery rate`);
   if (!rows.length) {
     setChartEmpty(`No ${kind} found for ${esc(cmpStr)}.`);
@@ -5115,7 +5123,7 @@ function drawCompaniesExploration() {
     ],
   });
   const totVol = cmpExplVol ? Object.values(per).reduce((t, p) => t + p.oil + p.gas, 0) : 0;
-  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; ${cmpExplVol ? `<strong>Net discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe — each discovery well counts the discovery's recoverable volume (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources) times the company's interest in the well; a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; ` : ''}<strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
+  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; ${cmpExplVol ? `<strong>Net discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe — each discovery well counts the discovery's recoverable volume (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources) times the company's interest in the well; a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; ` : `<strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; `}<strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
   renderCmpExplTable(rows);
 }
 
@@ -5130,6 +5138,14 @@ const cmpExplModePills = () => `<div class="pill-group" style="margin-bottom:10p
 // produsert) eller betingede ressurser i et funn som ikke er felt ennå, delt
 // på olje (væske) og gass, millioner boe. Et felt med flere funn teller på det
 // eldste funnet. Sidesteg slått sammen, som ellers.
+// Funnvolumet til en gruppert brønn (alle funn påvist i sidestegene) ganger f.
+function explFoundVolume(w, f) {
+  const vol = {oil: 0, gas: 0};
+  if (!w.found) return vol;
+  new Set(w.branches.filter(b => b.discoveryWell && b.discovery && b.discoveryId).map(b => b.discoveryId))
+    .forEach(id => { const v = discoveryVolume(id); vol.oil += v.oil * f; vol.gas += v.gas * f; });
+  return vol;
+}
 let discVolMap = null;
 function discoveryVolume(id) {
   if (!discVolMap) {
@@ -5177,9 +5193,9 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
   lastLabels = labels;
   lastXTitle = 'Year';
   lastDatasets = stacks.map(st => ({label: st.label, data: st.data}))
-    .concat([{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}]);
+    .concat(vol ? [] : [{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}]);
   const legend = stacks.map(st => ({label: st.label, color: st.color}))
-    .concat([{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}]);
+    .concat(vol ? [] : [{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}]);
   document.getElementById('chartArea').innerHTML = `${toggle}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l => `
@@ -5192,8 +5208,8 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
     data: {labels, datasets: [
-      {type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
-       backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0},
+      ...(vol ? [] : [{type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
+       backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0}]),
       ...stacks.map(st => ({type: 'bar', label: st.label, data: st.data, stack: 's', order: 1,
         backgroundColor: ctx => dim(st.color, ctx.dataIndex), borderWidth: 0})),
     ]},
@@ -5218,7 +5234,7 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
         x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
         y: {stacked: true, beginAtZero: true, title: {display: true, text: vol ? unit + ', net' : 'wells', color: '#4a5568', font: {size: 10}},
             ticks: vol ? {font: {size: 9}} : {precision: 0, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
-        y1: {position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
+        y1: {display: !vol, position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
              ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
       },
     },
@@ -5228,14 +5244,14 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
 
 // Tabellen under grafen: brønnene i ett år. list: [{w, op, share}]. Med
 // withRole vises selskapenes rolle og andel (Companies); ellers ikke (NCS).
-function explYearTableHtml(list, caption, withRole) {
+function explYearTableHtml(list, caption, withRole, volPrefix = 'Net ') {
   const hasVol = list.some(r => r.vol);
   const fv = v => v ? v.toLocaleString('en', {maximumFractionDigits: 1}) : '—';
   return `
     <div class="pf-scroll"><table class="res-table ex-table">
       <caption>${caption}</caption>
       <thead><tr><th class="ex-l">Well</th>${withRole ? '<th class="ex-l">Role</th>' : ''}<th class="ex-l">Purpose</th><th class="ex-l">Result</th>
-        <th class="ex-l">Operator</th><th class="ex-l">Rig</th><th>Spudded</th>${hasVol ? '<th>Net oil</th><th>Net gas</th>' : ''}</tr></thead>
+        <th class="ex-l">Operator</th><th class="ex-l">Rig</th><th>Spudded</th>${hasVol ? `<th>${volPrefix}oil</th><th>${volPrefix}gas</th>` : ''}</tr></thead>
       <tbody>${list.map(({w, op, share, vol}) => `
         <tr class="ex-row" onclick="openWell(${w.id}, true)">
           <td class="ex-name"><strong>${esc(w.title)}</strong>${w.state !== 'completed' ? ` <span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}
