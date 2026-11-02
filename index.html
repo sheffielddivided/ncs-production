@@ -2253,7 +2253,6 @@ function stateToHash() {
     NCS_PARAMS.forEach(([k, p]) => { if (ncsF[k] !== dflt[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
   }
   if (topMode === 'companies' && companySubView === 'exploration') {
-    if (cmpExplWildcat) q.set('cw', '1');
     if (cmpExplVol) q.set('cv', '1');
     if (cmpExplYear) q.set('cy', cmpExplYear);
   }
@@ -2468,7 +2467,6 @@ function applyHash() {
     if (q.get('ni') === 'real') ncsF.inv = 'real';
   }
   if (topMode === 'companies') {
-    cmpExplWildcat = q.get('cw') === '1';
     if (/^\d{4}$/.test(q.get('cy') || '')) cmpExplYear = q.get('cy');
     cmpExplVol = q.get('cv') === '1';
   }
@@ -5030,7 +5028,6 @@ function drawCompaniesOperated() {
 // Funnraten er andelen funnbrønner (Sodirs wlbDiscoveryWell) blant de
 // avsluttede brønnene i året. Brønner som fortsatt bores er med i stolpene,
 // men ikke i nevneren.
-let cmpExplWildcat = false;
 let cmpExplVol = false;   // true: netto påviste volumer per år i stedet for brønner
 let cmpExplYear = null;   // året brønnlisten under grafen viser
 const CMP_EXPL_OP = 'rgba(0,48,87,0.85)';
@@ -5043,7 +5040,6 @@ function cmpExplWells() {
   const out = [];
   explWells.forEach(w => {
     if (w.state === 'planned' || !w.entry) return;
-    if (cmpExplWildcat && w.purpose !== 'WILDCAT') return;
     const op = want.has(w.operator);
     const share = w.partners.filter(p => want.has(p.name)).reduce((t, p) => t + p.share, 0);
     if (!op && !share) return;
@@ -5064,12 +5060,6 @@ async function setCmpExplVol(v) {
   drawCompaniesExploration();
 }
 
-function setCmpExplWildcat(v) {
-  cmpExplWildcat = v;
-  syncUrl();
-  drawCompaniesExploration();
-}
-
 function setCmpExplYear(y) {
   cmpExplYear = y;
   syncUrl();
@@ -5081,13 +5071,11 @@ function drawCompaniesExploration() {
   const companies = [...selectedCompanyNames];
   const cmpStr = companies.join(', ');
   const title = companies.length === 1 ? companies[0] : companies.length + ' companies';
-  const kind = cmpExplWildcat ? 'wildcats' : 'exploration wells';
-  const toggle = cmpExplModePills() + `<div class="pill-group" style="margin-bottom:10px;width:max-content">
-      <button class="pill-btn${cmpExplWildcat ? '' : ' active'}" onclick="setCmpExplWildcat(false)">All exploration wells</button>
-      <button class="pill-btn${cmpExplWildcat ? ' active' : ''}" onclick="setCmpExplWildcat(true)">Wildcats only</button></div>`;
+  const kind = 'exploration wells';
+  const toggle = cmpExplModePills();
   const rows = cmpExplWells();
-  setChartTitle(`${title} · Exploration`, cmpExplVol ? `Net discovered volume per year, ${cmpExplWildcat ? 'wildcats' : 'exploration wells'} · oil and gas · million boe · discovery rate`
-    : `${cmpExplWildcat ? 'Wildcats' : 'Exploration wells'} per year · discovery rate`);
+  setChartTitle(`${title} · Exploration`, cmpExplVol ? `Net discovered volume per year, exploration wells · oil and gas · million boe · discovery rate`
+    : `Exploration wells per year · discovery rate`);
   if (!rows.length) {
     setChartEmpty(`No ${kind} found for ${esc(cmpStr)}.`);
     document.getElementById('chartArea').insertAdjacentHTML('afterbegin', toggle);
@@ -5261,7 +5249,7 @@ function renderCmpExplTable(rows) {
   const nOp = list.filter(r => r.op).length;
   const disc = list.filter(r => r.w.found).length;
   setChartTable(explYearTableHtml(list,
-    `${cmpExplYear} · ${list.length} ${cmpExplWildcat ? 'wildcats' : 'exploration wells'}${cmpExplVol ? ' (net volumes in million boe)' : ''} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}`, true));
+    `${cmpExplYear} · ${list.length} exploration wells${cmpExplVol ? ' (net volumes in million boe)' : ''} · ${nOp} operated · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'}`, true));
 }
 
 // ── FIELDS: OIL & GAS ────────────────────────────────────────────────────────
