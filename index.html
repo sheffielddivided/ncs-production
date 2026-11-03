@@ -2655,7 +2655,9 @@ async function refreshCompanies() {
   showSpinner();
   // Reservevisningen trenger eierandelene, men ikke produksjonstidsseriene.
   if (companySubView === 'exploration') {
-    await Promise.all([loadExploration(), ...(cmpExplVol ? [loadFieldReserves(), loadDiscoveries()] : [])]);
+    // Volumvisningen trenger også produksjon og eierandeler til produksjonslinjen.
+    await Promise.all([loadExploration(), ...(cmpExplVol
+      ? [loadFieldReserves(), loadDiscoveries(), loadProdForFields(relevantIds), loadLicForFields(relevantIds)] : [])]);
     drawChart();
     return;
   }
@@ -5094,11 +5096,9 @@ function cmpExplWells() {
   return out;
 }
 
-async function setCmpExplVol(v) {
+function setCmpExplVol(v) {
   cmpExplVol = v;
-  syncUrl();
-  if (v) await Promise.all([loadFieldReserves(), loadDiscoveries()]);
-  drawCompaniesExploration();
+  refresh();   // laster det volumvisningen trenger (funn, reserver, produksjon, eierandeler)
 }
 
 function setCmpExplYear(y) {
@@ -5115,7 +5115,7 @@ function drawCompaniesExploration() {
   const kind = 'exploration wells';
   const toggle = cmpExplModePills();
   const rows = cmpExplWells();
-  setChartTitle(`${title} · Exploration`, cmpExplVol ? `Net discovered volume per year, exploration wells · oil and gas · million boe`
+  setChartTitle(`${title} · Exploration`, cmpExplVol ? `Net discovered volume per year, exploration wells · oil and gas · net produced volume · million boe`
     : `Exploration wells per year · discovery rate`);
   if (!rows.length) {
     setChartEmpty(`No ${kind} found for ${esc(cmpStr)}.`);
@@ -5150,6 +5150,7 @@ function drawCompaniesExploration() {
   explYearChart({
     toggle, labels, per, rate, selected: () => cmpExplYear, onPick: setCmpExplYear,
     unit: cmpExplVol ? 'million boe' : 'wells', yTitle: cmpExplVol ? 'million boe, net' : 'wells',
+    lines: cmpExplVol ? cmpProducedLine(labels) : [],
     stacks: cmpExplVol ? [
       {label: 'Oil (liquids)', color: CMP_VOL_OIL, data: labels.map(y => +per[y].oil.toFixed(1))},
       {label: 'Gas', color: CMP_VOL_GAS, data: labels.map(y => +per[y].gas.toFixed(1))},
@@ -5159,8 +5160,23 @@ function drawCompaniesExploration() {
     ],
   });
   const totVol = cmpExplVol ? Object.values(per).reduce((t, p) => t + p.oil + p.gas, 0) : 0;
-  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; ${cmpExplVol ? `<strong>Net discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe — each discovery well counts the discovery's recoverable volume (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources) times the company's interest in the well; a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; ` : `<strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; `}<strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
+  setInfo(`<strong>Companies:</strong> ${esc(cmpStr)} &nbsp;|&nbsp; <strong>Wells:</strong> ${rows.length} ${kind} (${nOp} operated, ${rows.length - nOp} non-operated), sidetracks merged &nbsp;|&nbsp; ${cmpExplVol ? `<strong>Net discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe — each discovery well counts the discovery's recoverable volume (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources) times the company's interest in the well; dashed line = the company's net produced volume per year (equity share of total OE, current year left out); a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; ` : `<strong>Discovery rate:</strong> ${tot.done ? (tot.disc / tot.done * 100).toFixed(0) : '—'} % overall (${tot.disc} discoveries in ${tot.done} completed wells) &nbsp;|&nbsp; `}<strong>Basis:</strong> Sodir wellbores by spud year; interests as of the spud date, under the company name of that time`);
   renderCmpExplTable(rows);
+}
+
+// Selskapets netto produksjon per år (total o.e., egenandel) som tynn stiplet
+// linje i volumgrafen. Månedstall × eierandel midt i måneden, som i Oil & Gas.
+// Inneværende år er ufullstendig og utelates.
+function cmpProducedLine(labels) {
+  const want = new Set(labels.map(Number)), out = {};
+  [...selectedCompanyNames].forEach(cmp => getFieldsForCompany(cmp).forEach(id => (fieldProdCache[id] || []).forEach(r => {
+    const a = r.attributes;
+    if (!(a.prfMonth > 0) || !want.has(a.prfYear) || a.prfYear >= currentYear) return;
+    const share = getShare(id, midDate(a.prfYear, a.prfMonth), cmp) / 100;
+    if (share) out[a.prfYear] = (out[a.prfYear] || 0) + (a.prfPrdOeNetMillSm3 || 0) * BBL_PER_SM3 * share;
+  })));
+  if (!Object.keys(out).length) return [];
+  return [{label: 'Net produced (total OE)', color: NCS_PROD_LINE, data: labels.map(y => out[y] != null ? +out[y].toFixed(1) : null)}];
 }
 
 const cmpExplModePills = () => `<div class="pill-group" style="margin-bottom:10px;width:max-content">

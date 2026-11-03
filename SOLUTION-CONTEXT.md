@@ -2721,3 +2721,6 @@ live-modus uten produksjonsbundelen). NCS → Exploration har ikke lenger wildca
 (`nw` i gamle lenker ignoreres).
 Volumgrafen har en startårvelger (`ncsF.from`, `n0=`, standard 2000); brønngrafen viser
 fortsatt hele historikken.
+Company-volumgrafen har tilsvarende stiplet linje for selskapets netto produksjon per år
+(`cmpProducedLine`: månedlig o.e. × eierandel midt i måneden, inneværende år utelatt);
+visningen laster derfor også produksjon og eierandeler for selskapets felt.
