@@ -2460,7 +2460,6 @@ function applyHash() {
     ncsF = ncsDefaults();
     if (q.get('np') === 'area') ncsF.prod = 'area';
     if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
-    ncsF.wild = q.get('nw') === '1';
     ncsF.vol = q.get('nv') === '1';
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
     if (['all', 'prod'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
@@ -3446,15 +3445,15 @@ const NCS_TABS = [
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
-// prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · wild: bare wildcats
+// prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · vol: påvist volum i letegrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'timeline'
 // · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', res: 'oe', wild: false, vol: false, year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', res: 'oe', vol: false, year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', ec: 'employment', es: 'rev', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
-const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['wild', 'nw'], ['vol', 'nv'], ['year', 'ny'], ['rank', 'nk'],
+const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['vol', 'nv'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['ec', 'ne'], ['es', 'ns'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -3748,8 +3747,20 @@ const NCS_EXPL_CAT = [
 const ncsExplCat = w => w.found ? 'disc' : w.resKey === 'dry' ? 'dry' : 'other';
 
 function ncsExplWells() {
-  return explWells.filter(w => w.state !== 'planned' && w.entry && (!ncsF.wild || w.purpose === 'WILDCAT'))
+  return explWells.filter(w => w.state !== 'planned' && w.entry)
     .map(w => ({w, year: w.entry.slice(0, 4), vol: ncsF.vol ? explFoundVolume(w, 1) : null}));
+}
+
+// Årlig produsert volum på sokkelen (total o.e.) som tynn stiplet linje i
+// volumgrafen, til sammenligning med det som ble påvist. Inneværende år er
+// ufullstendig og utelates. Mangler produksjonsbundelen (live-modus), vises
+// ingen linje.
+const NCS_PROD_LINE = 'rgba(26,35,50,0.75)';
+function ncsProducedLine(labels) {
+  if (!bundle.production) return [];
+  const prod = ncsAnnualProduction('oe');
+  return [{label: 'Produced (total OE)', color: NCS_PROD_LINE,
+    data: labels.map(y => +y < currentYear && prod[y] ? +prod[y].toFixed(1) : null)}];
 }
 
 function ncsPickYear(y) {
@@ -3761,12 +3772,11 @@ function ncsPickYear(y) {
 
 function drawNcsExploration() {
   const rows = ncsExplWells();
-  const kind = ncsF.wild ? 'wildcats' : 'exploration wells';
-  const toggle = ncsPills('vol', [[false, 'Wells'], [true, 'Discovered volume']])
-    + ncsPills('wild', [[false, 'All exploration wells'], [true, 'Wildcats only']]);
+  const kind = 'exploration wells';
+  const toggle = ncsPills('vol', [[false, 'Wells'], [true, 'Discovered volume']]);
   setChartTitle('Norwegian Continental Shelf · Exploration', ncsF.vol
-    ? `Discovered volume per year, ${ncsF.wild ? 'wildcats' : 'exploration wells'} · oil and gas · million boe`
-    : `${ncsF.wild ? 'Wildcats' : 'Exploration wells'} per year · discovery rate`);
+    ? 'Discovered volume per year, exploration wells · oil and gas · produced volume · million boe'
+    : 'Exploration wells per year · discovery rate');
   if (!rows.length) { setChartEmpty('No exploration wells available.'); ncsToggleAbove(toggle); setInfo(''); return; }
   const y0 = +rows.reduce((m, r) => r.year < m ? r.year : m, '9999');
   const y1 = Math.max(currentYear, +rows.reduce((m, r) => r.year > m ? r.year : m, '0'));
@@ -3794,6 +3804,7 @@ function drawNcsExploration() {
     toggle, labels, rate, selected: () => ncsF.year, onPick: ncsPickYear,
     per: Object.fromEntries(labels.map(y => [y, {disc: per[y].discDone, done: per[y].done}])),
     unit: ncsF.vol ? 'million boe' : 'wells', yTitle: ncsF.vol ? 'million boe, gross' : 'wells',
+    lines: ncsF.vol ? ncsProducedLine(labels) : [],
     stacks: ncsF.vol ? [
       {label: 'Oil (liquids)', color: CMP_VOL_OIL, data: labels.map(y => +per[y].oil.toFixed(1))},
       {label: 'Gas', color: CMP_VOL_GAS, data: labels.map(y => +per[y].gas.toFixed(1))},
@@ -3802,7 +3813,7 @@ function drawNcsExploration() {
   const totVol = ncsF.vol ? labels.reduce((t, y) => t + per[y].oil + per[y].gas, 0) : 0;
   const done = labels.reduce((t, y) => t + per[y].done, 0), disc = labels.reduce((t, y) => t + per[y].discDone, 0);
   setInfo(ncsF.vol
-    ? `<strong>Wells:</strong> ${rows.length} ${kind}, sidetracks merged &nbsp;|&nbsp; <strong>Discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe (gross) — each discovery well counts the recoverable volume of the discoveries it proved (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources); a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; <strong>Basis:</strong> Sodir exploration wellbores by spud year`
+    ? `<strong>Wells:</strong> ${rows.length} ${kind}, sidetracks merged &nbsp;|&nbsp; <strong>Discovered:</strong> ${Math.round(totVol).toLocaleString('en')} million boe (gross) — each discovery well counts the recoverable volume of the discoveries it proved (fields: latest Sodir estimate incl. produced; undeveloped discoveries: contingent resources); a field's volume counts on the discovery that became the field, and newer discoveries tied to a field count their own contingent resources; oil = liquids &nbsp;|&nbsp; <strong>Dashed line:</strong> NCS produced volume per year, total OE (Sodir production data; the current year is incomplete and left out) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir exploration wellbores by spud year`
     : `<strong>Wells:</strong> ${rows.length} ${kind}, sidetracks merged &nbsp;|&nbsp; <strong>Discovery rate:</strong> ${done ? (disc / done * 100).toFixed(0) : '—'} % overall (${disc} discoveries in ${done} completed wells) &nbsp;|&nbsp; <strong>Discovery</strong> = Sodir's discovery well flag; <strong>Other</strong> = shows, appraisal wells with hydrocarbons in a known discovery, and wells still drilling &nbsp;|&nbsp; <strong>Basis:</strong> Sodir exploration wellbores by spud year`);
   renderNcsExplTable(rows);
 }
@@ -3814,7 +3825,7 @@ function renderNcsExplTable(rows) {
   const disc = list.filter(r => r.w.found).length, dry = list.filter(r => r.w.resKey === 'dry').length;
   setChartTable(explYearTableHtml(list, ncsF.vol
     ? `${ncsF.year} · ${list.length} discovery ${list.length === 1 ? 'well' : 'wells'} · ${explVolSum(list)} million boe discovered (gross)`
-    : `${ncsF.year} · ${list.length} ${ncsF.wild ? 'wildcats' : 'exploration wells'} · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false, 'Gross '));
+    : `${ncsF.year} · ${list.length} exploration wells · ${disc} ${disc === 1 ? 'discovery' : 'discoveries'} · ${dry} dry`, false, 'Gross '));
 }
 
 // ── NCS: CREAMING ──
@@ -5209,15 +5220,17 @@ function discoveryVolume(id) {
 // som linje på høyre akse. per[år] må ha done og disc til verktøytipset.
 // Valgt år (selected()) markeres ved at de andre stolpene tones ned; et
 // klikk kaller onPick med året.
-function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells', yTitle}) {
+function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells', yTitle, lines = []}) {
   const vol = unit !== 'wells', f1 = v => v.toLocaleString('en', {maximumFractionDigits: 1});
   setChartTable(''); setProfile('');
   lastLabels = labels;
   lastXTitle = 'Year';
   lastDatasets = stacks.map(st => ({label: st.label, data: st.data}))
-    .concat(vol ? [] : [{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}]);
+    .concat(vol ? [] : [{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}])
+    .concat(lines.map(l => ({label: `${l.label}, ${unit}`, data: l.data.map(v => v ?? '')})));
   const legend = stacks.map(st => ({label: st.label, color: st.color}))
-    .concat(vol ? [] : [{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}]);
+    .concat(vol ? [] : [{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}])
+    .concat(lines.map(l => ({label: l.label + ' (dashed)', color: l.color})));
   document.getElementById('chartArea').innerHTML = `${toggle}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l => `
@@ -5231,7 +5244,9 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
     data: {labels, datasets: [
       ...(vol ? [] : [{type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
-       backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0}]),
+       backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0, _rate: true}]),
+      ...lines.map(l => ({type: 'line', label: l.label, data: l.data, borderColor: l.color, backgroundColor: l.color,
+        borderWidth: 1.25, borderDash: [4, 3], pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false, order: 0})),
       // _noEst: nedtoningen markerer valgt år, ikke estimater; PowerPoint-eksporten skal ikke lage «(estimate)»-serier av den.
       ...stacks.map(st => ({type: 'bar', label: st.label, data: st.data, stack: 's', order: 1, _noEst: true,
         backgroundColor: ctx => dim(st.color, ctx.dataIndex), borderWidth: 0})),
@@ -5247,10 +5262,12 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
       plugins: {
         legend: {display: false},
         tooltip: {callbacks: {
-          label: ctx => ctx.dataset.type === 'line'
+          label: ctx => ctx.dataset.type === 'line' && !ctx.dataset._rate
+            ? (ctx.parsed.y == null ? null : ` ${ctx.dataset.label}: ${f1(ctx.parsed.y)} ${unit}`)
+            : ctx.dataset.type === 'line'
             ? (ctx.parsed.y == null ? null : ` Discovery rate: ${ctx.parsed.y.toFixed(0)} % (${per[labels[ctx.dataIndex]].disc} of ${per[labels[ctx.dataIndex]].done} completed)`)
             : ` ${ctx.dataset.label}: ${vol ? f1(ctx.parsed.y) : ctx.parsed.y}`,
-          footer: items => vol ? `Total: ${f1(totalOf(items[0].dataIndex))} ${unit}` : `Total: ${totalOf(items[0].dataIndex)} wells`,
+          footer: items => vol ? `Discovered: ${f1(totalOf(items[0].dataIndex))} ${unit}` : `Total: ${totalOf(items[0].dataIndex)} wells`,
         }},
       },
       scales: {

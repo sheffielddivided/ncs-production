@@ -2715,3 +2715,7 @@ utvinnbare volum for funnet som ble feltet (eldste funn med feltnavnet som ikke 
 Ingen funnrate i volumvisningen, og tabellen lister bare funnbrønner. Standardåret er
 siste år med volum, siden ferske funn ofte mangler ressursanslag. Nedtoningen av ikke-valgte
 år er merket `_noEst`, så PowerPoint-eksporten ikke gjør den om til «(estimate)»-serier.
+NCS-volumgrafen har en tynn stiplet linje for årlig produsert volum på sokkelen (total o.e.,
+`ncsProducedLine` fra `ncsAnnualProduction('oe')`, inneværende år utelatt; ingen linje i
+live-modus uten produksjonsbundelen). NCS → Exploration har ikke lenger wildcat-veksler
+(`nw` i gamle lenker ignoreres).
