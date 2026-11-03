@@ -379,6 +379,10 @@
     .res-sum div{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);}
     .res-sum strong{color:#1a2332;font-variant-numeric:tabular-nums;}
     .res-sum .res-sum-total{border-top:1px solid var(--border);margin-top:4px;padding-top:6px;color:var(--navy);}
+    .tbl-sec{font-size:0.86rem;font-weight:700;color:var(--navy);margin:22px 2px 8px;}
+    .tbl-sec:first-child{margin-top:6px;}
+    .tbl-sec small{display:block;font-size:0.7rem;font-weight:400;color:var(--muted);margin-top:2px;}
+    .res-acct th{white-space:normal;vertical-align:bottom;}
     .res-sum p{margin:8px 0 0;font-size:0.68rem;color:var(--muted);line-height:1.45;}
     .grp-row{display:flex;align-items:center;gap:6px;padding:0 2px 7px;}
     .grp-label{font-size:0.68rem;color:var(--muted);margin-right:2px;}
@@ -2674,8 +2678,8 @@ async function refreshCompanies() {
     return;
   }
   if (companySubView === 'reserves') {
-    // Funndataene brukes av tabellen under reservetabellen.
-    await Promise.all([loadFieldReserves(), loadDiscoveries()]);
+    // Funndataene brukes av tabellen under reservetabellen; produksjonen av reserveregnskapet.
+    await Promise.all([loadFieldReserves(), loadDiscoveries(), loadProdForFields(relevantIds), loadLicForFields(relevantIds)]);
     drawChart();
     return;
   }
@@ -5167,14 +5171,20 @@ function drawCompaniesExploration() {
 // Selskapets netto produksjon per år (total o.e., egenandel) som tynn stiplet
 // linje i volumgrafen. Månedstall × eierandel midt i måneden, som i Oil & Gas.
 // Inneværende år er ufullstendig og utelates.
-function cmpProducedLine(labels) {
-  const want = new Set(labels.map(Number)), out = {};
-  [...selectedCompanyNames].forEach(cmp => getFieldsForCompany(cmp).forEach(id => (fieldProdCache[id] || []).forEach(r => {
+// Netto produksjon per hele år (million boe o.e.) for de valgte selskapene.
+// Brukes av produksjonslinjen her og av reserveregnskapet i Reserves.
+function companyNetProduction(companies) {
+  const out = {};
+  companies.forEach(cmp => getFieldsForCompany(cmp).forEach(id => (fieldProdCache[id] || []).forEach(r => {
     const a = r.attributes;
-    if (!(a.prfMonth > 0) || !want.has(a.prfYear) || a.prfYear >= currentYear) return;
+    if (!(a.prfMonth > 0) || a.prfYear >= currentYear) return;
     const share = getShare(id, midDate(a.prfYear, a.prfMonth), cmp) / 100;
     if (share) out[a.prfYear] = (out[a.prfYear] || 0) + (a.prfPrdOeNetMillSm3 || 0) * BBL_PER_SM3 * share;
   })));
+  return out;
+}
+function cmpProducedLine(labels) {
+  const out = companyNetProduction([...selectedCompanyNames]);
   if (!Object.keys(out).length) return [];
   return [{label: 'Net produced (total OE)', color: NCS_PROD_LINE, data: labels.map(y => out[y] != null ? +out[y].toFixed(1) : null)}];
 }
@@ -8767,8 +8777,54 @@ function drawCompaniesReserves() {
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
   const lastYear = years[years.length - 1];
   const reservesOe = liquids[liquids.length - 1] + gas[gas.length - 1];
-  setChartTable(renderReserveTableByHub(series, companies, lastYear)
-              + companyDiscoveryTable(companies, reservesOe));
+  const closing = Object.fromEntries(years.map((y, i) => [y, liquids[i] + gas[i]]));
+  // Rekkefølge under grafen: reserveregnskapet, så oppsummeringen for siste
+  // årgang, så detaljlistene per felt og per funn.
+  const disc = companyDiscoveryTable(companies, reservesOe, {noSum: true});
+  setChartTable(
+      reserveAccountingHtml(closing, companyNetProduction(companies))
+    + `<h3 class="tbl-sec">Reserves and resources, ${lastYear}<small>Equity-adjusted remaining reserves (Sodir estimate per 31 Dec ${lastYear}) and contingent resources in undeveloped discoveries (current estimate)</small></h3>`
+    + companyResSummary(companies, reservesOe)
+    + `<h3 class="tbl-sec">Remaining reserves per field, ${lastYear}</h3>`
+    + renderReserveTableByHub(series, companies, lastYear)
+    + (disc ? `<h3 class="tbl-sec">Contingent resources per discovery</h3>${disc}` : ''));
+}
+
+// Reserveregnskap per år: reserver 1. januar (= forrige årgang per 31.12),
+// netto produksjon i året, netto tilgang/revisjoner (beregnet: slutt − start +
+// produksjon) og reserver 31. desember. Nøkkeltall: R/P = sluttreserver ÷ årets
+// produksjon (år), RRR = netto tilgang ÷ årets produksjon. Kjøp og salg av
+// andeler havner i netto tilgang, siden reservene er egenandelsjustert per 31.12.
+function reserveAccountingHtml(closing, prod) {
+  const ys = Object.keys(closing).map(Number).sort((a, b) => a - b)
+    // Bare år der selskapet hadde reserver ved inngangen; ellers blir RRR meningsløs (oppstart, ny selskapsenhet).
+    .filter(y => closing[y - 1] > 0 && prod[y] > 0);
+  if (!ys.length) return '';
+  const n = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const rows = ys.map(y => {
+    const open = closing[y - 1], close = closing[y], p = prod[y], add = close - open + p;
+    return {y, open, close, p, add, rp: close / p, rrr: add / p * 100};
+  });
+  const LIMIT = 10;
+  const body = rows.slice().reverse().map((r, i) => `<tr${i >= LIMIT ? ' class="more-row" hidden' : ''}>
+      <td>${r.y}</td><td>${n(r.open)}</td><td>${n(r.p)}</td><td${r.add < 0 ? ' style="color:#b42318"' : ''}>${n(r.add)}</td>
+      <td><strong>${n(r.close)}</strong></td><td>${r.rp.toFixed(1)}</td><td${r.rrr < 100 ? ' style="color:#b42318"' : ''}>${(Math.round(r.rrr) || 0)} %</td></tr>`).join('');
+  const sp = rows.reduce((t, r) => t + r.p, 0), sa = rows.reduce((t, r) => t + r.add, 0);
+  const first = rows[0], last = rows[rows.length - 1];
+  return `<h3 class="tbl-sec">Reserve accounting<small>Equity-adjusted · million boe · newest year first</small></h3>
+    <table class="res-table res-acct">
+      <thead><tr><th>Year</th><th>Reserves 1 Jan</th><th>Produced</th><th>Net additions / revisions</th><th>Reserves 31 Dec</th>
+        <th title="Reserve life: reserves at year end ÷ production in the year">Reserve life (R/P), years</th>
+        <th title="Reserve replacement ratio: net additions/revisions ÷ production in the year">RRR</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr class="total-row"><td>${first.y}–${last.y}</td><td>${n(first.open)}</td><td>${n(sp)}</td><td>${n(sa)}</td>
+        <td>${n(last.close)}</td><td>${last.rp.toFixed(1)}</td><td>${(Math.round(sa / sp * 100) || 0)} %</td></tr></tfoot>
+    </table>${rows.length > LIMIT ? `<button class="grp-btn ex-more" onclick="showAllRows(this)">Show all ${rows.length} years</button>` : ''}
+    <div class="pf-map-note" style="margin:6px 2px 0">Reserves 31 Dec are Sodir's remaining reserves for each vintage, weighted by the companies'
+      interest at year end; reserves 1 Jan are the previous year's closing figure. Produced = net production in the year (monthly total OE ×
+      interest). Net additions / revisions = reserves 31 Dec − reserves 1 Jan + produced, so it also includes acquisitions and divestments.
+      Reserve life (R/P) = reserves 31 Dec ÷ produced. Reserve replacement ratio (RRR) = net additions / revisions ÷ produced; below 100 % (red)
+      means reserves were not replaced. The total row covers the whole period (RRR = sum of additions ÷ sum of production).</div>`;
 }
 
 // Tabell under grafen: reserver per felt, gruppert under huben feltet tilhører.
@@ -9045,8 +9101,8 @@ function renderReserveTableByHub(series, companies, year) {
 // reservetabellen. Reserver og ressurser er ikke samme type tall — det ene
 // har produksjonsvedtak, det andre ikke — så de holdes i hver sin tabell med
 // en eksplisitt oppsummering mellom.
-function companyDiscoveryTable(companies, reservesOe, opts = {}) {
-  if (!allDiscoveries.length) return '';
+// Selskapenes andel av betingede ressurser per funn (rader til reserveTableHtml).
+function companyDiscoveryGroups(companies, opts = {}) {
   const want = new Set(companies);
   const groups = [];
   allDiscoveries.forEach(d => {
@@ -9059,11 +9115,14 @@ function companyDiscoveryTable(companies, reservesOe, opts = {}) {
                  ...(opts.link ? {discoveryId: d.id} : {}),
                  liq: v.liq*BBL_PER_SM3*f, gas: v.gas*BBL_PER_SM3*f, oe: v.oe*BBL_PER_SM3*f});
   });
-  if (!groups.length) return '';
+  return groups;
+}
 
-  const resOe = groups.reduce((t, g) => t + g.oe, 0);
+// Oppsummeringen: reserver, betingede ressurser og sum.
+function companyResSummary(companies, reservesOe) {
+  const resOe = companyDiscoveryGroups(companies).reduce((t, g) => t + g.oe, 0);
   const n = v => v.toLocaleString('en', {minimumFractionDigits:1, maximumFractionDigits:1});
-  const sum = `
+  return `
     <div class="res-sum">
       <div><span>Remaining reserves</span><strong>${n(reservesOe)}</strong></div>
       <div><span>Contingent resources</span><strong>${n(resOe)}</strong></div>
@@ -9071,7 +9130,15 @@ function companyDiscoveryTable(companies, reservesOe, opts = {}) {
       <p>Reserves have a production decision; contingent resources do not. The two
          are not directly comparable and the total is a sum, not a forecast.</p>
     </div>`;
-  return sum + reserveTableHtml(groups, 'Discovery',
+}
+
+// opts.noSum: bare funntabellen, uten oppsummeringen foran (Reserves-visningen
+// viser oppsummeringen for seg selv under egen overskrift).
+function companyDiscoveryTable(companies, reservesOe, opts = {}) {
+  if (!allDiscoveries.length) return '';
+  const groups = companyDiscoveryGroups(companies, opts);
+  if (!groups.length) return '';
+  return (opts.noSum ? '' : companyResSummary(companies, reservesOe)) + reserveTableHtml(groups, 'Discovery',
     'Contingent resources in undeveloped discoveries · million boe · equity-adjusted · Sodir resource classes 4F, 5F and 7F',
     {shareHead: 'Share', limit: opts.limit});
 }

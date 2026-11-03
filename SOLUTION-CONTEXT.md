@@ -2724,3 +2724,13 @@ fortsatt hele historikken.
 Company-volumgrafen har tilsvarende stiplet linje for selskapets netto produksjon per år
 (`cmpProducedLine`: månedlig o.e. × eierandel midt i måneden, inneværende år utelatt);
 visningen laster derfor også produksjon og eierandeler for selskapets felt.
+
+**Company → Reserves: reserveregnskap.** Rett under grafen: per år reserver 1. januar
+(forrige årgangs 31.12-tall), netto produksjon (`companyNetProduction`: månedlig o.e. ×
+eierandel), netto tilgang/revisjoner (beregnet: slutt − start + produksjon, inkluderer
+kjøp/salg av andeler) og reserver 31. desember, med Reserve life (R/P = slutt ÷
+produksjon) og RRR (netto tilgang ÷ produksjon). Bare år der selskapet hadde reserver ved
+inngangen; nyeste år først, ti år synlige, totalrad for perioden. Deretter, med egne
+overskrifter: oppsummeringen «Reserves and resources, <år>» (`companyResSummary`),
+reserver per felt og betingede ressurser per funn (`companyDiscoveryTable(..., {noSum: true})`).
+Selskapsprofilen bruker fortsatt `companyDiscoveryTable` med oppsummeringen foran.
