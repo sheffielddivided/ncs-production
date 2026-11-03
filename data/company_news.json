@@ -70,9 +70,21 @@
    "company": "A/S Norske Shell",
    "title": "Nyhetsoversikt | Shell Norge",
    "n": 21
+  },
+  "https://newsweb.oslobors.no/search?category=&issuer=8376": {
+   "company": "Aker BP ASA",
+   "title": "NewsWeb · Aker BP ASA",
+   "n": 63
   }
  },
  "items": [
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Ex dividend USD 0.6615 today",
+   "u": "https://newsweb.oslobors.no/message/685411",
+   "d": "2026-11-03",
+   "s": "Ex date"
+  },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Financial calendar",
@@ -123,6 +135,20 @@
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Third quarter 2026 results",
+   "u": "https://newsweb.oslobors.no/message/685038",
+   "d": "2026-10-29",
+   "s": "Half year financial report"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Key information related to cash dividend",
+   "u": "https://newsweb.oslobors.no/message/685037",
+   "d": "2026-10-29",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
    "t": "Dobler gassfunn i Nordsjøen - Equinor",
    "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTE5kZ295alZPSXNST3VVaUN2aV9Pb3Z1RzZPYXBBZkhWOWdvS0FrdVF2UE5seGotaFVRdEtDdDlqU01aeWdCZzZrRE5FcVBhVjdtbzFiS3NlTlNvWDRGc212b0ZpajNXVWVPN2JnQnI2UHZ2bGN6cmtNUzl0RQ?oc=5",
@@ -142,6 +168,13 @@
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp--key-information-related-to-cash-dividend,c4416745",
    "d": "2026-10-29",
    "s": "The following sets out the cash dividends to be paid by Aker BP in the fourth quarter of 2026: Dividend amount: USD 0.6615 (NOK 6.14642) per share Declared currency: USD Last day of trading including right: 2 November 2026 Ex-date: 3 November 2026 Record date: 4 November 2026 Payment date: 12 …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP completes annual employee share programme",
+   "u": "https://newsweb.oslobors.no/message/685028",
+   "d": "2026-10-28",
+   "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -240,6 +273,13 @@
    "u": "https://news.cision.com/okea/r/okea-third-quarter-2026-trading-update,c4415360",
    "d": "2026-10-27",
    "s": "(Trondheim, 27 October 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the third quarter of 2026 on Tuesday 3 November at 06:00 (CET). This trading update is provided to summarise production and sales volumes and related updates for the quarter. Third quarter 2026 production and …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Partnering to develop challenging discoveries",
+   "u": "https://newsweb.oslobors.no/message/684794",
+   "d": "2026-10-26",
+   "s": "Non-regulatory press releases"
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -347,6 +387,13 @@
    "s": "Sandnes, Norway, 15 October 2026: A total of 126 388 shares were purchased on behalf of employees in Vår Energi ASA (OSE: VAR) participating in the company’s employee share saving programme. The average purchase price was NOK 54.624 per share. The transactions are based on savings made in October …"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Third quarter 2026 trading update",
+   "u": "https://newsweb.oslobors.no/message/684040",
+   "d": "2026-10-14",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Q3 2026 Trading Update and Invitation to Earnings Call",
    "u": "https://newsweb.oslobors.no/message/684039",
@@ -424,6 +471,13 @@
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP appoints new executive management team",
+   "u": "https://newsweb.oslobors.no/message/683484",
+   "d": "2026-10-02",
+   "s": "Non-regulatory press releases"
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Aker BP appoints new executive management team",
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-appoints-new-executive-management-team,c4403917",
@@ -478,6 +532,13 @@
    "u": "https://newsweb.oslobors.no/message/683215",
    "d": "2026-09-29",
    "s": "Acquisition or disposal of an issuer's own shares"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Employee share programme completed",
+   "u": "https://newsweb.oslobors.no/message/683129",
+   "d": "2026-09-28",
+   "s": "Managers’ transaction"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -627,6 +688,13 @@
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://newsweb.oslobors.no/message/681707",
+   "d": "2026-09-07",
+   "s": "Acquisition or disposal of an issuer's own shares"
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Aker BP ASA: Notification of acquisition of own shares",
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4392445",
@@ -683,6 +751,13 @@
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://newsweb.oslobors.no/message/681252",
+   "d": "2026-08-31",
+   "s": "Acquisition or disposal of an issuer's own shares"
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Aker BP ASA: Notification of acquisition of own shares",
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-asa--notification-of-acquisition-of-own-shares,c4389704",
@@ -718,6 +793,13 @@
    "s": "The Alve Nord and Idun Nord fields in the Norwegian Sea have started production, marking another milestone in Norway for Harbour."
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP has started production from the Skarv Satellites",
+   "u": "https://newsweb.oslobors.no/message/680777",
+   "d": "2026-08-26",
+   "s": "Non-regulatory press releases"
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Aker BP has started production from the Skarv Satellites",
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp-has-started-production-from-the-skarv-satellites,c4382977",
@@ -751,6 +833,27 @@
    "u": "https://akerbp.com/en/standing-committee-on-energy-and-the-environment-visits-aker-bp-for-dialogue-on-the-future-of-the-norwegian-continental-shelf/",
    "d": "2026-08-25",
    "s": "On Tuesday, 25 August, the Norwegian Parliament’s Energy and the Environment committee visited Aker BP in Stavanger to discuss the future of the Norwegian continental shelf, Norway’s role as an energy supplier to Europe, and how the industry can create as much value as possible with the lowest …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Equinor, Aker BP and Vår Energi join forces to search for Norway's next major discoveries",
+   "u": "https://newsweb.oslobors.no/message/680584",
+   "d": "2026-08-24",
+   "s": "Non-regulatory press releases"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Equinor, Aker BP og Vår Energi går sammen for å lete etter Norges neste store funn",
+   "u": "https://newsweb.oslobors.no/message/680583",
+   "d": "2026-08-24",
+   "s": "Non-regulatory press releases"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://newsweb.oslobors.no/message/680532",
+   "d": "2026-08-24",
+   "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
@@ -837,6 +940,13 @@
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP acquires interests in the Losgann/Froskelår and Slagugle discoveries",
+   "u": "https://newsweb.oslobors.no/message/680171",
+   "d": "2026-08-19",
+   "s": "Non-regulatory press releases"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/680160",
@@ -869,6 +979,13 @@
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/680046",
    "d": "2026-08-18",
+   "s": "Acquisition or disposal of an issuer's own shares"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP ASA: Notification of acquisition of own shares",
+   "u": "https://newsweb.oslobors.no/message/679902",
+   "d": "2026-08-17",
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
@@ -1131,6 +1248,13 @@
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Ex dividend USD 0.6615 today",
+   "u": "https://newsweb.oslobors.no/message/678396",
+   "d": "2026-07-20",
+   "s": "Ex date"
+  },
+  {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
    "t": "Aker BP: Ex dividend USD 0.6615 today",
    "u": "https://news.cision.com/aker-bp-asa/r/aker-bp--ex-dividend-usd-0-6615-today,c4374174",
@@ -1150,6 +1274,34 @@
    "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4375383",
    "d": "2026-07-16",
    "s": "Trondheim, 16 July 2026. OKEA ASA (ticker: \"OKEA\"), primary insiders purchased shares in OKEA. Rune Olav Pedersen, member of the board and primary insider (PDMR) of OKEA ASA, has on 16 July 2026 purchased 6,500 shares in OKEA at a price of NOK 31.00 per share. Following the transaction, Rune Olav …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Financial calendar",
+   "u": "https://newsweb.oslobors.no/message/678218",
+   "d": "2026-07-15",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP to buy shares for employee plan",
+   "u": "https://newsweb.oslobors.no/message/678185",
+   "d": "2026-07-15",
+   "s": "Acquisition or disposal of an issuer's own shares"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Second quarter 2026 results",
+   "u": "https://newsweb.oslobors.no/message/678184",
+   "d": "2026-07-15",
+   "s": "Half year financial report"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Key information related to cash dividend",
+   "u": "https://newsweb.oslobors.no/message/678183",
+   "d": "2026-07-15",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -1215,6 +1367,13 @@
    "s": "(Trondheim, 9 July 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the second quarter of 2026 on Thursday 16 July at 06:00 (CEST). This trading update is provided to summarise production and sales volumes and related updates for the quarter. Second quarter 2026 production and …"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Shareholder Disclosure Notification",
+   "u": "https://newsweb.oslobors.no/message/677778",
+   "d": "2026-07-07",
+   "s": "Major shareholdings notification"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/677726",
@@ -1241,6 +1400,13 @@
    "u": "https://news.cision.com/aker-bp-asa/r/completion-of-historic-project-portfolio-with-major-ripple-effects-in-verdal,c4371309",
    "d": "2026-07-06",
    "s": "On Monday 06 July, the topside for the Hugin B platform in Yggdrasil sailed from Aker Solutions’ yard in Verdal. This marks the completion of an extensive portfolio of projects delivered to Aker BP from the yard over the past three and a half years. The projects have created thousands of man-years …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Second quarter 2026 trading update",
+   "u": "https://newsweb.oslobors.no/message/677601",
+   "d": "2026-07-03",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -1304,6 +1470,13 @@
    "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa-strengthens-its-position-in-the-gjoa-area-and-extends-field-life-through-an-asset-exc,c4368705",
    "d": "2026-06-30",
    "s": "Sandnes, Norway, 30 June 2026: Vår Energi ASA (OSE: VAR, “Vår Energi”) has entered into an agreement with Equinor Energy AS (“Equinor”) for an asset exchange on the Norwegian Continental Shelf (NCS), strengthening its position around the Gjøa area and supporting the extension of the field’s …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Financial calendar",
+   "u": "https://newsweb.oslobors.no/message/677219",
+   "d": "2026-06-29",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1376,6 +1549,13 @@
    "s": "ORLEN Upstream Norway has signed an agreement with Vår Energi to acquire a 20% stake in five licenses, including the producing Goliat field. The transaction will increase the company’s oil and gas reserves by nearly 60 million barrels of oil equivalent (boe) and is expected to boost production by …"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP welcomes agreement on Ringvei Vest development concept",
+   "u": "https://newsweb.oslobors.no/message/676465",
+   "d": "2026-06-18",
+   "s": "Non-regulatory press releases"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/676455",
@@ -1439,6 +1619,13 @@
    "s": "Acquisition or disposal of an issuer's own shares"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Johan Sverdrup - phase 4 maturation",
+   "u": "https://newsweb.oslobors.no/message/676144",
+   "d": "2026-06-15",
+   "s": "Non-regulatory press releases"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "CERAN smørefett​ - TotalEnergies - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE4yRUpmNGtsaVFIbW9DU0xVM1FkN3BZbS1FMWZIYmgtUVc5MnBkVFp3WDBGQUNySkMxT3RRY2hESnAtRldLUVZhaEZuV3JrTzBFbjNj?oc=5",
@@ -1491,6 +1678,13 @@
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Valg av aksjonærrepresentanter til styret i Equinor ASA",
    "u": "https://newsweb.oslobors.no/message/675661",
+   "d": "2026-06-08",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP increases ownership interest in Johan Sverdrup following redetermination",
+   "u": "https://newsweb.oslobors.no/message/675589",
    "d": "2026-06-08",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
@@ -1565,6 +1759,13 @@
    "s": "News of Harbour Energy's Indonesia divestment"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transaction by PDMR",
+   "u": "https://newsweb.oslobors.no/message/674235",
+   "d": "2026-05-21",
+   "s": "Managers’ transaction"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "The Goldman Sachs Group, Inc. Disclosure in DNO ASA",
    "u": "https://newsweb.oslobors.no/message/674086",
@@ -1584,6 +1785,13 @@
    "u": "https://newsweb.oslobors.no/message/674075",
    "d": "2026-05-21",
    "s": "Total number of voting rights and capital"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP and Equinor to unlock additional value on the Norwegian Continental Shelf",
+   "u": "https://newsweb.oslobors.no/message/674060",
+   "d": "2026-05-21",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -1635,6 +1843,13 @@
    "s": "Trondheim, 20 May 2026. OKEA ASA (ticker: \"OKEA\"). Ragnhild Aas, employee elected member of the board and primary insider (PDMR) of OKEA ASA, has on 19 May 2026 sold 25,000 shares in OKEA at a price of NOK 40.00 per share. Following the transaction, Ragnhild Aas holds 92,273 shares in OKEA ASA. See …"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Shareholder Disclosure Notification",
+   "u": "https://newsweb.oslobors.no/message/673875",
+   "d": "2026-05-19",
+   "s": "Major shareholdings notification"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Shares Traded Ex-Dividend",
    "u": "https://newsweb.oslobors.no/message/673553",
@@ -1654,6 +1869,13 @@
    "u": "https://newsweb.oslobors.no/message/673473",
    "d": "2026-05-13",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Completed block sale of existing shares in Aker BP ASA",
+   "u": "https://newsweb.oslobors.no/message/673326",
+   "d": "2026-05-13",
+   "s": "Announcement from other participants"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -1682,6 +1904,13 @@
    "u": "https://newsweb.oslobors.no/message/673261",
    "d": "2026-05-12",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Ex dividend USD 0.6615 today",
+   "u": "https://newsweb.oslobors.no/message/673077",
+   "d": "2026-05-12",
+   "s": "Ex date"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1726,11 +1955,25 @@
    "s": "Half year financial report"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Key information related to cash dividend",
+   "u": "https://newsweb.oslobors.no/message/672613",
+   "d": "2026-05-07",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Key Information Relating to Cash Dividend",
    "u": "https://newsweb.oslobors.no/message/672610",
    "d": "2026-05-07",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "First Quarter 2026 Results",
+   "u": "https://newsweb.oslobors.no/message/672593",
+   "d": "2026-05-07",
+   "s": "Half year financial report"
   },
   {
    "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
@@ -1754,6 +1997,13 @@
    "s": "Equinors resultater for første kvartal 2026 Equinor"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Shareholder Disclosure Notification",
+   "u": "https://newsweb.oslobors.no/message/672231",
+   "d": "2026-05-04",
+   "s": "Major shareholdings notification"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA - First quarter 2026 financial results",
    "u": "https://news.cision.com/okea/r/okea-asa---first-quarter-2026-financial-results,c4341751",
@@ -1766,6 +2016,13 @@
    "u": "https://news.cision.com/okea/r/okea-first-quarter-2026-trading-update,c4338046",
    "d": "2026-04-22",
    "s": "(Trondheim, 22 April 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the first quarter of 2026 on Wednesday 29 April at 06:00 (CEST). This trading update is provided to summarise production and sales volumes and related updates for the quarter. First quarter 2026 production and …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Minutes from Annual General Meeting 2026",
+   "u": "https://newsweb.oslobors.no/message/671040",
+   "d": "2026-04-21",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1852,6 +2109,13 @@
    "s": "(Trondheim, 17 April 2026) OKEA ASA (OSE: OKEA) will publish its financial report for the first quarter of 2026 on Wednesday 29 April at 06:00 CET. A trading update summarising key figures for the quarter will be published on Wednesday 22 April at 06:00 CET. A presentation of the results and a Q&A …"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "First quarter 2026 trading update",
+   "u": "https://newsweb.oslobors.no/message/670726",
+   "d": "2026-04-16",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA - Notice of annual general meeting",
    "u": "https://news.cision.com/okea/r/okea-asa---notice-of-annual-general-meeting,c4335349",
@@ -1873,6 +2137,13 @@
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Symra on stream",
+   "u": "https://newsweb.oslobors.no/message/670011",
+   "d": "2026-04-07",
+   "s": "Non-regulatory press releases"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Shareholding Disclosures on DNO ASA",
    "u": "https://newsweb.oslobors.no/message/669770",
@@ -1880,11 +2151,39 @@
    "s": "Major shareholdings notification"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transactions by PDMR",
+   "u": "https://newsweb.oslobors.no/message/669742",
+   "d": "2026-03-30",
+   "s": "Managers’ transaction"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA – Mandatory notification of trade by primary insider",
    "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4328214",
    "d": "2026-03-28",
    "s": "Trondheim, 28 March 2026. OKEA ASA (ticker: \"OKEA\"). Eivind Sæterdal Bøyum, deputy member of the board and primary insider (PDMR) of OKEA ASA, has on 26 March 2026 purchased 3,320 shares in OKEA at a price of NOK 39.90 per share. Following the transaction, Eivind Sæterdal Bøyum holds 3,320 shares …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transaction by PDMR",
+   "u": "https://newsweb.oslobors.no/message/669684",
+   "d": "2026-03-27",
+   "s": "Managers’ transaction"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of annual general meeting in Aker BP",
+   "u": "https://newsweb.oslobors.no/message/669590",
+   "d": "2026-03-27",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP publishes Annual Report for 2025",
+   "u": "https://newsweb.oslobors.no/message/669589",
+   "d": "2026-03-27",
+   "s": "Annual financial report"
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -1964,6 +2263,13 @@
    "s": "Med god drift og stabil produksjon leverte Petoro i 2025 en netto kontantstrøm fra Statens direkte økonomiske engasjement (SDØE) på 243 milliarder kroner – en økning på 23 milliarder fra året før. Resultatet markerer nok et svært godt år for SDØE og er den tredje høyeste kontantstrømmen i …"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transaction by PDMR",
+   "u": "https://newsweb.oslobors.no/message/668721",
+   "d": "2026-03-18",
+   "s": "Managers’ transaction"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA – Mandatory notification of trade",
    "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade,c4323058",
@@ -1971,11 +2277,32 @@
    "s": "Trondheim, 18 March 2026. OKEA ASA (ticker: \"OKEA\"). Primary insider, Olav Bjarne Roksvaag, deputy member of the board (PDMR) of OKEA ASA, has on 17 March 2026 sold 6,100 shares in OKEA at a price of NOK 37.00 per share. Following the transaction, Olav Bjarne Roksvaag holds 31,371 shares in OKEA …"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transaction by PDMR (correction)",
+   "u": "https://newsweb.oslobors.no/message/668629",
+   "d": "2026-03-17",
+   "s": "Managers’ transaction"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transaction by PDMR",
+   "u": "https://newsweb.oslobors.no/message/668613",
+   "d": "2026-03-17",
+   "s": "Managers’ transaction"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Brings Forward Norway Production Through Multi-Asset Equinor Swap",
    "u": "https://newsweb.oslobors.no/message/668353",
    "d": "2026-03-16",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "NOTIFICATION OF MAJOR HOLDINGS",
+   "u": "https://newsweb.oslobors.no/message/668326",
+   "d": "2026-03-13",
+   "s": "Major shareholdings notification"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1990,6 +2317,20 @@
    "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/March-2026/orlen-announces-north-sea-discovery-in-the-sleipner-area",
    "d": "2026-03-10",
    "s": "ORLEN Upstream Norway, together with operator Equinor and partner Vår Energi, has confirmed a gas and condensate discovery in the Sleipner Area. The resources at the Frida Kahlo prospect are estimated at 7.2 million barrels of oil equivalent. The partners plan to bring the discovery into production …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transaction by PDMR",
+   "u": "https://newsweb.oslobors.no/message/667945",
+   "d": "2026-03-10",
+   "s": "Managers’ transaction"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Notice of transaction by PDMR",
+   "u": "https://newsweb.oslobors.no/message/667749",
+   "d": "2026-03-06",
+   "s": "Managers’ transaction"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -2011,6 +2352,27 @@
    "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTFBmMmxGTFZkalozVU1TLUlFeW1xdE8wbVFlUEd5a3Q5amxSMktIZjh5Zml6ejR3TmhKWXlHX2JpZG1BUzNoQ29RZktmOUVRUDFVQnZ5RkdSUXI0T08wN1k1aER4SlhSVGpoUGNMdElkeFBTcWliNEE?oc=5",
    "d": "2026-03-02",
    "s": "Oljefunn i Snorre-området – planlegger for rask utbygging Equinor"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Financial calendar",
+   "u": "https://newsweb.oslobors.no/message/667022",
+   "d": "2026-02-26",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP establishes next-generation MMO alliance with Aker Solutions",
+   "u": "https://newsweb.oslobors.no/message/665917",
+   "d": "2026-02-16",
+   "s": "Non-regulatory press releases"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Ex dividend USD 0.6615 today",
+   "u": "https://newsweb.oslobors.no/message/665900",
+   "d": "2026-02-16",
+   "s": "Ex date"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2039,6 +2401,20 @@
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/completion-of-llog-acquisition/",
    "d": "2026-02-11",
    "s": "Harbour Energy announces that it has completed the acquisition of LLOG Exploration Company LLC (“LLOG\") for $3.2 billion (the \"Acquisition\"), marking the Company’s strategic entry into the US Gulf of America. The Acquisition strengthens Harbour’s global portfolio and establishes a new core business …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Fourth Quarter 2025 Results and Strategy Update",
+   "u": "https://newsweb.oslobors.no/message/665323",
+   "d": "2026-02-11",
+   "s": "Half year financial report"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP: Key information related to cash dividend",
+   "u": "https://newsweb.oslobors.no/message/665322",
+   "d": "2026-02-11",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2074,6 +2450,13 @@
    "u": "https://news.cision.com/okea/r/okea-asa---fourth-quarter-2025-financial-results,c4301570",
    "d": "2026-02-03",
    "s": "(Trondheim, 3 February 2026) - In the fourth quarter of 2025, OKEA ASA (OSE: OKEA) delivered operating income of USD 107 (224) million and EBITDA of USD 50 (117) million. The net loss of USD 18 (37) million was largely a result of a significant underlift and impairments. The net cash position was …"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Solveig Phase 2 on stream",
+   "u": "https://newsweb.oslobors.no/message/664571",
+   "d": "2026-02-02",
+   "s": "Non-regulatory press releases"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2279,6 +2662,20 @@
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP - Fourth quarter 2025 trading update",
+   "u": "https://newsweb.oslobors.no/message/663736",
+   "d": "2026-01-16",
+   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Mandatory notification of trade for close associate",
+   "u": "https://newsweb.oslobors.no/message/663578",
+   "d": "2026-01-14",
+   "s": "Managers’ transaction"
+  },
+  {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Hjelp og støtte - Indu - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE9rLVZDM015VDBNS0Z4NzVfczVNZHBCWVF5dXVpeEdDSXFoZGt6Z0ttQzlkdnJMbHlNT3dNUi1SSXJPY2dITHdtVDlKOGJLRnBJMWx2MXRjWEVtdw?oc=5",
@@ -2305,6 +2702,20 @@
    "u": "https://newsweb.oslobors.no/message/663549",
    "d": "2026-01-13",
    "s": "Additional regulated information required to be disclosed under the laws of a member state"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP awarded 22 licenses in APA 2025",
+   "u": "https://newsweb.oslobors.no/message/663548",
+   "d": "2026-01-13",
+   "s": "Non-regulatory press releases"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP tildelt 22 lisenser i TFO 2025",
+   "u": "https://newsweb.oslobors.no/message/663547",
+   "d": "2026-01-13",
+   "s": "Non-regulatory press releases"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -2405,6 +2816,13 @@
    "s": "Norske Shell bruker ubemannede fartøy for monitorering av Ormen Lange. – Vi overvåker både havbunnen, reservoaret og de mellomliggende lagene. Dette gir oss innsikt som er helt avgjørende for videreutvikling av feltet, sier geomatiker Egil Syre."
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Nytt funn i Nordsjøen avslutter et sterkt leteår for Aker BP",
+   "u": "https://newsweb.oslobors.no/message/661336",
+   "d": "2025-12-05",
+   "s": "Non-regulatory press releases"
+  },
+  {
    "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
    "t": "– Du får forme din egen vei",
    "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/du-far-forme-din-egen-vei.html",
@@ -2438,6 +2856,20 @@
    "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/digital-tvilling-gir-full-oversikt.html",
    "d": "2025-11-30",
    "s": "Shell har tatt i bruk avansert digital tvilling-teknologi som integrerer Ormen Lange-feltet og prosessanlegget på Nyhamna. Teknologien gjør det blant annet mulig å planlegge, utføre og overvåke vedlikeholdsarbeid langt mer effektivt og sikrere enn tidligere."
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Ti år med Edvard Grieg - Verdiskaping, teknologiutvikling og ny identitet",
+   "u": "https://newsweb.oslobors.no/message/660839",
+   "d": "2025-11-28",
+   "s": "Non-regulatory press releases"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Ten years of Edvard Grieg - Value creation, technological innovation, and a new identity",
+   "u": "https://newsweb.oslobors.no/message/660838",
+   "d": "2025-11-28",
+   "s": "Non-regulatory press releases"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -2503,11 +2935,25 @@
    "s": "Managers’ transaction"
   },
   {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP awards shares and issues new grants under LTIP programme",
+   "u": "https://newsweb.oslobors.no/message/659067",
+   "d": "2025-11-07",
+   "s": "Managers’ transaction"
+  },
+  {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
    "t": "Trading & Operations Update Nov 2025",
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/trading-operations-update-nov-2025/",
    "d": "2025-11-06",
    "s": "Harbour today provides the following unaudited Trading and Operations Update for the nine months to 30 September 2025."
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "Aker BP and DNO expand collaboration and accelerate development of Kjøttkake",
+   "u": "https://newsweb.oslobors.no/message/658877",
+   "d": "2025-11-06",
+   "s": "Non-regulatory press releases"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
