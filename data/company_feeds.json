@@ -21,6 +21,12 @@
       "added": "2026-11-01"
     },
     {
+      "company": "Aker BP ASA",
+      "url": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+      "label": "Newsweb",
+      "added": "2026-11-03"
+    },
+    {
       "company": "ConocoPhillips Skandinavia AS",
       "url": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
       "label": "Google",
@@ -87,5 +93,5 @@
       "added": "2026-11-01"
     }
   ],
-  "updated": "2026-11-01"
+  "updated": "2026-11-03"
 }
