@@ -2719,3 +2719,5 @@ NCS-volumgrafen har en tynn stiplet linje for årlig produsert volum på sokkele
 `ncsProducedLine` fra `ncsAnnualProduction('oe')`, inneværende år utelatt; ingen linje i
 live-modus uten produksjonsbundelen). NCS → Exploration har ikke lenger wildcat-veksler
 (`nw` i gamle lenker ignoreres).
+Volumgrafen har en startårvelger (`ncsF.from`, `n0=`, standard 2000); brønngrafen viser
+fortsatt hele historikken.
