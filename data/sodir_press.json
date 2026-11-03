@@ -8,6 +8,19 @@
  "items": [
   {
    "k": "result",
+   "t": "Dry well in the North Sea (25/8-24 S)",
+   "u": "https://www.sodir.no/en/whats-new/news/exploration-drilling-results/2026/dry-well-in-the-north-sea-258-24-s/",
+   "d": "2026-11-03",
+   "s": "Vår Energi and its partners have drilled a dry well on the \"Jotun Deep\" prospect.",
+   "wells": [
+    "25/8-24 S"
+   ],
+   "cmp": [
+    "Vår Energi ASA"
+   ]
+  },
+  {
+   "k": "result",
    "t": "Dry appraisal well in the North Sea (15/6-18 S)",
    "u": "https://www.sodir.no/en/whats-new/news/exploration-drilling-results/2026/dry-appraisal-well-in-the-north-sea-156-18-s/",
    "d": "2026-11-02",
