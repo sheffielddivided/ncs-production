@@ -10944,10 +10944,12 @@ function drillRenderPerf() {
     dockBar('explBody'); return;
   }
   const n = list.length, med = median(list.map(w => w.mpd));
-  const avg = wells.reduce((s, w) => s + w.m, 0) / wells.reduce((s, w) => s + w.days, 0);
+  // Medianer gjennom hele sammendraget: et samlet snitt (meter ÷ dager) styres
+  // av brønnene med flest kalenderdager, se merknaden under tabellen.
+  const allMed = median(wells.map(w => w.mpd));
   const rank = new Map(); [...list].reverse().forEach((w, i) => rank.set(w.id, i + 1));
   const mine = wells.filter(isHl), mineBars = list.filter(isHl);
-  const myAvg = !mine.length ? 0 : byOp ? median(mine.map(w => w.mpd)) : mine.reduce((s, w) => s + w.m, 0) / mine.reduce((s, w) => s + w.days, 0);
+  const myMed = mine.length ? median(mine.map(w => w.mpd)) : 0;
   const fmt = v => v >= 100 ? v.toFixed(0) : v.toFixed(1);
   // Diagram
   const W = 1000, H = 360, L = 46, R = 8, T = 14, B = 26, pw = W - L - R, ph = H - T - B;
@@ -11005,9 +11007,9 @@ function drillRenderPerf() {
     ]};
   box.innerHTML = `
     <div class="pf-card" data-ppt-spec="drillPerf"><h3>Drilling performance · metres per day · ${span}</h3><div class="ex-slot"></div>
-      <div class="ex-sum"><strong>${n}</strong> ${byOp ? `operators (min ${drillF.minw} ${drillF.minw === '1' ? 'wellbore' : 'wellbores'}, ${wells.length} wellbores in total) ranked by their median wellbore's` : 'wellbores ranked by'} metres drilled per day, slowest to fastest · average across the wellbores <strong>${fmt(avg)}</strong> m/day
-        (metres drilled ÷ days) · median ${byOp ? 'operator' : 'wellbore'} <strong>${fmt(med)}</strong> m/day${mine.length
-          ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, ${byOp ? 'median' : 'average'} ${fmt(myAvg)} m/day${byOp ? '' : `, best rank #${Math.min(...mineBars.map(w => rank.get(w.id)))}`}</span>` : ''}</div>
+      <div class="ex-sum"><strong>${n}</strong> ${byOp ? `operators (min ${drillF.minw} ${drillF.minw === '1' ? 'wellbore' : 'wellbores'}, ${wells.length} wellbores in total) ranked by their median wellbore's` : 'wellbores ranked by'} metres drilled per day, slowest to fastest · median wellbore <strong>${fmt(allMed)}</strong> m/day${byOp
+          ? ` · median operator <strong>${fmt(med)}</strong> m/day` : ''}${mine.length
+          ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, median ${fmt(myMed)} m/day${byOp ? '' : `, best rank #${Math.min(...mineBars.map(w => rank.get(w.id)))}`}</span>` : ''}</div>
       ${svg}${legend}
       <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>${byOp ? `
         <th>Rank</th><th class="ex-l">Operator</th><th>Wellbores</th><th>m/day (median wellbore)</th><th>Drilled (m)</th><th>Days</th><th>m/day (pooled)</th>` : `
