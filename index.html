@@ -10891,7 +10891,7 @@ function drillRenderBar() {
         ${years.map(y => opt(y, f.to, `To ${y}`)).join('')}
       </select>
       <select class="year-select" onchange="drillSet('view', this.value, true)" aria-label="View">
-        ${opt('well', f.view, 'Per wellbore')}${opt('op', f.view, 'Average per operator')}
+        ${opt('well', f.view, 'Per wellbore')}${opt('op', f.view, 'Per operator (median wellbore)')}
       </select>
       ${f.view === 'op' ? `<select class="year-select" onchange="drillSet('minw', this.value, true)" aria-label="Minimum wellbores">
         ${['1', '3', '5', '10'].map(v => opt(v, f.minw, `Min ${v} ${v === '1' ? 'wellbore' : 'wellbores'}`)).join('')}
@@ -10923,15 +10923,17 @@ function drillRenderPerf() {
   const byOp = drillF.view === 'op';
   let list = wells;
   if (byOp) {
-    // Gjennomsnitt per operatør: samlet dybde ÷ samlede dager (veid mot varighet).
+    // Per operatør rangeres etter medianbrønnen. Samlet dybde ÷ samlede dager
+    // vises ved siden av, men styres av brønnene med flest dager — og for
+    // utbyggingsbrønner boret i flere omganger er det kalenderdager, ikke
+    // boretid (flere hundre dager for én brønn).
     const agg = {};
     wells.forEach(w => {
       if (!w.op) return;
       const a = agg[w.op] = agg[w.op] || {id: w.op, name: w.op, op: w.op, n: 0, td: 0, days: 0, all: []};
       a.n++; a.td += w.m; a.days += w.days; a.all.push(w.mpd);
     });
-    // Ekte median: snittet av de to midterste ved et partall brønner.
-    list = Object.values(agg).filter(a => a.n >= (+drillF.minw || 1)).map(a => ({...a, mpd: a.td / a.days, med: median(a.all)}))
+    list = Object.values(agg).filter(a => a.n >= (+drillF.minw || 1)).map(a => ({...a, mpd: median(a.all), pooled: a.td / a.days}))
       .sort((a, b) => a.mpd - b.mpd || (a.name < b.name ? -1 : 1));
   }
   const hl = drillF.hl, isHl = w => !!hl && w.op === hl;
@@ -10945,7 +10947,7 @@ function drillRenderPerf() {
   const avg = wells.reduce((s, w) => s + w.m, 0) / wells.reduce((s, w) => s + w.days, 0);
   const rank = new Map(); [...list].reverse().forEach((w, i) => rank.set(w.id, i + 1));
   const mine = wells.filter(isHl), mineBars = list.filter(isHl);
-  const myAvg = mine.length ? mine.reduce((s, w) => s + w.m, 0) / mine.reduce((s, w) => s + w.days, 0) : 0;
+  const myAvg = !mine.length ? 0 : byOp ? median(mine.map(w => w.mpd)) : mine.reduce((s, w) => s + w.m, 0) / mine.reduce((s, w) => s + w.days, 0);
   const fmt = v => v >= 100 ? v.toFixed(0) : v.toFixed(1);
   // Diagram
   const W = 1000, H = 360, L = 46, R = 8, T = 14, B = 26, pw = W - L - R, ph = H - T - B;
@@ -10958,7 +10960,7 @@ function drillRenderPerf() {
     const i = idx.get(w), h = Math.max(0.5, w.mpd / top * ph);
     return `<rect x="${(L + i * bw).toFixed(2)}" y="${(T + ph - h).toFixed(2)}" width="${Math.max(0.6, bw - gap).toFixed(2)}" height="${h.toFixed(2)}"
       fill="${isHl(w) ? DRILL_HL : DRILL_GREY}" style="cursor:pointer" onclick="${byOp ? `drillSet('hl', ${esc(JSON.stringify(w.op))}, true)` : `window.open('${drillUrl(w)}','_blank','noopener')`}">
-      <title>${byOp ? `${esc(w.name)} · ${fmt(w.mpd)} m/day (${Math.round(w.td).toLocaleString('en-US')} m in ${w.days} days, ${w.n} wellbores) · median wellbore ${fmt(w.med)} m/day`
+      <title>${byOp ? `${esc(w.name)} · median wellbore ${fmt(w.mpd)} m/day · ${w.n} wellbores · pooled ${fmt(w.pooled)} m/day (${Math.round(w.td).toLocaleString('en-US')} m in ${w.days.toLocaleString('en-US')} days)`
         : `${esc(w.name)} · ${esc(w.op || 'unknown operator')} · ${fmt(w.mpd)} m/day (${Math.round(w.m)} m in ${w.days} days)`} · #${rank.get(w.id)} of ${n}</title></rect>`;
   };
   let ticks = '';
@@ -10978,7 +10980,7 @@ function drillRenderPerf() {
   const rows = [...list].reverse().slice(0, drillLimit).map(w => byOp ? `
     <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
       <td>${rank.get(w.id)}</td><td class="ex-l">${companyLink(w.op)}</td><td>${w.n}</td>
-      <td>${Math.round(w.td).toLocaleString('en-US')}</td><td>${w.days.toLocaleString('en-US')}</td><td><strong>${fmt(w.mpd)}</strong></td><td>${fmt(w.med)}</td></tr>` : `
+      <td><strong>${fmt(w.mpd)}</strong></td><td>${Math.round(w.td).toLocaleString('en-US')}</td><td>${w.days.toLocaleString('en-US')}</td><td>${fmt(w.pooled)}</td></tr>` : `
     <tr${isHl(w) ? ` style="background:rgba(230,0,126,0.08)"` : ''}>
       <td>${rank.get(w.id)}</td>
       <td class="ex-l"><a class="row-link" href="${drillUrl(w)}" target="_blank" rel="noopener">${esc(w.name)} ↗</a></td>
@@ -10994,7 +10996,7 @@ function drillRenderPerf() {
   // PowerPoint: ekte søylegraf, uthevet operatør som egen serie (stablet, så
   // stolpene står på samme plass) og medianen som linje.
   pptCardSpecs.drillPerf = {kind: 'cat', dir: 'col', stacked: true, labels: list.map(w => w.name), yTitle: 'metres per day',
-    subtitle: `${byOp ? 'Average per operator' : 'Wellbores'} ranked by metres drilled per day · ${span}${drillPptFilters()}`,
+    subtitle: `${byOp ? 'Operators ranked by median wellbore,' : 'Wellbores ranked by'} metres drilled per day · ${span}${drillPptFilters()}`,
     series: [
       ...(mineBars.length ? [{name: hl, type: 'bar', color: pptHex(DRILL_HL), values: list.map(w => isHl(w) ? +w.mpd.toFixed(1) : null)}] : []),
       {name: hl ? (byOp ? 'Other operators' : 'Other wellbores') : (byOp ? 'Operators' : 'Wellbores'), type: 'bar', color: pptHex(DRILL_GREY),
@@ -11003,18 +11005,18 @@ function drillRenderPerf() {
     ]};
   box.innerHTML = `
     <div class="pf-card" data-ppt-spec="drillPerf"><h3>Drilling performance · metres per day · ${span}</h3><div class="ex-slot"></div>
-      <div class="ex-sum"><strong>${n}</strong> ${byOp ? `operators (min ${drillF.minw} ${drillF.minw === '1' ? 'wellbore' : 'wellbores'}, ${wells.length} wellbores in total)` : 'wellbores'} ranked by metres drilled per day, slowest to fastest · average across the wellbores <strong>${fmt(avg)}</strong> m/day
+      <div class="ex-sum"><strong>${n}</strong> ${byOp ? `operators (min ${drillF.minw} ${drillF.minw === '1' ? 'wellbore' : 'wellbores'}, ${wells.length} wellbores in total) ranked by their median wellbore's` : 'wellbores ranked by'} metres drilled per day, slowest to fastest · average across the wellbores <strong>${fmt(avg)}</strong> m/day
         (metres drilled ÷ days) · median ${byOp ? 'operator' : 'wellbore'} <strong>${fmt(med)}</strong> m/day${mine.length
-          ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, average ${fmt(myAvg)} m/day${byOp ? '' : `, best rank #${Math.min(...mineBars.map(w => rank.get(w.id)))}`}</span>` : ''}</div>
+          ? ` · <span style="color:${DRILL_HL}"><strong>${esc(hl)}</strong>: ${mine.length} wellbores, ${byOp ? 'median' : 'average'} ${fmt(myAvg)} m/day${byOp ? '' : `, best rank #${Math.min(...mineBars.map(w => rank.get(w.id)))}`}</span>` : ''}</div>
       ${svg}${legend}
       <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>${byOp ? `
-        <th>Rank</th><th class="ex-l">Operator</th><th>Wellbores</th><th>Drilled (m)</th><th>Days</th><th>m/day (avg)</th><th>Median wellbore</th>` : `
+        <th>Rank</th><th class="ex-l">Operator</th><th>Wellbores</th><th>m/day (median wellbore)</th><th>Drilled (m)</th><th>Days</th><th>m/day (pooled)</th>` : `
         <th>Rank</th><th class="ex-l">Wellbore</th><th class="ex-l">Operator</th><th class="ex-l">Type</th><th class="ex-l">Purpose</th>
         <th>Spud</th><th>Days</th><th>TD (m)</th><th>Drilled (m)</th><th>m/day</th>`}</tr></thead><tbody>${rows}</tbody></table></div>${more}
       <div class="ex-note">Metres per day = metres drilled divided by drilling days, for completed wellbores by spud year. Metres drilled = total depth (measured) minus the
         kick-off point for sidetracks, so the section inherited from the parent wellbore is not counted. Days = the shorter of Sodir's drilling days and spud-to-completion
         (either can be wrong on single wellbores). Sidetracks count as their own wellbores. Operator = Sodir's drilling operator for the wellbore. Rig type: platform rigs are fixed installations (jacket, Condeep, TLP and floaters Sodir marks as fixed); the rest are mobile rigs (MODU).
-        ${byOp ? 'Operator average = metres drilled ÷ total days over the operator\'s wellbores (longer wells weigh more); the median wellbore is shown beside it, since a few fast sidetracks can lift the average. Click a bar to highlight the operator.' : 'Click a bar for the Sodir FactPage.'} Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
+        ${byOp ? 'Operators are ranked by their median wellbore, so neither a few fast sidetracks nor a few very long wellbores decide the rank. Pooled = metres drilled ÷ total days over the operator\'s wellbores; it is shown for reference, but is dominated by the wellbores with the most days, and for development wells drilled in several rounds (top hole first, the rig returning months later) the days are calendar time, not drilling time. Click a bar to highlight the operator.' : 'Click a bar for the Sodir FactPage.'} Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
   dockBar('explBody');
 }
 // Aktive filtre i undertittelen på lysbildet, så grafen kan leses alene.
