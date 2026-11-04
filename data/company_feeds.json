@@ -46,12 +46,6 @@
     },
     {
       "company": "Equinor Energy AS",
-      "url": "https://news.google.com/rss/search?q=site:equinor.com&hl=no&gl=NO&ceid=NO:no",
-      "label": "Google RSS",
-      "added": "2026-11-01"
-    },
-    {
-      "company": "Equinor Energy AS",
       "url": "https://newsweb.oslobors.no/search?category=&issuer=1309",
       "label": "Newsweb",
       "added": "2026-11-01"
@@ -93,5 +87,5 @@
       "added": "2026-11-01"
     }
   ],
-  "updated": "2026-11-03"
+  "updated": "2026-11-04"
 }
