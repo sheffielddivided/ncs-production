@@ -10787,7 +10787,11 @@ function explFixSubView() {
   if (!ids.includes(explSubView)) explSubView = topMode === 'drilling' ? 'rigs' : 'wells';
 }
 
-const drillDays = (a, b) => Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86400000));
+// Telles som Sodirs wlbDrillingDays: både spuddagen og ferdigdagen er med
+// (Sodir oppgir datodifferansen + 1). Uten +1 vinner datoene alltid
+// «den korteste», og alle brønner får én dag for lite — 20 % for høy fart på
+// en brønn på fem dager.
+const drillDays = (a, b) => Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1);
 
 function loadDrill() {
   if (drillRows) return Promise.resolve();
@@ -10926,7 +10930,8 @@ function drillRenderPerf() {
       const a = agg[w.op] = agg[w.op] || {id: w.op, name: w.op, op: w.op, n: 0, td: 0, days: 0, all: []};
       a.n++; a.td += w.m; a.days += w.days; a.all.push(w.mpd);
     });
-    list = Object.values(agg).filter(a => a.n >= (+drillF.minw || 1)).map(a => ({...a, mpd: a.td / a.days, med: a.all.slice().sort((x, y) => x - y)[Math.floor(a.all.length / 2)]}))
+    // Ekte median: snittet av de to midterste ved et partall brønner.
+    list = Object.values(agg).filter(a => a.n >= (+drillF.minw || 1)).map(a => ({...a, mpd: a.td / a.days, med: median(a.all)}))
       .sort((a, b) => a.mpd - b.mpd || (a.name < b.name ? -1 : 1));
   }
   const hl = drillF.hl, isHl = w => !!hl && w.op === hl;
@@ -10936,7 +10941,7 @@ function drillRenderPerf() {
       <div class="ex-sum">${byOp ? `No operators with at least ${esc(drillF.minw)} wellbores match the filters.` : 'No wellbores match the filters.'}</div></div>`;
     dockBar('explBody'); return;
   }
-  const n = list.length, med = list[Math.floor(n / 2)].mpd;
+  const n = list.length, med = median(list.map(w => w.mpd));
   const avg = wells.reduce((s, w) => s + w.m, 0) / wells.reduce((s, w) => s + w.days, 0);
   const rank = new Map(); [...list].reverse().forEach((w, i) => rank.set(w.id, i + 1));
   const mine = wells.filter(isHl), mineBars = list.filter(isHl);
