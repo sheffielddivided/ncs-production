@@ -792,7 +792,7 @@ const BBL_PER_SM3 = 6.29;
 // Mangler eller feiler filene, faller alt tilbake til live-API-et under.
 const DATA_BASE = 'data/';
 
-const bundle = { fields:null, production:null, licensees:null, reserves:null, reserves_field:null,
+const bundle = { fields:null, production:null, licensees:null, reserves:null, reserves_field:null, reserves_field_hist:null,
                  discoveries:null, discovery_resources:null, licence_licensees:null,
                  discovery_descriptions:null, discovery_outlines:null,
                  field_profile:null, field_descriptions:null, field_outlines:null, coastline:null,
@@ -808,7 +808,7 @@ async function fetchBundle(name) {
 }
 
 async function loadBundles() {
-  const names = ['fields','production','licensees','reserves','reserves_field',
+  const names = ['fields','production','licensees','reserves','reserves_field','reserves_field_hist',
                  'discoveries','discovery_resources','licence_licensees',
                  'discovery_descriptions','discovery_outlines',
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
@@ -2259,6 +2259,8 @@ function stateToHash() {
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
     q.set('g', hubReserveGrouping);
   }
+  if (resHist && ((topMode === 'hubs' && hubSubView === 'reserves') || (topMode === 'fields' && fieldSubView === 'reserves')
+                  || (topMode === 'ncs' && ncsSubView === 'fields' && ncsF.fl === 'change'))) q.set('rh', '1');
   if (topMode === 'ncs') {
     const dflt = ncsDefaults();
     NCS_PARAMS.forEach(([k, p]) => { if (ncsF[k] !== dflt[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
@@ -2530,6 +2532,7 @@ function applyHash() {
 
   showWater = q.get('w') === '1';
   if (q.get('g') === 'company') hubReserveGrouping = 'company';
+  resHist = q.get('rh') === '1';
   explF.open = +q.get('xw') > 0 ? +q.get('xw') : null;
   explF.rig = q.get('xg') || null;
   return true;
@@ -4095,8 +4098,8 @@ function drawNcsFields() {
 //  · gjennomsnittlig årlig endring: snittet av feltenes årlige vekstrate,
 //    (siste / første)^(1 / år mellom årgangene) − 1
 function ncsReserveChanges() {
-  return Object.entries(fieldReserves || {}).map(([id, rows]) => {
-    const r = rows.filter(x => x.recoverableOE > 0);
+  return Object.entries((resHist && fieldReservesLong) || fieldReserves || {}).map(([id, rows]) => {
+    const r = rows.filter(x => x.recoverableOE > 0 && !x.filled);
     if (r.length < 2) return null;
     const a = r[0], b = r[r.length - 1];
     const first = a.recoverableOE * BBL_PER_SM3, last = b.recoverableOE * BBL_PER_SM3, years = b.year - a.year;
@@ -4134,7 +4137,7 @@ function drawNcsReserveChange(toggle) {
   const factsHtml = `<div class="pf-facts" style="margin-bottom:10px">
       ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${v}</strong></div>`).join('')}
     </div>`;
-  if (ncsF.chg === 'scatter') return drawNcsReserveScatter(list, toggle + pills + factsHtml, {avgPct, wPct, y0, y1, fP, fM});
+  if (ncsF.chg === 'scatter') return drawNcsReserveScatter(list, toggle + resHistToggle() + pills + factsHtml, {avgPct, wPct, y0, y1, fP, fM});
   // Topp og bunn, så både de største oppjusteringene og nedjusteringene vises.
   const N = 15, cut = !ncsF.all && list.length > 2 * N;
   const shown = cut ? list.slice(0, N).concat(list.slice(-N)) : list;
@@ -4157,7 +4160,7 @@ function drawNcsReserveChange(toggle) {
   const html = cut ? rows(shown.slice(0, N)) +
     `<div class="pf-map-note" style="text-align:center;margin:4px 0">… ${list.length - 2 * N} fields not shown …</div>` + rows(shown.slice(N))
     : rows(shown);
-  document.getElementById('chartArea').innerHTML = `${toggle}${pills}
+  document.getElementById('chartArea').innerHTML = `${toggle}${resHistToggle()}${pills}
     ${factsHtml}
     ${html}
     <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${POS_C}"></span>Revised up</span>
@@ -4168,7 +4171,7 @@ function drawNcsReserveChange(toggle) {
   setChartTitle('Norwegian Continental Shelf · Fields', `Change in recoverable reserves, first to latest vintage · ${unit}`);
   setInfo(`<strong>Change:</strong> original recoverable reserves (produced plus remaining, OE) in the field's latest Sodir vintage minus its first vintage with volumes (${y0}–${y1}), so production does not count as a reduction &nbsp;|&nbsp; ` +
     `<strong>Average total change:</strong> simple mean of the fields' percentage changes &nbsp;|&nbsp; <strong>Volume-weighted:</strong> sum of changes / sum of first estimates (${fM(sFirst).replace(/^\+/, '')} → ${fM(sLast).replace(/^\+/, '')} million boe) &nbsp;|&nbsp; ` +
-    `<strong>Average annual change:</strong> mean of the fields' compound annual rates, (latest / first)^(1 / years) − 1 &nbsp;|&nbsp; Fields with a single vintage or under 0.05 million boe in the first vintage are left out &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+    `<strong>Average annual change:</strong> mean of the fields' compound annual rates, (latest / first)^(1 / years) − 1 &nbsp;|&nbsp; Fields with a single vintage or under 0.05 million boe in the first vintage are left out &nbsp;|&nbsp; ${resHist && fieldReservesLong ? RES_HIST_NOTE + ' &nbsp;|&nbsp; ' : ''}<strong>Source:</strong> Sodir FactPages${resHist && fieldReservesLong ? ' and resource accounts' : ''}`);
   const r1 = v => +v.toFixed(1);
   lastLabels = list.map(f => f.name); lastXTitle = 'Field';
   lastDatasets = [{label: 'First vintage', data: list.map(f => f.y0)}, {label: 'Latest vintage', data: list.map(f => f.y1)},
@@ -4234,12 +4237,19 @@ function drawNcsReserveScatter(list, head, k) {
     plugins: [{id: 'capLabels', afterDatasetsDraw(ch) {
       if (!clipped.length) return;
       const ctx = ch.ctx, meta = ch.getDatasetMeta(0);
-      ctx.save(); ctx.font = '600 10px sans-serif'; ctx.fillStyle = '#1a2332'; ctx.textBaseline = 'middle';
-      pts.forEach((p, i) => {
-        if (!p.clip) return;
-        const el = meta.data[i], right = el.x + 60 < ch.chartArea.right;
-        ctx.textAlign = right ? 'left' : 'right';
-        ctx.fillText(`${p.f.name} ${k.fP(p.f.pct)}`, el.x + (right ? 1 : -1) * (p.r + 4), el.y);
+      ctx.save(); ctx.font = '600 10px sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.fillStyle = '#1a2332';
+      // Navnene sentreres under trekanten, i så mange rader som trengs for at
+      // de ikke skal overlappe hverandre.
+      const rowsEnd = [];
+      pts.map((p, i) => ({p, el: meta.data[i]})).filter(o => o.p.clip).sort((a, b) => a.el.x - b.el.x).forEach(({p, el}) => {
+        const t = `${p.f.name} ${k.fP(p.f.pct)}`, w = ctx.measureText(t).width;
+        const x = Math.min(Math.max(el.x, ch.chartArea.left + w / 2), ch.chartArea.right - w / 2);
+        let r = rowsEnd.findIndex(e => e < x - w / 2 - 6);
+        if (r < 0) { r = rowsEnd.length; rowsEnd.push(0); }
+        rowsEnd[r] = x + w / 2;
+        const y = el.y + p.r + 8 + r * 12;
+        ctx.strokeText(t, x, y); ctx.fillText(t, x, y);
       });
       ctx.restore();
     }}],
@@ -4261,7 +4271,7 @@ function drawNcsReserveScatter(list, head, k) {
     `<strong>Bubble area:</strong> first reserve estimate &nbsp;|&nbsp; ` +
     (clipped.length ? `<strong>Axis cut at ${CAP} %:</strong> ${clipped.map(p => `${esc(p.f.name)} ${k.fP(p.f.pct)}`).join(', ')} shown as triangles at the edge &nbsp;|&nbsp; ` : '') +
     `<strong>By size (first estimate, million boe):</strong> ${classes.map(c => `${c.lbl}: ${c.n} fields, average ${k.fP(c.avg)}, volume-weighted ${k.fP(c.w)}`).join('; ')} &nbsp;|&nbsp; ` +
-    `Fields with a single vintage or under 0.05 million boe in the first vintage are left out &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+    `Fields with a single vintage or under 0.05 million boe in the first vintage are left out &nbsp;|&nbsp; ${resHist && fieldReservesLong ? RES_HIST_NOTE + ' &nbsp;|&nbsp; ' : ''}<strong>Source:</strong> Sodir FactPages${resHist && fieldReservesLong ? ' and resource accounts' : ''}`);
   lastLabels = list.map(f => f.name); lastXTitle = 'Field';
   lastDatasets = [{label: 'Production start', data: list.map(f => startYear(f) ?? '')},
                   {label: 'First estimate, million boe', data: list.map(f => +f.first.toFixed(1))},
@@ -5743,8 +5753,77 @@ async function loadFieldReserves() {
   mergeSplitReserveEntries(byField);
   Object.values(byField).forEach(rows => rows.sort((a, b) => a.year - b.year));
   fieldReserves = byField;
+  fieldReservesLong = buildLongReserves(byField);
   fieldReservesLoaded = true;
 }
+
+// ── RESERVER FØR 2004 ──
+// FactMaps-laget starter med årgang 2004. data/reserves_field_hist.json
+// (build_reserves_hist.py) har opprinnelig utvinnbart volum per felt fra
+// ressursregnskapene 1980–2003, kontrollert mot APIet for 2004. Gjenværende
+// står ikke i alle regnskapene og regnes her ut som opprinnelig utvinnbart
+// minus kumulativ produksjon ved årets slutt — det er Sodirs egen definisjon,
+// og den treffer APIets gjenværende for nesten alle felt i årgangene som har
+// begge. År uten regnskap (1981–84, 1986–89, 1996) og felt som mangler i et
+// regnskap fylles med forrige anslag, merket filled, slik at gjenværende
+// fortsatt synker med produksjonen. Fra feltets første API-årgang brukes
+// APIet uendret. fieldReservesLong er da den lange serien; fieldReserves er
+// urørt, så alle andre visninger er som før.
+let fieldReservesLong = null;
+let resHist = false;   // reservegrafene per felt/hub og reserveendringen: fra 1980 i stedet for 2004
+const RES_HIST_LAST = 2003;
+
+function buildLongReserves(api) {
+  const h = bundle.reserves_field_hist, p = bundle.production;
+  if (!h || !h.fields || !p || !p.fields) return null;
+  const C = h.columns, iOE = C.indexOf('fldRecoverableOE'), iGas = C.indexOf('fldRecoverableGas');
+  const out = {};
+  Object.entries(api).forEach(([id, rows]) => { out[id] = rows; });
+  Object.entries(h.fields).forEach(([id, est]) => {
+    const apiRows = api[id] || [];
+    const firstApi = apiRows.length ? apiRows[0].year : Infinity;
+    est = est.filter(r => r[0] < firstApi).sort((a, b) => a[0] - b[0]);
+    if (!est.length) return;
+    // Kumulativ produksjon (OE og gass) ved utgangen av hvert år, fra årsradene.
+    const cum = {};
+    let co = 0, cg = 0;
+    (p.fields[id] || []).filter(r => r[1] === 0).sort((a, b) => a[0] - b[0])
+      .forEach(([y, , , gas, oe]) => { co += oe || 0; cg += gas || 0; cum[y] = [co, cg]; });
+    let last = [0, 0];
+    const end = Math.min(firstApi - 1, RES_HIST_LAST), rows = [];
+    for (let y = est[0][0], k = 0; y <= end; y++) {
+      while (k + 1 < est.length && est[k + 1][0] <= y) k++;
+      if (cum[y]) last = cum[y];
+      const e = est[k], rec = e[iOE], remOE = Math.max(0, rec - last[0]);
+      const raw = {};
+      C.forEach((c, i) => { if (i) raw[c] = e[i]; });
+      rows.push({year: y, recoverableOE: rec, remainingOE: remOE,
+                 remainingGas: Math.min(remOE, Math.max(0, (e[iGas] || 0) - last[1])),
+                 raw, hist: true, filled: e[0] !== y});
+    }
+    out[id] = rows.concat(apiRows);
+  });
+  return out;
+}
+
+// Radene for et felt i den serien brukeren har valgt.
+const resRows = id => ((resHist && fieldReservesLong) || fieldReserves || {})[id] || [];
+
+function setResHist(v) {
+  resHist = v;
+  syncUrl();
+  drawChart();
+}
+
+function resHistToggle() {
+  if (!fieldReservesLong) return '';
+  const b = (v, l) => `<button class="pill-btn${resHist === v ? ' active' : ''}" onclick="setResHist(${v})">${l}</button>`;
+  return `<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${b(false, 'From 2004')}${b(true, 'From 1980')}</div>`;
+}
+
+const RES_HIST_NOTE = 'Before 2004: Sodir resource accounts 1980–2003 (original recoverable per field; remaining = recoverable − cumulative production). ' +
+  'No accounts for 1981–84, 1986–89 and 1996; those years carry the previous estimate forward. ' +
+  'In 2001 gas in Troll and Visund was reclassified as reserves, about 750 million Sm³ o.e. at once';
 
 // Sodir delte Skarvs volumer på to oppføringer i årgangene 2018 og 2019.
 // Den andre, fldNpdidField 33310197, finnes ikke i noe annet lag — verken
@@ -5807,7 +5886,7 @@ function drawFieldsReserves(opts = {}) {
   const scope = opts.scope;
   const series = ids
     .map(id => ({id, name: allFields.find(f => f.id === id)?.name || String(id),
-                 rows: (fieldReserves && fieldReserves[id]) || []}))
+                 rows: resRows(id)}))
     .filter(s => s.rows.length);
 
   if (!series.length) {
@@ -5832,14 +5911,23 @@ function drawFieldsReserves(opts = {}) {
   });
 
   const labels   = years.map(String);
+  // Før 2004: år der ingen av feltene har et eget anslag (bare videreført)
+  // tones ned, keyed på årstallet så trimmingen i renderChart ikke forskyver dem.
+  const carriedYear = new Set(years.filter(y => {
+    const cs = series.map(s => reserveAt(s.rows, y)).filter(Boolean);
+    return cs.length && cs.every(c => c.filled);
+  }).map(String));
+  const faded = c => c.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(,[^)]*)?\)/, 'rgba($1,$2,$3,0.3)');
+  const tone = c => ctx => carriedYear.has(ctx.chart.data.labels[ctx.dataIndex]) ? faded(c) : c;
   const datasets = [
-    {label:'Remaining', data:remaining, backgroundColor:REMAINING_COLOR, borderWidth:0, stack:'s'},
-    {label:'Produced',  data:produced,  backgroundColor:PRODUCED_COLOR,  borderWidth:0, stack:'s'},
+    {label:'Remaining', data:remaining, backgroundColor:tone(REMAINING_COLOR), borderWidth:0, stack:'s'},
+    {label:'Produced',  data:produced,  backgroundColor:tone(PRODUCED_COLOR),  borderWidth:0, stack:'s'},
   ];
   const legend = [
     {label:'Remaining', color:REMAINING_COLOR},
     {label:'Produced',  color:PRODUCED_COLOR},
-  ];
+  ].concat(carriedYear.size ? [{label:'No estimate that year (previous carried forward)', color:faded(REMAINING_COLOR)}] : []);
+  const hasHist = series.some(s => s.rows.some(r => r.hist));
 
   const fnames = series.map(s => s.name).join(', ');
   const scopeTitle = scope ? scope.label
@@ -5847,8 +5935,10 @@ function drawFieldsReserves(opts = {}) {
   const carried = series.length > 1 && series.some(s => s.rows.length < years.length);
 
   setChartTitle(`${scopeTitle} · Reserves over time`, `${fnames} · million boe`);
-  setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}`);
+  setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}${hasHist ? ` &nbsp;|&nbsp; ${RES_HIST_NOTE}` : ''}`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
+  const tg = resHistToggle();
+  if (tg) document.getElementById('chartArea').insertAdjacentHTML('afterbegin', tg);
   const last = years[years.length - 1];
   // Hub-modus bryter ned på felt og partner; feltmodus summerer per partner.
   if (scope) renderReserveTableByFieldPartner(series, last);
