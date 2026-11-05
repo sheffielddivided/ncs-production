@@ -3474,7 +3474,7 @@ let ncsSubView = 'production';
 // prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline'
-// · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller mot opprinnelig størrelse)
+// · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
 const ncsDefaults = () => ({prod: 'product', res: 'oe', vol: false, from: '2000', year: '', rank: 'res', all: false,
@@ -4130,7 +4130,7 @@ function drawNcsReserveChange(toggle) {
     ['Average annual change', `${fP(avgAnn)}/yr`],
     ['Net change, all fields', `${fM(sLast - sFirst)} million boe`],
   ];
-  const pills = ncsPills('chg', [['pct', 'Percent'], ['mboe', 'Million boe'], ['scatter', 'vs. original size']]);
+  const pills = ncsPills('chg', [['pct', 'Percent'], ['mboe', 'Million boe'], ['scatter', 'Over time']]);
   const factsHtml = `<div class="pf-facts" style="margin-bottom:10px">
       ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${v}</strong></div>`).join('')}
     </div>`;
@@ -4182,14 +4182,24 @@ function drawNcsReserveChange(toggle) {
   document.getElementById('downloadBtn').disabled = false;
 }
 
-// Kryssplott: prosentvis endring mot første anslag (opprinnelig størrelse),
-// med logaritmisk x-akse fordi feltene spenner fra under 1 til flere tusen
-// mill fat o.e. De stiplede linjene er snittet og det volumveide snittet.
+// Boblediagram: prosentvis endring (y) mot feltets produksjonsstart (x), med
+// boblens areal proporsjonalt med første reserveanslag (opprinnelig størrelse).
+// Første reserveårgang duger ikke som tidsakse: nesten halvparten av feltene
+// har sin første årgang i 2004, der dataene starter. Felt uten
+// produksjonsstart (under utbygging) plasseres på første årgang.
+// De stiplede linjene er snittet og det volumveide snittet.
 function drawNcsReserveScatter(list, head, k) {
-  const POS_C = 'rgba(0,179,115,0.8)', NEG_C = 'rgba(206,15,105,0.75)', AVG_C = '#9aa5b1', W_C = '#003057';
-  const pts = list.map(f => ({x: +f.first.toFixed(2), y: +f.pct.toFixed(1), f}));
-  const xMin = Math.min(...pts.map(p => p.x)), xMax = Math.max(...pts.map(p => p.x));
+  const POS_C = 'rgba(0,179,115,0.55)', NEG_C = 'rgba(206,15,105,0.5)', POS_B = 'rgba(0,140,90,0.9)', NEG_B = 'rgba(170,10,85,0.9)';
+  const AVG_C = '#9aa5b1', W_C = '#003057';
+  const startYear = f => { const d = (profileRow(f.id) || {}).productionStart; return d ? new Date(d).getUTCFullYear() : null; };
+  const maxFirst = Math.max(...list.map(f => f.first));
+  const rad = v => 2.5 + 26 * Math.sqrt(v / maxFirst);
+  // Store bobler tegnes først, så de små ligger oppå og kan holdes over.
+  const pts = list.map(f => { const sy = startYear(f); return {x: sy || f.y0, y: +f.pct.toFixed(1), r: rad(f.first), f, sy}; })
+    .sort((a, b) => b.f.first - a.f.first);
+  const xMin = Math.min(...pts.map(p => p.x)) - 1, xMax = Math.max(...pts.map(p => p.x)) + 1;
   const hline = y => [{x: xMin, y: +y.toFixed(1)}, {x: xMax, y: +y.toFixed(1)}];
+  const noStart = pts.filter(p => !p.sy).length;
   // Snitt per størrelsesklasse, volumveid, til infolinjen.
   const classes = [[0, 10], [10, 100], [100, 1000], [1000, Infinity]].map(([a, b]) => {
     const g = list.filter(f => f.first >= a && f.first < b);
@@ -4199,18 +4209,18 @@ function drawNcsReserveScatter(list, head, k) {
   }).filter(c => c.n);
   document.getElementById('chartArea').innerHTML = `${head}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
-    <div class="legend-row">${[['Revised up', POS_C], ['Revised down', NEG_C]].map(([l, c]) =>
+    <div class="legend-row">${[['Revised up', POS_B], ['Revised down', NEG_B]].map(([l, c]) =>
       `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
       <div class="legend-item"><div class="legend-dot" style="background:${AVG_C};height:3px;border-radius:0"></div>Average (${k.fP(k.avgPct)})</div>
       <div class="legend-item"><div class="legend-dot" style="background:${W_C};height:3px;border-radius:0"></div>Volume-weighted (${k.fP(k.wPct)})</div></div>
-    <div class="pf-map-note">Each point is a field: first reserve estimate (log scale) against the change to the latest estimate. Click a point for the field's profile.</div>`;
+    <div class="pf-map-note">Each bubble is a field, placed on its production start year; bubble area is proportional to the first reserve estimate (largest: ${esc(pts[0].f.name)}, ${k.fM(maxFirst).replace(/^\+/, '')} million boe). Click a bubble for the field's profile.</div>`;
   if (chartInstance) chartInstance.destroy();
   const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}});
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
-    type: 'scatter',
+    type: 'bubble',
     data: {datasets: [
-      {label: 'Fields', data: pts, pointRadius: 4, pointHoverRadius: 6, borderWidth: 0,
-       backgroundColor: c => (c.raw && c.raw.y < 0 ? NEG_C : POS_C)},
+      {label: 'Fields', data: pts, borderWidth: 1, hoverBorderWidth: 2,
+       backgroundColor: c => (c.raw && c.raw.y < 0 ? NEG_C : POS_C), borderColor: c => (c.raw && c.raw.y < 0 ? NEG_B : POS_B)},
       {label: 'Average', type: 'line', data: hline(k.avgPct), borderColor: AVG_C, borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0},
       {label: 'Volume-weighted', type: 'line', data: hline(k.wPct), borderColor: W_C, borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0},
     ]},
@@ -4218,22 +4228,24 @@ function drawNcsReserveScatter(list, head, k) {
       onClick: (e, els) => { const el = els.find(x => x.datasetIndex === 0); if (el) openFieldProfile(pts[el.index].f.id); },
       onHover: (e, els) => { e.native.target.style.cursor = els.some(x => x.datasetIndex === 0) ? 'pointer' : 'default'; },
       plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
-        label: c => { const f = c.raw.f; return ` ${f.name}: ${f.y0} ${k.fM(f.first).replace(/^\+/, '')} → ${f.y1} ${k.fM(f.last).replace(/^\+/, '')} million boe · ${k.fP(f.pct)} · ${k.fP(f.ann)}/yr`; }}}},
+        label: c => { const f = c.raw.f; return ` ${f.name} (${c.raw.sy ? 'on stream ' + c.raw.sy : 'not yet producing'}): ${f.y0} ${k.fM(f.first).replace(/^\+/, '')} → ${f.y1} ${k.fM(f.last).replace(/^\+/, '')} million boe · ${k.fP(f.pct)} · ${k.fP(f.ann)}/yr`; }}}},
       scales: {
-        x: {...axis('First reserve estimate, million boe (log scale)'), type: 'logarithmic',
-            ticks: {font: {size: 9}, autoSkip: false, callback: v => [0.1, 1, 10, 100, 1000, 10000].includes(+v) ? (+v).toLocaleString('en') : ''}},
+        x: {...axis('Production start'), type: 'linear', min: xMin, max: xMax,
+            ticks: {font: {size: 9}, stepSize: 5, callback: v => (v % 5 ? '' : String(v))}},
         y: {...axis('Change to latest estimate, %'), ticks: {font: {size: 9}, callback: v => v + ' %'},
             grid: {color: c => c.tick.value === 0 ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.05)'}},
       }},
   });
-  setChartTitle('Norwegian Continental Shelf · Fields', 'Reserve change vs. original size · %');
-  setInfo(`<strong>x:</strong> original recoverable reserves (OE) in the field's first Sodir vintage, million boe, log scale &nbsp;|&nbsp; <strong>y:</strong> change to the latest vintage (${k.y0}–${k.y1}), % &nbsp;|&nbsp; ` +
+  setChartTitle('Norwegian Continental Shelf · Fields', 'Reserve change by production start · bubble size = original reserves');
+  setInfo(`<strong>x:</strong> production start year${noStart ? ` (${noStart} fields not yet producing are placed on their first vintage)` : ''} &nbsp;|&nbsp; <strong>y:</strong> change in original recoverable reserves (OE) from the field's first to its latest Sodir vintage (${k.y0}–${k.y1}), %; fields on stream before ${k.y0} are measured from ${k.y0} &nbsp;|&nbsp; ` +
+    `<strong>Bubble area:</strong> first reserve estimate &nbsp;|&nbsp; ` +
     `<strong>By size (first estimate, million boe):</strong> ${classes.map(c => `${c.lbl}: ${c.n} fields, average ${k.fP(c.avg)}, volume-weighted ${k.fP(c.w)}`).join('; ')} &nbsp;|&nbsp; ` +
     `Fields with a single vintage or under 0.05 million boe in the first vintage are left out &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
   lastLabels = list.map(f => f.name); lastXTitle = 'Field';
-  lastDatasets = [{label: 'First estimate, million boe', data: list.map(f => +f.first.toFixed(1))},
+  lastDatasets = [{label: 'Production start', data: list.map(f => startYear(f) ?? '')},
+                  {label: 'First estimate, million boe', data: list.map(f => +f.first.toFixed(1))},
                   {label: 'Change, %', data: list.map(f => +f.pct.toFixed(1))}];
-  pptSpec = {kind: 'scatter', markers: true, xTitle: 'First reserve estimate, million boe', yTitle: 'Change to latest estimate, %',
+  pptSpec = {kind: 'scatter', markers: true, xTitle: 'Production start', yTitle: 'Change to latest estimate, %',
     series: [{name: 'Revised up', points: pts.filter(p => p.y >= 0).map(({x, y}) => ({x, y})), color: pptHex(POS_C)},
              {name: 'Revised down', points: pts.filter(p => p.y < 0).map(({x, y}) => ({x, y})), color: pptHex(NEG_C)}]};
   document.getElementById('downloadBtn').disabled = false;
