@@ -1493,6 +1493,7 @@ const FIELD_TABS   = [
   {id:'map',            label:'Map'},
   {id:'profile',        label:'Profile'},
   {id:'havtil',         label:'Havtil'},
+  {id:'downtime',       label:'Downtime'},
 ];
 const HUB_TABS     = [
   {id:'oe_per_field',   label:'Prod per field'},
@@ -1502,6 +1503,7 @@ const HUB_TABS     = [
   {id:'profile',        label:'Profile'},
   {id:'installations',  label:'Installations'},
   {id:'havtil',         label:'Havtil'},
+  {id:'downtime',       label:'Downtime'},
   {id:'valuation',      label:'Valuation BETA'},
 ];
 const DISCOVERY_TABS = [
@@ -2327,6 +2329,7 @@ window.addEventListener('popstate', async () => {
 const SOURCES = {
   sodir:    ['Norwegian Offshore Directorate (Sodir)', 'https://factpages.sodir.no', 'NLOD 2.0'],
   havtil:   ['Norwegian Ocean Industry Authority (Havtil)', 'https://www.havtil.no', ''],
+  gassco:   ['Gassco, Urgent Market Messages', 'https://umm.gassco.no', ''],
   ais:      ['Norwegian Coastal Administration (Kystverket), AIS', 'https://www.kystverket.no', 'NLOD 2.0'],
   ssb:      ['Statistics Norway (SSB)', 'https://www.ssb.no', 'CC BY 4.0'],
   ppb:      ['Petroleum Price Board / Ministry of Energy', 'https://www.regjeringen.no/no/tema/energi/olje-og-gass/petroleumsprisradet--og-fastsetting-av-n/id661459/', ''],
@@ -2359,6 +2362,7 @@ function pageSources() {
   }
   if (m === 'fields' && v === 'map') add('ne');
   if (m === 'fields' && v === 'havtil') add('havtil');
+  if ((m === 'fields' || m === 'hubs') && v === 'downtime') add('gassco');
   if (m === 'companies' && v === 'news') add('havtil', 'ais');
   if (m === 'exploration') {
     if (v === 'map') add('ne');
@@ -2602,6 +2606,7 @@ async function refreshHubs() {
   }
   if (hubSubView === 'installations') { await loadFieldWells(); drawChart(); return; }
   if (hubSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
+  if (hubSubView === 'downtime') { await loadGassco(); drawChart(); return; }
   await loadProdForFields(ids);
   if (hubSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -2628,6 +2633,7 @@ async function refreshFields() {
   }
   if (fieldSubView === 'map') { drawChart(); return; }
   if (fieldSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
+  if (fieldSubView === 'downtime') { await loadGassco(); drawChart(); return; }
   await loadProdForFields(ids);
   if (fieldSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -2753,6 +2759,7 @@ function drawChart() {
     else if (sv === 'profile')         drawFieldProfile();
     else if (sv === 'map')             drawFieldMap();
     else if (sv === 'havtil')          drawFieldHavtil();
+    else if (sv === 'downtime')        drawFieldDowntime();
   } else if (topMode === 'hubs') {
     // Gjenbruker feltvisningene med hubens medlemsfelt.
     const names = [...selectedHubNames];
@@ -2763,6 +2770,7 @@ function drawChart() {
     else if (hubSubView === 'profile')  drawHubProfile();
     else if (hubSubView === 'installations') drawHubInstallations();
     else if (hubSubView === 'havtil') drawHubHavtil();
+    else if (hubSubView === 'downtime') drawHubDowntime();
     else if (hubSubView === 'valuation') drawHubValuation();
     else drawFieldsOePerField(opts);
   } else if (topMode === 'ncs') {
@@ -5469,10 +5477,12 @@ function isReservesView() {
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'fields'    && fieldSubView   === 'map')
       || (topMode === 'fields'    && fieldSubView   === 'havtil')
+      || (topMode === 'fields'    && fieldSubView   === 'downtime')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'installations')
       || (topMode === 'hubs'      && hubSubView     === 'havtil')
+      || (topMode === 'hubs'      && hubSubView     === 'downtime')
       || (topMode === 'hubs'      && hubSubView     === 'valuation')
       || (topMode === 'companies' && companySubView === 'profile')
       || (topMode === 'companies' && companySubView === 'reserves')
@@ -6329,6 +6339,99 @@ function drawFieldHavtil() {
   const card = havtilCard(id);
   setProfile(card ? card.replace('class="pf-card"', 'class="pf-card pf-wide"')
     : '<div class="pf-card pf-wide"><div class="pf-map-note">No Havtil cases are linked to this field.</div></div>');
+}
+
+// ── GASSCO: NEDETID ──────────────────────────────────────────────────────────
+// Dager med tapt produksjon per felt og måned, regnet ut av Gasscos hendelser
+// (UMM) i fetch_gassco.py (data/gassco_downtime.json). Øyeblikksbilde fra
+// første måned uten produksjonstall og så langt fram som hendelsene går.
+// Gassco melder per node (der gassen går inn i transportsystemet), så tallet
+// gjelder noden og kan omfatte felt som leverer gjennom den.
+let gasscoData = null, gasscoLoading = null;
+function loadGassco() {
+  if (gasscoData) return Promise.resolve();
+  if (!gasscoLoading) gasscoLoading = fetchBundle('gassco_downtime').then(b => { gasscoData = b || {}; });
+  return gasscoLoading;
+}
+const GS_NOTE = 'Days of lost production = unavailable capacity / technical capacity × days, summed per gas day (06:00–06:00) and month. ' +
+  'Gassco reports outages above 5 MSm³/d per entry node, so smaller outages, oil and liquids are not included, and a node can cover satellite fields delivering through it. ' +
+  'Outages at processing plants (Kollsnes, Kårstø, Nyhamna) and export terminals are not attributed to fields. Future months are planned maintenance plus known unplanned events, with uncertain dates and capacities';
+// Månedene i øyeblikksbildet, fra «from» til siste måned med nedetid for de valgte feltene.
+function gasscoMonths(ids) {
+  const d = gasscoData || {}, f = d.fields || {};
+  if (!d.from) return [];
+  let [y, m] = d.from.split('-').map(Number), last = y * 12 + m - 1;
+  ids.forEach(id => (f[id]?.rows || []).forEach(r => { last = Math.max(last, r[0] * 12 + r[1] - 1); }));
+  const out = [];
+  for (let i = y * 12 + m - 1; i <= last; i++) out.push([Math.floor(i / 12), i % 12 + 1]);
+  return out;
+}
+function gasscoRow(id, y, m) {
+  return (gasscoData?.fields?.[id]?.rows || []).find(r => r[0] === y && r[1] === m);
+}
+const gsMonthLabel = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
+const gsDays = v => v ? v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1}) : '–';
+function gasscoInfo(scope) {
+  const d = gasscoData || {};
+  const lp = d.lastProductionMonth ? `Sodir production figures until ${d.lastProductionMonth}` : '';
+  const upd = d.generated ? `updated ${d.generated.slice(0, 10)}` : '';
+  return `<strong>${scope}</strong> &nbsp;|&nbsp; <strong>Period:</strong> ${esc(d.from || '—')} to ${esc(d.to || '—')}${lp ? ` (${lp})` : ''} &nbsp;|&nbsp; ` +
+    `<strong>Source:</strong> Gassco Urgent Market Messages (umm.gassco.no), ${upd} &nbsp;|&nbsp; ${GS_NOTE}`;
+}
+function drawFieldDowntime() {
+  const ids = [...selectedFieldIds];
+  if (ids.length !== 1) {
+    setChartEmpty(ids.length ? 'Select a single field to see its downtime.' : 'Tap the button below to select a field.');
+    setInfo('');
+    return;
+  }
+  const id = ids[0], name = fieldNameOf(id), g = gasscoData?.fields?.[id];
+  setChartNone(); setProfile('');
+  setChartTitle(name, 'Downtime · days of lost production per month, from Gassco');
+  setInfo(gasscoInfo(`Field: ${esc(name)}${g && g.asset.toUpperCase() !== name.toUpperCase() ? ` (Gassco node: ${esc(g.asset)})` : ''}`));
+  if (!g) {
+    setProfile('<div class="pf-card pf-wide"><div class="pf-map-note">Gassco reports no outages for this field in the period. Gassco only reports gas outages above 5 MSm³/d at its entry nodes, so most fields never appear.</div></div>');
+    return;
+  }
+  const months = gasscoMonths([id]);
+  const days = (y, m) => new Date(y, m, 0).getDate();
+  const rows = months.map(([y, m]) => {
+    const r = gasscoRow(id, y, m);
+    return `<tr><td>${gsMonthLabel(y, m)}</td><td>${gsDays(r?.[2])}</td><td>${gsDays(r?.[3])}</td><td>${gsDays(r?.[4])}</td>
+      <td>${r ? Math.round(100 * r[2] / days(y, m)) + ' %' : '–'}</td></tr>`;
+  }).join('');
+  lastLabels = months.map(([y, m]) => gsMonthLabel(y, m)); lastXTitle = 'Month';
+  lastDatasets = [2, 3, 4].map((k, i) => ({label: ['Days lost', 'Planned', 'Unplanned'][i],
+    data: months.map(([y, m]) => gasscoRow(id, y, m)?.[k] ?? 0)}));
+  document.getElementById('downloadBtn').disabled = false;
+  setChartTable(`
+    <table class="res-table">
+      <caption>Days of lost production per month · ${esc(g.asset)}</caption>
+      <thead><tr><th>Month</th><th>Days lost</th><th>Planned</th><th>Unplanned</th><th>Share of month</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`);
+}
+function drawHubDowntime() {
+  const hubName = hubSingle();
+  if (!hubName) return;
+  const ids = hubFieldIds([hubName]).filter(id => gasscoData?.fields?.[id]);
+  setChartNone(); setProfile('');
+  setChartTitle(hubName, 'Downtime · days of lost production per month and field, from Gassco');
+  setInfo(gasscoInfo(`Hub: ${esc(hubName)}`));
+  if (!ids.length) {
+    setProfile('<div class="pf-card pf-wide"><div class="pf-map-note">Gassco reports no outages for the fields in this hub in the period. Gassco only reports gas outages above 5 MSm³/d at its entry nodes, so most fields never appear.</div></div>');
+    return;
+  }
+  const months = gasscoMonths(ids);
+  lastLabels = months.map(([y, m]) => gsMonthLabel(y, m)); lastXTitle = 'Month';
+  lastDatasets = ids.map(id => ({label: `${fieldNameOf(id)}, days lost`, data: months.map(([y, m]) => gasscoRow(id, y, m)?.[2] ?? 0)}));
+  document.getElementById('downloadBtn').disabled = false;
+  setChartTable(`
+    <table class="res-table">
+      <caption>Days of lost production per month · fields in the hub that Gassco reports on</caption>
+      <thead><tr><th>Month</th>${ids.map(id => `<th>${esc(fieldNameOf(id))}</th>`).join('')}</tr></thead>
+      <tbody>${months.map(([y, m]) => `<tr><td>${gsMonthLabel(y, m)}</td>${ids.map(id => `<td>${gsDays(gasscoRow(id, y, m)?.[2])}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`);
 }
 
 // ── HAVTIL ───────────────────────────────────────────────────────────────────

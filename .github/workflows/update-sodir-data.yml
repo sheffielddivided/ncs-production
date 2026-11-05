@@ -85,6 +85,14 @@ jobs:
         timeout-minutes: 10
         run: python fetch_havtil.py
 
+      # Nedetid per felt fra Gasscos hendelser (UMM), i dager med tapt
+      # produksjon per måned. Etter Sodir, siden perioden starter i første
+      # måned uten produksjonstall. Øyeblikksbilde; filen skrives på nytt.
+      - name: Hent nedetid (Gassco UMM)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_gassco.py
+
       # Sodirs pressemeldinger (boretillatelser, boreresultater, generelle
       # nyheter) til Companies → News. Etter Havtil, så felt- og
       # selskapsdataene er oppdatert. Selskapenes egne feeder hentes av
