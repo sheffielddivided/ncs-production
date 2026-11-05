@@ -697,7 +697,7 @@ fra arkivet `data/gassco_events.json`, og skrives på nytt hver kjøring.
   samme navn.
 
 Vises i Field → Downtime (stablede søyler planlagt/uplanlagt + tabell) og
-Hub → Downtime (søyler side om side per felt + tabell). Begge har Sodirs
+Hub → Downtime (stablede søyler, ett segment per felt + tabell). Begge har Sodirs
 gassproduksjon (netto salgsgass, månedssnitt i MSm³/d = mrd Sm³ × 1000 /
 dager) som linje på høyre akse — for feltet selv, eller summert over alle
 hubens felt — så endringer i produksjonen kan leses mot nedetiden. Merk at
