@@ -741,7 +741,7 @@ fra arkivet `data/gassco_events.json`, og skrives på nytt hver kjøring.
   dekke satellitter som leverer gjennom den; tallet føres bare på feltet med
   samme navn.
 
-Vises i Field → Downtime og Hub → Downtime som volumeffekt: Sodirs
+Vises i Field → Gas outage og Hub → Gas outage som volumeffekt: Sodirs
 gassproduksjon (netto salgsgass, månedssnitt = mrd Sm³ × 1000 / dager) som
 stolpe over null og tapt volum (`volume` / dager i måneden) som stolper under
 null, i samme stabel — for feltet delt i planlagt/uplanlagt, for huben ett
@@ -753,6 +753,15 @@ faktisk rate (Oseberg mai 2026: 26,6 MSm³/d tapt mot om lag 22 i normal
 produksjon). Merk også at produksjonen gjelder feltet, mens nedetiden gjelder
 Gassco-noden — `drawFieldDowntime`,
 `drawHubDowntime`, `gasscoChart` i `index.html`. Lastes først når fanen åpnes.
+Fanene heter «Gas outage», men har id `downtime` i lenkene, så eldre lenker
+virker.
+
+**NCS → Gas outage** (`drawNcsOutage`, id `outage`): hele sokkelen — Sodirs
+gassproduksjon for alle felt over null, tapt volum under null, stablet med
+ett segment per hub (`hubOfField`; felt uten hub er sin egen). Hubene
+sorteres etter samlet tap i perioden, og de som ikke får farge i paletten,
+får grå toner. Tabellen har tapt volum per hub, totalt og som andel av
+produksjonen.
 
 ### `data/meta.json`
 
