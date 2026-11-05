@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-30",
+  "updated": "2026-11-05",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -11,9 +11,17 @@
       "hub": "Ekofisk area",
       "auto": false
     },
+    "43457": {
+      "hub": "Sleipner",
+      "auto": false
+    },
     "43464": {
-      "hub": "SLEIPNER ØST",
-      "auto": true
+      "hub": "Sleipner",
+      "auto": false
+    },
+    "43478": {
+      "hub": "Sleipner",
+      "auto": false
     },
     "43485": {
       "hub": "Valhall area",
@@ -164,8 +172,8 @@
       "auto": true
     },
     "1630100": {
-      "hub": "SLEIPNER ØST",
-      "auto": true
+      "hub": "Sleipner",
+      "auto": false
     },
     "1630514": {
       "hub": "ÅSGARD",
@@ -332,8 +340,8 @@
       "auto": true
     },
     "28975098": {
-      "hub": "SLEIPNER VEST",
-      "auto": true
+      "hub": "Sleipner",
+      "auto": false
     },
     "29393934": {
       "hub": "HEIDRUN",
