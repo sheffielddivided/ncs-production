@@ -5760,17 +5760,17 @@ async function loadFieldReserves() {
 // ── RESERVER FØR 2004 ──
 // FactMaps-laget starter med årgang 2004. data/reserves_field_hist.json
 // (build_reserves_hist.py) har opprinnelig utvinnbart volum per felt fra
-// ressursregnskapene 1980–2003, kontrollert mot APIet for 2004. Gjenværende
+// ressursregnskapene 1975–2003, kontrollert mot APIet for 2004. Gjenværende
 // står ikke i alle regnskapene og regnes her ut som opprinnelig utvinnbart
 // minus kumulativ produksjon ved årets slutt — det er Sodirs egen definisjon,
 // og den treffer APIets gjenværende for nesten alle felt i årgangene som har
-// begge. År uten regnskap (1981–84, 1986–89, 1996) og felt som mangler i et
+// begge. År uten regnskap (1976–79, 1981–84, 1986–89, 1996) og felt som mangler i et
 // regnskap fylles med forrige anslag, merket filled, slik at gjenværende
 // fortsatt synker med produksjonen. Fra feltets første API-årgang brukes
 // APIet uendret. fieldReservesLong er da den lange serien; fieldReserves er
 // urørt, så alle andre visninger er som før.
 let fieldReservesLong = null;
-let resHist = false;   // reservegrafene per felt/hub og reserveendringen: fra 1980 i stedet for 2004
+let resHist = false;   // reservegrafene per felt/hub og reserveendringen: fra 1975 i stedet for 2004
 const RES_HIST_LAST = 2003;
 
 function buildLongReserves(api) {
@@ -5818,11 +5818,12 @@ function setResHist(v) {
 function resHistToggle() {
   if (!fieldReservesLong) return '';
   const b = (v, l) => `<button class="pill-btn${resHist === v ? ' active' : ''}" onclick="setResHist(${v})">${l}</button>`;
-  return `<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${b(false, 'From 2004')}${b(true, 'From 1980')}</div>`;
+  return `<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${b(false, 'From 2004')}${b(true, 'From 1975')}</div>`;
 }
 
-const RES_HIST_NOTE = 'Before 2004: Sodir resource accounts 1980–2003 (original recoverable per field; remaining = recoverable − cumulative production). ' +
-  'No accounts for 1981–84, 1986–89 and 1996; those years carry the previous estimate forward. ' +
+const RES_HIST_NOTE = 'Before 2004: Sodir resource accounts 1975–2003 (original recoverable per field; remaining = recoverable − cumulative production). ' +
+  '1975 is converted from tonnes of oil and Nm³ of gas and is approximate (a few per cent), with the provisional Norwegian share of Frigg and Statfjord. ' +
+  'No accounts for 1976–79, 1981–84, 1986–89 and 1996; those years carry the previous estimate forward. ' +
   'In 2001 gas in Troll and Visund was reclassified as reserves, about 750 million Sm³ o.e. at once';
 
 // Sodir delte Skarvs volumer på to oppføringer i årgangene 2018 og 2019.
