@@ -21,13 +21,26 @@ men høyst tre måneder før inneværende måned, og så langt fram som
 hendelsene går.
 
 Beregning: Gassco melder bortfall over 5 MSm³/d per anlegg (en node der gass
-går inn i transportsystemet) med teknisk og utilgjengelig kapasitet. For hver
-node deles tiden opp der en hendelse starter eller slutter. I hvert stykke er
-tapt andel = sum utilgjengelig kapasitet / største tekniske kapasitet, høyst
-1. Tapt andel × timer / 24 gir dager med tapt produksjon. Tiden føres på
+går inn i transportsystemet) med teknisk, tilgjengelig og utilgjengelig
+kapasitet. For hver node deles tiden opp der en hendelse starter eller
+slutter. I hvert stykke er tapt andel = (største tekniske kapasitet − laveste
+tilgjengelige kapasitet) / største tekniske kapasitet. Overlappende hendelser
+summeres altså ikke: Gassco melder dem på to måter, og begge gir riktig svar
+med laveste tilgjengelige kapasitet:
+  · trinnvis: den nye hendelsens tekniske kapasitet er den tilgjengelige fra
+    den første (Troll 18,2/132,2, så 39,4/114,2 → 57,6 borte)
+  · erstattende: den nye oppgir hele bortfallet på nytt (Åsgard 5,2/29,2 og
+    7,2/29,2 samtidig → 7,2 borte, ikke 12,4)
+Tapt andel × timer / 24 gir dager med tapt produksjon. Tiden føres på
 gassdøgnet (06:00–06:00 norsk tid), så et døgn som starter 31. kl. 06 hører
-til den måneden. Delt på planlagt og uplanlagt i forhold til
-utilgjengelig kapasitet.
+til den måneden. Planlagt/uplanlagt: bortfallet trappes ned fra teknisk
+kapasitet via hendelsenes tilgjengelige kapasitet, og hvert trinn føres på
+typen til hendelsen som gir det.
+
+Prosessanlegg (Kollsnes, Kårstø, Nyhamna) og terminaler fordeles ikke på felt.
+Gassco melder bortfallet på feltnodene også når årsaken er et anlegg (Nyhamna
+helt stengt i mai 2027 står også som 100 % bortfall på Ormen Lange og Aasta
+Hansteen), så fordeling ville telt det samme to ganger.
 
 Kobling til felt: data/gassco_aliases.json (fields, ignore), ellers samme
 navn som i fields.json. En node kan dekke flere felt som leverer gjennom
@@ -290,11 +303,23 @@ def downtime_by_asset(events, start_ym):
             if not act:
                 continue
             tech = max(e["tech"] for e in act)
-            unav = sum(e["unavail"] for e in act)
-            if tech <= 0 or unav <= 0:
+            if tech <= 0:
                 continue
-            frac = min(1.0, unav / tech)
-            planned = sum(e["unavail"] for e in act if e["type"] == "Planned") / unav
+            # Tilgjengelig kapasitet per hendelse, høyest først. Bortfallet er
+            # trappen fra tech ned til den laveste; hvert trinn får typen til
+            # hendelsen som tar kapasiteten ned dit.
+            steps = sorted(((max(0.0, e["tech"] - e["unavail"]), e["type"]) for e in act), reverse=True)
+            level, lost, lost_pl = tech, 0.0, 0.0
+            for avail, typ in steps:
+                if avail < level:
+                    lost += level - avail
+                    if typ == "Planned":
+                        lost_pl += level - avail
+                    level = avail
+            if lost <= 0:
+                continue
+            frac = min(1.0, lost / tech)
+            planned = lost_pl / lost
             t = max(a, horizon_t)
             while t < b:
                 ym, nxt = gas_month_bounds(t)
@@ -341,6 +366,10 @@ def main():
             print(f"Hopper over {e['id']}: enhet {e['unit']}", file=sys.stderr)
             continue
         if e["tech"] is None or e["unavail"] is None or e["stop"] <= e["start"]:
+            continue
+        # Ikke bortfall: økt kapasitet (0 eller negativ utilgjengelig) eller
+        # teknisk kapasitet 0 (Sleipner 2026-324: -6,1/0,0).
+        if e["unavail"] <= 0 or e["tech"] <= 0:
             continue
         keep.append(e)
 

@@ -6355,7 +6355,8 @@ function loadGassco() {
 }
 const GS_NOTE = 'Days of lost production = unavailable capacity / technical capacity × days, summed per gas day (06:00–06:00) and month. ' +
   'Gassco reports outages above 5 MSm³/d per entry node, so smaller outages, oil and liquids are not included, and a node can cover satellite fields delivering through it. ' +
-  'Outages at processing plants (Kollsnes, Kårstø, Nyhamna) and export terminals are not attributed to fields. Future months are planned maintenance plus known unplanned events, with uncertain dates and capacities';
+  'Overlapping events are not added up: the lowest available capacity counts. ' +
+  'Outages at processing plants (Kollsnes, Kårstø, Nyhamna) and export terminals are not attributed to fields, since Gassco also reports their effect on the field nodes and it would be counted twice. Future months are planned maintenance plus known unplanned events, with uncertain dates and capacities';
 // Månedene i øyeblikksbildet, fra «from» til siste måned med nedetid for de valgte feltene.
 function gasscoMonths(ids) {
   const d = gasscoData || {}, f = d.fields || {};
@@ -6377,6 +6378,28 @@ function gasscoInfo(scope) {
   const upd = d.generated ? `updated ${d.generated.slice(0, 10)}` : '';
   return `<strong>${scope}</strong> &nbsp;|&nbsp; <strong>Period:</strong> ${esc(d.from || '—')} to ${esc(d.to || '—')}${lp ? ` (${lp})` : ''} &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Gassco Urgent Market Messages (umm.gassco.no), ${upd} &nbsp;|&nbsp; ${GS_NOTE}`;
+}
+// Søylediagram med dager per måned. Stablet (planlagt + uplanlagt) for ett
+// felt, side om side per felt for en hub — feltdager summert gir ingen mening.
+const GS_PLAN_C = 'rgba(0,48,87,0.85)', GS_UNPL_C = 'rgba(206,15,105,0.85)';
+function gasscoChart(labels, datasets, stacked) {
+  document.getElementById('chartArea').innerHTML = `
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.backgroundColor}"></div>${esc(d.label)}</div>`).join('')}</div>`;
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'bar',
+    data: {labels, datasets: datasets.map(d => ({...d, borderWidth: 0, stack: stacked ? 's' : d.label}))},
+    options: {responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {filter: c => c.parsed.y > 0, callbacks: {
+        label: c => ` ${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 1})} days`}}},
+      scales: {
+        x: {stacked, ticks: {maxRotation: 0, autoSkipPadding: 8, font: {size: 9}}, grid: {display: false}},
+        y: {stacked, beginAtZero: true, suggestedMax: 10, title: {display: true, text: 'days of lost production', color: '#4a5568', font: {size: 10}},
+            ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
+      }},
+  });
 }
 function drawFieldDowntime() {
   const ids = [...selectedFieldIds];
@@ -6400,9 +6423,12 @@ function drawFieldDowntime() {
     return `<tr><td>${gsMonthLabel(y, m)}</td><td>${gsDays(r?.[2])}</td><td>${gsDays(r?.[3])}</td><td>${gsDays(r?.[4])}</td>
       <td>${r ? Math.round(100 * r[2] / days(y, m)) + ' %' : '–'}</td></tr>`;
   }).join('');
-  lastLabels = months.map(([y, m]) => gsMonthLabel(y, m)); lastXTitle = 'Month';
-  lastDatasets = [2, 3, 4].map((k, i) => ({label: ['Days lost', 'Planned', 'Unplanned'][i],
-    data: months.map(([y, m]) => gasscoRow(id, y, m)?.[k] ?? 0)}));
+  const labels = months.map(([y, m]) => gsMonthLabel(y, m));
+  const ser = k => months.map(([y, m]) => gasscoRow(id, y, m)?.[k] ?? 0);
+  gasscoChart(labels, [{label: 'Planned', data: ser(3), backgroundColor: GS_PLAN_C},
+                       {label: 'Unplanned', data: ser(4), backgroundColor: GS_UNPL_C}], true);
+  lastLabels = labels; lastXTitle = 'Month';
+  lastDatasets = [2, 3, 4].map((k, i) => ({label: ['Days lost', 'Planned', 'Unplanned'][i], data: ser(k)}));
   document.getElementById('downloadBtn').disabled = false;
   setChartTable(`
     <table class="res-table">
@@ -6423,8 +6449,11 @@ function drawHubDowntime() {
     return;
   }
   const months = gasscoMonths(ids);
-  lastLabels = months.map(([y, m]) => gsMonthLabel(y, m)); lastXTitle = 'Month';
-  lastDatasets = ids.map(id => ({label: `${fieldNameOf(id)}, days lost`, data: months.map(([y, m]) => gasscoRow(id, y, m)?.[2] ?? 0)}));
+  const labels = months.map(([y, m]) => gsMonthLabel(y, m));
+  const ser = id => months.map(([y, m]) => gasscoRow(id, y, m)?.[2] ?? 0);
+  gasscoChart(labels, ids.map((id, i) => ({label: fieldNameOf(id), data: ser(id), backgroundColor: PALETTE[i % PALETTE.length][0]})), false);
+  lastLabels = labels; lastXTitle = 'Month';
+  lastDatasets = ids.map(id => ({label: `${fieldNameOf(id)}, days lost`, data: ser(id)}));
   document.getElementById('downloadBtn').disabled = false;
   setChartTable(`
     <table class="res-table">

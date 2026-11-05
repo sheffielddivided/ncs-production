@@ -665,19 +665,31 @@ Bygges av `fetch_gassco.py` (daglig, i `update-sodir-data.yml` etter Sodir).
   `production.json`, men høyst tre måneder før inneværende måned, og fram til
   siste måned med nedetid.
 - **Beregning:** per node deles tiden der hendelser starter eller slutter. Tapt
-  andel = sum utilgjengelig kapasitet / største tekniske kapasitet, høyst 1.
-  Dager = andel × timer / 24, ført på gassdøgnet (06:00–06:00 norsk tid) og
-  dets måned. `planned`/`unplanned` fordeles etter utilgjengelig kapasitet.
+  andel = (største tekniske kapasitet − laveste tilgjengelige kapasitet) /
+  største tekniske kapasitet. Overlappende hendelser summeres **ikke**: Gassco
+  melder dem enten trinnvis (ny hendelses tekniske kapasitet = forriges
+  tilgjengelige, f.eks. Troll 18,2/132,2 så 39,4/114,2) eller erstattende (ny
+  hendelse oppgir hele bortfallet, f.eks. Åsgard 5,2/29,2 og 7,2/29,2), og
+  laveste tilgjengelige kapasitet gir riktig svar i begge. Hendelser med
+  utilgjengelig ≤ 0 eller teknisk 0 (økt kapasitet) hoppes over. Dager = andel
+  × timer / 24, ført på gassdøgnet (06:00–06:00 norsk tid) og dets måned.
+  `planned`/`unplanned`: trinnene fra teknisk ned til laveste tilgjengelige
+  føres på typen til hendelsen som gir trinnet.
+- **Ingen fordeling av prosessanlegg:** Gassco melder virkningen av et
+  anleggsstopp også på feltnodene (Nyhamna helt stengt mai 2027 står som 100 %
+  på Ormen Lange og Aasta Hansteen; Kollsnes 156/156 sept. 2027 som 100 % på
+  Troll). Å fordele anleggene på felt ville telle det samme to ganger.
 - **Kobling:** `data/gassco_aliases.json` (`fields`: node → ett eller flere
   Sodir-felt, f.eks. Sleipner → Sleipner Øst og Vest, Hammerfest LNG → Snøhvit;
   `ignore`: prosessanlegg og terminaler), ellers samme navn som i `fields.json`.
   Noder uten treff står i `unmatched`.
 - **Begrensninger:** Gassco melder bare gassbortfall over 5 MSm³/d. En node kan
   dekke satellitter som leverer gjennom den; tallet føres bare på feltet med
-  samme navn. Bortfall ved Kollsnes, Kårstø og Nyhamna fordeles ikke på felt.
+  samme navn.
 
-Vises i Field → Downtime og Hub → Downtime (`drawFieldDowntime`,
-`drawHubDowntime` i `index.html`), lastes først når fanen åpnes.
+Vises i Field → Downtime (stablede søyler planlagt/uplanlagt + tabell) og
+Hub → Downtime (søyler side om side per felt + tabell) — `drawFieldDowntime`,
+`drawHubDowntime`, `gasscoChart` i `index.html`. Lastes først når fanen åpnes.
 
 ### `data/meta.json`
 
