@@ -615,7 +615,14 @@ filen (nøkkelen er hubnavnet i `hubs.json`), brukes koblingene herfra i stedet
   følger koblingene i den retningen.
 - **kind:** `pipeline` (heltrukket; `count: 2` gir to parallelle linjer),
   `bridge` (tykk strek), `wells` (brønner boret fra plattformen — ingen linje,
-  bare i tabellen), `historical` (stiplet grå).
+  bare i tabellen), `historical` (stiplet grå), `export` (eksport fra huben,
+  f.eks. rikgass til SAGE eller olje med skytteltankere — ingen linje, bare i
+  tabellen; `to` er fritekst).
+- **basis:** `confirmed` (standard: koblingen og endepunktene er kjent fra
+  Sodir eller operatørens dokumentasjon) eller `schematic` (koblingen finnes,
+  men ruten er ikke verifisert — tegnes prikket). Står som egen kolonne i
+  tabellen. Ingen rørtraseer er tegnet: linjene er rette mellom Sodirs
+  posisjoner for innretningene.
 - Endepunkter som ikke finnes (fjernet innretning, felt uten omriss) hoppes
   over med en advarsel i konsollen.
 - Kartet blir høyere (560 px) og får navn på innretningene; navn som er lik
@@ -624,6 +631,17 @@ filen (nøkkelen er hubnavnet i `hubs.json`), brukes koblingene herfra i stedet
   feltnavnene og unngår dem (`overlayLabels` i `outlineMap`).
 - Under kartet i Hub → Installations står tabellen Connections med alle
   koblingene.
+
+**Alvheim area:** Alvheim FPSO er vert. Bekreftet: Kneler A → FPSO, Vilje →
+FPSO (om lag 19 km), Skogul → Skogul PLEM (ved Vilje) → Vilje (ingen egen
+ledning til FPSO), Volund → FPSO (om lag 8 km), Bøyla → Kneler A (26 km
+pipe-in-pipe). Skjematisk: Alvheims egne templater og manifolder (Kneler B,
+Boa, East Kameleon, Viper/Kobra, Gekko Nord, Gekko Sør/Kobra East,
+vanninjeksjon) → FPSO, Frosk → Bøyla, og Tyrving (Trell/Trell Nord, Trine) →
+FPSO, der ruten via havbunnen ikke er verifisert. Eksport: rikgass til SAGE
+(UK) og olje med skytteltankere, bare i tabellen. Enkeltbrønnrammer som ligger
+inntil en template (Boa, Kneler B, East Kameleon, Volund osv.), er ikke
+koblet hver for seg; de vises som punkter ved templaten.
 
 **Sleipner area:** Sodir skiller ikke på hvilken av Sleipner Østs to
 templater som er Loke; Loke er satt til SLEIPNER C (gassproduserende, nord-øst)
