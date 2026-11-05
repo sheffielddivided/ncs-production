@@ -642,6 +642,43 @@ ikke at nettleseren leser feedene deres (CORS). Derfor:
  "items": [{"f": "https://akerbp.com/en/news/", "t": "…", "u": "https://…", "d": "2026-10-20", "s": "…"}]}
 ```
 
+### `data/gassco_downtime.json` — nedetid per felt fra Gassco
+
+```json
+{"generated":"2026-11-05T16:11:29Z","from":"2026-09","to":"2030-05","lastProductionMonth":"2026-08",
+ "columns":["year","month","days","planned","unplanned"],
+ "fields":{"43625":{"asset":"Oseberg","rows":[[2026,10,5.13,1.78,3.35]]}},"unmatched":[]}
+```
+
+Bygges av `fetch_gassco.py` (daglig, i `update-sodir-data.yml` etter Sodir).
+Øyeblikksbilde uten historikk: filen skrives på nytt hver kjøring.
+
+- **Kilde:** umm.gassco.no. Alle sider krever at vilkårene godtas
+  (`/disclaimer/acceptDisclaimer` gir sesjonscookien). Forsiden har pågående og
+  kommende hendelser i tre tabeller (Fields and Processing Plants, Exit
+  terminals, Other — Melkøya står i Other). `/archive` har avsluttede hendelser,
+  20 per side, filtrert med `eventEndFromDate`. Begge viser siste revisjon.
+  Hendelses-ID er Message ID uten revisjonsnummeret (`2026-358-E____004` →
+  `2026-358-E`, rev. 4); høyeste revisjon vinner. `Dismissed` tas ikke med.
+  Atom-feeden (`/atom.xml`) har bare siste melding og brukes ikke.
+- **Periode:** fra måneden etter siste måned med produksjonstall i
+  `production.json`, men høyst tre måneder før inneværende måned, og fram til
+  siste måned med nedetid.
+- **Beregning:** per node deles tiden der hendelser starter eller slutter. Tapt
+  andel = sum utilgjengelig kapasitet / største tekniske kapasitet, høyst 1.
+  Dager = andel × timer / 24, ført på gassdøgnet (06:00–06:00 norsk tid) og
+  dets måned. `planned`/`unplanned` fordeles etter utilgjengelig kapasitet.
+- **Kobling:** `data/gassco_aliases.json` (`fields`: node → ett eller flere
+  Sodir-felt, f.eks. Sleipner → Sleipner Øst og Vest, Hammerfest LNG → Snøhvit;
+  `ignore`: prosessanlegg og terminaler), ellers samme navn som i `fields.json`.
+  Noder uten treff står i `unmatched`.
+- **Begrensninger:** Gassco melder bare gassbortfall over 5 MSm³/d. En node kan
+  dekke satellitter som leverer gjennom den; tallet føres bare på feltet med
+  samme navn. Bortfall ved Kollsnes, Kårstø og Nyhamna fordeles ikke på felt.
+
+Vises i Field → Downtime og Hub → Downtime (`drawFieldDowntime`,
+`drawHubDowntime` i `index.html`), lastes først når fanen åpnes.
+
 ### `data/meta.json`
 
 ```json

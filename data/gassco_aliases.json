@@ -1,0 +1,23 @@
+{
+  "note": "Vedlikeholdes for hånd. Leses av fetch_gassco.py. fields: anleggsnavn i Gasscos UMM (Affected Asset or Unit) -> feltnavn i Sodir (fields.json). Et anlegg kan gi flere felt; da får hvert felt samme nedetid. ignore: anlegg som ikke er felt (prosessanlegg, eksportterminaler, samlepunkter) og ikke skal tas med. Anlegg som ikke står noen av stedene, slås opp direkte mot feltnavnet i Sodir (uten hensyn til store/små bokstaver); treffer de ikke, rapporteres de i data/gassco_downtime.json under unmatched.",
+  "fields": {
+    "Sleipner": ["SLEIPNER ØST", "SLEIPNER VEST"],
+    "Hammerfest LNG - Melkøya": ["SNØHVIT"],
+    "Hammerfest": ["SNØHVIT"]
+  },
+  "ignore": [
+    "Kollsnes",
+    "Kårstø",
+    "Nyhamna",
+    "Dornum",
+    "Emden",
+    "Nybro",
+    "Dunkerque",
+    "Zeebrugge",
+    "Easington",
+    "St.Fergus",
+    "Fields Delivering into SEGAL",
+    "Gina Krog Import",
+    "Troll to Area G"
+  ]
+}
