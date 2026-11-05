@@ -6393,8 +6393,8 @@ function gasscoInfo(scope) {
   return `<strong>${scope}</strong> &nbsp;|&nbsp; <strong>Period:</strong> ${esc(d.from || '—')} to ${esc(d.to || '—')}${lp ? ` (${lp})` : ''} &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Gassco Urgent Market Messages (umm.gassco.no), ${upd} &nbsp;|&nbsp; ${GS_NOTE}`;
 }
-// Søylediagram med dager per måned. Stablet (planlagt + uplanlagt) for ett
-// felt, side om side per felt for en hub — feltdager summert gir ingen mening.
+// Søylediagram med dager per måned, stablet: planlagt + uplanlagt for ett
+// felt, ett segment per felt for en hub (høyden er summen av feltdagene).
 // gas er Sodirs gassproduksjon (MSm³/d) som linje på høyre akse.
 const GS_PLAN_C = 'rgba(0,48,87,0.85)', GS_UNPL_C = 'rgba(206,15,105,0.85)';
 function gasscoChart(labels, datasets, stacked, gas) {
@@ -6479,7 +6479,7 @@ function drawHubDowntime() {
   const labels = months.map(([y, m]) => gsMonthLabel(y, m));
   const ser = id => months.map(([y, m]) => gasscoRow(id, y, m)?.[2] ?? 0);
   const gas = gasscoGasSeries(hubFieldIds([hubName]), months);
-  gasscoChart(labels, ids.map((id, i) => ({label: fieldNameOf(id), data: ser(id), backgroundColor: PALETTE[i % PALETTE.length][0]})), false,
+  gasscoChart(labels, ids.map((id, i) => ({label: fieldNameOf(id), data: ser(id), backgroundColor: PALETTE[i % PALETTE.length][0]})), true,
               {label: 'Gas production, all fields in the hub', data: gas});
   lastLabels = labels; lastXTitle = 'Month';
   lastDatasets = ids.map(id => ({label: `${fieldNameOf(id)}, days lost`, data: ser(id)}))
