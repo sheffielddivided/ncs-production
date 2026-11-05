@@ -4221,10 +4221,10 @@ function drawNcsReserveScatter(list, head, k) {
   const maxFirst = Math.max(...list.map(f => f.first));
   const rad = v => 2.5 + 26 * Math.sqrt(v / maxFirst);
   // Store bobler tegnes først, så de små ligger oppå og kan holdes over.
-  // Y-aksen kuttes ved CAP, så et par ekstreme oppjusteringer (Fram, Vega)
+  // Y-aksen kuttes ved CAP, så et par ekstreme oppjusteringer (Gungne, Gullfaks Sør)
   // ikke presser resten sammen. Felt over CAP vises som trekanter på kanten,
   // med navn og faktisk verdi ved siden av.
-  const CAP = 200, capped = list.some(f => f.pct > CAP);
+  const CAP = 300, capped = list.some(f => f.pct > CAP);
   const pts = list.map(f => { const sy = startYear(f), clip = f.pct > CAP;
       return {x: sy || f.y0, y: clip ? CAP : +f.pct.toFixed(1), r: rad(f.first), f, sy, clip}; })
     .sort((a, b) => b.f.first - a.f.first);
@@ -4240,7 +4240,7 @@ function drawNcsReserveScatter(list, head, k) {
             n: g.length, w: s0 ? (s1 - s0) / s0 * 100 : 0, avg: g.length ? g.reduce((t, f) => t + f.pct, 0) / g.length : 0};
   }).filter(c => c.n);
   document.getElementById('chartArea').innerHTML = `${head}
-    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="chart-container" style="height:450px"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${[['Revised up', POS_B], ['Revised down', NEG_B]].map(([l, c]) =>
       `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
       <div class="legend-item"><div class="legend-dot" style="background:${AVG_C};height:3px;border-radius:0"></div>Average (${k.fP(k.avgPct)})</div>
