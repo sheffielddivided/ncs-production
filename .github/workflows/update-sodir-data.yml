@@ -86,8 +86,9 @@ jobs:
         run: python fetch_havtil.py
 
       # Nedetid per felt fra Gasscos hendelser (UMM), i dager med tapt
-      # produksjon per måned. Etter Sodir, siden perioden starter i første
-      # måned uten produksjonstall. Øyeblikksbilde; filen skrives på nytt.
+      # produksjon per måned, fra januar 2025. Hendelsene lagres i arkivet
+      # data/gassco_events.json, som bare vokser; daglig leses Gasscos arkiv
+      # 120 dager bakover. Etter Sodir, som gir siste produksjonsmåned.
       - name: Hent nedetid (Gassco UMM)
         continue-on-error: true
         timeout-minutes: 5

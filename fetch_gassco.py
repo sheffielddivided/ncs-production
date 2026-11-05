@@ -1,24 +1,27 @@
 """
 Henter Gasscos hendelser (UMM) fra umm.gassco.no og regner dem om til
 nedetid per felt, i dager med tapt produksjon per måned. Skriver
-data/gassco_downtime.json.
+data/gassco_events.json (arkiv) og data/gassco_downtime.json.
 
     pip install requests
-    python fetch_gassco.py
+    python fetch_gassco.py              # daglig: arkivets siste 120 dager
+    python fetch_gassco.py --backfill   # hele arkivet fra 1. januar 2025
 
-Øyeblikksbilde: filen skrives på nytt hver kjøring, uten historikk.
+Historikk: Gassco holder bare om lag to år i arkivet sitt. Hendelsene lagres
+derfor i data/gassco_events.json, ett oppslag per hendelse med siste
+revisjon. Arkivet bare vokser: en hendelse som forsvinner hos Gassco,
+beholdes. En nyere revisjon (også Dismissed) erstatter den lagrede. Er
+arkivet tomt, leses Gasscos arkiv fra HISTORY_START som ved --backfill.
 
 Kilder (krever at vilkårene på umm.gassco.no godtas, se accept_terms):
   · Forsiden: pågående og kommende hendelser i tre tabeller (Fields and
     Processing Plants, Exit terminals, Other). Melkøya ligger i Other.
-  · /archive: avsluttede hendelser, filtrert på sluttdato fra starten av
-    perioden. 20 rader per side.
+  · /archive: avsluttede hendelser, filtrert på sluttdato. 20 rader per side.
 Begge viser siste revisjon av hver hendelse. Samme hendelse kan stå begge
 steder; da brukes den høyeste revisjonen. Kansellerte (Dismissed) tas ikke med.
 
-Periode: fra første måned vi ikke har produksjonstall for i production.json,
-men høyst tre måneder før inneværende måned, og så langt fram som
-hendelsene går.
+Periode: fra januar 2025 (HISTORY_START) og så langt fram som hendelsene
+går, så nedetiden kan legges oppå faktisk produksjon fra Sodir.
 
 Beregning: Gassco melder bortfall over 5 MSm³/d per anlegg (en node der gass
 går inn i transportsystemet) med teknisk, tilgjengelig og utilgjengelig
@@ -63,9 +66,11 @@ BASE = "https://umm.gassco.no"
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
 OUT = os.path.join(DATA, "gassco_downtime.json")
+ARCHIVE = os.path.join(DATA, "gassco_events.json")
+HISTORY_START = (2025, 1)
+DAILY_DAYS = 120  # daglig kjøring leser Gasscos arkiv så langt bakover
 OSLO = ZoneInfo("Europe/Oslo")
 GAS_DAY_START = timedelta(hours=6)
-MAX_BACK_MONTHS = 3
 PAGE_SIZE = 20
 MAX_PAGES = 100
 PAUSE = 1.0  # sekunder mellom kall
@@ -205,7 +210,8 @@ def to_event(row, table):
 
 
 def fetch_events(s, horizon_start):
-    """Siste revisjon av hver hendelse som slutter etter horizon_start."""
+    """Siste revisjon av hver hendelse på forsiden og i arkivet som slutter
+    etter horizon_start."""
     events = {}
 
     def add(ev):
@@ -267,13 +273,39 @@ def add_months(y, m, k):
     return i // 12, i % 12 + 1
 
 
-def horizon():
-    today = datetime.now(OSLO)
-    earliest = add_months(today.year, today.month, -MAX_BACK_MONTHS)
-    last = last_production_month()
-    first = add_months(*last, 1) if last else earliest
-    first = max(first, earliest)
-    return first, last
+# ---------------------------------------------------------------- arkiv
+
+def ev_to_json(e):
+    return {k: (v.isoformat() if isinstance(v, datetime) else v)
+            for k, v in e.items() if k not in ("id", "table")}
+
+
+def ev_from_json(eid, d):
+    e = dict(d, id=eid)
+    e["start"] = datetime.fromisoformat(d["start"])
+    e["stop"] = datetime.fromisoformat(d["stop"])
+    return e
+
+
+def load_archive():
+    try:
+        with open(ARCHIVE, encoding="utf-8") as f:
+            a = json.load(f)
+    except (FileNotFoundError, ValueError):
+        return {}
+    return {eid: ev_from_json(eid, d) for eid, d in a.get("events", {}).items()}
+
+
+def save_archive(events):
+    out = {
+        "note": "Arkiv over Gasscos hendelser (UMM) fra umm.gassco.no, siste revisjon per hendelse. "
+                "Bygges av fetch_gassco.py og bare vokser; ikke rediger for hånd.",
+        "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "events": {eid: ev_to_json(e) for eid, e in sorted(events.items())},
+    }
+    with open(ARCHIVE, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+        f.write("\n")
 
 
 # ---------------------------------------------------------------- beregning
@@ -350,11 +382,34 @@ def load_aliases():
 
 
 def main():
-    (fy, fm), last = horizon()
-    print(f"Periode fra {fy}-{fm:02d} (siste produksjonsmåned: {last})", file=sys.stderr)
+    fy, fm = HISTORY_START
+    last = last_production_month()
+    hist_t = datetime(fy, fm, 1, tzinfo=OSLO)
+
+    archive = load_archive()
+    backfill = "--backfill" in sys.argv or not archive
+    since = hist_t if backfill else max(hist_t, datetime.now(OSLO) - timedelta(days=DAILY_DAYS))
+    print(f"Leser Gassco fra {since:%Y-%m-%d}{' (backfill)' if backfill else ''}; "
+          f"{len(archive)} hendelser i arkivet", file=sys.stderr)
 
     s = session()
-    events = fetch_events(s, datetime(fy, fm, 1, tzinfo=OSLO))
+    n_new = n_rev = 0
+    for e in fetch_events(s, since):
+        old = archive.get(e["id"])
+        if old is None:
+            n_new += 1
+        elif e["rev"] > old["rev"]:
+            n_rev += 1
+        if old is None or e["rev"] >= old["rev"]:
+            e = dict(e)
+            e.pop("table", None)
+            archive[e["id"]] = e
+    # Hendelser som sluttet før historikken starter, trengs ikke.
+    archive = {k: e for k, e in archive.items() if e["stop"] > hist_t}
+    save_archive(archive)
+    print(f"Arkiv: {len(archive)} hendelser ({n_new} nye, {n_rev} nye revisjoner)", file=sys.stderr)
+
+    events = list(archive.values())
     fields = load_fields()
     aliases, ignore = load_aliases()
 
