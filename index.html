@@ -2476,7 +2476,8 @@ function applyHash() {
     if (['all', 'prod'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     ncsF.crArea = q.get('na') === '1';
-    if (['rem', 'orig', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
+    if (['rem', 'orig', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
+    if (q.get('nd') === 'mboe') ncsF.chg = 'mboe';
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
     if (q.get('ns') === 'acc') ncsF.es = 'acc';
     if (q.get('ni') === 'real') ncsF.inv = 'real';
@@ -3472,14 +3473,15 @@ const NCS_TABS = [
 let ncsSubView = 'production';
 // prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
-// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'timeline'
+// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline'
+// · chg: 'pct' | 'mboe' (reserveendringen i prosent eller mill fat o.e.)
 // · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
 const ncsDefaults = () => ({prod: 'product', res: 'oe', vol: false, from: '2000', year: '', rank: 'res', all: false,
-                            cr: 'curve', crArea: false, fl: 'rank', ec: 'employment', es: 'rev', inv: 'nom'});
+                            cr: 'curve', crArea: false, fl: 'rank', chg: 'pct', ec: 'employment', es: 'rev', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
 const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
-                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['ec', 'ne'], ['es', 'ns'], ['inv', 'ni']];
+                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['chg', 'nd'], ['ec', 'ne'], ['es', 'ns'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
 // Havområdene, i samme farger som i Licences. Felt uten område i
@@ -4001,10 +4003,11 @@ function drawNcsFields() {
   const ids = ncsFieldIds();
   const mode = ncsF.fl;
   const toggle = ncsPills('fl', [['rank', 'Production'], ['rem', 'Remaining reserves'], ['orig', 'Original reserves'],
-                                 ['timeline', 'Start-ups & shutdowns']]);
+                                 ['change', 'Reserve change'], ['timeline', 'Start-ups & shutdowns']]);
   setProfile(''); setChartTable('');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   if (mode === 'timeline') return drawNcsFieldTimeline(ids, toggle);
+  if (mode === 'change') return drawNcsReserveChange(toggle);
 
   let list, unit, n0, sub, info, note, facts;
   if (mode === 'rank') {
@@ -4076,6 +4079,103 @@ function drawNcsFields() {
   pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(f => f.name), yTitle: unit,
     series: [{name: 'Oil', type: 'bar', color: pptHex(OIL_COLOR), values: shown.map(f => r(f.liq))},
              {name: 'Gas', type: 'bar', color: pptHex(GAS_COLOR), values: shown.map(f => r(f.gas))}]};
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+// ── NCS: FIELDS · RESERVE CHANGE ──
+// Endringen i opprinnelige utvinnbare reserver (produsert + gjenstående, OE)
+// fra feltets første reserveårgang med volum til den siste. Opprinnelige
+// reserver brukes fordi gjenstående faller med produksjonen; endringen i de
+// opprinnelige er revisjonene alene. Felt med bare én årgang har ingen endring
+// og er utelatt, det samme er felt med under 0,05 mill fat o.e. i første
+// årgang, der prosenten blir meningsløs.
+// Nøkkeltall:
+//  · gjennomsnittlig endring: snittet av feltenes prosentvise endring
+//  · volumveid endring: sum endring / sum første anslag
+//  · gjennomsnittlig årlig endring: snittet av feltenes årlige vekstrate,
+//    (siste / første)^(1 / år mellom årgangene) − 1
+function ncsReserveChanges() {
+  return Object.entries(fieldReserves || {}).map(([id, rows]) => {
+    const r = rows.filter(x => x.recoverableOE > 0);
+    if (r.length < 2) return null;
+    const a = r[0], b = r[r.length - 1];
+    const first = a.recoverableOE * BBL_PER_SM3, last = b.recoverableOE * BBL_PER_SM3, years = b.year - a.year;
+    if (first < 0.05 || years < 1) return null;
+    return {id: +id, name: fieldNameOf(+id), y0: a.year, y1: b.year, years, first, last,
+            abs: last - first, pct: (last - first) / first * 100,
+            ann: (Math.pow(last / first, 1 / years) - 1) * 100};
+  }).filter(Boolean);
+}
+
+function drawNcsReserveChange(toggle) {
+  const pct = ncsF.chg !== 'mboe';
+  const key = pct ? 'pct' : 'abs', unit = pct ? '%' : 'million boe';
+  const list = ncsReserveChanges().sort((a, b) => b[key] - a[key] || a.name.localeCompare(b.name));
+  if (!list.length) { setChartEmpty('No reserves data available.'); setInfo(''); return; }
+  const sum = (f) => list.reduce((t, x) => t + f(x), 0);
+  const avgPct = sum(x => x.pct) / list.length;
+  const sFirst = sum(x => x.first), sLast = sum(x => x.last);
+  const wPct = (sLast - sFirst) / sFirst * 100;
+  const avgAnn = sum(x => x.ann) / list.length;
+  const up = list.filter(x => x.abs > 0).length, down = list.filter(x => x.abs < 0).length;
+  const y0 = Math.min(...list.map(x => x.y0)), y1 = Math.max(...list.map(x => x.y1));
+  const sg = v => (v > 0 ? '+' : v < 0 ? '−' : '');
+  const fP = v => `${sg(v)}${Math.abs(v).toLocaleString('en', {maximumFractionDigits: 1, minimumFractionDigits: 1})} %`;
+  const fM = v => `${sg(v)}${Math.abs(v).toLocaleString('en', {maximumFractionDigits: Math.abs(v) < 10 ? 1 : 0})}`;
+  const fV = pct ? fP : fM;
+  const facts = [
+    ['Fields', `${list.length} <small style="font-weight:400;color:var(--muted)">(${up} ↑ · ${down} ↓)</small>`],
+    ['Average total change', fP(avgPct)],
+    ['Volume-weighted change', fP(wPct)],
+    ['Average annual change', `${fP(avgAnn)}/yr`],
+    ['Net change, all fields', `${fM(sLast - sFirst)} million boe`],
+  ];
+  // Topp og bunn, så både de største oppjusteringene og nedjusteringene vises.
+  const N = 15, cut = !ncsF.all && list.length > 2 * N;
+  const shown = cut ? list.slice(0, N).concat(list.slice(-N)) : list;
+  const maxPos = Math.max(0, ...list.map(x => x[key])), maxNeg = Math.max(0, ...list.map(x => -x[key]));
+  const span = (maxPos + maxNeg) || 1, negW = maxNeg / span * 100;
+  const POS_C = 'rgba(0,179,115,0.85)', NEG_C = 'rgba(206,15,105,0.75)';
+  const row = (f, i) => {
+    const v = f[key], w = (Math.abs(v) / span * 100).toFixed(2);
+    const bar = `<span style="position:absolute;top:0;bottom:0;${v >= 0 ? `left:${negW}%` : `right:${100 - negW}%`};width:${w}%;
+      min-width:${v ? 1 : 0}px;background:${v >= 0 ? POS_C : NEG_C};border-radius:2px"></span>`;
+    const tip = `${f.name} · ${f.y0}: ${fM(f.first).replace(/^\+/, '')} → ${f.y1}: ${fM(f.last).replace(/^\+/, '')} million boe · ${fP(f.pct)} · ${fP(f.ann)}/yr`;
+    return `<div class="lc-row" onclick="openFieldProfile(${f.id})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')openFieldProfile(${f.id})" title="${esc(tip)}">
+      <div class="lc-name" title="${esc(f.name)}">${i + 1}. <span class="lc-u">${esc(f.name)}</span></div>
+      <div style="position:relative;flex:1 1 auto;height:16px;align-self:center">
+        <span style="position:absolute;top:-2px;bottom:-2px;left:${negW}%;border-left:1px solid #9aa5b1"></span>${bar}</div>
+      <div class="lc-val" style="flex:0 0 auto;min-width:4.6em;text-align:right">${fV(v)}</div></div>`;
+  };
+  const rows = fs => fs.map(f => row(f, list.indexOf(f))).join('');
+  const html = cut ? rows(shown.slice(0, N)) +
+    `<div class="pf-map-note" style="text-align:center;margin:4px 0">… ${list.length - 2 * N} fields not shown …</div>` + rows(shown.slice(N))
+    : rows(shown);
+  document.getElementById('chartArea').innerHTML = `${toggle}${ncsPills('chg', [['pct', 'Percent'], ['mboe', 'Million boe']])}
+    <div class="pf-facts" style="margin-bottom:10px">
+      ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${v}</strong></div>`).join('')}
+    </div>
+    ${html}
+    <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${POS_C}"></span>Revised up</span>
+      <span class="ex-leg"><span class="ex-dot" style="background:${NEG_C}"></span>Revised down</span>
+      <span class="ex-leg">Showing ${shown.length} of ${list.length}
+      ${list.length > 2 * N ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? `show top and bottom ${N}` : 'show all'}</a>` : ''}</span></div>
+    <div class="pf-map-note">Change in original recoverable reserves from each field's first to its latest reserve vintage, ${pct ? 'percent' : 'million boe'}. Hover a bar for the vintages and volumes; click a field for its profile.</div>`;
+  setChartTitle('Norwegian Continental Shelf · Fields', `Change in recoverable reserves, first to latest vintage · ${unit}`);
+  setInfo(`<strong>Change:</strong> original recoverable reserves (produced plus remaining, OE) in the field's latest Sodir vintage minus its first vintage with volumes (${y0}–${y1}), so production does not count as a reduction &nbsp;|&nbsp; ` +
+    `<strong>Average total change:</strong> simple mean of the fields' percentage changes &nbsp;|&nbsp; <strong>Volume-weighted:</strong> sum of changes / sum of first estimates (${fM(sFirst).replace(/^\+/, '')} → ${fM(sLast).replace(/^\+/, '')} million boe) &nbsp;|&nbsp; ` +
+    `<strong>Average annual change:</strong> mean of the fields' compound annual rates, (latest / first)^(1 / years) − 1 &nbsp;|&nbsp; Fields with a single vintage or under 0.05 million boe in the first vintage are left out &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+  const r1 = v => +v.toFixed(1);
+  lastLabels = list.map(f => f.name); lastXTitle = 'Field';
+  lastDatasets = [{label: 'First vintage', data: list.map(f => f.y0)}, {label: 'Latest vintage', data: list.map(f => f.y1)},
+                  {label: 'First estimate, million boe', data: list.map(f => r1(f.first))},
+                  {label: 'Latest estimate, million boe', data: list.map(f => r1(f.last))},
+                  {label: 'Change, million boe', data: list.map(f => r1(f.abs))},
+                  {label: 'Change, %', data: list.map(f => r1(f.pct))},
+                  {label: 'Annual change, %/yr', data: list.map(f => +f.ann.toFixed(2))}];
+  pptSpec = {kind: 'cat', dir: 'bar', stacked: false, labels: shown.map(f => f.name), yTitle: unit,
+    series: [{name: pct ? 'Change, %' : 'Change, million boe', type: 'bar', color: pptHex(POS_C), values: shown.map(f => r1(f[key]))}]};
   document.getElementById('downloadBtn').disabled = false;
 }
 
