@@ -763,6 +763,12 @@ sorteres etter samlet tap i perioden, og de som ikke får farge i paletten,
 får grå toner. Tabellen har tapt volum per hub, totalt og som andel av
 produksjonen.
 
+**Companies → Gas outage** (`drawCompanyOutage`, id `downtime`): samme graf
+for ett selskap, egenandel. Tapt volum og gassproduksjon per felt ganges med
+selskapets eierandel midt i måneden (`getShare`; framtidige måneder får
+dagens andel) og stables per hub. Produksjonen over null er netto gass for
+alle selskapets felt, også dem Gassco ikke melder om.
+
 ### `data/meta.json`
 
 ```json

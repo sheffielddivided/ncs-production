@@ -1520,6 +1520,7 @@ const COMPANY_TABS = [
   {id:'reserves',      label:'Reserves'},
   {id:'licences',      label:'Licences'},
   {id:'exploration',   label:'Exploration'},
+  {id:'downtime',      label:'Gas outage'},
   {id:'profile',       label:'Profile'},
   {id:'news',          label:'News'},
   {id:'valuation',     label:'Valuation BETA'},
@@ -2363,7 +2364,7 @@ function pageSources() {
   if (m === 'fields' && v === 'map') add('ne');
   if (m === 'fields' && v === 'havtil') add('havtil');
   if ((m === 'fields' || m === 'hubs') && v === 'downtime') add('gassco');
-  if (m === 'ncs' && v === 'outage') add('gassco');
+  if ((m === 'ncs' && v === 'outage') || (m === 'companies' && v === 'downtime')) add('gassco');
   if (m === 'companies' && v === 'news') add('havtil', 'ais');
   if (m === 'exploration') {
     if (v === 'map') add('ne');
@@ -2679,6 +2680,12 @@ async function refreshCompanies() {
     drawChart();
     return;
   }
+  // Gas outage: eierandelene i feltene Gassco melder om, og produksjonen fra bundelen.
+  if (companySubView === 'downtime') {
+    await Promise.all([loadGassco(), loadLicForFields(relevantIds), loadProdForFields(relevantIds)]);
+    drawChart();
+    return;
+  }
   if (companySubView === 'news') {
     await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis(), licLoadTransfers()]);
     drawChart();
@@ -2796,6 +2803,7 @@ function drawChart() {
     else if (sv === 'news')          drawCompanyNews();
     else if (sv === 'licences')      drawCompanyLicences();
     else if (sv === 'valuation')     drawCompanyValuation();
+    else if (sv === 'downtime')      drawCompanyOutage();
   }
 }
 
@@ -5492,6 +5500,7 @@ function isReservesView() {
       || (topMode === 'companies' && companySubView === 'reserves')
       || (topMode === 'companies' && companySubView === 'exploration')
       || (topMode === 'companies' && companySubView === 'news')
+      || (topMode === 'companies' && companySubView === 'downtime')
       || (topMode === 'companies' && companySubView === 'licences')
       || (topMode === 'companies' && companySubView === 'valuation');
 }
@@ -6558,6 +6567,62 @@ function drawNcsOutage() {
     <div class="pf-scroll"><table class="res-table">
       <caption>Volume lost per hub and gas production · ${u}, monthly average · hubs sorted by total volume lost in the period</caption>
       <thead><tr><th>Month</th><th>Gas production, NCS</th><th>Lost, total</th><th>Lost / production</th>${hubs.map(x => `<th>${esc(x.h)}</th>`).join('')}</tr></thead>
+      <tbody>${months.map((_, i) => `<tr><td>${labels[i]}</td><td>${gsFmt(gas[i])}</td><td>${tot[i] ? gsFmt(tot[i]) : '–'}</td><td>${tot[i] ? pct(i) : '–'}</td>${hubs.map(x => `<td>${x.data[i] ? gsFmt(x.data[i]) : '–'}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>`);
+}
+
+// Companies → Gas outage: selskapets andel. Tapt volum og gassproduksjon per
+// felt ganges med selskapets eierandel midt i måneden (getShare; framtidige
+// måneder får dagens andel), og tapet stables per hub som i NCS-visningen.
+// Produksjonen er netto gass for alle selskapets felt, ikke bare dem Gassco
+// melder om.
+function drawCompanyOutage() {
+  const cmp = [...selectedCompanyNames][0];
+  setChartNone(); setProfile('');
+  setChartTitle(cmp, `Gas outage · net gas production and share of volume lost to outages reported by Gassco, per hub · ${gsUnitLabel()}`);
+  const f = gasscoData?.fields || {};
+  const all = getFieldsForCompany(cmp);
+  const share = (id, y, m) => getShare(id, new Date(Date.UTC(y, m - 1, 15)), cmp) / 100;
+  const months = gasscoMonths(all.filter(id => f[id]));
+  const ids = all.filter(id => f[id] && months.some(([y, m]) => share(id, y, m) > 0 && gasscoRow(id, y, m)));
+  setInfo(gasscoInfo(`Company: ${esc(cmp)}`) + ' &nbsp;|&nbsp; <strong>Equity:</strong> volumes multiplied by the company\'s licence share in each field mid-month; future months use today\'s share');
+  if (!ids.length) {
+    setProfile(`<div class="pf-card pf-wide"><div class="pf-map-note">Gassco reports no outages in the period for fields where ${esc(cmp)} has a licence share. Gassco only reports gas outages above 5 MSm³/d at its entry nodes.</div></div>`);
+    return;
+  }
+  const labels = months.map(([y, m]) => gsMonthLabel(y, m));
+  const prod = bundle.production?.fields || {};
+  const gas = months.map(([y, m]) => {
+    let sum = 0, any = false;
+    all.forEach(id => (prod[id] || []).forEach(r => {
+      if (r[0] === y && r[1] === m) { any = true; sum += (r[3] || 0) * share(id, y, m); }
+    }));
+    return any ? gsConv(sum * 1000 / new Date(y, m, 0).getDate()) : null;
+  });
+  const byHub = new Map();
+  ids.forEach(id => {
+    const h = hubOfField[id] || fieldNameOf(id);
+    const lost = gasscoLostSeries(id, months).map((v, i) => gsConv(v) * share(id, ...months[i]));
+    const cur = byHub.get(h) || months.map(() => 0);
+    byHub.set(h, cur.map((v, i) => v + lost[i]));
+  });
+  const hubs = [...byHub.entries()].map(([h, data]) => ({h, data, sum: data.reduce((a, b) => a + b, 0)}))
+    .filter(x => x.sum > 0).sort((a, b) => b.sum - a.sum);
+  const tot = months.map((_, i) => hubs.reduce((a, x) => a + x.data[i], 0));
+  const color = i => i < PALETTE.length ? PALETTE[i][0] : `rgba(120,130,145,${(0.9 - 0.12 * ((i - PALETTE.length) % 5)).toFixed(2)})`;
+  gasscoChart(labels, [{label: `Net gas production, ${cmp} (Sodir)`, data: gas, backgroundColor: GS_GAS_C},
+    ...hubs.map((x, i) => ({label: `Lost, ${x.h}`, data: x.data.map(v => -v), backgroundColor: color(i)}))]);
+  const u = gsUnitLabel();
+  lastLabels = labels; lastXTitle = 'Month';
+  lastDatasets = [{label: `Net gas production (Sodir), ${u}`, data: gas.map(v => v ?? '')},
+    {label: `Lost, total, net, ${u}`, data: tot},
+    ...hubs.map(x => ({label: `Lost, ${x.h}, net, ${u}`, data: x.data}))];
+  document.getElementById('downloadBtn').disabled = false;
+  const pct = i => gas[i] ? `${(100 * tot[i] / gas[i]).toFixed(1)} %` : '–';
+  setChartTable(`
+    <div class="pf-scroll"><table class="res-table">
+      <caption>Net volume lost per hub and net gas production · ${u}, monthly average · equity-adjusted</caption>
+      <thead><tr><th>Month</th><th>Net gas production</th><th>Lost, total</th><th>Lost / production</th>${hubs.map(x => `<th>${esc(x.h)}</th>`).join('')}</tr></thead>
       <tbody>${months.map((_, i) => `<tr><td>${labels[i]}</td><td>${gsFmt(gas[i])}</td><td>${tot[i] ? gsFmt(tot[i]) : '–'}</td><td>${tot[i] ? pct(i) : '–'}</td>${hubs.map(x => `<td>${x.data[i] ? gsFmt(x.data[i]) : '–'}</td>`).join('')}</tr>`).join('')}</tbody>
     </table></div>`);
 }
