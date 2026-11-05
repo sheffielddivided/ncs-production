@@ -593,6 +593,44 @@ Sodir automatisk dukker opp som egne huber, og at fila bare inneholder avvik
 > under: hubene identifiseres av et *navn* vi selv velger, ikke av en
 > kilde-ID.
 
+### `data/hub_connections.json` — fysiske koblinger per hub (håndlaget)
+
+```json
+{"hubs":{"Sleipner area":{
+  "nodes":{"Loke":{"facility":"SLEIPNER C","short":"Loke","label":"Loke template (Sleipner C)"}},
+  "links":[{"from":"GUDRUN","to":"SLEIPNER A","kind":"pipeline","count":2,"group":"Tie-ins",
+            "label":"Gudrun to Sleipner A, separate oil and wet-gas pipelines"}]}}}
+```
+
+Sodir publiserer bare transportrørledningene, så hubkartet (Hub →
+Installations) og feltkartet (Field → Map) gjetter vanligvis infield-koblingene
+ut fra feltbeskrivelsene (`satelliteRoute`, `hubNetwork`). Står huben i denne
+filen (nøkkelen er hubnavnet i `hubs.json`), brukes koblingene herfra i stedet
+(`hubModel`, `modelLinks`):
+
+- **from/to:** innretningsnavn fra `facilities.json`, et navn under `nodes`
+  (alias for en innretning, med `short` på kartet og `label` i tabellen), eller
+  `field:FELTNAVN` (midten av feltets omriss — for felt uten innretning i
+  bruk, som Volve). `from` er den tilknyttede siden, `to` verten; feltkartet
+  følger koblingene i den retningen.
+- **kind:** `pipeline` (heltrukket; `count: 2` gir to parallelle linjer),
+  `bridge` (tykk strek), `wells` (brønner boret fra plattformen — ingen linje,
+  bare i tabellen), `historical` (stiplet grå).
+- Endepunkter som ikke finnes (fjernet innretning, felt uten omriss) hoppes
+  over med en advarsel i konsollen.
+- Kartet blir høyere (560 px) og får navn på innretningene; navn som er lik
+  feltnavnet hoppes over i hubkartet, og innretninger som nesten ligger oppå
+  hverandre slås sammen («Sleipner A/T/R»). Navnene plasseres etter
+  feltnavnene og unngår dem (`overlayLabels` i `outlineMap`).
+- Under kartet i Hub → Installations står tabellen Connections med alle
+  koblingene.
+
+**Sleipner area:** Sodir skiller ikke på hvilken av Sleipner Østs to
+templater som er Loke; Loke er satt til SLEIPNER C (gassproduserende, nord-øst)
+og den andre, SLEIPNER D, er tatt med som «Sleipner Øst north». Byttes ved å
+endre `facility` under `nodes`. Eirin → Gina Krog er tatt med fra Sodirs
+feltbeskrivelse.
+
 ### Companies → News og selskapenes RSS-feeder
 
 Fanen samler alt rundt ett konsern i én tidslinje, med Havtil-kortet (som før
