@@ -2477,7 +2477,7 @@ function applyHash() {
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     ncsF.crArea = q.get('na') === '1';
     if (['rem', 'orig', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
-    if (q.get('nd') === 'mboe') ncsF.chg = 'mboe';
+    if (['mboe', 'scatter'].includes(q.get('nd'))) ncsF.chg = q.get('nd');
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
     if (q.get('ns') === 'acc') ncsF.es = 'acc';
     if (q.get('ni') === 'real') ncsF.inv = 'real';
@@ -3474,7 +3474,7 @@ let ncsSubView = 'production';
 // prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline'
-// · chg: 'pct' | 'mboe' (reserveendringen i prosent eller mill fat o.e.)
+// · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller mot opprinnelig størrelse)
 // · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
 const ncsDefaults = () => ({prod: 'product', res: 'oe', vol: false, from: '2000', year: '', rank: 'res', all: false,
@@ -4130,6 +4130,11 @@ function drawNcsReserveChange(toggle) {
     ['Average annual change', `${fP(avgAnn)}/yr`],
     ['Net change, all fields', `${fM(sLast - sFirst)} million boe`],
   ];
+  const pills = ncsPills('chg', [['pct', 'Percent'], ['mboe', 'Million boe'], ['scatter', 'vs. original size']]);
+  const factsHtml = `<div class="pf-facts" style="margin-bottom:10px">
+      ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${v}</strong></div>`).join('')}
+    </div>`;
+  if (ncsF.chg === 'scatter') return drawNcsReserveScatter(list, toggle + pills + factsHtml, {avgPct, wPct, y0, y1, fP, fM});
   // Topp og bunn, så både de største oppjusteringene og nedjusteringene vises.
   const N = 15, cut = !ncsF.all && list.length > 2 * N;
   const shown = cut ? list.slice(0, N).concat(list.slice(-N)) : list;
@@ -4152,10 +4157,8 @@ function drawNcsReserveChange(toggle) {
   const html = cut ? rows(shown.slice(0, N)) +
     `<div class="pf-map-note" style="text-align:center;margin:4px 0">… ${list.length - 2 * N} fields not shown …</div>` + rows(shown.slice(N))
     : rows(shown);
-  document.getElementById('chartArea').innerHTML = `${toggle}${ncsPills('chg', [['pct', 'Percent'], ['mboe', 'Million boe']])}
-    <div class="pf-facts" style="margin-bottom:10px">
-      ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${v}</strong></div>`).join('')}
-    </div>
+  document.getElementById('chartArea').innerHTML = `${toggle}${pills}
+    ${factsHtml}
     ${html}
     <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${POS_C}"></span>Revised up</span>
       <span class="ex-leg"><span class="ex-dot" style="background:${NEG_C}"></span>Revised down</span>
@@ -4176,6 +4179,63 @@ function drawNcsReserveChange(toggle) {
                   {label: 'Annual change, %/yr', data: list.map(f => +f.ann.toFixed(2))}];
   pptSpec = {kind: 'cat', dir: 'bar', stacked: false, labels: shown.map(f => f.name), yTitle: unit,
     series: [{name: pct ? 'Change, %' : 'Change, million boe', type: 'bar', color: pptHex(POS_C), values: shown.map(f => r1(f[key]))}]};
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+// Kryssplott: prosentvis endring mot første anslag (opprinnelig størrelse),
+// med logaritmisk x-akse fordi feltene spenner fra under 1 til flere tusen
+// mill fat o.e. De stiplede linjene er snittet og det volumveide snittet.
+function drawNcsReserveScatter(list, head, k) {
+  const POS_C = 'rgba(0,179,115,0.8)', NEG_C = 'rgba(206,15,105,0.75)', AVG_C = '#9aa5b1', W_C = '#003057';
+  const pts = list.map(f => ({x: +f.first.toFixed(2), y: +f.pct.toFixed(1), f}));
+  const xMin = Math.min(...pts.map(p => p.x)), xMax = Math.max(...pts.map(p => p.x));
+  const hline = y => [{x: xMin, y: +y.toFixed(1)}, {x: xMax, y: +y.toFixed(1)}];
+  // Snitt per størrelsesklasse, volumveid, til infolinjen.
+  const classes = [[0, 10], [10, 100], [100, 1000], [1000, Infinity]].map(([a, b]) => {
+    const g = list.filter(f => f.first >= a && f.first < b);
+    const s0 = g.reduce((t, f) => t + f.first, 0), s1 = g.reduce((t, f) => t + f.last, 0);
+    return {lbl: b === Infinity ? `≥${a.toLocaleString('en')}` : `${a.toLocaleString('en')}–${b.toLocaleString('en')}`,
+            n: g.length, w: s0 ? (s1 - s0) / s0 * 100 : 0, avg: g.length ? g.reduce((t, f) => t + f.pct, 0) / g.length : 0};
+  }).filter(c => c.n);
+  document.getElementById('chartArea').innerHTML = `${head}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${[['Revised up', POS_C], ['Revised down', NEG_C]].map(([l, c]) =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
+      <div class="legend-item"><div class="legend-dot" style="background:${AVG_C};height:3px;border-radius:0"></div>Average (${k.fP(k.avgPct)})</div>
+      <div class="legend-item"><div class="legend-dot" style="background:${W_C};height:3px;border-radius:0"></div>Volume-weighted (${k.fP(k.wPct)})</div></div>
+    <div class="pf-map-note">Each point is a field: first reserve estimate (log scale) against the change to the latest estimate. Click a point for the field's profile.</div>`;
+  if (chartInstance) chartInstance.destroy();
+  const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}});
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'scatter',
+    data: {datasets: [
+      {label: 'Fields', data: pts, pointRadius: 4, pointHoverRadius: 6, borderWidth: 0,
+       backgroundColor: c => (c.raw && c.raw.y < 0 ? NEG_C : POS_C)},
+      {label: 'Average', type: 'line', data: hline(k.avgPct), borderColor: AVG_C, borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0},
+      {label: 'Volume-weighted', type: 'line', data: hline(k.wPct), borderColor: W_C, borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0},
+    ]},
+    options: {responsive: true, maintainAspectRatio: false, animation: false,
+      onClick: (e, els) => { const el = els.find(x => x.datasetIndex === 0); if (el) openFieldProfile(pts[el.index].f.id); },
+      onHover: (e, els) => { e.native.target.style.cursor = els.some(x => x.datasetIndex === 0) ? 'pointer' : 'default'; },
+      plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
+        label: c => { const f = c.raw.f; return ` ${f.name}: ${f.y0} ${k.fM(f.first).replace(/^\+/, '')} → ${f.y1} ${k.fM(f.last).replace(/^\+/, '')} million boe · ${k.fP(f.pct)} · ${k.fP(f.ann)}/yr`; }}}},
+      scales: {
+        x: {...axis('First reserve estimate, million boe (log scale)'), type: 'logarithmic',
+            ticks: {font: {size: 9}, autoSkip: false, callback: v => [0.1, 1, 10, 100, 1000, 10000].includes(+v) ? (+v).toLocaleString('en') : ''}},
+        y: {...axis('Change to latest estimate, %'), ticks: {font: {size: 9}, callback: v => v + ' %'},
+            grid: {color: c => c.tick.value === 0 ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.05)'}},
+      }},
+  });
+  setChartTitle('Norwegian Continental Shelf · Fields', 'Reserve change vs. original size · %');
+  setInfo(`<strong>x:</strong> original recoverable reserves (OE) in the field's first Sodir vintage, million boe, log scale &nbsp;|&nbsp; <strong>y:</strong> change to the latest vintage (${k.y0}–${k.y1}), % &nbsp;|&nbsp; ` +
+    `<strong>By size (first estimate, million boe):</strong> ${classes.map(c => `${c.lbl}: ${c.n} fields, average ${k.fP(c.avg)}, volume-weighted ${k.fP(c.w)}`).join('; ')} &nbsp;|&nbsp; ` +
+    `Fields with a single vintage or under 0.05 million boe in the first vintage are left out &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+  lastLabels = list.map(f => f.name); lastXTitle = 'Field';
+  lastDatasets = [{label: 'First estimate, million boe', data: list.map(f => +f.first.toFixed(1))},
+                  {label: 'Change, %', data: list.map(f => +f.pct.toFixed(1))}];
+  pptSpec = {kind: 'scatter', markers: true, xTitle: 'First reserve estimate, million boe', yTitle: 'Change to latest estimate, %',
+    series: [{name: 'Revised up', points: pts.filter(p => p.y >= 0).map(({x, y}) => ({x, y})), color: pptHex(POS_C)},
+             {name: 'Revised down', points: pts.filter(p => p.y < 0).map(({x, y}) => ({x, y})), color: pptHex(NEG_C)}]};
   document.getElementById('downloadBtn').disabled = false;
 }
 
