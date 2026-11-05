@@ -118,18 +118,18 @@ til 2004. 144 felt er dekket; 111 av dem har minst ti årganger og 66 har hele
 serien. Dette er den eneste kilden i APIet med historikk for *estimater* —
 lag 7114 har kun siste vurdering.
 
-**Reserver før 2004** kommer fra Sodirs ressursregnskap 1975–2003 (Excel, lagt
+**Reserver før 2004** kommer fra Sodirs ressursregnskap 1980–2003 (Excel, lagt
 for hånd i `data/reserves-raw/`, siden sodir.no avviser automatiske
 nedlastinger). `build_reserves_hist.py` (engangsscript, krever `xlrd`) leser
 opprinnelig utvinnbart per felt, kobler navnene til dagens felt (sammenslåtte
 forekomster som Rimfaks, Loke og Borg legges til feltet de i dag hører til),
 kontrollerer 2004-filen mot lag 7113 (alle 66 felt innenfor 1 %) og skriver
-`data/reserves_field_hist.json`. 1975 er i tonn olje og Nm³ gass og regnes om
-(tetthet 0,85), med foreløpig norsk andel for Frigg og Statfjord. Appen regner gjenværende som opprinnelig
-utvinnbart minus kumulativ produksjon og fyller år uten regnskap (1976–79,
-1981–84, 1986–89, 1996) med forrige anslag (`buildLongReserves`). Serien brukes bare når
-brukeren velger «From 1975» (`rh=1`) i reservegrafene per felt og hub og i
-NCS → Fields → Reserve change. `norskpetroleum-original-reserves-per-field.xlsx`
+`data/reserves_field_hist.json`. 1975-regnskapet er utelatt med vilje
+(foreløpig grensedragning for Frigg og Statfjord, olje i tonn og gass i Nm³).
+Appen regner gjenværende som opprinnelig utvinnbart minus kumulativ produksjon
+og fyller år uten regnskap (1981–84, 1986–89, 1996) med forrige anslag
+(`buildLongReserves`). Den lange serien brukes alltid i reservegrafene per felt
+og hub og i NCS → Fields → Reserve change; øvrige visninger bruker bare lag 7113. `norskpetroleum-original-reserves-per-field.xlsx`
 i samme mappe er siste anslag (identisk med årgang 2025) og brukes ikke.
 
 **Format:** ArcGIS REST JSON (`f=json`). Svar har formen

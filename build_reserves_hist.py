@@ -1,22 +1,23 @@
 """Reservetall per felt før 2004, fra Sodirs (Oljedirektoratets) ressursregnskap.
 
 FactMaps-laget field_reserves (7113) starter med årgang 2004. Ressursregnskapene
-for 1975–2003 ligger som Excel-filer i data/reserves-raw/ (lastet ned for hånd
+for 1980–2003 ligger som Excel-filer i data/reserves-raw/ (lastet ned for hånd
 fra sodir.no, som avviser automatiske nedlastinger). Dette skriptet leser
 opprinnelig utvinnbart (salgbart) volum per felt fra dem og skriver
 data/reserves_field_hist.json. Engangsskript: kjøres på nytt bare hvis filene
 eller feltkoblingen endres. Krever xlrd (pip install xlrd).
 
 Avgrensning og kontroll:
-- 1975 (per 18.2.1976) har en egen tabell i andre enheter, se parse_1975.
-  1996 har bare summer per ressursklasse. Ellers mangler 1976–79, 1981–84 og
-  1986–89.
+- 1975 er utelatt med vilje: grensedragningen mot britisk sokkel for Frigg og
+  Statfjord var foreløpig og ble senere endret, og olje i tonn og gass i Nm3
+  må regnes om med antatte faktorer. 1996 har bare summer per
+  ressursklasse. Ellers mangler 1981–84 og 1986–89.
 - Gjenværende reserver leses ikke: de finnes ikke for alle år, og appen regner
   dem ut som opprinnelig utvinnbart minus kumulativ produksjon.
 - 2004-filen leses bare for kontroll mot APIet og skrives ikke ut. Alle felt
   skal stemme innenfor 1 %; skriptet stopper ellers.
 - OE regnes som olje + gass + 1,9 × NGL (tonn) + kondensat, Sodirs faktor.
-  I 1975 og 1980 er NGL regnet inn i olje og gass.
+  I 1980 er NGL regnet inn i oljen.
 - Felt som senere er slått inn i andre, legges sammen med dagens felt (ALIAS).
 """
 import json
@@ -36,7 +37,6 @@ NGL = 1.9   # Sm3 o.e. per tonn NGL
 # ressurser i samme ark), eller 'STOP' for RK0-arket, der felt med avsluttet
 # produksjon står først og felt i produksjon følger etter summeringsraden.
 CFG = {
-    1975: [],   # egen parser, parse_1975
     1980: [('Tabell 17', None)],
     1985: [('Tabell 2.4.2', None)],
     1990: [('Tabell 3.2', None)],
@@ -123,36 +123,7 @@ def clean(raw):
     return re.sub(r'\s*\d\)?\s*$', '', s).strip()
 
 
-# 1975: olje i mill tonn og gass i mrd Nm3 (0 °C). Oljen regnes om med en
-# typisk tetthet, gassen eksakt til Sm3 (15 °C). Tallene blir omtrentlige —
-# noen få prosent for oljen. Frigg og Statfjord står som hele feltet med den
-# foreløpige norske andelen i parentes, «250 (125)**»; den norske andelen
-# brukes, slik de senere regnskapene også oppgir norsk andel. Øst-Eldfisk
-# står som «under vurdering» og faller bort.
-YEAR_1975 = 1975
-OIL_T_PER_SM3 = 0.85
-SM3_PER_NM3 = 288.15 / 273.15
-
-
-def parse_1975():
-    sh = xlrd.open_workbook(RAW / 'ressursregnskap-for-1975.xls').sheet_by_index(0)
-    norw = lambda v: num(m.group(1)) if isinstance(v, str) and (m := re.search(r'\(([\d.,]+)\)', v)) else num(v)
-    rows = []
-    for r in range(sh.nrows):
-        row = sh.row_values(r)
-        name = str(row[1]).strip()
-        if not name or re.match(r'^(feltnavn|totalt)', name, re.I):
-            continue
-        oil_t, gas_n = norw(row[4]), norw(row[5])   # utvinnbart; kolonne 2–3 er tilstedeværende
-        if not (oil_t or gas_n):
-            continue
-        rows.append((name, {'oil': oil_t / OIL_T_PER_SM3, 'gas': gas_n * SM3_PER_NM3, 'ngl': 0.0, 'cond': 0.0}))
-    return rows
-
-
 def parse_year(year):
-    if year == YEAR_1975:
-        return parse_1975()
     wb = xlrd.open_workbook(RAW / f'ressursregnskap-for-{year}.xls')
     rows = []
     for name, catre in CFG[year]:
@@ -246,12 +217,10 @@ def main():
         if rows:
             res[str(fid)] = rows
     OUT.write_text(json.dumps({
-        'source': "Sodir (Oljedirektoratet), ressursregnskap 1975–2003, data/reserves-raw/",
+        'source': "Sodir (Oljedirektoratet), ressursregnskap 1980–2003, data/reserves-raw/",
         'note': 'Opprinnelig utvinnbart (salgbart) volum per felt per 31.12. Gass i mrd Sm3, '
                 'NGL i mill tonn, øvrige i mill Sm3; OE = olje + gass + 1,9 × NGL + kondensat. '
-                'I 1975 og 1980 er NGL regnet inn i olje og gass. 1975 er omregnet fra tonn olje '
-                f'(tetthet {OIL_T_PER_SM3}) og Nm3 gass, og er omtrentlig. '
-                'Ingen tall for 1976–79, 1981–84, 1986–89 og 1996.',
+                'I 1980 er NGL regnet inn i oljen. Ingen tall for 1981–84, 1986–89 og 1996.',
         'columns': cols, 'fields': res,
     }, ensure_ascii=False, separators=(',', ':')) + '\n')
     years = sorted({r[0] for rows in res.values() for r in rows})
