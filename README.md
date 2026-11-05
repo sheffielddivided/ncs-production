@@ -22,7 +22,7 @@ Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
 | `data/` | Datasnapshot: felt, produksjon, lisensiærer, reserver |
 | `data/reserves_field.json` | Reserver per felt per år (2004→), fra Sodir lag 7113 |
 | `data/hubs.json` | Hub-tilhørighet per felt — brukerstyrt, ikke fra Sodir |
-| `data/hub_connections.json` | Fysiske koblinger per hub (rørledninger, broer, brønner fra plattform, historiske) til hub- og feltkartet. Redigeres for hånd; en hub som står her, tegnes etter modellen i stedet for de automatiske koblingene fra feltbeskrivelsene. Foreløpig Sleipner area |
+| `data/hub_connections.json` | Fysiske koblinger per hub (rørledninger, broer, brønner fra plattform, historiske) til hub- og feltkartet. Redigeres for hånd; en hub som står her, tegnes etter modellen i stedet for de automatiske koblingene fra feltbeskrivelsene. Foreløpig Sleipner area og Alvheim area. Skiller bekreftede koblinger fra skjematiske (prikket) |
 | `data/discoveries.json` | Funn (lag 7000) — navn, status, funnår, eier, operatør |
 | `data/discovery_resources.json` | Ressursanslag per funn (lag 7008) |
 | `data/discovery_descriptions.json` | Sodirs funnbeskrivelser (lag 7001) |

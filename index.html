@@ -7470,21 +7470,26 @@ const GONE_PHASES = ['REMOVED', 'DECOMMISSIONED', 'DISPOSAL COMPLETED',
 const isGone = f => GONE_PHASES.includes(f.phase);
 const isProcessing = f => /\bPROCESSING\b/.test(f.functions || '');
 
-// «SLEIPNER ØST» → «Sleipner Øst», «15/9-E» uendret.
-const hcTitle = t => String(t).toLowerCase().replace(/(^|[\s(])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+// «SLEIPNER ØST» → «Sleipner Øst», «15/9-E» uendret. Bare navn med bare store
+// bokstaver gjøres om; «SAGE system (UK)» står som skrevet.
+const hcTitle = t => String(t) !== String(t).toUpperCase() ? String(t)
+  : String(t).toLowerCase().replace(/(^|[\s(])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 // Tabellen over hubens håndlagde koblinger, i rekkefølgen i modellen.
-const HC_KIND = {pipeline: 'Pipeline', bridge: 'Bridge', wells: 'Wells from platform', historical: 'Historical'};
+const HC_KIND = {pipeline: 'Pipeline', bridge: 'Bridge', wells: 'Wells from platform', historical: 'Historical', export: 'Export'};
 function hubConnectionTable(ids) {
   const model = hubModel(ids);
   if (!model || !(model.links || []).length) return '';
   const name = ref => model.nodes?.[ref]?.label || hcTitle(/^field:(.+)$/i.exec(ref)?.[1] ?? ref);
   return `<div class="pf-scroll"><table class="res-table">
       <caption>${model.links.length} connections</caption>
-      <thead><tr><th>From</th><th>To</th><th>Group</th><th>Type</th><th>Description</th></tr></thead>
+      <thead><tr><th>From</th><th>To</th><th>Group</th><th>Type</th><th>Basis</th><th>Description</th></tr></thead>
       <tbody>${model.links.map(l => `<tr><td>${esc(name(l.from))}</td><td>${esc(name(l.to))}</td><td>${esc(l.group || '')}</td>
-        <td>${esc(HC_KIND[l.kind] || l.kind || 'Pipeline')}${l.count > 1 ? ` × ${l.count}` : ''}</td><td class="fac-fn">${esc(l.label || '')}</td></tr>`).join('')}</tbody>
+        <td>${esc(HC_KIND[l.kind] || l.kind || 'Pipeline')}${l.count > 1 ? ` × ${l.count}` : ''}</td>
+        <td>${l.kind === 'export' || l.kind === 'wells' ? '–' : l.basis === 'schematic' ? 'Schematic' : 'Confirmed'}</td><td class="fac-fn">${esc(l.label || '')}</td></tr>`).join('')}</tbody>
     </table></div>
-    <div class="pf-map-note">Physical connections maintained by hand in data/hub_connections.json.</div>`;
+    <div class="pf-map-note">Physical connections maintained by hand in data/hub_connections.json. Confirmed: the connection and its
+      end points are known from Sodir or the operator's documentation. Schematic: the connection exists, but the route is not verified.
+      Lines on the map are straight between Sodir's installation positions, not the actual pipeline routes.</div>`;
 }
 
 function hubFacilities(ids) {
@@ -7566,7 +7571,8 @@ function hubMap(ids, facs, opts = {}) {
         + (opts.wells && opts.wells.length ? 'Wells as black dots, at their surface location. ' : '')
         + (net.n && net.model ? `Surface installations as dark squares, subsea installations as rings. Lines are the
            physical connections maintained by hand for this hub: pipelines as solid lines (two lines where there are
-           two pipelines), permanent bridges as thick strokes, historical connections dashed grey. Fields produced
+           two pipelines), schematic connections whose route is not verified as dotted lines, permanent bridges as
+           thick strokes, historical connections dashed grey. Export routes are listed in the table only. Fields produced
            through wells drilled from a platform have no line. Hover a line for details. Straight lines, not the
            actual pipeline routes. ` : '')
         + (net.n && !net.model ? `Surface installations as dark squares, subsea installations as rings. Lines are a
@@ -7695,11 +7701,13 @@ function modelLinks(model, ids, live, outlines) {
   const labels = new Map();
   const links = [];
   (model.links || []).forEach(l => {
+    if (l.kind === 'export') return;   // eksport: bare i tabellen
     const a = point(l.from), b = point(l.to);
     if (!a || !b) { console.warn('hub_connections: finner ikke', l.from, '→', l.to); return; }
     [a, b].forEach(x => { if (x.label) labels.set(x.p, x.label); });
     links.push({a: a.p, b: b.p, kind: l.kind || 'pipeline', count: l.count || 1, label: l.label || '',
-                group: l.group || '', field: a.field ?? b.field, dash: l.kind === 'historical'});
+                group: l.group || '', field: a.field ?? b.field, dash: l.kind === 'historical',
+                schematic: l.basis === 'schematic'});
   });
   return {links, labels};
 }
@@ -7780,8 +7788,10 @@ function hubNetwork(ids, facs, outlines, focus) {
       if (l.kind === 'historical') return seg(l, x1, y1, x2, y2, 'stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="3 3"');
       const len = Math.hypot(x2 - x1, y2 - y1) || 1, nx = -(y2 - y1) / len, ny = (x2 - x1) / len;
       const offs = l.count > 1 ? [-1.6, 1.6] : [0];
-      return offs.map(o => seg(l, x1 + nx * o, y1 + ny * o, x2 + nx * o, y2 + ny * o,
-        'stroke="#1a2332" stroke-width="1.1" stroke-opacity="0.8"')).join('');
+      // Skjematisk (koblingen finnes, ruten er ikke verifisert): prikket.
+      const st = l.schematic ? 'stroke="#1a2332" stroke-width="1.2" stroke-opacity="0.7" stroke-dasharray="1 2.5" stroke-linecap="round"'
+                             : 'stroke="#1a2332" stroke-width="1.1" stroke-opacity="0.8"';
+      return offs.map(o => seg(l, x1 + nx * o, y1 + ny * o, x2 + nx * o, y2 + ny * o, st)).join('');
     };
     // Navn på punktene i en håndlaget modell: innretningene som inngår i en
     // kobling, med nodenavnet der modellen gir et. Navn som ville havnet oppå
