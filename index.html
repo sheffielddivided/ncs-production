@@ -4273,9 +4273,19 @@ function drawNcsReserveScatter(list, head, k) {
   lastDatasets = [{label: 'Production start', data: list.map(f => startYear(f) ?? '')},
                   {label: 'First estimate, million boe', data: list.map(f => +f.first.toFixed(1))},
                   {label: 'Change, %', data: list.map(f => +f.pct.toFixed(1))}];
-  pptSpec = {kind: 'scatter', markers: true, xTitle: 'Production start', yTitle: 'Change to latest estimate, %',
-    series: [{name: 'Revised up', points: pts.filter(p => p.y >= 0).map(({x, y}) => ({x, y})), color: pptHex(POS_C)},
-             {name: 'Revised down', points: pts.filter(p => p.y < 0).map(({x, y}) => ({x, y})), color: pptHex(NEG_C)}]};
+  // PowerPoint: ekte boblegraf med boblestørrelse = første anslag (mill fat
+  // o.e.; PowerPoint lar arealet følge størrelsen, som her). Faste akser, så
+  // snittlinjene kan legges over som linjefigurer.
+  const yMaxP = capped ? CAP : Math.ceil(Math.max(...pts.map(p => p.y)) / 50) * 50;
+  const bub = up => pts.filter(p => (p.y >= 0) === up).map(p => ({x: p.x, y: p.y, size: +p.f.first.toFixed(1)}));
+  pptSpec = {kind: 'bubble', xTitle: 'Production start', yTitle: 'Change to latest estimate, %',
+    xMin: Math.floor(xMin / 5) * 5, xMax: Math.ceil(xMax / 5) * 5, yMin: -100, yMax: yMaxP, yMajor: 50, xMajor: 5,
+    series: [{name: 'Revised up', points: bub(true), color: pptHex(POS_B)},
+             {name: 'Revised down', points: bub(false), color: pptHex(NEG_B)}],
+    hlines: [{y: k.avgPct, color: pptHex(AVG_C), label: `Average ${k.fP(k.avgPct)}`},
+             {y: k.wPct, color: pptHex(W_C), label: `Volume-weighted ${k.fP(k.wPct)}`}],
+    note: (clipped.length ? `Axis cut at ${CAP} %: ${clipped.map(p => `${p.f.name} ${k.fP(p.f.pct)}`).join(', ')}. ` : '') +
+          `Bubble area = first reserve estimate (largest: ${pts[0].f.name}, ${k.fM(maxFirst).replace(/^\+/, '')} million boe).`};
   document.getElementById('downloadBtn').disabled = false;
 }
 
@@ -10164,6 +10174,19 @@ function pptMeta() {
     source: ssb ? 'Source: Statistics Norway (SSB)' : 'Source: Norwegian Offshore Directorate (Sodir), FactPages'};
 }
 
+// Data til PptxGenJS sine punkt- og boblegrafer, som deler én x-rekke på
+// tvers av seriene: én rad per punkt, og hver serie har verdi (og størrelse)
+// bare i sine egne rader.
+function pptPointRows(series, sizes) {
+  const xs = [], cols = series.map(() => []), sz = series.map(() => []);
+  series.forEach((s, si) => s.points.forEach(p => {
+    xs.push(p.x);
+    series.forEach((_, sj) => { cols[sj].push(si === sj ? p.y : null); sz[sj].push(si === sj ? p.size : null); });
+  }));
+  return [{name: 'X', values: xs}].concat(series.map((s, si) =>
+    ({name: s.name, values: cols[si], ...(sizes ? {sizes: sz[si]} : {})})));
+}
+
 function pptAddChart(pptx, slide, spec, box) {
   const C = pptx.charts;
   const font = {catAxisLabelFontSize: 10, valAxisLabelFontSize: 10, legendFontSize: 11, dataLabelFontSize: 9,
@@ -10186,15 +10209,43 @@ function pptAddChart(pptx, slide, spec, box) {
       fontFace: 'Arial', fontSize: fs, valign: 'middle', margin: n > 40 ? 0 : 0.02, border: {type: 'solid', pt: 0.5, color: 'E3E8EE'}});
     return;
   }
+  if (spec.kind === 'bubble') {
+    // Boblegraf: én rad per punkt som i punktskyen, med størrelsen i sizes.
+    // Faste akser og fast plottområde, så de horisontale linjene (snittene)
+    // kan legges over som linjefigurer på riktig sted.
+    const data = pptPointRows(spec.series, true);
+    const L = {x: 0.08, y: 0.03, w: 0.9, h: 0.74};
+    // Fotnoten får egen plass under grafen, så den ikke kolliderer med forklaringen.
+    const noteH = spec.note ? 0.4 : 0, cb = {...box, h: box.h - noteH};
+    // I punkt- og boblegrafer bruker begge aksene valAxisLabelFormatCode;
+    // '0' gir årstall uten tusenskille på x-aksen.
+    slide.addChart(C.BUBBLE, data, {...common, ...cb, valAxisLabelFormatCode: '0', chartColors: spec.series.map(s => s.color), chartColorsOpacity: 55,
+      lineSize: 0.75, layout: L, catAxisMinVal: spec.xMin, catAxisMaxVal: spec.xMax, catAxisMajorUnit: spec.xMajor,
+      valAxisMinVal: spec.yMin, valAxisMaxVal: spec.yMax, valAxisMajorUnit: spec.yMajor,
+      catAxisLabelFormatCode: '0', ...axisTitle(spec.yTitle), ...axisTitle(spec.xTitle, 'catAxis')});
+    const px = x => cb.x + cb.w * (L.x + L.w * (x - spec.xMin) / (spec.xMax - spec.xMin));
+    const py = y => cb.y + cb.h * (L.y + L.h * (1 - (y - spec.yMin) / (spec.yMax - spec.yMin)));
+    // Etiketten til den øverste linjen over linjen, de øvrige under, så to
+    // linjer tett sammen ikke får etikettene oppå hverandre.
+    const top = Math.max(...(spec.hlines || []).map(l => l.y));
+    (spec.hlines || []).forEach(l => {
+      slide.addShape(pptx.shapes.LINE, {x: px(spec.xMin), y: py(l.y), w: px(spec.xMax) - px(spec.xMin), h: 0,
+        line: {color: l.color, width: 1.5, dashType: 'dash'}});
+      slide.addText(l.label, {x: px(spec.xMax) - 2.6, y: py(l.y) + (l.y === top ? -0.26 : 0.02), w: 2.5, h: 0.24, align: 'right',
+        fontFace: 'Arial', fontSize: 9, color: l.color});
+    });
+    if (spec.note) slide.addText(spec.note, {x: box.x, y: cb.y + cb.h + 0.02, w: box.w, h: noteH - 0.04,
+      fontFace: 'Arial', fontSize: 8, color: '6B7684', valign: 'top'});
+    return;
+  }
   if (spec.kind === 'scatter' && spec.markers) {
     // Punktsky (olje mot gass): bare punkter, faste akser og fast plassering
     // av plottområdet, så trendlinjen kan legges over som en linjefigur på
     // riktig sted.
-    const xs = [...new Set(spec.series.flatMap(s => s.points.map(p => p.x)))].sort((a, b) => a - b);
-    const data = [{name: 'X', values: xs}].concat(spec.series.map(s => {
-      const m = new Map(s.points.map(p => [p.x, p.y]));
-      return {name: s.name, values: xs.map(x => (m.has(x) ? m.get(x) : null))};
-    }));
+    // Én rad per punkt, ikke per unik x: to punkter med samme x (samme
+    // Brent-pris, samme oppstartsår) skal begge med. Hver serie har verdi bare
+    // i sine egne rader.
+    const data = pptPointRows(spec.series);
     const L = {x: 0.08, y: 0.03, w: 0.9, h: 0.78};
     slide.addChart(C.SCATTER, data, {...common, chartColors: spec.series.map(s => s.color), lineSize: 0,
       lineDataSymbol: 'circle', lineDataSymbolSize: 6, layout: L, catAxisMinVal: spec.xMin, catAxisMaxVal: spec.xMax,
