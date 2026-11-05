@@ -45,10 +45,15 @@ Gassco melder bortfallet på feltnodene også når årsaken er et anlegg (Nyhamn
 helt stengt i mai 2027 står også som 100 % bortfall på Ormen Lange og Aasta
 Hansteen), så fordeling ville telt det samme to ganger.
 
+Volum: tapt kapasitet (MSm³/d) × dager gir tapt gassvolum i MSm³ per måned,
+delt på planlagt og uplanlagt på samme måte.
+
 Kobling til felt: data/gassco_aliases.json (fields, ignore), ellers samme
 navn som i fields.json. En node kan dekke flere felt som leverer gjennom
 den; Gassco skiller ikke på dem, så tallene gjelder noden og føres på feltet
-med samme navn.
+med samme navn. Er en node koblet til flere felt, får hvert felt samme dager,
+mens volumet fordeles etter feltenes andel av gassproduksjonen de siste 12
+månedene (share), så det ikke telles flere ganger.
 """
 
 import json
@@ -320,7 +325,8 @@ def gas_month_bounds(t):
 
 
 def downtime_by_asset(events, start_ym):
-    """{asset: {(y, m): [dager, planlagt, uplanlagt]}}"""
+    """{asset: {(y, m): [dager, planlagt, uplanlagt, volum, planlagt, uplanlagt]}}
+    Volum i MSm³ (mcm) tapt i måneden."""
     horizon_t = datetime(*start_ym, 1, tzinfo=OSLO) + GAS_DAY_START
     by_asset = {}
     for ev in events:
@@ -356,11 +362,16 @@ def downtime_by_asset(events, start_ym):
             while t < b:
                 ym, nxt = gas_month_bounds(t)
                 end = min(b, nxt)
-                d = frac * (end - t).total_seconds() / 86400
-                v = acc.setdefault(ym, [0.0, 0.0, 0.0])
+                dur = (end - t).total_seconds() / 86400
+                d = frac * dur
+                vol = min(lost, tech) * dur
+                v = acc.setdefault(ym, [0.0] * 6)
                 v[0] += d
                 v[1] += d * planned
                 v[2] += d * (1 - planned)
+                v[3] += vol
+                v[4] += vol * planned
+                v[5] += vol * (1 - planned)
                 t = end
         if acc:
             out[asset] = acc
@@ -368,6 +379,22 @@ def downtime_by_asset(events, start_ym):
 
 
 # ---------------------------------------------------------------- felt
+
+def gas_weights(ids):
+    """Andel av gassproduksjonen de siste 12 månedene med tall, per felt.
+    Brukes når en node er koblet til flere felt (Sleipner → Øst og Vest), så
+    volumet fordeles i stedet for å telles på hvert felt. Like andeler hvis
+    ingen av dem har produksjon."""
+    with open(os.path.join(DATA, "production.json"), encoding="utf-8") as f:
+        prod = json.load(f)["fields"]
+    last = last_production_month()
+    lo = add_months(*last, -11) if last else (0, 0)
+    tot = {fid: sum(r[3] or 0 for r in prod.get(str(fid), [])
+                    if r[1] and lo <= (r[0], r[1]) <= (last or (9999, 12)))
+           for fid in ids}
+    s = sum(v for v in tot.values() if v > 0)
+    return {fid: (max(v, 0) / s if s > 0 else 1 / len(ids)) for fid, v in tot.items()}
+
 
 def load_fields():
     with open(os.path.join(DATA, "fields.json"), encoding="utf-8") as f:
@@ -439,13 +466,18 @@ def main():
         if not ids:
             unmatched.append(asset)
             continue
-        rows = [[y, m, round(v[0], 2), round(v[1], 2), round(v[2], 2)]
-                for (y, m), v in sorted(months.items()) if v[0] >= 0.005]
-        if not rows:
-            continue
-        to_ym = max(to_ym, max((r[0], r[1]) for r in rows))
+        w = gas_weights(ids) if len(ids) > 1 else {ids[0]: 1.0}
         for fid in ids:
+            k = w[fid]
+            rows = [[y, m, round(v[0], 2), round(v[1], 2), round(v[2], 2),
+                     round(v[3] * k, 3), round(v[4] * k, 3), round(v[5] * k, 3)]
+                    for (y, m), v in sorted(months.items()) if v[0] >= 0.005]
+            if not rows:
+                continue
+            to_ym = max(to_ym, max((r[0], r[1]) for r in rows))
             out_fields[str(fid)] = {"asset": asset, "rows": rows}
+            if k < 1:
+                out_fields[str(fid)]["share"] = round(k, 3)
 
     if unmatched:
         print(f"Uten felt: {', '.join(unmatched)}", file=sys.stderr)
@@ -456,7 +488,9 @@ def main():
         "from": f"{fy}-{fm:02d}",
         "to": f"{to_ym[0]}-{to_ym[1]:02d}",
         "lastProductionMonth": f"{last[0]}-{last[1]:02d}" if last else None,
-        "columns": ["year", "month", "days", "planned", "unplanned"],
+        "columns": ["year", "month", "days", "planned", "unplanned",
+                    "volume", "volumePlanned", "volumeUnplanned"],
+        "volumeUnit": "MSm3 per month (gas)",
         "fields": out_fields,
         "unmatched": unmatched,
     }

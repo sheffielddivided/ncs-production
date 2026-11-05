@@ -646,8 +646,10 @@ ikke at nettleseren leser feedene deres (CORS). Derfor:
 
 ```json
 {"generated":"2026-11-05T17:51:21Z","from":"2025-01","to":"2030-05","lastProductionMonth":"2026-08",
- "columns":["year","month","days","planned","unplanned"],
- "fields":{"43625":{"asset":"Oseberg","rows":[[2026,10,5.13,1.78,3.35]]}},"unmatched":[]}
+ "columns":["year","month","days","planned","unplanned","volume","volumePlanned","volumeUnplanned"],
+ "volumeUnit":"MSm3 per month (gas)",
+ "fields":{"43625":{"asset":"Oseberg","rows":[[2026,5,31.0,31.0,0.0,824.6,824.6,0.0]]},
+           "43457":{"asset":"Sleipner","share":0.957,"rows":[...]}},"unmatched":[]}
 ```
 
 Bygges av `fetch_gassco.py` (daglig, i `update-sodir-data.yml` etter Sodir)
@@ -688,6 +690,11 @@ fra arkivet `data/gassco_events.json`, og skrives på nytt hver kjøring.
   anleggsstopp også på feltnodene (Nyhamna helt stengt mai 2027 står som 100 %
   på Ormen Lange og Aasta Hansteen; Kollsnes 156/156 sept. 2027 som 100 % på
   Troll). Å fordele anleggene på felt ville telle det samme to ganger.
+- **Volum:** tapt kapasitet (MSm³/d, høyst teknisk) × dager = tapt gassvolum i
+  MSm³ per måned (`volume`), delt på planlagt/uplanlagt som dagene. Er en node
+  koblet til flere felt, får hvert felt samme dager, men volumet ganges med
+  feltets andel av gassproduksjonen de siste 12 månedene (`share`), så summen
+  i en hub ikke teller noden flere ganger.
 - **Kobling:** `data/gassco_aliases.json` (`fields`: node → ett eller flere
   Sodir-felt, f.eks. Sleipner → Sleipner Øst og Vest, Hammerfest LNG → Snøhvit;
   `ignore`: prosessanlegg og terminaler), ellers samme navn som i `fields.json`.
@@ -696,12 +703,17 @@ fra arkivet `data/gassco_events.json`, og skrives på nytt hver kjøring.
   dekke satellitter som leverer gjennom den; tallet føres bare på feltet med
   samme navn.
 
-Vises i Field → Downtime (stablede søyler planlagt/uplanlagt + tabell) og
-Hub → Downtime (stablede søyler, ett segment per felt + tabell). Begge har Sodirs
-gassproduksjon (netto salgsgass, månedssnitt i MSm³/d = mrd Sm³ × 1000 /
-dager) som linje på høyre akse — for feltet selv, eller summert over alle
-hubens felt — så endringer i produksjonen kan leses mot nedetiden. Merk at
-produksjonen gjelder feltet, mens nedetiden gjelder Gassco-noden — `drawFieldDowntime`,
+Vises i Field → Downtime og Hub → Downtime som volumeffekt: Sodirs
+gassproduksjon (netto salgsgass, månedssnitt = mrd Sm³ × 1000 / dager) som
+stolpe over null og tapt volum (`volume` / dager i måneden) som stolper under
+null, i samme stabel — for feltet delt i planlagt/uplanlagt, for huben ett
+segment per felt (produksjonen summert over alle hubens felt). Veksler
+boe/day (standard; 1 000 Sm³ gass = 1 Sm³ o.e. = `BBL_PER_SM3` fat) og
+million Sm³/day (`gsUnit`). Tabellen under har dagene i tillegg. Tapt volum
+kan bli større enn produksjonen, fordi teknisk kapasitet ofte ligger over
+faktisk rate (Oseberg mai 2026: 26,6 MSm³/d tapt mot om lag 22 i normal
+produksjon). Merk også at produksjonen gjelder feltet, mens nedetiden gjelder
+Gassco-noden — `drawFieldDowntime`,
 `drawHubDowntime`, `gasscoChart` i `index.html`. Lastes først når fanen åpnes.
 
 ### `data/meta.json`
