@@ -255,6 +255,10 @@
       "hub": "Eiga area",
       "auto": false
     },
+    "18116481": {
+      "hub": "Sleipner area",
+      "auto": false
+    },
     "18161341": {
       "hub": "Other",
       "auto": false
@@ -309,6 +313,10 @@
     },
     "23384520": {
       "hub": "Eiga area",
+      "auto": false
+    },
+    "23384544": {
+      "hub": "Sleipner area",
       "auto": false
     },
     "23395946": {
@@ -448,8 +456,8 @@
       "auto": false
     },
     "42002492": {
-      "hub": "GINA KROG",
-      "auto": true
+      "hub": "Sleipner area",
+      "auto": false
     },
     "42002507": {
       "hub": "BRAGE",
