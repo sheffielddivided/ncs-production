@@ -1,0 +1,27 @@
+{
+  "note": "Vedlikeholdes for hånd. Fysiske koblinger per hub til hubkartet (Hub → Installations) og feltkartet (Field → Map). Når en hub står her, brukes disse koblingene i stedet for de automatiske fra Sodirs feltbeskrivelser. from/to: innretningsnavn fra facilities.json, et navn under nodes, eller field:FELTNAVN (midten av feltets omriss). nodes: navn → innretning, med short (navnet på kartet) og label (navnet i tabellen). kind: pipeline (heltrukket; count 2 gir to parallelle linjer), bridge (bro mellom plattformer), wells (brønner boret fra innretningen, ingen linje), historical (stiplet grå, ikke lenger i bruk). from er satellitten/den tilknyttede siden, to er verten.",
+  "hubs": {
+    "Sleipner area": {
+      "nodes": {
+        "Loke": {"facility": "SLEIPNER C", "short": "Loke", "label": "Loke template (Sleipner C)"},
+        "Sleipner Øst north": {"facility": "SLEIPNER D", "short": "Sleipner Øst N", "label": "Sleipner Øst north template (Sleipner D)"},
+        "Alfa Nord": {"facility": "15/9-E", "short": "Alfa Nord", "label": "Alfa Nord template (15/9-E)"}
+      },
+      "links": [
+        {"from": "field:GUNGNE", "to": "SLEIPNER A", "kind": "wells", "group": "Sleipner Øst", "label": "Gungne: wells drilled from Sleipner A, no separate subsea pipeline"},
+        {"from": "Loke", "to": "SLEIPNER A", "kind": "pipeline", "group": "Sleipner Øst", "label": "Loke subsea template tied back to Sleipner A"},
+        {"from": "Sleipner Øst north", "to": "SLEIPNER A", "kind": "pipeline", "group": "Sleipner Øst", "label": "Subsea template for the northern part of Sleipner Øst (Sodir field description)"},
+        {"from": "SLEIPNER B", "to": "SLEIPNER T", "kind": "pipeline", "group": "Sleipner Vest", "label": "Sleipner B (normally unmanned wellhead platform) to Sleipner T, about 12 km production pipeline"},
+        {"from": "Alfa Nord", "to": "SLEIPNER T", "kind": "pipeline", "group": "Sleipner Vest", "label": "Alfa Nord subsea template to Sleipner T, about 18 km pipeline"},
+        {"from": "SIGYN", "to": "SLEIPNER A", "kind": "pipeline", "count": 2, "group": "Tie-ins", "label": "Sigyn subsea template to Sleipner A, two pipelines"},
+        {"from": "GUDRUN", "to": "SLEIPNER A", "kind": "pipeline", "count": 2, "group": "Tie-ins", "label": "Gudrun to Sleipner A, separate oil and wet-gas pipelines"},
+        {"from": "GINA KROG", "to": "SLEIPNER A", "kind": "pipeline", "count": 2, "group": "Tie-ins", "label": "Gina Krog to Sleipner A, separate rich-gas and oil pipelines (oil pipeline in operation from 2024)"},
+        {"from": "UTGARD", "to": "SLEIPNER T", "kind": "pipeline", "group": "Tie-ins", "label": "Utgard subsea template (two production wells) to Sleipner T"},
+        {"from": "EIRIN", "to": "GINA KROG", "kind": "pipeline", "group": "Tie-ins", "label": "Eirin subsea template to the Gina Krog platform (Sodir field description)"},
+        {"from": "SLEIPNER T", "to": "SLEIPNER A", "kind": "bridge", "group": "Platform connections", "label": "Sleipner A – Sleipner T, permanent bridge"},
+        {"from": "SLEIPNER R", "to": "SLEIPNER A", "kind": "bridge", "group": "Platform connections", "label": "Sleipner A – Sleipner R, permanent bridge"},
+        {"from": "field:VOLVE", "to": "SLEIPNER A", "kind": "historical", "group": "Historical", "label": "Volve rich gas to Sleipner A; production ceased in 2016"}
+      ]
+    }
+  }
+}

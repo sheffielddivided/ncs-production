@@ -814,7 +814,7 @@ async function loadBundles() {
                  'field_profile','field_descriptions','field_outlines','coastline','facilities',
                  'field_investments','field_operators',
                  'licences','companies',
-                 'meta','hubs','sodir_news'];
+                 'meta','hubs','sodir_news','hub_connections'];
   const results = await Promise.all(names.map(fetchBundle));
   names.forEach((n, i) => { bundle[n] = results[i]; });
   renderSourceNote();
@@ -5875,7 +5875,8 @@ function outlineMap(ownItems, opts = {}) {
   const wellDots = (opts.wells || []).map(w => wellDot(w, false)).join('') +
                    (opts.ownWell ? wellDot(opts.ownWell, true) : '');
   // Fritt tegnelag over omrissene (hubens installasjoner og koblinger). Får
-  // projeksjonen og tegner selv.
+  // projeksjonen og tegner selv. opts.overlayLabels tegnes etter feltnavnene
+  // og får boksene de la beslag på (placed), så navnene ikke kolliderer.
   const overlay = opts.overlay ? opts.overlay(px, py) : '';
 
   // Oversiktskartet legger beslag på sitt hjørne, så ingen etikett havner
@@ -5927,7 +5928,7 @@ function outlineMap(ownItems, opts = {}) {
       ${ownPaths}
       ${overlay}
       ${wellDots}
-      ${labels}${inset}
+      ${labels}${opts.overlayLabels ? opts.overlayLabels(px, py, placed) : ''}${inset}
     </svg>
     <div class="pf-map-note">${opts.note || ''}</div>`;
 }
@@ -6050,9 +6051,12 @@ function profileMap(id) {
     label: 'Map of the field', h: 560, pad: 2.2,
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(new Set([id])), discoveryLayer()],
-    overlay: net.svg, extra: net.extent,
+    overlay: net.svg, overlayLabels: net.labels, extra: net.extent,
     note: 'Fields in grey, discoveries in pale green, the subject in colour. '
-        + (net.n ? `Surface installations as dark squares, subsea installations as rings. Lines show how the
+        + (net.n && net.model ? `Surface installations as dark squares, subsea installations as rings. Lines are the
+           physical connections maintained by hand for the hub, filtered to this field: pipelines solid, bridges
+           thick, historical connections dashed grey. Straight lines, not the actual pipeline routes. ` : '')
+        + (net.n && !net.model ? `Surface installations as dark squares, subsea installations as rings. Lines show how the
            field is tied in, following the route in Sodir's field description where it names one, and the
            satellites tied directly to the field's own installations; straight lines, not the actual
            pipeline routes. ` : '')
@@ -7282,10 +7286,12 @@ function drawHubInstallations() {
   const wells = hubWells(ids);
   const m = hubMap(ids, facs, {h: 330, wells});
   const t = hubFacilityTable(facs, fieldNameOf);
+  const ct = hubConnectionTable(ids);
   const wt = hubWellTable(wells);
   setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Installations:</strong> ${facs.length} (${live.filter(f => f.surface).length} surface and ${live.filter(f => !f.surface).length} subsea in place) &nbsp;|&nbsp; <strong>Wellbores:</strong> ${wells.length} &nbsp;|&nbsp; <strong>Source:</strong> Sodir layers 6000 and 5000`);
   setProfile(!facs.length && !wells.length ? '<div class="pf-card pf-wide"><div class="pf-map-note">Sodir lists no installations or wells for this hub.</div></div>' : `
     ${m ? `<div class="pf-card pf-wide"><h3>Map</h3>${m}</div>` : ''}
+    ${ct ? `<div class="pf-card pf-wide"><h3>Connections</h3>${ct}</div>` : ''}
     ${t ? `<div class="pf-card pf-wide"><h3>Installations</h3>${t}</div>` : ''}
     ${wt ? `<div class="pf-card pf-wide"><h3>Wells</h3>${wt}</div>` : ''}`);
 }
@@ -7351,6 +7357,23 @@ const GONE_PHASES = ['REMOVED', 'DECOMMISSIONED', 'DISPOSAL COMPLETED',
                      'ABANDONED IN PLACE', 'PARTLY REMOVED'];
 const isGone = f => GONE_PHASES.includes(f.phase);
 const isProcessing = f => /\bPROCESSING\b/.test(f.functions || '');
+
+// «SLEIPNER ØST» → «Sleipner Øst», «15/9-E» uendret.
+const hcTitle = t => String(t).toLowerCase().replace(/(^|[\s(])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+// Tabellen over hubens håndlagde koblinger, i rekkefølgen i modellen.
+const HC_KIND = {pipeline: 'Pipeline', bridge: 'Bridge', wells: 'Wells from platform', historical: 'Historical'};
+function hubConnectionTable(ids) {
+  const model = hubModel(ids);
+  if (!model || !(model.links || []).length) return '';
+  const name = ref => model.nodes?.[ref]?.label || hcTitle(/^field:(.+)$/i.exec(ref)?.[1] ?? ref);
+  return `<div class="pf-scroll"><table class="res-table">
+      <caption>${model.links.length} connections</caption>
+      <thead><tr><th>From</th><th>To</th><th>Group</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>${model.links.map(l => `<tr><td>${esc(name(l.from))}</td><td>${esc(name(l.to))}</td><td>${esc(l.group || '')}</td>
+        <td>${esc(HC_KIND[l.kind] || l.kind || 'Pipeline')}${l.count > 1 ? ` × ${l.count}` : ''}</td><td class="fac-fn">${esc(l.label || '')}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="pf-map-note">Physical connections maintained by hand in data/hub_connections.json.</div>`;
+}
 
 function hubFacilities(ids) {
   const b = bundle.facilities;
@@ -7420,13 +7443,21 @@ function hubMap(ids, facs, opts = {}) {
     }).join('');
   };
   return outlineMap(ownItems, {
-    label: 'Map of the hub', h: opts.h || 560, pad: 1.8,
+    // En håndlaget modell har flere navn å få plass til, så kartet blir høyere.
+    label: 'Map of the hub', h: net.model ? Math.max(opts.h || 0, 560) : opts.h || 560, pad: 1.8,
+    labelMax: net.model ? Math.max(7, ids.length) : undefined,
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(member), discoveryLayer()],
     overlay: (px, py) => net.svg(px, py) + wellDots(px, py),
+    overlayLabels: net.labels,
     note: 'Member fields in colour, other fields in grey, discoveries in pale green. '
         + (opts.wells && opts.wells.length ? 'Wells as black dots, at their surface location. ' : '')
-        + (net.n ? `Surface installations as dark squares, subsea installations as rings. Lines are a
+        + (net.n && net.model ? `Surface installations as dark squares, subsea installations as rings. Lines are the
+           physical connections maintained by hand for this hub: pipelines as solid lines (two lines where there are
+           two pipelines), permanent bridges as thick strokes, historical connections dashed grey. Fields produced
+           through wells drilled from a platform have no line. Hover a line for details. Straight lines, not the
+           actual pipeline routes. ` : '')
+        + (net.n && !net.model ? `Surface installations as dark squares, subsea installations as rings. Lines are a
            simplified picture of the infield flowlines. Satellite fields follow the route in Sodir's field
            description where it names one (via another subsea field, or to a named host installation);
            otherwise each subsea installation is drawn to the nearest surface installation on its own field,
@@ -7512,15 +7543,71 @@ function satelliteRoute(id, ids, surface) {
 // focus (et felt-id) filtrerer til det ene feltet: dets egne installasjoner,
 // kjeden videre til vertsinnretningen (Skogul -> Vilje -> Alvheim FPSO) og
 // satellittene som er koblet direkte til feltets installasjoner.
+// Håndlagde koblinger for en hub (data/hub_connections.json), når huben står
+// der. ids er hubens felt; huben finnes via det første feltet som har en.
+function hubModel(ids) {
+  const hubs = bundle.hub_connections?.hubs;
+  if (!hubs) return null;
+  const id = ids.find(i => hubOfField[i]);
+  return id != null ? hubs[hubOfField[id]] || null : null;
+}
+function outlineCentre(outlines, id) {
+  const rings = outlines[id] || [];
+  const big = rings.reduce((m, r) => r.length > (m ? m.length : 0) ? r : m, null);
+  if (!big) return null;
+  const n = big.length;
+  return {lon: big.reduce((t, p) => t + p[0], 0) / n, lat: big.reduce((t, p) => t + p[1], 0) / n};
+}
+// Koblingene i modellen som kanter mellom punkter. Et endepunkt er en
+// innretning (navn), en node i modellen (alias for en innretning, med eget
+// navn på kartet) eller field:NAVN (midten av feltets omriss). Endepunkter som
+// ikke finnes (innretningen er fjernet, feltet mangler omriss), hoppes over.
+function modelLinks(model, ids, live, outlines) {
+  const byName = new Map(live.map(f => [f.name.toUpperCase(), f]));
+  const fieldByName = new Map(ids.map(id => [fieldNameOf(id).toUpperCase(), id]));
+  const point = ref => {
+    const node = model.nodes?.[ref];
+    if (node) {
+      const f = byName.get(String(node.facility).toUpperCase());
+      return f ? {p: f, label: node.short || ref} : null;
+    }
+    const m = /^field:(.+)$/i.exec(ref);
+    if (m) {
+      const id = fieldByName.get(m[1].toUpperCase());
+      const c = id != null && outlineCentre(outlines, id);
+      return c ? {p: {...c, name: fieldNameOf(id), fieldId: id, centre: true}, field: id} : null;
+    }
+    const f = byName.get(String(ref).toUpperCase());
+    return f ? {p: f} : null;
+  };
+  const labels = new Map();
+  const links = [];
+  (model.links || []).forEach(l => {
+    const a = point(l.from), b = point(l.to);
+    if (!a || !b) { console.warn('hub_connections: finner ikke', l.from, '→', l.to); return; }
+    [a, b].forEach(x => { if (x.label) labels.set(x.p, x.label); });
+    links.push({a: a.p, b: b.p, kind: l.kind || 'pipeline', count: l.count || 1, label: l.label || '',
+                group: l.group || '', field: a.field ?? b.field, dash: l.kind === 'historical'});
+  });
+  return {links, labels};
+}
+
 function hubNetwork(ids, facs, outlines, focus) {
   const live = facs.filter(f => !isGone(f) && f.lon != null && f.lat != null);
   if (!live.length) return {n: 0, svg: () => '', extent: []};
+  const model = hubModel(ids);
   const surface = live.filter(f => f.surface), subsea = live.filter(f => !f.surface);
   const hosts = surface.filter(isProcessing);
   const kx = Math.cos(live[0].lat * Math.PI / 180);
   const d2 = (a, b) => ((a.lon - b.lon) * kx) ** 2 + (a.lat - b.lat) ** 2;
   const nearest = (p, list) => list.reduce((best, f) => !best || d2(p, f) < d2(p, best) ? f : best, null);
   const links = [], routes = {};
+  let nodeLabels = new Map();
+  if (model) {
+    const ml = modelLinks(model, ids, live, outlines);
+    links.push(...ml.links);
+    nodeLabels = ml.labels;
+  } else {
   ids.forEach(id => { if (!surface.some(f => f.fieldId === id)) routes[id] = satelliteRoute(id, ids, surface); });
   // Målet for et punkt på et satellittfelt etter ruten: den navngitte
   // innretningen, eller nærmeste installasjon på feltet det går via.
@@ -7550,6 +7637,7 @@ function hubNetwork(ids, facs, outlines, focus) {
     const c = centre(id), to = c && (routed(c, id) || nearest(c, anchors));
     if (to) links.push({a: c, b: to, dash: true, field: id});
   });
+  }
   let shown = links, pts = live;
   if (focus != null) {
     const keep = new Set(live.filter(f => f.fieldId === focus));
@@ -7565,17 +7653,76 @@ function hubNetwork(ids, facs, outlines, focus) {
   }
   const ptsSurface = pts.filter(f => f.surface), ptsSubsea = pts.filter(f => !f.surface);
   const extent = shown.flatMap(l => [[l.a.lon, l.a.lat], [l.b.lon, l.b.lat]]).concat(pts.map(f => [f.lon, f.lat]));
+  let svgLabels = () => '';
   const svg = (px, py) => {
-    const line = l => `<line x1="${px(l.a.lon).toFixed(1)}" y1="${py(l.a.lat).toFixed(1)}" x2="${px(l.b.lon).toFixed(1)}" y2="${py(l.b.lat).toFixed(1)}"`
-      + ` stroke="#1a2332" stroke-width="${l.dash ? 1.4 : 1}" stroke-opacity="0.75"${l.dash ? ' stroke-dasharray="4 3"' : ''}/>`;
+    const seg = (l, x1, y1, x2, y2, style) => `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" ${style}>`
+      + (l.label ? `<title>${esc(l.label)}</title>` : '') + '</line>';
+    const line = l => {
+      const x1 = px(l.a.lon), y1 = py(l.a.lat), x2 = px(l.b.lon), y2 = py(l.b.lat);
+      if (!l.kind) return seg(l, x1, y1, x2, y2,
+        `stroke="#1a2332" stroke-width="${l.dash ? 1.4 : 1}" stroke-opacity="0.75"${l.dash ? ' stroke-dasharray="4 3"' : ''}`);
+      // Modellkoblinger: brønner gir ingen linje, broer tykk strek, historiske
+      // stiplet grått, to rørledninger som to parallelle linjer.
+      if (l.kind === 'wells') return '';
+      if (l.kind === 'bridge') return seg(l, x1, y1, x2, y2, 'stroke="#1a2332" stroke-width="3.5" stroke-linecap="round" stroke-opacity="0.85"');
+      if (l.kind === 'historical') return seg(l, x1, y1, x2, y2, 'stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="3 3"');
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1, nx = -(y2 - y1) / len, ny = (x2 - x1) / len;
+      const offs = l.count > 1 ? [-1.6, 1.6] : [0];
+      return offs.map(o => seg(l, x1 + nx * o, y1 + ny * o, x2 + nx * o, y2 + ny * o,
+        'stroke="#1a2332" stroke-width="1.1" stroke-opacity="0.8"')).join('');
+    };
+    // Navn på punktene i en håndlaget modell: innretningene som inngår i en
+    // kobling, med nodenavnet der modellen gir et. Navn som ville havnet oppå
+    // et annet (Sleipner A, R og T ligger noen hundre meter fra hverandre),
+    // tegnes ikke.
+    // Innretninger med samme navn som feltet (Gudrun, Sigyn) får ikke eget
+    // navn; feltnavnet står der allerede. Innretninger som ligger nesten oppå
+    // hverandre og bare skiller seg i siste ord, slås sammen: Sleipner A/T/R.
+    svgLabels = (px2, py2, placed = []) => modelLabels(placed);
+    const modelLabels = (placed = []) => {
+      const groups = [];
+      const cand = [];
+      shown.forEach(l => [l.b, l.a].forEach(p => { if (!cand.includes(p)) cand.push(p); }));
+      cand.sort((p, q) => (q.surface ? 1 : 0) - (p.surface ? 1 : 0));
+      cand.forEach(p => {
+        if (p.centre) return;
+        const name = nodeLabels.get(p) || hcTitle(p.name);
+        // (Bare i hubkartet: i feltkartet står bare feltets eget navn.)
+        if (focus == null && !nodeLabels.has(p) && p.fieldId != null && name.toUpperCase() === fieldNameOf(p.fieldId).toUpperCase()) return;
+        const x = px(p.lon), y = py(p.lat);
+        const near = groups.find(g => Math.hypot(g.x - x, g.y - y) < 6);
+        const stem = t => t.replace(/\s+\S+$/, '');
+        if (near && stem(near.names[0]) === stem(name) && stem(name) !== name) { near.names.push(name); return; }
+        groups.push({x, y, names: [name]});
+      });
+      const w = g => 7 + 5.6 * g.text.length;
+      groups.forEach(g => { g.text = g.names.length > 1
+        ? g.names[0] + '/' + g.names.slice(1).map(n => n.split(/\s+/).pop()).join('/') : g.names[0]; });
+      // Til høyre for punktet, ellers til venstre, ellers over eller under.
+      const hit = box => placed.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3]);
+      return groups.map(g => {
+        const tw = w(g) - 7;
+        const tries = [
+          {box: [g.x + 7, g.y - 7, g.x + 7 + tw, g.y + 5], x: g.x + 7, y: g.y + 3, a: 'start'},
+          {box: [g.x - 7 - tw, g.y - 7, g.x - 7, g.y + 5], x: g.x - 7, y: g.y + 3, a: 'end'},
+          {box: [g.x - tw / 2, g.y - 19, g.x + tw / 2, g.y - 7], x: g.x, y: g.y - 9, a: 'middle'},
+          {box: [g.x - tw / 2, g.y + 7, g.x + tw / 2, g.y + 19], x: g.x, y: g.y + 17, a: 'middle'}];
+        const t = tries.find(c => !hit(c.box));
+        if (!t) return '';
+        placed.push(t.box);
+        return `<text class="pf-lbl" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" style="text-anchor:${t.a}">${esc(g.text)}</text>`;
+      }).join('');
+    };
     const sub = f => `<circle cx="${px(f.lon).toFixed(1)}" cy="${py(f.lat).toFixed(1)}" r="2.6" fill="#fff" stroke="#1a2332" stroke-width="1.1"><title>${esc(f.name)} · ${esc(f.kind || 'subsea')}</title></circle>`;
     const top = f => `<rect x="${(px(f.lon) - 4).toFixed(1)}" y="${(py(f.lat) - 4).toFixed(1)}" width="8" height="8" fill="${isProcessing(f) ? '#1a2332' : '#5b6675'}" stroke="#fff" stroke-width="1"><title>${esc(f.name)} · ${esc(f.kind || 'surface')}</title></rect>`;
     // I feltkartet: navnet på vertsinnretningen når den står på et annet felt.
     const host = f => focus == null || f.fieldId === focus ? '' :
       `<text class="pf-lbl" x="${(px(f.lon) + 7).toFixed(1)}" y="${(py(f.lat) + 3).toFixed(1)}" style="text-anchor:start">${esc(f.name)}</text>`;
-    return shown.map(line).join('') + ptsSubsea.map(sub).join('') + ptsSurface.map(top).join('') + ptsSurface.map(host).join('');
+    return shown.map(line).join('') + ptsSubsea.map(sub).join('') + ptsSurface.map(top).join('')
+      + (model ? '' : ptsSurface.map(host).join(''));
   };
-  return {n: pts.length, svg, extent};
+  return {n: pts.length, svg, extent, model: !!model,
+          labels: model ? (px, py, placed) => svgLabels(px, py, placed) : null};
 }
 
 // Siste tilgjengelige reserveanslag per medlemsfelt, summert. Årgangen kan
