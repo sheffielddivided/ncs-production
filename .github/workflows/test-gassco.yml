@@ -1,0 +1,36 @@
+name: Test Gassco fra GitHub Actions (midlertidig)
+
+# Midlertidig: sjekker at umm.gassco.no svarer fra GitHub-runnere.
+# Resultatet committes til grenen som data/gassco_test.log. Slettes etter testen.
+on:
+  push:
+    branches: [claude/practical-johnson-hvxdvs]
+    paths: ['.github/workflows/test-gassco.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Kjør fetch_gassco.py
+        run: |
+          set +e
+          python fetch_gassco.py > data/gassco_test.log 2>&1
+          echo "exit=$?" >> data/gassco_test.log
+          date -u >> data/gassco_test.log
+          cat data/gassco_test.log
+      - name: Commit resultat
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "Test Gassco fra Actions ($(date -u +%Y-%m-%dT%H:%MZ))" || exit 0
+          git push
