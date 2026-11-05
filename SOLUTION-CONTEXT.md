@@ -645,13 +645,23 @@ ikke at nettleseren leser feedene deres (CORS). Derfor:
 ### `data/gassco_downtime.json` — nedetid per felt fra Gassco
 
 ```json
-{"generated":"2026-11-05T16:11:29Z","from":"2026-09","to":"2030-05","lastProductionMonth":"2026-08",
+{"generated":"2026-11-05T17:51:21Z","from":"2025-01","to":"2030-05","lastProductionMonth":"2026-08",
  "columns":["year","month","days","planned","unplanned"],
  "fields":{"43625":{"asset":"Oseberg","rows":[[2026,10,5.13,1.78,3.35]]}},"unmatched":[]}
 ```
 
-Bygges av `fetch_gassco.py` (daglig, i `update-sodir-data.yml` etter Sodir).
-Øyeblikksbilde uten historikk: filen skrives på nytt hver kjøring.
+Bygges av `fetch_gassco.py` (daglig, i `update-sodir-data.yml` etter Sodir)
+fra arkivet `data/gassco_events.json`, og skrives på nytt hver kjøring.
+
+- **Arkiv og historikk:** Gassco holder bare om lag to år i `/archive`
+  (eldste var november 2024 i november 2026). Hendelsene lagres derfor i
+  `data/gassco_events.json` (`events`: ID → `rev`, `asset`, `status`, `type`,
+  `unit`, `start`, `stop` (ISO med sone), `tech`, `unavail`), siste revisjon
+  per hendelse. Arkivet bare vokser; en høyere eller lik revisjon erstatter
+  den lagrede, også når den er `Dismissed`. Hendelser som sluttet før
+  1. januar 2025 (`HISTORY_START`) fjernes. Den daglige kjøringen leser
+  Gasscos arkiv 120 dager bakover (ca. 13 sider); `--backfill`, eller et tomt
+  arkiv, leser alt fra 2025 (ca. 47 sider, rundt ett minutt).
 
 - **Kilde:** umm.gassco.no. Alle sider krever at vilkårene godtas
   (`/disclaimer/acceptDisclaimer` gir sesjonscookien). Forsiden har pågående og
@@ -661,9 +671,8 @@ Bygges av `fetch_gassco.py` (daglig, i `update-sodir-data.yml` etter Sodir).
   Hendelses-ID er Message ID uten revisjonsnummeret (`2026-358-E____004` →
   `2026-358-E`, rev. 4); høyeste revisjon vinner. `Dismissed` tas ikke med.
   Atom-feeden (`/atom.xml`) har bare siste melding og brukes ikke.
-- **Periode:** fra måneden etter siste måned med produksjonstall i
-  `production.json`, men høyst tre måneder før inneværende måned, og fram til
-  siste måned med nedetid.
+- **Periode:** fra januar 2025 og fram til siste måned med nedetid.
+  `lastProductionMonth` er siste måned med produksjonstall i `production.json`.
 - **Beregning:** per node deles tiden der hendelser starter eller slutter. Tapt
   andel = (største tekniske kapasitet − laveste tilgjengelige kapasitet) /
   største tekniske kapasitet. Overlappende hendelser summeres **ikke**: Gassco
@@ -688,7 +697,11 @@ Bygges av `fetch_gassco.py` (daglig, i `update-sodir-data.yml` etter Sodir).
   samme navn.
 
 Vises i Field → Downtime (stablede søyler planlagt/uplanlagt + tabell) og
-Hub → Downtime (søyler side om side per felt + tabell) — `drawFieldDowntime`,
+Hub → Downtime (søyler side om side per felt + tabell). Begge har Sodirs
+gassproduksjon (netto salgsgass, månedssnitt i MSm³/d = mrd Sm³ × 1000 /
+dager) som linje på høyre akse — for feltet selv, eller summert over alle
+hubens felt — så endringer i produksjonen kan leses mot nedetiden. Merk at
+produksjonen gjelder feltet, mens nedetiden gjelder Gassco-noden — `drawFieldDowntime`,
 `drawHubDowntime`, `gasscoChart` i `index.html`. Lastes først når fanen åpnes.
 
 ### `data/meta.json`
