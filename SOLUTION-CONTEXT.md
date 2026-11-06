@@ -129,7 +129,14 @@ kontrollerer 2004-filen mot lag 7113 (alle 66 felt innenfor 1 %) og skriver
 Appen regner gjenværende som opprinnelig utvinnbart minus kumulativ produksjon
 og fyller år uten regnskap (1981–84, 1986–89, 1996) med forrige anslag
 (`buildLongReserves`). Den lange serien brukes alltid i reservegrafene per felt
-og hub og i NCS → Fields → Reserve change; øvrige visninger bruker bare lag 7113. `norskpetroleum-original-reserves-per-field.xlsx`
+og hub, i NCS → Fields → Reserve change og i NCS → Reserves. NCS → Reserves viser
+bare årene med regnskap (hullårene står tomme, `ncsReserveAccountYears`), fordi
+videreførte anslag på sokkelnivå ville gitt et kunstig hopp når felt med PUD i
+hullet (Troll, Oseberg, Snorre, Heidrun i 1986–89) dukker opp i 1990, og merker
+omklassifiseringen av Troll- og Visund-gassen i 2001. Summen før 2004 dekker
+bare felt; Sodirs egne totaler tar også med funn besluttet utbygd uten godkjent
+PUD (om lag 9 % mer i 2003). NCS → Replacement og øvrige visninger bruker bare
+lag 7113. `norskpetroleum-original-reserves-per-field.xlsx`
 i samme mappe er siste anslag (identisk med årgang 2025) og brukes ikke.
 
 **Format:** ArcGIS REST JSON (`f=json`). Svar har formen
