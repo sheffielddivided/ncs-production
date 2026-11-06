@@ -44,7 +44,7 @@
   "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=": {
    "company": "DNO Norge AS",
    "title": "NewsWeb · DNO ASA",
-   "n": 52
+   "n": 53
   },
   "https://newsweb.oslobors.no/search?category=&issuer=1309": {
    "company": "Equinor Energy AS",
@@ -73,6 +73,13 @@
   }
  },
  "items": [
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
+   "t": "DNO Shares Traded Ex-Dividend",
+   "u": "https://newsweb.oslobors.no/message/685838",
+   "d": "2026-11-06",
+   "s": "Ex date"
+  },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
    "t": "Trading & Operations Update Nov 2026",
@@ -3211,10 +3218,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors | DNO ASA - dno.no",
+   "t": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxOYUxfdllWVW5nNk1KLS1QSTlMb21zSkIzeWdORVczaDVvQkhnenJUSmZ2OVpuc0tTVnF3ckotRzg3NkhyZDBXRXFRT0k5TjY3eWlpOTJfMzk4Mk5kS29PZ3hkR1pza2V3eHg0WlN3VTd5QXNzUk5COVp6dW5nWDhrdFFSM1B2RXJSRjZKTmJKbko3RTZ6ZTRNTkx3emlmbHc3Ty1pamsxVTA5eUtreVZKSA?oc=5",
    "d": "2025-01-14",
-   "s": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors | DNO ASA dno.no"
+   "s": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -3337,38 +3344,38 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO ASA - Presentasjon av resultat for 1. halvår 2001 - dno.no",
+   "t": "Presentasjon av resultat for 1. halvår 2001 - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNNWFzS2FHLXhYMkY4MnMzR1hGTElubTlwVmhKZzljd0Nrbl9LdjFGZkdkeUxBTjV5cTN2RE16TGN5UmJFcXJSTUdJSDhaWUplQld4cnk4Y0h1M0Vvek9IbG1NM1EzaWhlRlkyU0RsRFl4blpqOVl2M2hnZ3dJRERLcGk1OUNPVElhVEprNEc1Y0pxbDFCWUpERXZCVG9GRU0?oc=5",
    "d": "2024-08-28",
-   "s": "DNO ASA - Presentasjon av resultat for 1. halvår 2001 dno.no"
+   "s": "Presentasjon av resultat for 1. halvår 2001 DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Nærståendes erverv og salg av aksjer i DNO ASA - dno.no",
+   "t": "Nærståendes erverv og salg av aksjer i DNO ASA | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOemNlVVBXdms5d2VITU9MX0sxOWRjS1pwU0l3dnVOOU5kMkh3RC1VWEdFVUdQTXRpNVhYLWptUk4talpmWmk0SUZxTnkyWGw0QTJKS1NVeFFBaGE5VHJHTGxvMlh3OGNmYmlwR21KVWh3c3E1MzVrQVoxRWxFZ3EwelY3QnN1aWI3LWV3d2lvb2t0bTFxRmN3MWJhRQ?oc=5",
    "d": "2024-08-28",
-   "s": "Nærståendes erverv og salg av aksjer i DNO ASA dno.no"
+   "s": "Nærståendes erverv og salg av aksjer i DNO ASA | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO - Produksjonsstart på Sharyoof-feltet i Yemen | Announcements | Investors | DNO ASA - dno.no",
+   "t": "DNO - Produksjonsstart på Sharyoof-feltet i Yemen | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMimwFBVV95cUxNM1Y1aDhqVDhXRkpkOENCVndjRE03d1Y2WTJlbExWbWlZUnZCZlVpWlJRNXRHUkZualpRc3VMNDlDY2Q0UUtUWGpDUEJoMUZJZjY2ci15ak1KSmtiTnV6c19KNzZpSE9vSTZBUVhOdGdMNFZ2TVdJMDVkZWRHSGhZUm1lM2RSajZRMUFfR2xVcFRjbjBHQWlCWTZaQQ?oc=5",
    "d": "2024-08-28",
-   "s": "DNO - Produksjonsstart på Sharyoof-feltet i Yemen | Announcements | Investors | DNO ASA dno.no"
+   "s": "DNO - Produksjonsstart på Sharyoof-feltet i Yemen | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO vurderer hale- og småfelt på norsk sokkel | Announcements | Investors | DNO ASA - dno.no",
+   "t": "DNO vurderer hale- og småfelt på norsk sokkel | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNaDVqVzh1aS0tbC1yYWxSTm5va2VLUFBCaU1EUUVKaDlaZzYtaWZEbjluOUVFaE5UUEZjLVdOWTBEbTd2R2dQWGNoX2ZmUUxLSklqT3RhZDRYczVrQ2YwOE1sV3JDeGFQWlF1ejdnUVlHQ2VCMGp0X1V6UUhRc0hMMlA2VllYeV9hSm1SUHFNTDk1NWlMYVBwcw?oc=5",
    "d": "2024-08-28",
-   "s": "DNO vurderer hale- og småfelt på norsk sokkel | Announcements | Investors | DNO ASA dno.no"
+   "s": "DNO vurderer hale- og småfelt på norsk sokkel | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNOs oljeproduksjon i august - 13.783 fat pr. dag | Announcements | Investors | DNO ASA - dno.no",
+   "t": "DNOs oljeproduksjon i august - 13.783 fat pr. dag | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQYmtYSE95SEJxOW8zWE8zNmdPN1JJNGtDQlE2bHdzcTNpX3hwdVdTUG9rdzlVdjVVSldaSW5JV1ZXRGFJU3lBMFpTaHhnUE5xaVJuMDBTdXppa3lucExyVnl3Sy1DS2hLRnI5ajZuMnlEN2VpNXBteUdyUUFBQzVKM045bWI0X3dhQ1V1elUweEpWc1VSYlQ4?oc=5",
    "d": "2024-08-28",
-   "s": "DNOs oljeproduksjon i august - 13.783 fat pr. dag | Announcements | Investors | DNO ASA dno.no"
+   "s": "DNOs oljeproduksjon i august - 13.783 fat pr. dag | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -3379,24 +3386,24 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO godkjent som operatør på norsk sokkel | Announcements | Investors - dno.no",
+   "t": "DNO godkjent som operatør på norsk sokkel | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPTlJ4UUhIUEpXNDFPcElXQkdUM2ZOUkZQYWhVaXRPOVpKdmM5OUxaZkh4YVNkWGFPeXR5VmlSSUM1eDI5VncxcGRhZG56M0pVMzd5UjlGWlVUVTZFTWMxaTNiRUNnTjRfUWtCVGNOZ196d0NDRjg5Y0RLeTBkZHhnQXFoS2tueUNIMlh0ZnhzbzludlNV?oc=5",
    "d": "2024-08-28",
-   "s": "DNO godkjent som operatør på norsk sokkel | Announcements | Investors dno.no"
+   "s": "DNO godkjent som operatør på norsk sokkel | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Dom fra tingretten i sak mot Oslo Børs - dno.no",
+   "t": "Dom fra tingretten i sak mot Oslo Børs | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNZHpaN0hDWFVvMW1pWlBGV2pvNEpBMXRmNi15MS1oMmFYckdrWGh6OG51WTBLaG1XTEp1dm1pU1ZxYjBlelNyU1JzYU5tVHNERlotYkpqQzFCX2JQSFBQeHVaY0FaOUozOVU2Uk96NW50V0EtckxOemZyMzBvZ180U3lJWkNiY29QRlBGR24zYw?oc=5",
    "d": "2024-08-28",
-   "s": "Dom fra tingretten i sak mot Oslo Børs dno.no"
+   "s": "Dom fra tingretten i sak mot Oslo Børs | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "KJØP AV SMÅ AKSJEPOSTER - dno.no",
+   "t": "KJØP AV SMÅ AKSJEPOSTER - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMihwFBVV95cUxOWWRBal9UbW9nQlhXb09QdWVpZkwtQjV4NWJpLUxac3FfeUtiWmROWnN5OTI3T1BLcEZiV0FFWkF0cktMa0NIYlJmTWhGNF8yTTlKX0pjaV9HR2JBRE1IS2tPMzNlUzJieVhwcmx1ZU5hTUNFazVweDlEdk1DSlRoaFB0b3o4MFE?oc=5",
    "d": "2024-08-28",
-   "s": "KJØP AV SMÅ AKSJEPOSTER dno.no"
+   "s": "KJØP AV SMÅ AKSJEPOSTER DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -3414,24 +3421,24 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Produksjonsøkning for DNO | Announcements | Investors | DNO ASA - dno.no",
+   "t": "Produksjonsøkning for DNO | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMifkFVX3lxTE1KcXJNMTE1YVN1YXBta0dKbkYxSGVrbGNXQlItb29KLU04TWZTQnVGZWlscTliMm5yeGdCTV9wRXZnMDUxaWV1eV9qd2tnZXY0b1pmSHBfOG1xbko2b3V2NmlTcU9vdlczWjJWWWJFMjM4anFfZWlOUjJDWjZYUQ?oc=5",
    "d": "2024-08-28",
-   "s": "Produksjonsøkning for DNO | Announcements | Investors | DNO ASA dno.no"
+   "s": "Produksjonsøkning for DNO | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "TILBAKE PÅ NORSK SOKKEL | Announcements | Investors - dno.no",
+   "t": "TILBAKE PÅ NORSK SOKKEL | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFA1c1cxUlZIMTJEcWJaNERPYXA1bG5sWWlaSjNFcnNKUzF4S2lyUGR4V2ZHOHBfYm90QXpVMnZDb2VsVFR4UHJwVUlTYmcycDF2cXIyV3BrWmloaVlWdDhUbVBWTzNkR25OSjRhOHZzUzlnU1RDMFVRcDJiSQ?oc=5",
    "d": "2024-08-28",
-   "s": "TILBAKE PÅ NORSK SOKKEL | Announcements | Investors dno.no"
+   "s": "TILBAKE PÅ NORSK SOKKEL | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO - Supplerende opplysninger - tvungen innløsning av aksjeeiere som eier 33 eller færre aksjer i DNO ASA - dno.no",
+   "t": "DNO - Supplerende opplysninger - tvungen innløsning av aksjeeiere som eier 33 eller færre aksjer i DNO ASA - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMi5gFBVV95cUxNMjhhVzRfbldCQ19pR0JERmNvc1lBX3VFcXgxeTVnY0RiZjAzSG9vWThreWRveHViRzZnSHI0anlBel9ad0xCOXBDZGJXX0VJTk9vcjkxbFdjemJTTmZQOExwYzdSSW1TOVF4cUZ5U3MyT3Q1RXh3emhodUQxemxTX202eFd3MUg4ZjVjZm5WV2FZZW4wSmVTSUhsWGdCUTYxUV9sT0tSR0ZzYklaVzlQaW5WT2d4ZTlCdnJuMWh4eXNiV3ZRMTJFSkVQZVREYXdmVDVLY1BVTkRrcF9tYlNNVmpOODRCdw?oc=5",
    "d": "2024-08-28",
-   "s": "DNO - Supplerende opplysninger - tvungen innløsning av aksjeeiere som eier 33 eller færre aksjer i DNO ASA dno.no"
+   "s": "DNO - Supplerende opplysninger - tvungen innløsning av aksjeeiere som eier 33 eller færre aksjer i DNO ASA DNO ASA"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -3589,10 +3596,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO Receives 14 Awards in Norway's APA Licensing Round-2024-01-16 | Announcements | Investors | DNO ASA - dno.no",
+   "t": "DNO Receives 14 Awards in Norway's APA Licensing Round-2024-01-16 | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxPazBDVGxkVnhiRWVBVVdSM1VieUFaNlJRSnRFclp3QjNoM2JXWU9kSlloQ213MHREemJrVVpxcTl4aGExZGNwU1NZdTlCdVRucU5DQVFBRUQtRElQT2xlbjFqWm00dmd3bkxWMDhlQUM0S2J6eHhlb2ZVSkhVT1ZiNjZ4c0xGMnVhMUN3dUJWRzR4QTk0NmxOY2RuTmZSV1EtSkRTMXVVUUlQTzVSbUhjMQ?oc=5",
    "d": "2024-01-16",
-   "s": "DNO Receives 14 Awards in Norway's APA Licensing Round-2024-01-16 | Announcements | Investors | DNO ASA dno.no"
+   "s": "DNO Receives 14 Awards in Norway's APA Licensing Round-2024-01-16 | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -4443,45 +4450,45 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO ASA - Status langsiktig finansiering - dno.no",
+   "t": "Status langsiktig finansiering - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOcjZfRGU2Sll1QVFsbUZWbnluRnFQS25SaXdGQVltWFpKRFdVQUNzZXVvUERQV3VNV3QtV3FrbkFNTUlCd0lTNFBPTm5oTzcwMkZzeUsxVnhmTnNCeGEzMnRtUUxjUm9odVVqc1Y3bkpZRkYzeTNlQTI4aDFzbXpPQW11dElLUlZiaW00Ukd3?oc=5",
    "d": "2020-12-07",
-   "s": "DNO ASA - Status langsiktig finansiering dno.no"
+   "s": "Status langsiktig finansiering DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Rettet emisjon i DNO ASA | Announcements | Investors - dno.no",
+   "t": "Rettet emisjon i DNO ASA | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBIQ0FCMUFTanFKS0RYUEtxNEJvUklVNmxWMzB5Z05US2F6N0x5MXRRX3YwVEhxcDEwb2hydmV3Y0tYQkpJZnVEdm5fT1pJTHA0Q3BUS1RJS29fOFdYSEVMQllsOE1mMm5BRllNbEpPYnNUZ0ZoRnBpTFd2RQ?oc=5",
    "d": "2020-12-05",
-   "s": "Rettet emisjon i DNO ASA | Announcements | Investors dno.no"
+   "s": "Rettet emisjon i DNO ASA | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO ASA - Presentasjon Pareto Oil and Offshore Conference - dno.no",
+   "t": "Presentasjon Pareto Oil and Offshore Conference - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPTnQ2ZFB4X3BWWFBma2RDekc2dFVPMW0wdUs5R1piUEEwelVpT3lNcGhhU0ZPWVJBeUtOUVNJWnFSRmVvNmNCYm5nZ0UzbGctdUlHZEIxb2g0TVc2cGdLOGpCdFJDVi1aMS1DaEhBRk9ObVJjSzVmV2JRdXVkVW1wYklMS09EZ1h2VVgwLWJDYnZGR2JyNVJSMjJJbFoyTWFsVllQNA?oc=5",
    "d": "2020-11-19",
-   "s": "DNO ASA - Presentasjon Pareto Oil and Offshore Conference dno.no"
+   "s": "Presentasjon Pareto Oil and Offshore Conference DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Status - Yemen - dno.no",
+   "t": "Status - Yemen | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMia0FVX3lxTE93SFFLTHNQdVJDV1BPQkpMQ2lEYmNJSWhMVjJSNjBOd21DeG5oZ1RKOWJTZGFTaXg3aFNFam5fZURDNGo3eE5lQ0dkbHNfSFdkYS0zWDNsNE5RQ2UzSUVUVXBlTExubzNGRFc4?oc=5",
    "d": "2020-11-19",
-   "s": "Status - Yemen dno.no"
+   "s": "Status - Yemen | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "MØTESEDDEL FULLMAKT UTEN STEMMEINSTRUKS - dno.no",
+   "t": "MØTESEDDEL FULLMAKT UTEN STEMMEINSTRUKS - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1pdWs4LTZDc3VOTHpid2lZeWhsX0F6ZkZweGhPcTBrUmRzREI5QVI1YlhUQmdGYm1ySkxhNTQ3eEJpWUhabjUtM01pSUdMalR1THc?oc=5",
    "d": "2020-11-19",
-   "s": "MØTESEDDEL FULLMAKT UTEN STEMMEINSTRUKS dno.no"
+   "s": "MØTESEDDEL FULLMAKT UTEN STEMMEINSTRUKS DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO International ASA - Tom Bratlie joins DNO International ASA as communication director - dno.no",
+   "t": "DNO International ASA - Tom Bratlie joins DNO International ASA as communication director - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMizwFBVV95cUxOSHljLVhiY0dPbFdwV1RxYjBqcFhmV1FwVncyTGI1Y1c2SG9FSHZSNFltVElBdmdYYUVtM0tmc0tEMzFHS1FIWXpfSFFiYklOM1ROd011ZE90dHJSWmIyWHBVeEk3ZU1CWi1uTW1KaTJHM3BtR0tVdHJyd20wUTU3ZTd6Zl83NnVPMXJBRV9lSXUzV0IwNUNKbmhLV0I1anZKWXZPaWFWYkFkaDVseUVXcEI0Qm5waFZtQWFZZmYyXzc0dWFYX3VmZ28tbXdrRkU?oc=5",
    "d": "2020-11-18",
-   "s": "DNO International ASA - Tom Bratlie joins DNO International ASA as communication director dno.no"
+   "s": "DNO International ASA - Tom Bratlie joins DNO International ASA as communication director DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4492,10 +4499,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Utdeling av utbytte | Announcements | Investors - dno.no",
+   "t": "Utdeling av utbytte | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTE5fUTJIUU5MTzNuZndEY1Z6V2lESHV6OWIyMW1Qc3lEUjF6YjZfbFh0b041S1FiUWNsRzRtSUlsNEJ2dVpGUGx5eW41bVNxSFY5MGxtVDJ3cW1wZnFyUGxobFRTZmZ5Sm0yTFdPZ25RdU5JeW92?oc=5",
    "d": "2020-11-18",
-   "s": "Utdeling av utbytte | Announcements | Investors dno.no"
+   "s": "Utdeling av utbytte | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4513,10 +4520,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Ekstraordinær generalforsamling | Announcements | Investors - dno.no",
+   "t": "Ekstraordinær generalforsamling | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxNLWlUM3dCN2JCbUx2dml3NjdkcDhsb1VOZ2xDMkhEOGFCWkgtY0kxQnRSOXMwZTJqSkhheTVSaTZmb2RWeUZDZDU5TnFlWi05ZmtaeGt6alhscXJFZmtDZ1Q5aF93TkQxeUxPYWtIbnc3OG1BWFIwM29XbXZ5akJ1UXltZ25rQQ?oc=5",
    "d": "2020-11-15",
-   "s": "Ekstraordinær generalforsamling | Announcements | Investors dno.no"
+   "s": "Ekstraordinær generalforsamling | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4534,10 +4541,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "All Announcements - dno.no",
+   "t": "All Announcements - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE9yVjctNDExZC1NMlFBS29oR0FHTHpjcHZzMDZRYW9oemxRRWFRUEoxVWNzMmtObVJoYlZvMkdQb3dlMVpZQ0I1YXRpU0xMTWowSzBla1QzUU90M1hMS1ZmQmlCbVIydw?oc=5",
    "d": "2020-11-12",
-   "s": "All Announcements dno.no"
+   "s": "All Announcements DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4674,17 +4681,17 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO ASA: Notification - Holding of Synthetic Shares (4) - dno.no",
+   "t": "Notification - Holding of Synthetic Shares (4) - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMingFBVV95cUxNRkV3c0ZHN1g0S1JfeXBGek9LVXU1N0M0WGMycXJNQWFIdDQxQTkzT3REZGxCNG1aUDhTUFZSYy1oWW9vdXhoSGpKaFdZdDdQZjYyNDdrUkJNanowYmJHa0xobEswVTJrU2NvX0lHd0JEYm1pWWJPQlRra3FrMW01SHhqdEtkeU9ZZkpWZlZOeDRicjJzWUtlOTlaN0tfUQ?oc=5",
    "d": "2015-05-07",
-   "s": "DNO ASA: Notification - Holding of Synthetic Shares (4) dno.no"
+   "s": "Notification - Holding of Synthetic Shares (4) DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "NAME CHANGE TO DNO ASA - dno.no",
+   "t": "NAME CHANGE TO DNO ASA | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMieEFVX3lxTE93R2lJb0Q4OTB5N2NqcEo5Mm83QTFKLUl2b0l3cGljNUZmNDFjaHZlbkxIVHdXQUZpVnNlb2FNS3VxV1Q1eU5ZVkhfajFiS0NwRlIyWk42Nl9WeERuVDkxaGl1dkV3T3hqcWNGTkhPWVg4UlNIdFN3eQ?oc=5",
    "d": "2014-06-06",
-   "s": "NAME CHANGE TO DNO ASA dno.no"
+   "s": "NAME CHANGE TO DNO ASA | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
