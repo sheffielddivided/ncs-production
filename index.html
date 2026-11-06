@@ -2158,6 +2158,7 @@ function resetView() {
   companySubView = 'oe_per_hub';
   discoverySubView = 'per_company';
   hubReserveGrouping = 'field';
+  resFrom = '';
   period = 'monthly';
   showWater = false;
 
@@ -2280,6 +2281,8 @@ function stateToHash() {
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
     q.set('g', hubReserveGrouping);
   }
+  if (resFrom && ((topMode === 'fields' && fieldSubView === 'reserves')
+                  || (topMode === 'hubs' && hubSubView === 'reserves'))) q.set('ry', resFrom);
   if (topMode === 'ncs') {
     const dflt = ncsDefaults();
     NCS_PARAMS.forEach(([k, p]) => { if (ncsF[k] !== dflt[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
@@ -2552,6 +2555,7 @@ function applyHash() {
 
   showWater = q.get('w') === '1';
   if (q.get('g') === 'company') hubReserveGrouping = 'company';
+  resFrom = /^\d{4}$/.test(q.get('ry') || '') ? q.get('ry') : '';
   explF.open = +q.get('xw') > 0 ? +q.get('xw') : null;
   explF.rig = q.get('xg') || null;
   return true;
@@ -5923,6 +5927,13 @@ function reserveAt(rows, y) {
   return cur;
 }
 
+// Startår for reservegrafen (felt og hub). Tom streng = fra første estimat.
+// Med et startår viser første søyle bare gjenværende reserver det året; de
+// påfølgende årene viser gjenværende pluss produksjonen etter startåret, slik
+// at søylehøyden viser hvordan anslaget har utviklet seg siden da.
+let resFrom = '';
+function resSetFrom(v) { resFrom = v; syncUrl(); drawChart(); }
+
 function drawFieldsReserves(opts = {}) {
   const ids = opts.ids || [...selectedFieldIds];
   const scope = opts.scope;
@@ -5937,7 +5948,14 @@ function drawFieldsReserves(opts = {}) {
     return;
   }
 
-  const years = [...new Set(series.flatMap(s => s.rows.map(r => r.year)))].sort((a, b) => a - b);
+  const allYears = [...new Set(series.flatMap(s => s.rows.map(r => r.year)))].sort((a, b) => a - b);
+  // Et startår utenfor utvalgets år (f.eks. etter bytte av felt) ignoreres.
+  const base = resFrom && allYears.includes(+resFrom) && +resFrom !== allYears[0] ? +resFrom : null;
+  const years = base ? allYears.filter(y => y >= base) : allYears;
+  const producedOf = c => c ? Math.max(0, c.recoverableOE - c.remainingOE) : 0;
+  // Akkumulert produksjon per felt ved startåret; trekkes fra senere år.
+  // Felt uten estimat i startåret har ingen produksjon å trekke fra.
+  const baseProd = new Map(series.map(s => [s.id, base ? producedOf(reserveAt(s.rows, base)) : 0]));
 
   const remaining = [], produced = [];
   years.forEach(y => {
@@ -5946,7 +5964,7 @@ function drawFieldsReserves(opts = {}) {
       const cur = reserveAt(s.rows, y);
       if (!cur) return;
       rem  += cur.remainingOE * BBL_PER_SM3;
-      prod += Math.max(0, (cur.recoverableOE - cur.remainingOE) * BBL_PER_SM3);
+      prod += Math.max(0, (producedOf(cur) - baseProd.get(s.id)) * BBL_PER_SM3);
     });
     remaining.push(+rem.toFixed(1));
     produced.push(+prod.toFixed(1));
@@ -5961,13 +5979,14 @@ function drawFieldsReserves(opts = {}) {
   }).map(String));
   const faded = c => c.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(,[^)]*)?\)/, 'rgba($1,$2,$3,0.3)');
   const tone = c => ctx => carriedYear.has(ctx.chart.data.labels[ctx.dataIndex]) ? faded(c) : c;
+  const prodLabel = base ? `Produced since ${base}` : 'Produced';
   const datasets = [
     {label:'Remaining', data:remaining, backgroundColor:tone(REMAINING_COLOR), borderWidth:0, stack:'s'},
-    {label:'Produced',  data:produced,  backgroundColor:tone(PRODUCED_COLOR),  borderWidth:0, stack:'s'},
+    {label:prodLabel,   data:produced,  backgroundColor:tone(PRODUCED_COLOR),  borderWidth:0, stack:'s'},
   ];
   const legend = [
     {label:'Remaining', color:REMAINING_COLOR},
-    {label:'Produced',  color:PRODUCED_COLOR},
+    {label:prodLabel,   color:PRODUCED_COLOR},
   ].concat(carriedYear.size ? [{label:'No estimate that year (previous carried forward)', color:faded(REMAINING_COLOR)}] : []);
   const hasHist = series.some(s => s.rows.some(r => r.hist));
 
@@ -5976,9 +5995,15 @@ function drawFieldsReserves(opts = {}) {
                    : series.length === 1 ? series[0].name : `${series.length} fields`;
   const carried = series.length > 1 && series.some(s => s.rows.length < years.length);
 
-  setChartTitle(`${scopeTitle} · Reserves over time`, `${fnames} · million boe`);
-  setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Remaining, Produced (recoverable − remaining) &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}${hasHist ? ` &nbsp;|&nbsp; ${RES_HIST_NOTE}` : ''}`);
+  setChartTitle(`${scopeTitle} · Reserves over time`, `${fnames} · ${base ? `from ${base} · ` : ''}million boe`);
+  const seriesNote = base
+    ? `Remaining, Produced since ${base} (cumulative production after the ${base} estimate; the ${base} bar shows remaining reserves only)`
+    : 'Remaining, Produced (recoverable − remaining)';
+  setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> ${seriesNote} &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}${hasHist ? ` &nbsp;|&nbsp; ${RES_HIST_NOTE}` : ''}`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
+  ncsToggleAbove(`<div style="margin-bottom:10px"><select class="year-select" onchange="resSetFrom(this.value)" aria-label="Start year">
+    <option value=""${base ? '' : ' selected'}>From ${allYears[0]} (all years)</option>${allYears.slice(1).map(y =>
+      `<option value="${y}"${y === base ? ' selected' : ''}>From ${y}</option>`).join('')}</select></div>`);
   const last = years[years.length - 1];
   // Hub-modus bryter ned på felt og partner; feltmodus summerer per partner.
   if (scope) renderReserveTableByFieldPartner(series, last);
