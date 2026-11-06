@@ -771,8 +771,28 @@
 </div>
 
 <script>
+// ── CHART DEFAULTS ───────────────────────────────────────────────────────────
+// Hide zero / empty series from hover tooltips on bar and line charts, so the
+// tooltip lists only what actually contributes to the hovered bar. If every
+// item is zero, they are all kept so the tooltip still shows something.
+// Charts that set their own tooltip.filter override this default.
+{
+  const NO_ZERO_FILTER = new Set(['scatter', 'bubble', 'pie', 'doughnut', 'polarArea', 'radar']);
+  const tipVal = c => {
+    const p = c.parsed;
+    if (p == null || typeof p !== 'object') return p;
+    return c.chart.options.indexAxis === 'y' ? p.x : p.y;
+  };
+  const isZero = c => { const v = tipVal(c); return v == null || Number.isNaN(v) || Math.abs(v) < 1e-9; };
+  Chart.defaults.plugins.tooltip.filter = (c, i, items) => {
+    const type = c.dataset.type || c.chart.config.type;
+    if (NO_ZERO_FILTER.has(type)) return true;
+    return !isZero(c) || items.every(isZero);
+  };
+}
+
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
-const BASE        = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
+const BASE       = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
 const FIELD_LAYER = 7100;
 const PROD_LAYER  = 7300;
 const LIC_LAYER   = 7108;
