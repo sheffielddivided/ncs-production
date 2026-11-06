@@ -3677,25 +3677,60 @@ function ncsReserveYears() {
   return [...new Set(all.flatMap(rows => rows.map(r => r.year)))].sort((a, b) => a - b);
 }
 
+// Før 2004 bruker visningen den lange serien (ressursregnskapene), men bare
+// årene med et regnskap. På sokkelnivå ville videreførte anslag i hullårene
+// (1981–84, 1986–89, 1996) vist fallende reserver og så et hopp når feltene
+// som fikk PUD i hullet, dukker opp i neste regnskap — Troll, Oseberg, Snorre
+// og Heidrun kommer alle inn i 1990. Hullårene står derfor tomme i grafen.
+// Hoppet i 2001 er omklassifiseringen av gassen i Troll og Visund.
+const NCS_RECLASS_YEAR = 2001;
+function ncsReserveAccountYears(src) {
+  return [...new Set(Object.values(src).flatMap(rows => rows.filter(r => !r.filled).map(r => r.year)))].sort((a, b) => a - b);
+}
+
 function drawNcsReserves() {
   const k = ncsF.res;
-  const ids = Object.keys(fieldReserves || {}).map(Number);
-  const years = ncsReserveYears();
+  const src = fieldReservesLong || fieldReserves || {};
+  const hist = !!fieldReservesLong;
+  const ids = Object.keys(src).map(Number);
+  const years = ncsReserveAccountYears(src);
   if (!years.length) { setChartEmpty('No reserves data available.'); setInfo(''); return; }
   const areas = ncsAreas();
   const per = {};   // år -> område -> verdi
   years.forEach(y => { per[y] = {}; });
   ids.forEach(id => {
-    const rows = fieldReserves[id], area = ncsArea(id);
+    const rows = src[id], area = ncsArea(id);
     years.forEach(y => { per[y][area] = (per[y][area] || 0) + ncsResVal(reserveAt(rows, y), k); });
   });
-  const datasets = areas.map(z => ({label: z.label, data: years.map(y => +(per[y][z.key] || 0).toFixed(1)),
+  // Alle år fra første til siste på aksen; år uten regnskap får ingen stolpe.
+  const axis = [];
+  for (let y = years[0]; y <= years[years.length - 1]; y++) axis.push(y);
+  const has = new Set(years);
+  const datasets = areas.map(z => ({label: z.label, data: axis.map(y => has.has(y) ? +(per[y][z.key] || 0).toFixed(1) : null),
     backgroundColor: rgba(z.color, 0.85), borderWidth: 0, stack: 's'})).filter(d => hasAnyValue(d.data));
   const legend = areas.filter(z => datasets.some(d => d.label === z.label)).map(z => ({label: z.label, color: rgba(z.color, 0.85)}));
   const last = years[years.length - 1], prev = years[years.length - 2];
+  const gaps = axis.filter(y => !has.has(y));
+  const gapTxt = gaps.reduce((out, y) => { const r = out[out.length - 1]; if (r && r[1] === y - 1) r[1] = y; else out.push([y, y]); return out; }, [])
+    .map(([a, b]) => a === b ? `${a}` : `${a}–${String(b).slice(2)}`).join(', ');
+  const reclass = hist && has.has(NCS_RECLASS_YEAR) && years[0] < NCS_RECLASS_YEAR;
   setChartTitle('Norwegian Continental Shelf · Remaining reserves', `${ncsResLabel(k)} by sea area · million boe`);
-  setInfo(`<strong>Scope:</strong> All fields &nbsp;|&nbsp; <strong>Series:</strong> Remaining ${ncsResNoun(k)} reserves per sea area &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${last}, as of 31 Dec of each vintage. Liquids = oil, NGL and condensate; contingent resources in discoveries are not included`);
-  renderChart(years.map(String), datasets, legend, 'million boe', {xTitle: 'Year', allTicks: true});
+  setInfo(`<strong>Scope:</strong> All fields &nbsp;|&nbsp; <strong>Series:</strong> Remaining ${ncsResNoun(k)} reserves per sea area &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${last}, as of 31 Dec of each vintage. Liquids = oil, NGL and condensate; contingent resources in discoveries are not included` +
+    (hist ? ` &nbsp;|&nbsp; <strong>Before 2004:</strong> Sodir resource accounts, fields only (original recoverable per field; remaining = recoverable − cumulative production). ` +
+      `Sodir's own totals for those years also count discoveries the licensees had decided to develop before the plan was approved, so they are somewhat higher (about 9 % in 2003)` +
+      (gapTxt ? `. No accounts for ${gapTxt}; those years are left empty, so fields approved in a gap (Troll, Oseberg, Snorre and Heidrun in 1986–89) appear in the next account` : '') +
+      (reclass ? `. <strong>${NCS_RECLASS_YEAR}:</strong> gas in Troll and Visund was reclassified as reserves, about 6,000 million boe at once` : '') +
+      (k !== 'oe' ? `. The split into liquids and gas before 2004 is less certain than the total: NGL is counted as oil in 1980, and remaining gas is derived from cumulative gas production` : '') : ''));
+  // Merket over omklassifiseringsåret.
+  const mark = reclass ? [{id: 'ncsReclass', afterDatasetsDraw(ch) {
+    const i = ch.data.labels.indexOf(String(NCS_RECLASS_YEAR));
+    const metas = ch.data.datasets.map((_, d) => ch.getDatasetMeta(d)).filter(m => !m.hidden && m.data[i]);
+    if (i < 0 || !metas.length) return;
+    const top = Math.min(...metas.map(m => m.data[i].y)), x = metas[0].data[i].x, c = ch.ctx;
+    c.save(); c.fillStyle = '#1a2332'; c.font = '600 9px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'bottom';
+    c.fillText('▼ reclass.', x, top - 3); c.restore();
+  }}] : [];
+  renderChart(axis.map(String), datasets, legend, 'million boe', {xTitle: 'Year', allTicks: true, plugins: mark, padTop: reclass ? 14 : 0});
   ncsToggleAbove(ncsPills('res', NCS_RES));
 
   // Tabell: siste årgang per område og de største feltene.
@@ -10105,9 +10140,9 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
     </div>`;
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
-    type:'bar', data:{labels,datasets},
+    type:'bar', data:{labels,datasets}, plugins: opts.plugins || [],
     options:{
-      responsive:true, maintainAspectRatio:false,
+      responsive:true, maintainAspectRatio:false, layout:{padding:{top:opts.padTop || 0}},
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
