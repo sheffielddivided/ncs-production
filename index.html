@@ -113,7 +113,7 @@
     .ppt-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a2332;color:#fff;padding:8px 14px;
       border-radius:8px;font-size:0.78rem;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:400;}
     .ppt-toast.show{opacity:0.92;}
-    body.ncs .select-fab, body.prices .select-fab{display:none !important;}
+    body.ncs .select-fab, body.prices .select-fab, body.dcs .select-fab{display:none !important;}
     .lc-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;}
     .lc-two > .pf-card{margin-bottom:10px;min-width:0;}
     @media (max-width:800px){.lc-two{grid-template-columns:1fr;}}
@@ -596,6 +596,7 @@
       <button class="mode-btn" id="modeBtnDrilling" onclick="switchMode('drilling')">Drilling</button>
       <button class="mode-btn" id="modeBtnLicences" onclick="switchMode('licences')">Licences</button>
       <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Prices</button>
+      <button class="mode-btn" id="modeBtnDcs" onclick="switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS</button>
     </div>
   </div>
   <div class="ctrl-row" id="pickRow">
@@ -1553,12 +1554,14 @@ function renderViewTabs() {
              : topMode === 'drilling' ? DRILL_TABS
              : topMode === 'licences' ? LIC_TABS
              : topMode === 'ncs' ? NCS_TABS
-             : topMode === 'prices' ? PRICE_TABS : COMPANY_TABS;
+             : topMode === 'prices' ? PRICE_TABS
+             : topMode === 'dcs' ? DCS_TABS : COMPANY_TABS;
   const cur  = currentSubView();
   document.body.classList.toggle('expl', explMode());
   document.body.classList.toggle('lic', topMode === 'licences');
   document.body.classList.toggle('ncs', topMode === 'ncs');
   document.body.classList.toggle('prices', topMode === 'prices');
+  document.body.classList.toggle('dcs', topMode === 'dcs');
   document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
   document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
@@ -1566,7 +1569,8 @@ function renderViewTabs() {
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
   const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas'
-    : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product' : false;
+    : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product'
+    : topMode === 'dcs' ? cur === 'production' && dcsF.prod === 'product' : false;
   document.getElementById('settingsBtn').style.display =
     topMode === 'hubs' || (topMode === 'companies' && cur === 'news') ? '' : 'none';
   document.getElementById('settingsBtn').title = topMode === 'hubs' ? 'Edit hubs' : 'Company news feeds';
@@ -1586,6 +1590,7 @@ function setSubView(v) {
   else if (topMode === 'licences') licSubView = v;
   else if (topMode === 'ncs') ncsSubView = v;
   else if (topMode === 'prices') priceSubView = v;
+  else if (topMode === 'dcs') dcsSubView = v;
   else { companySubView = v; syncCompanySelection(); }
   renderViewTabs();
   updateFab();
@@ -1594,6 +1599,7 @@ function setSubView(v) {
 }
 function setWater(val) { showWater = val; syncUrl(); drawChart(); }
 function firstYearInCache() {
+  if (topMode === 'dcs') return dcsReady() ? dcsFirstYear() : null;
   const ids = topMode === 'fields'
     ? [...selectedFieldIds]
     : topMode === 'ncs' ? ncsFieldIds()
@@ -1618,7 +1624,7 @@ function firstYearInCache() {
 
 function setPeriod(p) {
   if (period === p) return;
-  if (topMode === 'ncs') ncsPrevPeriod = null;   // valgt i NCS: beholdes
+  if (topMode === 'ncs' || topMode === 'dcs') ncsPrevPeriod = null;   // valgt i NCS/DCS: beholdes
   period = p;
   document.getElementById('btnMonthly').classList.toggle('active',   p === 'monthly');
   document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
@@ -1672,8 +1678,9 @@ function ncsLeavePeriod() {
 function switchMode(m) {
   if (topMode === m) return;
   markNav();
-  if (topMode === 'ncs') ncsLeavePeriod();
-  if (m === 'ncs') ncsEnterPeriod();
+  // DCS viser, som NCS, hele historikken som standard.
+  if (topMode === 'ncs' || topMode === 'dcs') ncsLeavePeriod();
+  if (m === 'ncs' || m === 'dcs') ncsEnterPeriod();
   topMode = m;
   explFixSubView();
   syncModeButtons();
@@ -1689,7 +1696,7 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
-  if (['exploration', 'drilling', 'licences', 'ncs', 'prices'].includes(topMode)) return;   // filtrene ligger i selve visningen
+  if (['exploration', 'drilling', 'licences', 'ncs', 'prices', 'dcs'].includes(topMode)) return;   // filtrene ligger i selve visningen
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
               : topMode === 'discoveries' ? selectedDiscoveryIds.size
@@ -2169,6 +2176,8 @@ function resetView() {
   licSubView = 'overview';
   ncsSubView = 'production';
   ncsF = ncsDefaults();
+  dcsSubView = 'production';
+  dcsF = dcsDefaults();
   priceSubView = 'brent';
   prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
   if (priceData && priceData.diff) {
@@ -2231,6 +2240,7 @@ function currentSubView() {
        : topMode === 'licences' ? licSubView
        : topMode === 'ncs' ? ncsSubView
        : topMode === 'prices' ? priceSubView
+       : topMode === 'dcs' ? dcsSubView
        : companySubView;
 }
 
@@ -2275,9 +2285,14 @@ function stateToHash() {
     if (prF.og === 'grid') q.set('po', 'grid');
     if (prF.gk && prF.gk !== 'no') q.set('pg', prF.gk);
   }
+  else if (topMode === 'dcs') {
+    const dflt = dcsDefaults();
+    DCS_PARAMS.forEach(([k, p]) => { if (dcsF[k] !== dflt[k]) q.set(p, dcsF[k]); });
+  }
   else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
-                    || (topMode === 'ncs' && ncsSubView === 'production' && ncsF.prod === 'product'))) q.set('w', '1');
+                    || (topMode === 'ncs' && ncsSubView === 'production' && ncsF.prod === 'product')
+                    || (topMode === 'dcs' && dcsSubView === 'production' && dcsF.prod === 'product'))) q.set('w', '1');
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
     q.set('g', hubReserveGrouping);
   }
@@ -2331,10 +2346,10 @@ window.addEventListener('popstate', async () => {
   navRestoring = true;
   navPending = false;
   try {
-    const wasNcs = topMode === 'ncs';
+    const wasNcs = topMode === 'ncs' || topMode === 'dcs';
     if (sheetOpen) closeSheet();
     applyHash();
-    if (wasNcs && topMode !== 'ncs') ncsPrevPeriod = null;   // perioden står i adressen
+    if (wasNcs && topMode !== 'ncs' && topMode !== 'dcs') ncsPrevPeriod = null;   // perioden står i adressen
     syncModeButtons();
     renderViewTabs();
     updateFab();
@@ -2365,6 +2380,7 @@ const SOURCES = {
   eurostat: ['Eurostat (HICP)', 'https://ec.europa.eu/eurostat', ''],
   nb:       ['Norges Bank (exchange rates)', 'https://www.norges-bank.no', ''],
   ne:       ['Natural Earth (coastline)', 'https://www.naturalearthdata.com', 'public domain'],
+  ens:      ['Danish Energy Agency (Energistyrelsen, ENS)', 'https://ens.dk/en/energy-sources/monthly-and-yearly-production', ''],
 };
 function pageSources() {
   const m = topMode, v = currentSubView(), out = [];
@@ -2380,6 +2396,7 @@ function pageSources() {
     return out;
   }
   if (m === 'ncs' && v === 'economy') return ['ssb'];
+  if (m === 'dcs') return v === 'map' ? ['ens', 'ne', 'sodir'] : ['ens'];
   add('sodir');
   if (v === 'profile') {
     if (m === 'hubs') add('havtil');
@@ -2409,7 +2426,8 @@ function renderSourceNote() {
   el.innerHTML = (keys.length > 1 ? 'Sources: ' : 'Source: ') + keys.map(k => {
     const [name, url, lic] = SOURCES[k];
     return `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>${lic ? ' – ' + lic : ''}`;
-  }).join(' · ') + (keys.includes('sodir') && gen ? ` · data per ${esc(gen)}` : '');
+  }).join(' · ') + (keys.includes('ens') && dcsReady() && dcsData.updated ? ` · Danish data per ${esc(dcsData.updated.slice(0, 10))}`
+                   : keys.includes('sodir') && gen ? ` · data per ${esc(gen)}` : '');
 }
 
 // Leser hash og setter tilstanden. Returnerer true hvis noe ble brukt, slik
@@ -2420,7 +2438,7 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['ncs','fields','hubs','discoveries','companies','exploration','drilling','licences','prices'].includes(m)) {
+  if (['ncs','fields','hubs','discoveries','companies','exploration','drilling','licences','prices','dcs'].includes(m)) {
     topMode = m;
     // Gamle lenker til Exploration → Rigs/Fleet bor nå under Drilling.
     if (m === 'exploration' && ['rigs', 'fleet'].includes(q.get('v'))) topMode = 'drilling';
@@ -2434,7 +2452,8 @@ function applyHash() {
              : topMode === 'drilling' ? DRILL_TABS
              : topMode === 'licences' ? LIC_TABS
              : topMode === 'ncs' ? NCS_TABS
-             : topMode === 'prices' ? PRICE_TABS : COMPANY_TABS;
+             : topMode === 'prices' ? PRICE_TABS
+             : topMode === 'dcs' ? DCS_TABS : COMPANY_TABS;
   // Prices / Heatmap er erstattet av Oil vs gas; gamle lenker sendes dit.
   const v = topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas' : q.get('v');
   if (tabs.some(t => t.id === v)) {
@@ -2445,6 +2464,7 @@ function applyHash() {
     else if (topMode === 'licences') licSubView = v;
     else if (topMode === 'ncs') ncsSubView = v;
     else if (topMode === 'prices') priceSubView = v;
+    else if (topMode === 'dcs') dcsSubView = v;
     else companySubView = v;
   }
 
@@ -2507,6 +2527,15 @@ function applyHash() {
     if (q.get('ns') === 'acc') ncsF.es = 'acc';
     if (q.get('ni') === 'real') ncsF.inv = 'real';
   }
+  if (topMode === 'dcs') {
+    // Felt og selskap valideres når dataene er lastet (loadDcs).
+    dcsF = dcsDefaults();
+    if (q.get('dp') === 'field') dcsF.prod = 'field';
+    if (/^[a-z0-9_]+$/.test(q.get('df') || '')) dcsF.field = q.get('df');
+    if (q.get('dc')) dcsF.cmp = q.get('dc');
+    if (['liq', 'gas'].includes(q.get('dr'))) dcsF.res = q.get('dr');
+    if (q.get('dl') === 'rem') dcsF.fl = 'rem';
+  }
   if (topMode === 'companies') {
     if (/^\d{4}$/.test(q.get('cy') || '')) cmpExplYear = q.get('cy');
     cmpExplVol = q.get('cv') === '1';
@@ -2520,7 +2549,7 @@ function applyHash() {
     document.getElementById('btnAnnual').classList.toggle('active',    pr === 'annual');
   }
 
-  if (topMode === 'ncs' && !pr) ncsEnterPeriod();
+  if ((topMode === 'ncs' || topMode === 'dcs') && !pr) ncsEnterPeriod();
 
   const yr = (q.get('y') || '').match(/^(\d{4})-(\d{4})$/);
   if (yr) {
@@ -2588,6 +2617,7 @@ async function refresh() {
   else if (topMode === 'licences') await refreshLicences();
   else if (topMode === 'ncs') await refreshNcs();
   else if (topMode === 'prices') await refreshPrices();
+  else if (topMode === 'dcs') await refreshDcs();
   else await refreshCompanies();
 }
 
@@ -2812,6 +2842,8 @@ function drawChart() {
     drawNcs();
   } else if (topMode === 'prices') {
     drawPrices();
+  } else if (topMode === 'dcs') {
+    drawDcs();
   } else if (topMode === 'discoveries') {
     const sv = discoverySubView;
     if (sv === 'per_company')    drawDiscoveriesPerCompany();
@@ -2832,6 +2864,415 @@ function drawChart() {
     else if (sv === 'valuation')     drawCompanyValuation();
     else if (sv === 'downtime')      drawCompanyOutage();
   }
+}
+
+// ── DCS (DANSK SOKKEL) ───────────────────────────────────────────────────────
+// Danske felt fra Energistyrelsen (ENS), hentet fra ENS-løsningen
+// (sheffielddivided/ens) av fetch_ens.py til data/dcs.json og
+// data/dcs_outlines.json. Seksjonen er helt adskilt fra de norske dataene:
+// ingen kobling mellom norske og danske selskaper eller felt.
+//
+// Enheter som i resten av appen: olje i mill Sm³, gass i mrd Sm³ (regnet om
+// fra ENS' Nm³ i fetch_ens.py), og fat o.e. med 1000 Sm³ gass = 1 Sm³ o.e.
+// Årstall 1972–2024 er ENS' endelige årsfil; senere år er summen av de
+// foreløpige månedsrapportene (fra januar 2018) og vises lysere. Eierandelene
+// er ENS' gjeldende andeler, uten historikk.
+const DCS_TABS = [
+  {id: 'production', label: 'Production'},
+  {id: 'fields',     label: 'Fields'},
+  {id: 'companies',  label: 'Companies'},
+  {id: 'reserves',   label: 'Reserves'},
+  {id: 'map',        label: 'Map'},
+];
+let dcsSubView = 'production';
+// prod: 'product' | 'field' · field: ett felt (slug) i Oil & Gas, '' = alle · cmp: ett selskap i Companies
+// · res: 'oe' | 'liq' | 'gas' · fl: 'rank' | 'rem'
+const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank'});
+let dcsF = dcsDefaults();
+const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl']];
+let dcsData = null, dcsOutlines = null, dcsLoading = null;
+
+function loadDcs() {
+  if (dcsData) return Promise.resolve();
+  if (!dcsLoading) dcsLoading = Promise.all([fetchBundle('dcs'), fetchBundle('dcs_outlines')]).then(([d, o]) => {
+    if (!d || !d.production || !Array.isArray(d.fields)) { dcsData = {}; dcsLoading = null; return; }
+    dcsData = d;
+    dcsOutlines = o && o.fields ? o.fields : {};
+    dcsData.bySlug = Object.fromEntries(d.fields.map(f => [f.slug, f]));
+    // Lenker kan peke på felt eller selskaper som ikke finnes lenger.
+    if (dcsF.field && !dcsData.bySlug[dcsF.field]) dcsF.field = '';
+    if (dcsF.cmp && !dcsCompanies().includes(dcsF.cmp)) dcsF.cmp = '';
+  });
+  return dcsLoading;
+}
+const dcsReady = () => !!(dcsData && dcsData.production);
+const dcsName = slug => (dcsData.bySlug[slug] || {}).name || slug;
+const dcsSlugs = () => Object.keys(dcsData.production.yearly).sort((a, b) => dcsName(a).localeCompare(dcsName(b)));
+const dcsCompanies = () => [...new Set(dcsData.fields.flatMap(f => f.owners.map(o => o[0])))].sort((a, b) => a.localeCompare(b));
+const dcsShare = (slug, cmp) => ((dcsData.bySlug[slug] || {owners: []}).owners.find(o => o[0] === cmp) || [0, 0])[1] / 100;
+const dcsBoe = (vol, d) => vol * 1e6 * BBL_PER_SM3 / d;   // mill Sm³ olje / mrd Sm³ gass → boe/day
+const dcsLighter = c => c.replace(/[\d.]+\)$/, '0.35)');
+const dcsColor = i => PALETTE[i % PALETTE.length][0];
+// Endelige år: siste år i årsfilen (ikke foreløpig).
+function dcsFinalYear() {
+  let y = 0;
+  Object.values(dcsData.production.yearly).forEach(rows => rows.forEach(r => { if (!r[4]) y = Math.max(y, +r[0]); }));
+  return y;
+}
+function dcsFirstMonth() {
+  let m = '9999';
+  Object.values(dcsData.production.monthly).forEach(rows => { if (rows.length && rows[0][0] < m) m = rows[0][0]; });
+  return m;
+}
+function dcsFirstYear() {
+  let y = null;
+  Object.values(dcsData.production.yearly).forEach(rows => rows.forEach(r => {
+    if ((r[1] > 0 || r[2] > 0) && (y === null || +r[0] < y)) y = +r[0];
+  }));
+  return y;
+}
+
+// Volumene per periode for ett felt i perioden og årene som er valgt:
+// {nøkkel: {oil, gas, water, prelim}}. Kvartaler summeres fra månedene.
+function dcsPeriodRows(slug) {
+  const P = dcsData.production;
+  const fy = +document.getElementById('yearFrom').value, ty = +document.getElementById('yearTo').value;
+  const out = {};
+  ((period === 'annual' ? P.yearly : P.monthly)[slug] || []).forEach(([t, oil, gas, water, pre]) => {
+    const y = +t.slice(0, 4);
+    if (y < fy || y > ty) return;
+    const k = period === 'quarterly' ? getQuarterKey(y, +t.slice(5)) : t;
+    const o = out[k] = out[k] || {oil: 0, gas: 0, water: 0, prelim: false};
+    o.oil += oil; o.gas += gas; o.water += water; o.prelim = o.prelim || !!pre;
+  });
+  return out;
+}
+const dcsDays = k => period === 'annual' ? daysInYear(+k)
+  : period === 'quarterly' ? daysInQuarter(+k.slice(0, 4), +k.slice(6))
+  : daysInMonth(+k.slice(0, 4), +k.slice(5));
+// Periodene på aksen. Et felt uten rad en måned produserte ingenting da, så
+// et kvartal er komplett når alle tre månedene finnes for minst ett felt.
+// Inneværende år og kvartal er ufullstendige og utelates, som ellers i appen.
+function dcsLabels() {
+  const keys = new Set();
+  const months = new Set(Object.values(dcsData.production.monthly).flatMap(rows => rows.map(r => r[0])));
+  dcsSlugs().forEach(s => Object.keys(dcsPeriodRows(s)).forEach(k => keys.add(k)));
+  return [...keys].filter(k => {
+    if (!isCompletePeriod(k)) return false;
+    if (period !== 'quarterly') return true;
+    const y = k.slice(0, 4), m0 = (+k.slice(6) - 1) * 3;
+    return [1, 2, 3].every(i => months.has(`${y}-${String(m0 + i).padStart(2, '0')}`));
+  }).sort();
+}
+// Fjerner tomme perioder foran, også i fargelistene per søyle, før renderChart
+// får datasettene (dens egen trimming kjenner ikke fargelistene).
+function dcsTrim(labels, datasets) {
+  let i = 0;
+  while (i < labels.length && datasets.every(d => !(d.data[i] > 0))) i++;
+  return {labels: labels.slice(i), datasets: datasets.map(d => ({...d, data: d.data.slice(i),
+    backgroundColor: Array.isArray(d.backgroundColor) ? d.backgroundColor.slice(i) : d.backgroundColor}))};
+}
+
+async function dcsSet(key, val) {
+  dcsF[key] = val;
+  syncUrl();
+  if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
+  drawChart();
+}
+function dcsPills(key, opts) {
+  return `<div class="pill-group" style="width:max-content;max-width:100%">${opts.map(([v, l]) =>
+    `<button class="pill-btn${dcsF[key] === v ? ' active' : ''}" onclick="dcsSet('${key}', ${jsStr(v)})">${l}</button>`).join('')}</div>`;
+}
+function dcsSelect(key, first, opts, label) {
+  return `<select class="year-select" onchange="dcsSet('${key}', this.value)" aria-label="${esc(label)}">
+    <option value="">${esc(first)}</option>${opts.map(([v, l]) =>
+      `<option value="${esc(v)}"${dcsF[key] === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+}
+const dcsBar = html => `<div class="np-bar">${html}</div>`;
+function dcsOpenField(slug) {
+  markNav();
+  dcsSubView = 'production'; dcsF.prod = 'product'; dcsF.field = slug;
+  renderViewTabs();
+  refresh();
+}
+function dcsOpenCompany(cmp) {
+  markNav();
+  dcsSubView = 'companies'; dcsF.cmp = cmp;
+  renderViewTabs();
+  refresh();
+}
+const dcsBasis = () => {
+  const fin = dcsFinalYear(), m0 = dcsFirstMonth();
+  const mTxt = `${MONTH_ABBR[+m0.slice(5) - 1]} ${m0.slice(0, 4)}`;
+  return period === 'annual'
+    ? `<strong>Basis:</strong> ENS annual file, final figures through ${fin}; later years are the sum of the preliminary monthly reports (lighter bars)`
+    : `<strong>Basis:</strong> ENS monthly production reports, preliminary estimates, from ${mTxt}; the annual file later replaces them. Earlier years are only available with the annual period`;
+};
+const DCS_GAS_NOTE = 'Gas converted from Nm³ (0 °C) to Sm³ (15 °C), so Danish and Norwegian boe are computed alike; ENS\' own figures count 1000 Nm³ = 1 m³ o.e. and are about 5.5 % lower for gas';
+
+async function refreshDcs() {
+  showSpinner();
+  await loadDcs();
+  if (!dcsReady()) { setChartTitle('', ''); setChartEmpty('Could not load the Danish data.'); setInfo(''); return; }
+  renderSourceNote();   // datoen for de danske dataene står i kildelinjen
+  drawChart();
+}
+
+function drawDcs() {
+  if (!dcsReady()) return;
+  setProfile(''); setChartTable('');
+  const v = dcsSubView;
+  if (v === 'fields') drawDcsFields();
+  else if (v === 'companies') drawDcsCompanies();
+  else if (v === 'reserves') drawDcsReserves();
+  else if (v === 'map') drawDcsMap();
+  else drawDcsProduction();
+}
+
+// ── DCS: PRODUCTION ──
+// Oil & Gas: olje og gass (og vann) for alle felt eller ett felt. By field:
+// oljeekvivalenter stablet per felt, største felt nederst.
+function drawDcsProduction() {
+  const byField = dcsF.prod === 'field';
+  const slugs = !byField && dcsF.field ? [dcsF.field] : dcsSlugs();
+  const per = Object.fromEntries(slugs.map(s => [s, dcsPeriodRows(s)]));
+  const labels = dcsLabels();
+  const get = (s, k, m) => (per[s][k] || {})[m] || 0;
+  const pre = k => period === 'annual' && slugs.some(s => (per[s][k] || {}).prelim);
+  const bg = c => labels.map(k => pre(k) ? dcsLighter(c) : c);
+  let series;
+  if (byField) {
+    const oe = (s, k) => dcsBoe(get(s, k, 'oil') + get(s, k, 'gas'), dcsDays(k));
+    const tot = Object.fromEntries(slugs.map(s => [s, labels.reduce((t, k) => t + oe(s, k), 0)]));
+    series = slugs.filter(s => tot[s] > 0).sort((a, b) => tot[b] - tot[a])
+      .map((s, i) => ({label: dcsName(s), color: dcsColor(i), data: labels.map(k => Math.round(oe(s, k)))}));
+  } else {
+    const sum = (k, m) => dcsBoe(slugs.reduce((t, s) => t + get(s, k, m), 0), dcsDays(k));
+    series = [{label: 'Oil', color: OIL_COLOR, m: 'oil'}, {label: 'Gas', color: GAS_COLOR, m: 'gas'}]
+      .concat(showWater ? [{label: 'Water', color: WATER_COLOR, m: 'water'}] : [])
+      .map(s => ({...s, data: labels.map(k => Math.round(sum(k, s.m)))}));
+  }
+  const t = dcsTrim(labels, series.map(s => ({label: s.label, data: s.data, backgroundColor: bg(s.color), borderWidth: 0, stack: 's'}))
+    .filter(d => hasAnyValue(d.data)));
+  const scope = byField ? 'All fields by field' : dcsF.field ? dcsName(dcsF.field) : 'All fields';
+  setChartTitle(`Danish Continental Shelf · ${dcsF.field && !byField ? esc(dcsName(dcsF.field)) : 'Production'}`,
+    byField ? 'Oil equivalents by field · boe/day' : `Oil${showWater ? ', gas & water' : ' & gas'} · boe/day`);
+  setInfo(`<strong>Scope:</strong> ${esc(scope)}${!dcsF.field || byField ? ` (${slugs.length} fields)` : ''} &nbsp;|&nbsp; <strong>Series:</strong> ${byField ? 'Oil + gas per field' : 'Oil (incl. condensate), Gas (sales and other gas as reported by ENS)' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${dcsBasis()} &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
+  const bar = dcsBar(dcsPills('prod', [['product', 'Oil & Gas'], ['field', 'By field']]) +
+    (byField ? '' : dcsSelect('field', 'All fields', dcsSlugs().map(s => [s, dcsName(s)]), 'Field')));
+  if (!t.labels.length || !t.datasets.length) {
+    setChartEmpty(period === 'annual' ? 'No data for the selected period.'
+      : `No monthly data for the selected period. ENS monthly reports start in ${dcsFirstMonth().slice(0, 4)}; use Annual for earlier years.`);
+  } else {
+    renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
+  }
+  ncsToggleAbove(bar);
+}
+
+// ── DCS: FIELDS ──
+// Rangering som NCS → Fields: produksjon siste tolv måneder med tall, eller
+// gjenværende reserver per siste 1. januar. Klikk på et felt åpner det i
+// Production. Tabellen under har operatør og eiere.
+function dcsLast12() {
+  const months = [...new Set(Object.values(dcsData.production.monthly).flatMap(rows => rows.map(r => r[0])))].sort();
+  const win = months.slice(-12);
+  const days = win.reduce((t, m) => t + daysInMonth(+m.slice(0, 4), +m.slice(5)), 0);
+  const fmt = m => `${MONTH_ABBR[+m.slice(5) - 1]} ${m.slice(0, 4)}`;
+  return {win: new Set(win), days, span: win.length ? `${fmt(win[0])}–${fmt(win[win.length - 1])}` : ''};
+}
+function dcsFieldProd12(slug, L) {
+  let oil = 0, gas = 0;
+  (dcsData.production.monthly[slug] || []).forEach(r => { if (L.win.has(r[0])) { oil += r[1]; gas += r[2]; } });
+  return {liq: dcsBoe(oil, L.days), gas: dcsBoe(gas, L.days)};
+}
+function dcsResYear() {
+  const R = dcsData.reserves;
+  return Math.max(...Object.values(R.fields).flatMap(rows => rows.filter(r => r[1] != null || r[2] != null).map(r => r[0])));
+}
+function dcsFieldRes(slug, y) {
+  const r = (dcsData.reserves.fields[slug] || []).find(x => x[0] === y);
+  return r ? {liq: (r[1] || 0) * BBL_PER_SM3, gas: (r[2] || 0) * BBL_PER_SM3} : {liq: 0, gas: 0};
+}
+
+function drawDcsFields() {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const rank = dcsF.fl !== 'rem';
+  const L = dcsLast12(), ry = dcsResYear();
+  const unit = rank ? 'boe/day' : 'million boe';
+  const n0 = rank ? v => Math.round(v).toLocaleString('en') : v => v.toLocaleString('en', {maximumFractionDigits: v < 10 ? 1 : 0});
+  const all = dcsData.fields.map(f => {
+    const p = dcsFieldProd12(f.slug, L), r = dcsFieldRes(f.slug, ry);
+    return {slug: f.slug, name: f.name, f, prod: p.liq + p.gas, res: r.liq + r.gas, ...(rank ? p : r)};
+  });
+  const list = all.map(x => ({...x, total: x.liq + x.gas}))
+    .filter(x => x.total >= (rank ? 1 : 0.05)).sort((a, b) => b.total - a.total);
+  const grand = list.reduce((t, f) => t + f.total, 0) || 1;
+  const top3 = list.slice(0, 3).reduce((t, f) => t + f.total, 0);
+  const max = list.length ? list[0].total : 1;
+  const facts = [[rank ? 'Producing fields' : 'Fields with reserves', list.length], ['Top 3 share', `${(top3 / grand * 100).toFixed(0)} %`],
+                 ['Largest', list.length ? list[0].name : '—'], [rank ? 'DCS average' : 'DCS total', `${n0(grand)} ${unit}`]];
+  const bars = list.map((f, i) => `<div class="lc-row" onclick="dcsOpenField(${esc(jsStr(f.slug))})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')dcsOpenField(${esc(jsStr(f.slug))})">
+      <div class="lc-name" title="${esc(f.name)}">${i + 1}. <span class="lc-u">${esc(f.name)}</span></div>
+      <div class="lc-track" style="width:${(f.total / max * 70).toFixed(1)}%">
+        ${f.liq > 0 ? `<span style="flex:${f.liq};background:${OIL_COLOR}" title="${esc(f.name)} · Oil: ${n0(f.liq)} ${unit}"></span>` : ''}
+        ${f.gas > 0 ? `<span style="flex:${f.gas};background:${GAS_COLOR}" title="${esc(f.name)} · Gas: ${n0(f.gas)} ${unit}"></span>` : ''}</div>
+      <div class="lc-val">${n0(f.total)} · ${(f.total / grand * 100).toFixed(1)} %</div></div>`).join('');
+  document.getElementById('chartArea').innerHTML = `${dcsBar(dcsPills('fl', [['rank', 'Production'], ['rem', 'Remaining reserves']]))}
+    <div class="pf-facts" style="margin-bottom:10px">
+      ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${esc(v)}</strong></div>`).join('')}
+    </div>
+    ${bars || '<div class="status">No fields to show.</div>'}
+    <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${OIL_COLOR}"></span>Oil</span>
+      <span class="ex-leg"><span class="ex-dot" style="background:${GAS_COLOR}"></span>Gas</span></div>
+    <div class="pf-map-note">${rank ? `Average production ${L.span}, boe/day` : `Remaining reserves 1 January ${ry}, million boe`}, with share of the DCS total. Click a field for its production.</div>`;
+  setChartTitle('Danish Continental Shelf · Fields',
+    rank ? `Ranked by production, last 12 months (${L.span})` : `Ranked by remaining reserves, 1 January ${ry} · million boe`);
+  setInfo(rank
+    ? `<strong>Ranking:</strong> average production over the last 12 months in the ENS monthly reports (preliminary) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${DCS_GAS_NOTE}`
+    : `<strong>Ranking:</strong> remaining reserves per 1 January ${ry}, fields in production and approved developments, ENS «Resources and forecasts» &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; ENS rounds each field to whole million m³ / bn Nm³, so small fields show as zero &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
+  const owners = f => f.owners.map(([c, s]) => `${rowLink(c, `dcsOpenCompany(${esc(jsStr(c))})`, `Open ${c} in Companies`)} ${s.toLocaleString('en', {maximumFractionDigits: 2})} %`).join(', ');
+  const fmtP = v => v >= 1 ? Math.round(v).toLocaleString('en') : '—';
+  const fmtR = v => v >= 0.05 ? v.toLocaleString('en', {maximumFractionDigits: 1}) : '—';
+  // ENS fører reservene for noen felt på et annet (Tyra Sydøst på Tyra).
+  const inTyra = slug => { const h = (dcsData.reserves.includedIn || {})[slug]; return h ? `in ${esc(dcsName(h))}` : ''; };
+  const rows = [...all].sort((a, b) => (b.prod - a.prod) || (b.res - a.res) || a.name.localeCompare(b.name));
+  setChartTable(`
+    <table class="res-table">
+      <caption>All fields · current licensees from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))})</caption>
+      <thead><tr><th>Field</th><th style="text-align:left">Operator</th><th style="text-align:left">Licensees</th><th>boe/day, ${esc(L.span)}</th><th>Remaining, mill boe (1 Jan ${ry})</th></tr></thead>
+      <tbody>${rows.map(x => `<tr><td>${rowLink(x.name, `dcsOpenField(${esc(jsStr(x.slug))})`, `Show ${x.name} in Production`)}</td>
+        <td style="text-align:left">${esc(x.f.operator || '—')}</td><td style="text-align:left;white-space:normal">${owners(x.f) || '—'}</td>
+        <td>${fmtP(x.prod)}</td><td>${inTyra(x.slug) || fmtR(x.res)}</td></tr>`).join('')}</tbody>
+    </table>`);
+  const r = v => rank ? Math.round(v) : +v.toFixed(1);
+  lastLabels = list.map(f => f.name); lastXTitle = 'Field';
+  lastDatasets = [{label: `Oil, ${unit}`, data: list.map(f => r(f.liq))}, {label: `Gas, ${unit}`, data: list.map(f => r(f.gas))}];
+  pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: list.map(f => f.name), yTitle: unit,
+    series: [{name: 'Oil', type: 'bar', color: pptHex(OIL_COLOR), values: list.map(f => r(f.liq))},
+             {name: 'Gas', type: 'bar', color: pptHex(GAS_COLOR), values: list.map(f => r(f.gas))}]};
+  document.getElementById('downloadBtn').disabled = !list.length;
+}
+
+// ── DCS: COMPANIES ──
+// Netto produksjon per selskap: feltets olje og gass × selskapets andel.
+// ENS publiserer bare gjeldende andeler, så de samme andelene brukes for hele
+// historikken — eldre år viser hva dagens eiere ville hatt, ikke hva de
+// faktisk eide da (Maersk Oil, Hess, Wintershall Dea og andre er ikke med).
+// Med ett selskap valgt: selskapets netto produksjon per felt.
+function drawDcsCompanies() {
+  const cmps = dcsCompanies();
+  const one = dcsF.cmp;
+  const labels = dcsLabels();
+  const per = Object.fromEntries(dcsSlugs().map(s => [s, dcsPeriodRows(s)]));
+  const oe = (s, k) => { const o = per[s][k]; return o ? dcsBoe(o.oil + o.gas, dcsDays(k)) : 0; };
+  const pre = k => period === 'annual' && dcsSlugs().some(s => (per[s][k] || {}).prelim);
+  let series;
+  if (one) {
+    const slugs = dcsSlugs().filter(s => dcsShare(s, one) > 0);
+    const tot = Object.fromEntries(slugs.map(s => [s, labels.reduce((t, k) => t + oe(s, k) * dcsShare(s, one), 0)]));
+    series = slugs.filter(s => tot[s] > 0).sort((a, b) => tot[b] - tot[a])
+      .map((s, i) => ({label: dcsName(s), color: dcsColor(i), data: labels.map(k => Math.round(oe(s, k) * dcsShare(s, one)))}));
+  } else {
+    const net = c => labels.map(k => Math.round(dcsSlugs().reduce((t, s) => t + oe(s, k) * dcsShare(s, c), 0)));
+    series = cmps.map(c => ({label: c, data: net(c)}))
+      .map(s => ({...s, total: s.data.reduce((t, v) => t + v, 0)})).filter(s => s.total > 0)
+      .sort((a, b) => b.total - a.total).map((s, i) => ({...s, color: dcsColor(i)}));
+  }
+  const t = dcsTrim(labels, series.map(s => ({label: s.label, data: s.data, borderWidth: 0, stack: 's',
+    backgroundColor: labels.map(k => pre(k) ? dcsLighter(s.color) : s.color)})));
+  setChartTitle(`Danish Continental Shelf · ${one ? esc(one) : 'Companies'}`,
+    one ? 'Net production by field · boe/day' : 'Net production by company · boe/day');
+  setInfo(`<strong>Net production:</strong> field oil + gas × the company's share &nbsp;|&nbsp; <strong>Shares:</strong> current licensees from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))}), applied to the whole history. ENS publishes no ownership history, so earlier years show what today's owners would have had, not what they owned then &nbsp;|&nbsp; Nordsøfonden is the Danish state's participant &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${dcsBasis()} &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
+  const bar = dcsBar(dcsSelect('cmp', 'All companies', cmps.map(c => [c, c]), 'Company'));
+  if (!t.labels.length || !t.datasets.length) {
+    setChartEmpty(period === 'annual' ? 'No data for the selected period.'
+      : `No monthly data for the selected period. ENS monthly reports start in ${dcsFirstMonth().slice(0, 4)}; use Annual for earlier years.`);
+  } else {
+    renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
+  }
+  ncsToggleAbove(bar);
+  // Eiertabellen: andel per felt og selskap.
+  const fields = dcsData.fields.filter(f => f.owners.length && (!one || dcsShare(f.slug, one) > 0));
+  const cols = one ? [one] : cmps;
+  const pct = v => v > 0 ? `${(v * 100).toLocaleString('en', {maximumFractionDigits: 2})} %` : '';
+  setChartTable(`
+    <table class="res-table">
+      <caption>Current licensee shares per field · ENS</caption>
+      <thead><tr><th>Field</th>${cols.map(c => `<th>${one ? esc(c) : rowLink(c, `dcsOpenCompany(${esc(jsStr(c))})`, `Show ${c} only`)}</th>`).join('')}</tr></thead>
+      <tbody>${fields.map(f => `<tr><td>${rowLink(f.name, `dcsOpenField(${esc(jsStr(f.slug))})`, `Show ${f.name} in Production`)}</td>${cols.map(c => `<td>${pct(dcsShare(f.slug, c))}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`);
+}
+
+// ── DCS: RESERVES ──
+// Gjenværende reserver per 1. januar per felt (ENS «Ressourceopgørelse og
+// prognoser», tabell 1). Egen årsakse; periodevelgeren gjelder ikke.
+const DCS_RES = [['oe', 'Oil equivalents'], ['liq', 'Oil'], ['gas', 'Gas']];
+function drawDcsReserves() {
+  const R = dcsData.reserves, k = dcsF.res;
+  const years = [...new Set(Object.values(R.fields).flatMap(rows => rows.map(r => r[0])))].sort((a, b) => a - b);
+  const val = r => !r ? 0 : (k === 'liq' ? (r[1] || 0) : k === 'gas' ? (r[2] || 0) : (r[1] || 0) + (r[2] || 0)) * BBL_PER_SM3;
+  const at = (s, y) => (R.fields[s] || []).find(r => r[0] === y);
+  const slugs = Object.keys(R.fields);
+  const tot = Object.fromEntries(slugs.map(s => [s, years.reduce((t, y) => t + val(at(s, y)), 0)]));
+  const order = slugs.filter(s => tot[s] > 0).sort((a, b) => tot[b] - tot[a]);
+  const series = order.map((s, i) => ({label: dcsName(s), color: dcsColor(i), data: years.map(y => +val(at(s, y)).toFixed(1))}));
+  const labels = years.map(String);
+  const what = (DCS_RES.find(x => x[0] === k) || DCS_RES[0])[1];
+  setChartTitle('Danish Continental Shelf · Reserves', `Remaining reserves per 1 January, ${what.toLowerCase()} · million boe`);
+  setInfo(`<strong>Source:</strong> ENS «Ressourceopgørelse og prognoser», table 1: remaining reserves per 1 January, fields in production and approved developments &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; ENS rounds each field to whole million m³ oil / bn Nm³ gas, so small fields show as zero and the sum of the fields can differ from ENS' reported total &nbsp;|&nbsp; Tyra includes Tyra Southeast &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
+  if (!series.length) setChartEmpty('No reserves data available.');
+  else renderChart(labels, series.map(s => ({label: s.label, data: s.data, backgroundColor: s.color, borderWidth: 0, stack: 's'})),
+    series, 'million boe', {xTitle: 'Reserves per 1 January', allTicks: true});
+  ncsToggleAbove(dcsBar(dcsPills('res', DCS_RES)));
+  // Tabell: felt × år, med summen av feltene og ENS' rapporterte total.
+  // Verdier ENS har rekonstruert eller ikke kunnet avklare er merket.
+  const flag = {};
+  Object.entries(R.flags || {}).forEach(([s, list]) => list.forEach(([y, m, f]) => {
+    if (k === 'oe' || (k === 'liq' && m === 'oil') || (k === 'gas' && m === 'gas')) (flag[s + y] = flag[s + y] || new Set()).add(f);
+  }));
+  const cell = (s, y) => {
+    const r = at(s, y), f = flag[s + y];
+    const missing = !r || (k === 'liq' ? r[1] == null : k === 'gas' ? r[2] == null : r[1] == null && r[2] == null);
+    const mark = f ? `<span title="${esc([...f].map(x => x === 'reconstructed' ? 'reconstructed from the report text' : 'not resolved in the source').join('; '))}">*</span>` : '';
+    return `<td>${missing ? '—' : val(r).toLocaleString('en', {maximumFractionDigits: 1})}${mark}</td>`;
+  };
+  const sumY = y => order.reduce((t, s) => t + val(at(s, y)), 0);
+  const repY = y => { const r = (R.reportedTotal || []).find(x => x[0] === y); const v = r ? val(r) : 0; return r && (r[1] != null || r[2] != null) ? v : null; };
+  const fmt = v => v == null ? '—' : v.toLocaleString('en', {maximumFractionDigits: 0});
+  setChartTable(`
+    <table class="res-table">
+      <caption>Remaining reserves per 1 January · ${esc(what.toLowerCase())}, million boe · * reconstructed or unresolved value in the source</caption>
+      <thead><tr><th>Field</th>${years.map(y => `<th>${y}</th>`).join('')}</tr></thead>
+      <tbody>${order.map(s => `<tr><td>${rowLink(dcsName(s), `dcsOpenField(${esc(jsStr(s))})`, `Show ${dcsName(s)} in Production`)}</td>${years.map(y => cell(s, y)).join('')}</tr>`).join('')}
+        <tr class="hub-row"><td>Sum of fields</td>${years.map(y => `<td>${fmt(sumY(y))}</td>`).join('')}</tr>
+        <tr><td>Reported total (ENS)</td>${years.map(y => `<td>${fmt(repY(y))}</td>`).join('')}</tr></tbody>
+    </table>`);
+}
+
+// ── DCS: MAP ──
+// Feltomrissene fra ENS. Felt med produksjonstall i farge, de andre (funn
+// under utbygging, nedstengte) i lys grå. Norske felt i grått for orientering.
+function drawDcsMap() {
+  setChartNone();
+  setChartTitle('Danish Continental Shelf · Map', 'Field outlines');
+  setInfo(`<strong>Source:</strong> ENS field delineations (via the ENS solution), Natural Earth (coastline); Norwegian fields from Sodir for orientation`);
+  const items = Object.entries(dcsOutlines || {});
+  if (!items.length) { setProfile('<div class="pf-card pf-wide"><div class="pf-map-note">No outlines available.</div></div>'); return; }
+  const prod = new Set(dcsSlugs());
+  const own = items.filter(([s]) => prod.has(s)).map(([, it]) => it);
+  const rest = items.filter(([s]) => !prod.has(s)).map(([, it]) => it);
+  const nor = fieldLayer();
+  const m = outlineMap(own.length ? own : rest, {
+    // Utsnittet tar med alle danske felt og vestkysten av Jylland, så kartet
+    // viser hvor feltene ligger mot land. Norske felt nær grensen kommer med i kanten.
+    label: 'Map of the Danish fields', h: 420, pad: 1.1, labelMax: 24,
+    extra: rest.flatMap(it => it.rings.flat()).concat([[8.3, 55.9]]),
+    fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
+    layers: [{...nor, label: false}, {items: rest, fill: '#e2e8f0', stroke: '#9aa5b1'}],
+    note: 'Danish fields with production data in colour, other Danish fields (under development or shut down) in light grey, Norwegian fields in grey. Coastline: Natural Earth · outlines: ENS',
+  });
+  setProfile(`<div class="pf-card pf-wide"><h3>Danish fields</h3>${m}</div>`);
 }
 
 // ── PRICES ───────────────────────────────────────────────────────────────────
@@ -5780,6 +6221,7 @@ function isReservesView() {
   return topMode === 'discoveries' || explMode()
       || (topMode === 'ncs' && ncsSubView !== 'production')
       || topMode === 'prices'
+      || (topMode === 'dcs' && !['production', 'companies'].includes(dcsSubView))
       || (topMode === 'fields'    && fieldSubView   === 'profile')
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'fields'    && fieldSubView   === 'map')
@@ -9018,7 +9460,7 @@ function openProfileIn(mode, setup) {
   if (overlayOpen()) closeWell(true);
   markNav();
   if (topMode !== mode) {
-    if (topMode === 'ncs') ncsLeavePeriod();
+    if (topMode === 'ncs' || topMode === 'dcs') ncsLeavePeriod();
     topMode = mode;
   }
   setup();
@@ -13487,7 +13929,7 @@ function rigZoomRig() {
 
 // ── Hopp til/fra andre moduser ───────────────────────────────────────────────
 function syncModeButtons() {
-  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'drilling', 'licences', 'prices'].forEach(m =>
+  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'drilling', 'licences', 'prices', 'dcs'].forEach(m =>
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
 }
 

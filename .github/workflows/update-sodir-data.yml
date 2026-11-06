@@ -103,6 +103,15 @@ jobs:
         timeout-minutes: 10
         run: python fetch_company_news.py --sodir
 
+      # Danske felt til DCS-seksjonen: leser de publiserte JSON-filene fra
+      # ENS-løsningen (sheffielddivided/ens), som selv henter fra
+      # Energistyrelsen. Feiler steget eller har ENS endret formatet, beholdes
+      # forrige data/dcs*.json og resten committes likevel.
+      - name: Hent danske data (ENS)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_ens.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB

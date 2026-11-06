@@ -808,6 +808,54 @@ selskapets eierandel midt i måneden (`getShare`; framtidige måneder får
 dagens andel) og stables per hub. Produksjonen over null er netto gass for
 alle selskapets felt, også dem Gassco ikke melder om.
 
+### `data/dcs.json` og `data/dcs_outlines.json` — dansk sokkel (DCS)
+
+Bygges av `fetch_ens.py`, som kjøres i den daglige workflowen etter Sodir
+(`continue-on-error`, så en feil her stopper ikke resten). Skriptet henter
+ingenting fra ens.dk selv: det leser de publiserte filene i ENS-løsningen
+(`sheffielddivided/ens`, `main`) — `data/combined.json`, `data/fields.json`,
+`data/ownership.json`, `data/reserves.json` og `docs/data/gis/fields.geojson`
+— og gjør dem om til appens format. ENS-løsningen eier innsamlingen og lever
+videre uendret.
+
+```json
+{"fields":[{"slug":"tyra","name":"Tyra","operator":"TotalEnergies","owners":[["TotalEnergies",43.2],...],...}],
+ "production":{"columns":["period","oil","gas","water","prelim"],
+   "yearly":{"tyra":[["1990",1.079514,3.47663,0.24509,0],...]},"monthly":{"tyra":[["2018-01",0.0332,0.069835,0.0945,1],...]}},
+ "reserves":{"columns":["year","oil","gas"],"fields":{"tyra":[[2018,9.0,16.878638],...]},
+   "reportedTotal":[...],"flags":{"dan":[[2020,"gas","reconstructed"]]},"includedIn":{"tyra_se":"tyra"}},
+ "updated":"2026-10-18T10:27:01Z","ownershipUpdated":"...","source":{...},"units":{...}}
+```
+
+- **Enheter:** olje mill Sm³, gass mrd Sm³, vann mill m³. ENS oppgir gass i
+  Nm³ (0 °C); den ganges med 288,15 / 273,15 ≈ 1,0549 til Sm³ (15 °C), så
+  danske fat o.e. regnes likt med norske (1000 Sm³ gass = 1 Sm³ o.e.). ENS'
+  egne visninger regner 1000 Nm³ = 1 m³ o.e. og ligger derfor om lag 5,5 %
+  lavere for gass.
+- **Produksjon:** årstall til og med siste år i ENS' årsfil er endelige
+  (`prelim` 0). Senere år er summen av de foreløpige månedsrapportene og vises
+  lysere i årsvisningen. Månedstall finnes fra januar 2018 og er alltid
+  foreløpige. Felt uten rad en måned produserte ingenting.
+- **Eierskap:** ENS publiserer bare gjeldende andeler, uten historikk. DCS →
+  Companies bruker dem for hele perioden og sier det i infoboksen.
+- **Reserver:** gjenværende per 1. januar (felt i drift og besluttet
+  utbygging), avrundet av ENS til hele mill m³ / mrd Nm³. `flags` er verdier
+  ENS-løsningen har rekonstruert eller ikke kunnet avklare; de merkes med * i
+  tabellen.
+- **Formatkontroll:** `schema_version` må være 1, enhetene må være de kjente,
+  og felt-slugs må stemme mellom filene. Ellers `SourceFormatError`, exit 1, og
+  ingenting skrives.
+
+DCS er helt adskilt fra de norske dataene: ingen kobling mellom norske og
+danske selskaper eller felt. Frontend: `DCS_TABS`, `loadDcs`, `drawDcs*` i
+`index.html`. Fanene er Production (olje/gass/vann eller per felt, for alle
+felt eller ett), Fields (rangering etter produksjon siste 12 måneder eller
+gjenværende reserver, med operatør og eiere), Companies (netto produksjon per
+selskap eller per felt for ett selskap), Reserves (per felt og år) og Map.
+Production og Companies følger periodevelgeren; som NCS starter DCS i
+årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`.
+
 ### `data/meta.json`
 
 ```json

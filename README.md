@@ -5,11 +5,15 @@ Repo: `ncs-production`.
 Webapp for norsk sokkel (Norwegian Continental Shelf): produksjon, reserver og
 ressurser per felt, hub, funn og selskap, med profiler for felt, huber, funn,
 selskaper, lisenser, brønner og rigger. I tillegg leting, rigger, lisenser og
-overdragelser, normpriser og gasspriser.
+overdragelser, normpriser og gasspriser. Seksjonen **DCS** (lengst til høyre i
+menyen) viser dansk sokkel med data fra Energistyrelsen, helt adskilt fra de
+norske dataene.
 
 Hovedkilden er Sokkeldirektoratets (Sodir) åpne FactMaps-API. I tillegg brukes
 Havtil, Kystverkets AIS, SSB, Petroleumsprisrådet, EIA, FRED/IMF, Norges Bank og
-Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
+Natural Earth. De danske tallene i DCS kommer fra ENS-løsningen
+([`sheffielddivided/ens`](https://github.com/sheffielddivided/ens)). Alt lagres
+som statiske JSON-filer i dette repoet.
 
 **Live:** https://sheffielddivided.github.io/ncs-production/
 
@@ -51,6 +55,9 @@ Natural Earth. Alt lagres som statiske JSON-filer i dette repoet.
 | `data/gassco_events.json` | Arkiv over Gasscos hendelser fra 2025, siste revisjon per hendelse. Bare vokser, så historikken beholdes når Gassco fjerner gamle hendelser (de holder om lag to år) |
 | `data/gassco_downtime.json` | Dager og tapt gassvolum per felt og måned (planlagt og uplanlagt), fra januar 2025 og så langt fram som hendelsene går. Vises i Field, Hub, Company og NCS → Gas outage som volumeffekt: produksjon over null, tapt volum under, i boe/day eller Sm³/day |
 | `data/gassco_aliases.json` | Gasscos anleggsnavn → feltnavn i Sodir, og anlegg som ikke er felt (prosessanlegg, terminaler). Redigeres for hånd |
+| `fetch_ens.py` | Leser de publiserte JSON-filene fra ENS-løsningen (`sheffielddivided/ens`) og bygger `data/dcs.json` og `data/dcs_outlines.json` til DCS-seksjonen. Regner gass om fra Nm³ til Sm³. Ukjent format gir feil og exit 1 uten at noe skrives. `--local ../ens` leser fra en lokal kopi |
+| `data/dcs.json` | Danske felt: operatør og gjeldende eierandeler, årlig (1972–) og månedlig (2018–) produksjon med foreløpig-flagg, og reserver per 1. januar |
+| `data/dcs_outlines.json` | Omriss av de danske feltene, til DCS → Map |
 | `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
 | `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |
 | `data/rig_health.json` | Driftsrapport fra AIS-steget: rigger uten kobling, rigger som bores uten signal, mistenkelige MMSI og om kilden feiler |
@@ -125,6 +132,9 @@ Data: [Sokkeldirektoratet (Sodir) FactPages](https://factpages.sodir.no) —
 brukt under [NLOD](https://data.norge.no/nlod/en).
 
 Sodir gir ingen garanti for at dataene er korrekte eller komplette.
+
+Danske data (DCS): [Energistyrelsen (ENS)](https://ens.dk/en/energy-sources/monthly-and-yearly-production),
+via ENS-løsningen [`sheffielddivided/ens`](https://github.com/sheffielddivided/ens).
 
 Tilsynssaker: [Havindustritilsynet (Havtil)](https://www.havtil.no). Havtils
 materiale kan gjenbrukes fritt i alle formater og medier når Havtil krediteres.
