@@ -5978,7 +5978,7 @@ function drawFieldsReserves(opts = {}) {
     return cs.length && cs.every(c => c.filled);
   }).map(String));
   const faded = c => c.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(,[^)]*)?\)/, 'rgba($1,$2,$3,0.3)');
-  const tone = c => ctx => carriedYear.has(ctx.chart.data.labels[ctx.dataIndex]) ? faded(c) : c;
+  const tone = c => ctx => carriedYear.has(ctx.chart?.data.labels[ctx.dataIndex]) ? faded(c) : c;
   const prodLabel = base ? `Produced since ${base}` : 'Produced';
   const datasets = [
     {label:'Remaining', data:remaining, backgroundColor:tone(REMAINING_COLOR), borderWidth:0, stack:'s'},
@@ -10178,11 +10178,13 @@ const pptAlpha = c => { const m = String(c).match(/rgba\([^)]*,\s*([\d.]+)\s*\)/
 
 // Skriptbare farger (valgt år uthevet, prognoser bleke): ta den sterkeste
 // varianten, så alle søylene får full farge i PowerPoint.
-function pptColor(c, n) {
+// ctx er {chart, dataset, datasetIndex} for fargefunksjoner som leser grafen
+// (f.eks. etikettene); uten den får de bare dataIndex.
+function pptColor(c, n, ctx = {}) {
   if (typeof c === 'function') {
     let best = null;
     for (let i = 0; i < Math.max(1, n); i++) {
-      const v = c({dataIndex: i, type: 'data'});
+      const v = c({...ctx, dataIndex: i, type: 'data'});
       if (best === null || pptAlpha(v) > pptAlpha(best)) best = v;
     }
     return pptHex(best);
@@ -10218,14 +10220,14 @@ function pptSpecFromChart(ch) {
   const title = k => (sc[k] && sc[k].title && sc[k].title.display !== false && sc[k].title.text) || '';
   if (base === 'scatter') {
     return {kind: 'scatter', xTitle: title('x'), yTitle: title('y'),
-      series: ch.data.datasets.map(d => ({name: d.label, points: d.data, color: pptColor(d.borderColor || d.backgroundColor, 1)}))};
+      series: ch.data.datasets.map((d, di) => ({name: d.label, points: d.data, color: pptColor(d.borderColor || d.backgroundColor, 1, {chart: ch, dataset: d, datasetIndex: di})}))};
   }
   const labels = (ch.data.labels || []).map(String);
   const series = ch.data.datasets.map((d, di) => {
     const line = (d.type || base) === 'line';
     const s = {name: d.label, type: line ? 'line' : 'bar', secondary: d.yAxisID === 'y1', dash: !!(d.borderDash && d.borderDash.length),
       values: d.data.map(v => (v == null || v === '' || isNaN(+v) ? null : +v)),
-      color: pptColor(line ? (d.borderColor || d.backgroundColor) : d.backgroundColor, labels.length)};
+      color: pptColor(line ? (d.borderColor || d.backgroundColor) : d.backgroundColor, labels.length, {chart: ch, dataset: d, datasetIndex: di})};
     if (!line && !d._noEst) {
       const est = pptEstimatePoints(ch, d, di, labels.length);
       if (est) { s.est = est.est; if (est.color) s.color = est.color; }
