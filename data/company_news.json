@@ -29,7 +29,7 @@
   "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no": {
    "company": "ConocoPhillips Skandinavia AS",
    "title": "\"site:www.conocophillips.no\" - Google Nyheter",
-   "n": 42
+   "n": 43
   },
   "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no": {
    "company": "TotalEnergies EP Norge AS",
@@ -1600,6 +1600,13 @@
    "s": "Smørefett til industri- og kjøretøybransjen TotalEnergies Nordic"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Smørefett i industrien Whitepaper - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMieEFVX3lxTFA4NDZ4VkpFdU1TRVg4TjBCUjV4QzhPTndDcnVRTjlFcUJkU1I1Z1VvSVVOT1ZKM3YxWUxCVmZuTl9hNXR2NjV6bWpENF8wQlFHVzhtR0VYQ05Xa2dLck01dDIwYXNfNkZheVRhRHY5QldoT0sxLVJ4Yg?oc=5",
+   "d": "2026-06-19",
+   "s": "Smørefett i industrien Whitepaper TotalEnergies Nordic"
+  },
+  {
    "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
    "t": "ORLEN strengthens Norwegian portfolio with Goliat stake",
    "u": "https://www.orlen.pl/en/about-the-company/media/press-releases/current/2026/June-2026/orlen-strengthens-norwegian-portfolio-with-goliat-stake",
@@ -2728,10 +2735,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO Awarded 17 Licenses in Norway as It Keeps Up Pace of Exploration and Development-2026-01-13 - dno.no",
+   "t": "DNO Awarded 17 Licenses in Norway as It Keeps Up Pace of Exploration and Development-2026-01-13 - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxNU3JKUXNuR1MtTEVXLU1mUU4taWJPRUhXM2dhaUpGa2ExMDBucko1NXhKWGhXbmh1WmZlV1FmN3NsQk94SmhVUDc0b2tyUE9hOWd1MmRxcmdnZzdiR09ERDJnT3R6MVozLUZIc3V4YWZGaTE5UDloRDB0UGpCV3BPSnByWC16cG9Pa3RqeHlfaGZQUUxmQTFGN2xXM0JQYlUyaUxFV2M4YzhhWWZuZ1I3Tm9lZWN2X1Jta0ZWLXhMTFB0YWV1WDRta1BVNFNTY2x3VjlyZUFrT2g5Zw?oc=5",
    "d": "2026-01-13",
-   "s": "DNO Awarded 17 Licenses in Norway as It Keeps Up Pace of Exploration and Development-2026-01-13 dno.no"
+   "s": "DNO Awarded 17 Licenses in Norway as It Keeps Up Pace of Exploration and Development-2026-01-13 DNO ASA"
   },
   {
    "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
@@ -3519,6 +3526,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Mangfold, likeverd og inkludering - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMigwFBVV95cUxPNFNnc2tCUnZjdmR6SEtIWmdaclZSZ2IwQ2k4NlI4NkkxSnNOMDZsRkdVZUNZQzg1cG51Sm8xYjJPck1OTFAwMmRpY0RiY0V1eGpLQXV6SWtFV3hxWS1Zd256bWhpeUkzcENGNnJXeFpuTVVBYUVkMlBYcXB4d0VCTmx4TQ?oc=5",
+   "d": "2024-04-04",
+   "s": "Mangfold, likeverd og inkludering ConocoPhillips Norway"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Utbygging og prosjekt - ConocoPhillips Norway",
    "u": "https://news.google.com/rss/articles/CBMidkFVX3lxTFBwY2FJTEJRWkYzcVljVzUwWS1vOEVZdWRMc1dPX3JvLTRYaHRkdzktUm5EcGFsS280N0JJdEZKdTZobTVad3FEMno4ZlNGcVpTRUhUMnpONHR6VmtaWmU1SjVabTA0MzIteTg5WExEanNUN1JjNVE?oc=5",
    "d": "2024-04-04",
@@ -3736,10 +3750,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Norway logs largest hydrocarbon discovery in 10 years-2023-07-10 - dno.no",
+   "t": "Norway logs largest hydrocarbon discovery in 10 years-2023-07-10 | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxNTHNTR1l4WWg5QVkzMVRySkpBRUl2RkJMVjBFdXdoUldRTnoyX05sc3dmRDc5bnlid2c5eG5LZTAtR2ktN1M3NnY3U2lra2o2U2FtWlFZLUpXQjhJY2JzYlozVUFKQmtBQjg0aDBkRWlkbWptSmVyeUhDOWxOZlZ1MGJfVDNBdXpsSjhtZmt5ay1FZWpCSWxVWlNMelBHS1A0bE41ZUdrdG5tb0tJRDJiMQ?oc=5",
    "d": "2023-07-10",
-   "s": "Norway logs largest hydrocarbon discovery in 10 years-2023-07-10 dno.no"
+   "s": "Norway logs largest hydrocarbon discovery in 10 years-2023-07-10 | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4370,13 +4384,6 @@
    "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTE5YSGxUa3pseG9jVUlURG1meEtFYUVKbV9FYXA1eTRiSjdVRGhoOEY4cmNOUXFEUjlKaEZkNXN1c3RtOHpHRG9vOGt1cVZNWk5EQVNOX1RBOHByeTh4N2tWTFdmVE14UF8zNk1uQmhZMA?oc=5",
    "d": "2021-06-01",
    "s": "Bruk riktig girolje for din maskin | TotalEnergies TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Bestill produkter online via e-Lub | TotalEnergies - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE5xVzVIaFg5T3VuN2pqdnFEcVVwN201X3ZXVEJaSmtja2V4cERUODItR3NaZlVNelpYeG9JQUJfWmNodHdfNzJXdWxST1Atek1WWjhsbE9vQkxHUGpkR0NJSnJ3VQ?oc=5",
-   "d": "2021-06-01",
-   "s": "Bestill produkter online via e-Lub | TotalEnergies TotalEnergies Nordic"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
