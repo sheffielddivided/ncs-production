@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-05",
+  "updated": "2026-11-09",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -25,10 +25,6 @@
     },
     "43485": {
       "hub": "Valhall area",
-      "auto": false
-    },
-    "43492": {
-      "hub": "Ula area",
       "auto": false
     },
     "43506": {
