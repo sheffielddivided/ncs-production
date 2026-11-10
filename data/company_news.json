@@ -39,7 +39,7 @@
   "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no": {
    "company": "DNO Norge AS",
    "title": "\"site:dno.no\" - Google Nyheter",
-   "n": 70
+   "n": 71
   },
   "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=": {
    "company": "DNO Norge AS",
@@ -73,6 +73,20 @@
   }
  },
  "items": [
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
+   "t": "Equinor ASA: Share buy-back - fourth tranche for 2026",
+   "u": "https://newsweb.oslobors.no/message/686081",
+   "d": "2026-11-10",
+   "s": "Acquisition or disposal of an issuer's own shares"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
+   "t": "Equinor ASA: Tilbakekjøp av egne aksjer - fjerde transje for 2026",
+   "u": "https://newsweb.oslobors.no/message/686080",
+   "d": "2026-11-10",
+   "s": "Acquisition or disposal of an issuer's own shares"
+  },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Lapse of Offer for Capricorn Energy plc",
@@ -1929,20 +1943,6 @@
    "s": "Ex date"
   },
   {
-   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
-   "t": "Equinor ASA: Protokoll fra ordinær generalforsamling 2026",
-   "u": "https://newsweb.oslobors.no/message/673474",
-   "d": "2026-05-13",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
-  },
-  {
-   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
-   "t": "Equinor ASA: Minutes from the Annual General Meeting 2026",
-   "u": "https://newsweb.oslobors.no/message/673473",
-   "d": "2026-05-13",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
-  },
-  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Completed block sale of existing shares in Aker BP ASA",
    "u": "https://newsweb.oslobors.no/message/673326",
@@ -3418,6 +3418,13 @@
    "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNZHpaN0hDWFVvMW1pWlBGV2pvNEpBMXRmNi15MS1oMmFYckdrWGh6OG51WTBLaG1XTEp1dm1pU1ZxYjBlelNyU1JzYU5tVHNERlotYkpqQzFCX2JQSFBQeHVaY0FaOUozOVU2Uk96NW50V0EtckxOemZyMzBvZ180U3lJWkNiY29QRlBGR24zYw?oc=5",
    "d": "2024-08-28",
    "s": "Dom fra tingretten i sak mot Oslo Børs | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "KJØP AV SMÅ AKSJEPOSTER (1) - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQSWJkSzljSm5Kam4wZkJoTWpDR2syMG1KWjdxY3RZUFVscmlJa2dfc2NXeHNoeVBSelV4MTNxMVo2TVU3Vjh5MlFjZEJobUlXRFF2bks4RnVHR2RFbms0OTFnQ3RvQ216MmhPZXN2X3R1a09ad3Npd1pEaTBoVFJtUlhocF9icVJ3Q0E?oc=5",
+   "d": "2024-08-28",
+   "s": "KJØP AV SMÅ AKSJEPOSTER (1) DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
