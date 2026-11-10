@@ -12603,6 +12603,13 @@ const isoMax = (a, b) => (a > b ? a : b);
 // list: alle aktiviteter på én rigg (lete- og utviklingsbrønnbaner, planlagte
 // inkludert). Returnerer strekene som skal tegnes: letebrønnene med justert
 // start, utviklingskampanjer og de planlagte, uendret.
+// Pågående operasjoner i riggplanen tegnes så mange dager forbi i dag, og
+// riggen regnes ikke som ledig før det.
+const RIG_ONGOING_DAYS = 30;
+// En pågående operasjon som slutter i dag eller i går (AIS-dataene kan ligge
+// et døgn etter). Slutter den tidligere, har AIS sett riggen dra.
+const rigOngoing = (w, today) => w.state === 'drilling' && w.end >= addDays(today, -2);
+
 function planRigBars(list, today, rigName) {
   const planned = list.filter(w => w.state === 'planned');
   const expl = list.filter(w => w.kind === 'expl' && w.state !== 'planned').map(w => ({...w, start0: w.start}));
@@ -12758,6 +12765,7 @@ function planRigBars(list, today, rigName) {
   if (late.length) {
     const fixed = planned.filter(w => !w.overdue).sort((a, b) => (a.start < b.start ? -1 : 1));
     let cur = out.concat(extra).reduce((m, b) => isoMax(m, b.end), today);
+    if (out.some(b => rigOngoing(b, today))) cur = isoMax(cur, addDays(today, RIG_ONGOING_DAYS));
     late.forEach(w => {
       for (let f; (f = fixed.find(x => x.end > cur && x.start < addDays(cur, 7)));) cur = f.end;
       const nextFixed = fixed.filter(x => x.start > cur).map(x => x.start).sort()[0];
@@ -13040,6 +13048,10 @@ function explRenderRigs() {
     axis += `<line x1="${x}" x2="${x}" y1="${TOP - 4}" y2="${H}" stroke="${d.getUTCMonth() === 0 ? '#c3ccd5' : '#e6ebf0'}"/>`
           + (label ? `<text x="${x + 3}" y="${TOP - 9}" class="ex-ax">${label}</text>` : '');
   }
+  // Pågående operasjoner forlenges ONGOING_DAYS forbi i dag med en stiplet
+  // del, så det synes at de ikke er ferdige. Forlengelsen er ikke et anslag
+  // for når de blir ferdige, og kortes inn mot neste aktivitet på riggen.
+  const ONGOING_DAYS = RIG_ONGOING_DAYS, ahead = addDays(today, ONGOING_DAYS);
   const bars = out.map(r => {
     const y = r.y, RH = r.h, multi = r.lanes > 1;
     const row = r.ws.map(w => {
@@ -13053,6 +13065,7 @@ function explRenderRigs() {
       }
       const isAisOnly = w.kind === 'ais';
       if (isAisOnly) { fill = w.cat === 'port' ? '#dbe7f1' : '#ece7ee'; stroke = '#b8c4d2'; }
+      const ongoing = rigOngoing({...w, end: endOf(w)}, today) && endOf(w) <= ahead;
       const room = Math.floor((b - a) / 5.6);
       const label = (w.overdue ? '⚠ ' : '') + w.title;
       const txt = room >= 5 ? label.slice(0, room - 1) + (label.length > room - 1 ? '…' : '') : '';
@@ -13060,6 +13073,7 @@ function explRenderRigs() {
       const note = (isDev && w.items.length > 1 ? ` · ${w.items.length} wellbores` : '')
         + (w.noEnd ? ' (no completion date reported; drawn until the rig\'s next activity)' : w.maybe ? ' (possibly still drilling)' : '')
         + (isDev && w.shifted ? ' (start adjusted to avoid overlap)' : '')
+        + (ongoing ? ` · ongoing; the dashed part runs ${ONGOING_DAYS} days past today to mark that, not as a completion estimate` : '')
         + (w.overdue ? ` · Sodir still lists this as planned, but its planned start (${fmtShort(w.sodirPlanned)}) has passed; drawn from the earliest the rig is free` : '')
         + (w.ais && w.aisStay ? ` · AIS: on ${w.aisStay.label} ${fmtShort(w.aisStay.from)} – ${fmtShort(w.aisStay.to)}` : '');
       const to = isAisOnly ? ' – ' + fmtShort(w.end) : w.ais ? ' – ' + fmtShort(w.end)
@@ -13068,12 +13082,21 @@ function explRenderRigs() {
       const ry = y + 3 + (multi ? w.lane * 13 : 0), rh = multi ? 11 : RH - 8;
       const tail = isDev && w.maybe && w.tailStart ? clampX(w.tailStart) : null;
       const split = tail !== null && tail > a + 2;
-      const rects = split
+      let rects = split
         ? `<rect x="${a.toFixed(1)}" y="${ry}" width="${(tail - a).toFixed(1)}" height="${rh}" rx="3" fill="${DEV_COLOR}"/>
            <rect x="${tail.toFixed(1)}" y="${ry}" width="${Math.max(b - tail, 3).toFixed(1)}" height="${rh}" rx="3" fill="${EX_ACTIVE}"
              fill-opacity="0.7" stroke="#0a6b47" stroke-dasharray="4 2"/>`
         : `<rect x="${a.toFixed(1)}" y="${ry}" width="${(b - a).toFixed(1)}" height="${rh}" rx="3" fill="${fill}"
              fill-opacity="${opacity}" stroke="${stroke}" stroke-dasharray="${dash}"/>`;
+      if (ongoing) {
+        const nextStart = r.ws.filter(o => o !== w && o.start >= w.start && o.start > endOf(w) && (o.lane || 0) === (w.lane || 0))
+          .map(o => o.start).sort()[0];
+        const ea = b;
+        const eb = clampX(nextStart && nextStart < ahead ? nextStart : ahead);
+        if (eb > ea + 1) rects += `
+           <rect x="${ea.toFixed(1)}" y="${ry}" width="${(eb - ea).toFixed(1)}" height="${rh}" rx="3" fill="${EX_ACTIVE}"
+             fill-opacity="0.25" stroke="#0a6b47" stroke-width="1.2" stroke-dasharray="4 2"/>`;
+      }
       return `<g onclick="${exOpen(w)}" style="cursor:pointer">
         ${rects}
         ${w.ais && !isAisOnly ? `<rect x="${a.toFixed(1)}" y="${ry}" width="${(b - a).toFixed(1)}" height="2" fill="#1a2332" fill-opacity="0.45"/>` : ''}
@@ -13115,7 +13138,8 @@ function explRenderRigs() {
         moved on and returned. Development wells on the same field and rig, less than ${DEV_MERGE_GAP} days apart, are one campaign,
         drawn as one bar named after the field. Striped bars are campaigns where no well has a reported completion date; they run
         until the rig's next activity starts (at most ${DEV_GAP_CAP} days). The green dashed part is a well started in the last
-        60 days, probably still being drilled. Dashed white bars are planned exploration wells (60-day placeholder). The red line is today.
+        60 days, probably still being drilled. Ongoing operations continue ${ONGOING_DAYS} days past today as a pale bar with a dashed
+        outline; this only marks that they are not finished and is not an estimate of when they end. Dashed white bars are planned exploration wells (60-day placeholder). The red line is today.
         Sodir has no planned dates for development wells, so those appear only once drilling has started.</div>
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
