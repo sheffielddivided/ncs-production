@@ -15,7 +15,7 @@ Natural Earth. De danske tallene i DCS kommer fra ENS-løsningen
 ([`sheffielddivided/ens`](https://github.com/sheffielddivided/ens)). Alt lagres
 som statiske JSON-filer i dette repoet.
 
-**Live:** https://sheffielddivided.github.io/ncs-production/
+**Live:** https://energy.kbak.no/ (speil: https://sheffielddivided.github.io/ncs-production/)
 
 ## Innhold
 
@@ -74,6 +74,7 @@ som statiske JSON-filer i dette repoet.
 | `make_coastline.py` | Engangsscript som bygger `data/coastline.json` |
 | `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
+| `.htaccess` | Apache-oppsett for energy.kbak.no: skjuler skript og rådata, kort cache og komprimering av datafilene |
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
 | `fetch_gas.py` | Henter månedlige gasspriser (SSB eksportpris, IMF Europa, Henry Hub, Norges Bank-kurser) til `data/gas_prices.json` |
 | `fetch_cpi.py` | Henter konsumprisindekser (US CPI-U, euroområdets HICP, SSBs KPI) til `data/cpi.json`, realprisene i Prices |
@@ -106,6 +107,20 @@ Sodir-APIet direkte fra nettleseren.
 Workflowen kjører 04:15 UTC hver dag og committer **kun** når Sodir faktisk har
 publisert nye tall. Sodir oppdaterer produksjonstall månedlig, så de fleste
 kjøringene blir en no-op. Jobben kan også kjøres manuelt fra Actions-fanen.
+
+## Publisering
+
+Siden publiseres to steder fra `main`:
+
+- **energy.kbak.no** (Servetheworld, Plesk): Plesks Git-utvidelse henter
+  repoet til `httpdocs` hver gang `main` får en ny commit (webhook i GitHub →
+  Plesk). Det gjelder også de daglige datacommitene fra workflowene.
+  `.htaccess` sperrer skript, workflows og rådata og setter cache og
+  komprimering.
+- **GitHub Pages:** som før.
+
+Redigering i appen (huber, feeder, brønnavn) skriver fortsatt til GitHub, og
+endringen når energy.kbak.no via samme webhook.
 
 ## Redigere huber
 
