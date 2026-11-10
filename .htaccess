@@ -1,0 +1,29 @@
+# Apache-oppsett for energy.kbak.no (Plesk henter repoet fra GitHub til httpdocs).
+# GitHub Pages ignorerer denne filen.
+
+# Ikke vis interne filer: skript, dokumentasjon, workflows, rådata og dotfiler.
+# .well-known må være åpen for Let's Encrypt.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^\.well-known/ - [L]
+  RewriteRule (^|/)\. - [F,L]
+  RewriteRule \.(py|md|yml|yaml|xls|xlsx)$ - [F,L]
+  RewriteRule ^data/[^/]+-raw/ - [F,L]
+</IfModule>
+
+# Datafilene oppdateres daglig: nettleseren skal alltid sjekke om det finnes
+# en nyere versjon (ETag), så nye tall vises med en gang.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(json|html)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+# Komprimer JSON og HTML (data/ er ca. 18 MB ukomprimert).
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE application/json text/html text/css application/javascript text/javascript image/svg+xml
+</IfModule>
+
+AddType application/json .json
+DirectoryIndex index.html
+Options -Indexes
