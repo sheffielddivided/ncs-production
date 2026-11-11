@@ -4087,12 +4087,14 @@ function seasonalChart(canvas, S, o) {
 }
 
 // PowerPoint-beskrivelse av sesonggrafen: båndet som stablet flate, snittet
-// stiplet, i fjor og i år heltrukket. Kategoriene er dagene; bare den første
-// i hver måned har etikett, så aksen viser månedene.
+// stiplet, i fjor og i år heltrukket. Kategoriene er dagene som Excel-datoer i
+// et skuddår (2024, så alle 366 dagene finnes), vist på en datoakse med
+// månedsnavn.
 function seasonalPptSpec(S, o) {
-  const labels = STORAGE_DAYS.map(d => d.endsWith('-01') ? STORAGE_MON[+d.slice(0, 2) - 1] : '');
+  const xl0 = Date.UTC(1899, 11, 30);
+  const labels = STORAGE_DAYS.map(d => (Date.UTC(2024, +d.slice(0, 2) - 1, +d.slice(3)) - xl0) / 864e5);
   const r = a => a.map(v => (v == null ? null : +v));
-  return {kind: 'cat', dir: 'col', labels, yTitle: o.yTitle, yMin: o.y.min ?? 0, yMax: o.y.max, yFormat: o.yFormat, catLabelSkip: 1,
+  return {kind: 'cat', dir: 'col', labels, yTitle: o.yTitle, yMin: o.y.min ?? 0, yMax: o.y.max, yFormat: o.yFormat, dateAxis: true,
     series: [{name: `Range ${S.span}`, type: 'band', lo: r(S.minD), hi: r(S.maxD), color: pptHex(o.bandSolid), opacity: 28, values: r(S.maxD)},
              {name: `Average ${S.span}`, type: 'line', dash: true, color: pptHex(o.avg), values: r(S.avgD)},
              {name: String(S.cur - 1), type: 'line', color: pptHex(o.prev), values: r(S.prevD)},
@@ -11281,7 +11283,12 @@ function pptAddChart(pptx, slide, spec, box) {
     const lo = list => ({chartColors: list.map(x => x.color), lineSize: 2, lineDataSymbol: 'none'});
     if (dashed.length) types.push({type: C.LINE, data: toData(dashed), options: {...lo(dashed), lineSize: 1.25, lineDash: 'dash'}});
     if (solid.length) types.push({type: C.LINE, data: toData(solid), options: lo(solid)});
-    slide.addChart(types, {...common, ...axisTitle(spec.yTitle), ...(spec.catLabelSkip ? {catAxisLabelFrequency: spec.catLabelSkip, catAxisMajorTickMark: 'none'} : {}),
+    // Datoakse (spec.dateAxis): kategoriene er Excel-datoer, og PowerPoint
+    // setter én etikett per måned med full bredde, i stedet for å bryte
+    // teksten i de smale dagkategoriene.
+    slide.addChart(types, {...common, ...axisTitle(spec.yTitle),
+      ...(spec.dateAxis ? {catLabelFormatCode: 'mmm', catAxisBaseTimeUnit: 'days', catAxisMajorTimeUnit: 'months', catAxisMajorUnit: 1,
+                           catAxisMajorTickMark: 'none'} : {}),
       ...(spec.yMin != null ? {valAxisMinVal: spec.yMin} : {}), ...(spec.yMax != null ? {valAxisMaxVal: spec.yMax} : {}),
       ...(spec.yFormat ? {valAxisLabelFormatCode: spec.yFormat} : {})});
     return;
