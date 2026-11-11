@@ -51,6 +51,13 @@ jobs:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: python fetch_gas.py
 
+      # Daglige TTF day-ahead-priser fra eugas (repoet sheffielddivided/eia),
+      # til prognosen for inneværende periode i Gas-fanen.
+      - name: Hent daglige TTF-priser
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_ttf_daily.py
+
       # Konsumprisindekser (USD, EUR, NOK) til realprisvisningen i Prices.
       - name: Hent konsumprisindekser
         continue-on-error: true
