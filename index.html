@@ -11806,6 +11806,7 @@ function loadExploration() {
                              fetchBundle('exploration_prospects'), fetchBundle('exploration_name_overrides')]).then(([b, , prospects, nameOv]) => {
     explNameOv = (nameOv && nameOv.names) || {};
     if (b) {
+      canonRigColumn(b);
       explRaw = b;
       explOwners = b.owners || [];
       const today = new Date().toISOString().slice(0, 10);
@@ -12119,6 +12120,7 @@ function loadDrill() {
   if (drillRows) return Promise.resolve();
   if (drillLoading) return drillLoading;
   drillLoading = Promise.all([loadExploration(), fetchBundle('field_wells')]).then(([, fw]) => {
+    canonRigColumn(fw);
     const out = [], seen = new Set();
     const add = (o) => {
       if (!o.entry || !o.completion || !(o.td > 0)) return;
@@ -12558,6 +12560,7 @@ function loadRigWells() {
   if (rigDevLoaded) return Promise.resolve();
   if (rigDevLoading) return rigDevLoading;
   rigDevLoading = fetchBundle('rig_wells').then(b => {
+    canonRigColumn(b);
     if (b) {
       const today = new Date().toISOString().slice(0, 10);
       const recent = addDays(today, -60);
@@ -12807,7 +12810,9 @@ function aisPlace(rigName, expl, camps, today) {
   const isSite = st => st.kind === 'field' || st.kind === 'well';
   const explLeft = [], campsLeft = [], unmatched = [];
   // Omdøpte rigger (alias) deler oppholdene med hovedoppføringen, som alene viser «bare AIS».
-  const isPrimary = !(rigAis.tracks.rigs[rigName] && rigAis.tracks.rigs[rigName].alias);
+  // Et omdøpt navn (RIG_RENAMED) er hovedoppføringen når riggen vises under dagens navn.
+  const tr = rigAis.tracks.rigs[rigName];
+  const isPrimary = !(tr && tr.alias) || rigCanon(tr.alias) === rigName;
 
   expl.forEach(w => {
     if (w.end < cover[0] || w.start0 > cover[1]) { explLeft.push(w); return; }
@@ -13634,6 +13639,19 @@ function rigContractCard(name) {
       Completed contracts are kept from earlier reports (greyed). Dayrates exclude mobilisation and other fees.</div></div>`;
 }
 
+// Omdøpte rigger: Sodirs brønndata bruker navnet riggen hadde da brønnen ble
+// boret, så samme rigg dukker opp under to navn. Tidligere navn -> dagens navn
+// (Sodirs innretningsnavn). Brukes på brønndataene når de lastes, så riggen er
+// én rad i tidslinjen, én rigg i tabellene og én profil. AIS-oppføringene
+// kobles fortsatt med alias i data/rig_ais.json.
+const RIG_RENAMED = {'DEEPSEA BOLLSTA': 'DEEPSEA BERGEN'};
+const rigCanon = n => (n && RIG_RENAMED[String(n).toUpperCase()]) || n;
+function canonRigColumn(b) {
+  const i = b && b.columns ? b.columns.indexOf('rig') : -1;
+  if (i >= 0) b.rows.forEach(r => { if (r[i]) r[i] = rigCanon(r[i]); });
+  return b;
+}
+
 const rigRes = (map, name) => {
   const r = map && map[name];
   return r && r.alias ? map[r.alias] : r;
@@ -13726,7 +13744,7 @@ async function explRenderFleet() {
   const asOf = rigAis.now.asOf;
   const q = explF.q.trim().toLowerCase();
   const rows = Object.keys(rigAis.now.rigs).filter(n => !rigAis.now.rigs[n].alias)
-    .map(name => ({name, n: {...rigNow(name)}}))
+    .map(name => ({name: rigCanon(name), n: {...rigNow(rigCanon(name))}}))
     .filter(r => r.n.lon != null && (!q || r.name.toLowerCase().includes(q)))
     .map(r => ({...r, state: rigState(r.n, asOf)}));
   const allRows = rows.slice();
@@ -13893,6 +13911,7 @@ const RG_SPEEDS = [[1, '1 day / s'], [3, '3 days / s'], [7, '1 week / s'], [30, 
 const RG_PERIODS = [[90, 'Last 3 months'], [180, 'Last 6 months'], [365, 'Last 12 months'], [0, 'All']];
 
 async function openRigProfile(name, quiet, seekMin) {
+  name = rigCanon(name);
   await Promise.all([loadRigAis(), loadRigFacts(), loadRigContracts()]);
   await loadExploration();
   const data = rigData(name);

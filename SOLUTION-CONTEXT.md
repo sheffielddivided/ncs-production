@@ -2539,6 +2539,17 @@ likevel (`continue-on-error`). Hullet mellom siste innlastede dag og i dag fylle
 av dagens øyeblikksbilde, så en forflytning i det hullet vises som en rett,
 stiplet linje.
 
+*Omdøpte rigger:* Sodirs brønndata bruker navnet riggen hadde da brønnen ble
+boret, så Deepsea Bollsta (omdøpt til Deepsea Bergen; Sodirs innretning heter
+DEEPSEA BERGEN) dukket opp som to rigger. `RIG_RENAMED` i index.html (tidligere
+navn → dagens) brukes på `rig`-kolonnen i exploration_wells, rig_wells og
+field_wells (Drilling performance) når de lastes (`canonRigColumn`), og på
+navnet i riggprofilen og Fleet-tabellen (`rigCanon`). Riggen er da én rad, én
+rigg og én profil. AIS-sporene ligger fortsatt under DEEPSEA BOLLSTA i
+rig_ais.json med DEEPSEA BERGEN som alias; `planRigBars` regner dagens navn som
+hovedoppføringen, så «bare AIS»-oppholdene vises. Nye navnebytter legges inn i
+`RIG_RENAMED`.
+
 *Identifikasjon:* `data/rig_ais.json` kobler Sodirs riggnavn til MMSI/IMO. Navnesøk
 i AIS-registeret ga treff på 22 av 24, men tre ga småbåter (Askeladden, Askepott,
 Linus; riktig skip har lengde > 80 m og IMO ≠ 0), COSLInnovator har to MMSI, og
