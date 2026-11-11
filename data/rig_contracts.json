@@ -32,6 +32,11 @@
    "contractor": "Shelf Drilling",
    "title": "Shelf Drilling announcements (April 2023, April 2024) and quarterly reports",
    "date": "2026-11-11"
+  },
+  "manual-linus": {
+   "contractor": "Odfjell Technology",
+   "title": "SFL fleet page (Linus), Odfjell Technology rig management page and Havtil consent",
+   "date": "2026-11-11"
   }
  },
  "rigs": {
@@ -176,6 +181,12 @@
   "SHELF DRILLING BARSK": {
    "contractor": "Shelf Drilling",
    "source": "manual-shelf"
+  },
+  "LINUS": {
+   "contractor": "Odfjell Technology (manager); owner SFL",
+   "design": "Jack-up (Jurong), 450 ft",
+   "built": "2014",
+   "source": "manual-linus"
   }
  },
  "contracts": [
@@ -460,6 +471,38 @@
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
    "source": "odfjell-2026-11-11"
+  },
+  {
+   "rig": "LINUS",
+   "location": "Norway",
+   "client": "ConocoPhillips",
+   "kind": "firm",
+   "start": "2014-01-01",
+   "end": "2019-05-31",
+   "startText": "2014",
+   "endText": "May-19",
+   "precision": "year/month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Original contract for West Linus (now Linus) in the Greater Ekofisk Area, from delivery in 2014.",
+   "contractor": "Odfjell Technology",
+   "source": "manual-linus"
+  },
+  {
+   "rig": "LINUS",
+   "location": "Norway",
+   "client": "ConocoPhillips",
+   "kind": "firm",
+   "start": "2019-06-01",
+   "end": "2029-06-30",
+   "startText": "Jun-19",
+   "endText": "Q2-29",
+   "precision": "month/quarter",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Extended in 2017 from May 2019 to the end of 2028 at a market-indexed dayrate, and later to Q2 2029: the owner SFL lists the firm period until Q2 2029 (sflcorp.com, November 2026). Odfjell Technology's page and the Havtil consent (valid to 31 Dec 2028) still give Q4 2028. No option period is listed. Managed by Odfjell Technology since 2022.",
+   "contractor": "Odfjell Technology",
+   "source": "manual-linus"
   },
   {
    "rig": "NOBLE CLAUS BACHMANN",
