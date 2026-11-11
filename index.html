@@ -2283,6 +2283,7 @@ function stateToHash() {
     if (prF.ba) q.set('pm', 'y'); else if (prF.bq) q.set('pm', 'q'); else if (prF.bm) q.set('pm', '1');
     if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
     if (prF.gr === 'q' || prF.gr === 'y') q.set('pq', prF.gr);
+    if (prF.sk && prF.sk !== 'eu') q.set('ps', prF.sk);
     if (prF.real) q.set('pr', '1');
     if (prF.avg) q.set('pa', '1');
     if (prF.og === 'grid') q.set('po', 'grid');
@@ -2384,6 +2385,8 @@ const SOURCES = {
   nb:       ['Norges Bank (exchange rates)', 'https://www.norges-bank.no', ''],
   ne:       ['Natural Earth (coastline)', 'https://www.naturalearthdata.com', 'public domain'],
   ens:      ['Danish Energy Agency (Energistyrelsen, ENS)', 'https://ens.dk/en/energy-sources/monthly-and-yearly-production', ''],
+  eex:      ['EEX, TTF Neutral Gas Price', 'https://www.eex.com', ''],
+  gie:      ['AGSI+, Gas Infrastructure Europe', 'https://agsi.gie.eu', ''],
 };
 function pageSources() {
   const m = topMode, v = currentSubView(), out = [];
@@ -2392,6 +2395,8 @@ function pageSources() {
     if (v === 'brent' || v === 'oilgas') add('ppb', 'eia', 'fred');
     if (v === 'diff') add('ppb');
     if (v === 'gas' || v === 'oilgas') add('ssb', 'imf', 'eia', 'nb');
+    if (v === 'gas' && priceData && priceData.ttfd) add('eex');
+    if (v === 'storage') add('gie');
     if (prF.real && v !== 'diff') {
       const cur = v === 'gas' ? gasCur() : 'USD';
       add(cur === 'USD' ? 'bls' : cur === 'EUR' ? 'eurostat' : 'ssb');
@@ -2512,6 +2517,7 @@ function applyHash() {
     prF.bq = q.get('pm') === 'q';
     if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
     prF.gr = ['q', 'y'].includes(q.get('pq')) ? q.get('pq') : 'm';
+    prF.sk = ['de', 'it', 'nl', 'fr'].includes(q.get('ps')) ? q.get('ps') : 'eu';
     prF.real = q.get('pr') === '1';
     prF.avg = q.get('pa') === '1';
     prF.og = q.get('po') === 'grid' ? 'grid' : 'scatter';
@@ -3296,6 +3302,7 @@ const PRICE_TABS = [
   {id: 'diff',    label: 'Differentials'},
   {id: 'gas',     label: 'Gas'},
   {id: 'oilgas',  label: 'Oil vs gas'},
+  {id: 'storage', label: 'EU storage'},
 ];
 let priceSubView = 'brent';
 const PRICE_MAX_SEL = 8;
@@ -3478,6 +3485,7 @@ function drawPrices() {
   if (priceSubView === 'diff') drawPriceDiff();
   else if (priceSubView === 'gas') drawPriceGas();
   else if (priceSubView === 'oilgas') drawPriceOilGas();
+  else if (priceSubView === 'storage') drawPriceStorage();
   else drawPriceBrent();
   document.getElementById('downloadBtn').disabled = false;
 }
@@ -3978,6 +3986,95 @@ function drawPriceGas() {
     `<strong>Norwegian export price</strong> = export value / export volume of natural gas in gaseous state (HS 27112100), i.e. what Norwegian gas was actually sold for, including long-term contracts &nbsp;|&nbsp; ` +
     `<strong>Conversion:</strong> monthly average exchange rates from Norges Bank; energy content assumed ${GAS_MJ_PER_SM3} MJ/Sm³ (gross), so converted figures are approximate; USD/boe uses Sodir's oil-equivalent convention (1 000 Sm³ gas = 1 Sm³ o.e. = ${BBL_PER_SM3} bbl, about ${Math.round(1 / GAS_BOE_PER_SM3)} Sm³ per boe), which makes it directly comparable with Brent in $/bbl &nbsp;|&nbsp; ` +
     `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank${td ? '; EEX TTF Neutral Gas Price (day-ahead), collected daily by eugas' : ''}`);
+}
+
+// ── MARKET: EU STORAGE ──
+// Fyllingsgraden i europeiske gasslagre, i % av kapasitet, per dag gjennom
+// året (data/eu_storage.json fra fetch_eugas.py; AGSI+ via eugas). Som
+// øverste graf i eugas: i år som linje, i fjor som svakere linje, og spennet
+// (min–maks) for de fem siste hele årene som bånd. Skuddårsdagen har bare
+// data hvert fjerde år: båndet krever flertall av årene, og enkeltdager uten
+// verdi i årets og fjorårets linje fylles med snittet av naboene.
+const STORAGE_SEL = [['eu', 'EU total'], ['de', 'Germany'], ['it', 'Italy'], ['nl', 'Netherlands'], ['fr', 'France']];
+const STORAGE_DAYS = (() => { const out = []; for (let d = Date.UTC(2000, 0, 1); d < Date.UTC(2001, 0, 1); d += 864e5) out.push(new Date(d).toISOString().slice(5, 10)); return out; })();
+let storageLoading = null;
+function drawPriceStorage() {
+  if (!priceData.storage) {
+    if (priceData.storage === false) { setChartEmpty('Could not load the gas storage data.'); setInfo(''); return; }
+    document.getElementById('chartArea').innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+    storageLoading = storageLoading || fetchBundle('eu_storage').then(b => { priceData.storage = b || false; });
+    storageLoading.then(() => { if (topMode === 'prices' && priceSubView === 'storage') drawChart(); });
+    return;
+  }
+  const sk = prF.sk || 'eu', st = priceData.storage, full = st.full[sk] || {};
+  const yNow = new Date().getUTCFullYear();
+  const cur = full[yNow] ? yNow : Math.max(...Object.keys(full).map(Number));
+  const hist = [1, 2, 3, 4, 5].map(k => cur - k).reverse().filter(y => full[y]);
+  const gap1 = a => a.map((v, i) => v == null && i > 0 && i < a.length - 1 && a[i - 1] != null && a[i + 1] != null ? +((a[i - 1] + a[i + 1]) / 2).toFixed(2) : v);
+  const line = y => gap1(STORAGE_DAYS.map(d => (full[y] || {})[d] ?? null));
+  const need = Math.ceil(hist.length / 2);
+  const band = fn => STORAGE_DAYS.map(d => { const v = hist.map(y => full[y][d]).filter(x => x != null); return v.length >= need ? fn(...v) : null; });
+  const curD = line(cur), prevD = line(cur - 1), minD = band(Math.min), maxD = band(Math.max);
+  const avgD = STORAGE_DAYS.map(d => { const v = hist.map(y => full[y][d]).filter(x => x != null); return v.length >= need ? +(v.reduce((t, x) => t + x, 0) / v.length).toFixed(2) : null; });
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const labels = STORAGE_DAYS.map(d => `${+d.slice(3)} ${MON[+d.slice(0, 2) - 1]}`);
+  const B = 'rgba(42,111,168,0.18)', CUR = 'rgba(0,48,87,0.95)', PREV = 'rgba(42,111,168,0.55)';
+  const span = `${hist[0]}–${hist[hist.length - 1]}`;
+  const datasets = [
+    {label: '_max', data: maxD, borderColor: 'transparent', backgroundColor: B, pointRadius: 0, fill: false, tension: 0.3, spanGaps: true, order: 3},
+    {label: `Range ${span}`, data: minD, borderColor: 'transparent', backgroundColor: B, pointRadius: 0, fill: '-1', tension: 0.3, spanGaps: true, order: 3},
+    {label: `Average ${span}`, data: avgD, borderColor: 'rgba(42,111,168,0.6)', backgroundColor: 'transparent', borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0.3, spanGaps: true, order: 2},
+    {label: String(cur - 1), data: prevD, borderColor: PREV, backgroundColor: PREV, borderWidth: 1.5, pointRadius: 0, tension: 0.3, spanGaps: true, order: 2},
+    {label: String(cur), data: curD, borderColor: CUR, backgroundColor: CUR, borderWidth: 2.5, pointRadius: 0, tension: 0.3, spanGaps: false, order: 1},
+  ];
+  let li = -1;
+  for (let i = curD.length - 1; i >= 0; i--) if (curD[i] != null) { li = i; break; }
+  const pills = `<div class="pill-group">${STORAGE_SEL.map(([k, l]) =>
+    `<button class="pill-btn${sk === k ? ' active' : ''}" onclick="priceSet('sk','${k}')">${l}</button>`).join('')}</div>`;
+  const dot = d => d.fill ? `background:${B}` : d.borderDash ? `background:repeating-linear-gradient(90deg,${d.borderColor} 0 4px,transparent 4px 7px);height:2px;border-radius:0` : `background:${d.borderColor};height:3px;border-radius:0`;
+  document.getElementById('chartArea').innerHTML = `<div class="np-bar">${pills}</div>
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${datasets.filter(d => !d.label.startsWith('_')).reverse().map(d => `<div class="legend-item"><div class="legend-dot" style="${dot(d)}"></div>${esc(d.label)}</div>`).join('')}</div>`;
+  // Stiplet loddrett strek ved siste måling.
+  const todayLine = {id: 'storageToday', afterDatasetsDraw(c) {
+    if (li < 0) return;
+    const x = c.scales.x.getPixelForValue(li), {top, bottom} = c.chartArea, ctx = c.ctx;
+    ctx.save(); ctx.strokeStyle = 'rgba(74,85,104,0.45)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = '#4a5568'; ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(labels[li], x + 4, top + 10); ctx.restore();
+  }};
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'line', data: {labels, datasets},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {filter: c => !c.dataset.label.startsWith('_') && c.parsed.y != null, callbacks: {
+        label: c => ` ${c.dataset.label.startsWith('Range') ? `Min ${span}` : c.dataset.label}: ${c.parsed.y.toFixed(1)} %`,
+        afterBody: items => { const i = items[0] && items[0].dataIndex; return maxD[i] != null ? ` Max ${span}: ${maxD[i].toFixed(1)} %` : ''; }}}},
+      scales: {
+        x: {ticks: {maxRotation: 0, autoSkip: false, font: {size: 9}, callback: (_, i) => STORAGE_DAYS[i].endsWith('-01') ? MON[+STORAGE_DAYS[i].slice(0, 2) - 1] : null},
+            grid: {display: false}},
+        y: {min: 0, max: 100, title: {display: true, text: '% of capacity', color: '#4a5568', font: {size: 10}},
+            ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {color: 'rgba(0,0,0,0.05)'}},
+      }},
+    plugins: [todayLine],
+  });
+  lastLabels = STORAGE_DAYS; lastXTitle = 'Day (MM-DD)';
+  lastDatasets = [{label: `${cur}, %`, data: curD.map(v => v ?? '')}, {label: `${cur - 1}, %`, data: prevD.map(v => v ?? '')},
+    {label: `Min ${span}, %`, data: minD.map(v => v ?? '')}, {label: `Average ${span}, %`, data: avgD.map(v => v ?? '')},
+    {label: `Max ${span}, %`, data: maxD.map(v => v ?? '')}];
+  const name = STORAGE_SEL.find(x => x[0] === sk)[1];
+  setChartTitle(`Gas storage · ${name}`, `Filling level, % of capacity · ${cur} against ${cur - 1} and the ${span} range`);
+  const v = li >= 0 ? curD[li] : null, f1 = x => x == null ? '—' : x.toFixed(1) + ' %';
+  const pp = (a, b) => a == null || b == null ? '' : ` (${a - b >= 0 ? '+' : '−'}${Math.abs(a - b).toFixed(1)} pp)`;
+  const status = v == null ? '' : minD[li] != null && v < minD[li] ? 'below the five-year minimum'
+               : maxD[li] != null && v > maxD[li] ? 'above the five-year maximum' : 'within the five-year range';
+  const upd = st.updated ? fmtShort(st.updated.slice(0, 10)) : '';
+  setInfo(v == null ? 'No data for this year yet.' :
+    `<strong>Latest:</strong> ${f1(v)} on ${labels[li]} ${cur}, ${status} &nbsp;|&nbsp; ` +
+    `<strong>Same day ${cur - 1}:</strong> ${f1(prevD[li])}${pp(v, prevD[li])} &nbsp;|&nbsp; ` +
+    `<strong>${span}:</strong> min ${f1(minD[li])}, average ${f1(avgD[li])}${pp(v, avgD[li])}, max ${f1(maxD[li])} &nbsp;|&nbsp; ` +
+    `<strong>Source:</strong> AGSI+, Gas Infrastructure Europe; filling level of the storage facilities that report to AGSI+, collected daily by eugas${upd ? `, updated ${upd}` : ''}`);
 }
 
 // ── PRICES: OIL VS GAS ──

@@ -15,7 +15,7 @@ Kilder (alle åpne, med kildehenvisning):
   enheter. Fri bruk med kildehenvisning.
 
 Daglige europeiske gasspriser er ikke med her. TTF day-ahead (EEX) hentes
-separat av fetch_ttf_daily.py og brukes bare til prognosen for inneværende
+separat av fetch_eugas.py og brukes bare til prognosen for inneværende
 periode i Gas-fanen.
 
 Feiler en kilde, beholdes forrige verdier for den; feiler alt, beholdes
