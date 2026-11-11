@@ -2424,9 +2424,13 @@ vinduet.
 fra riggselskapenes fleet status reports. Sodir har ingen planlagte datoer for
 utviklingsbrønner, så kontraktene er det eneste som viser hvem som har riggen
 framover. Rapportene kommer hvert kvartal eller oftere, som PDF i hvert selskaps
-eget format. Skriptet kjøres derfor for hånd når en ny rapport er lastet ned
-(`python import_fleet_report.py rapport.pdf [--dry-run]`); den daglige jobben rører
-ikke fila. Hvert selskap har sin egen leser (`READERS`), i dag bare Noble.
+eget format. PDF-ene leses inn for hånd når en ny rapport er lastet ned
+(`python import_fleet_report.py rapport.pdf [flere.pdf] [--dry-run]`). Hvert selskap
+har sin egen leser (`READERS`): Noble og Transocean. Odfjell og COSL har ingen
+rapport, bare en grafisk tidslinje på nettsiden; de leses av den daglige jobben
+(`python import_fleet_report.py --web [odfjell] [cosl]`, `continue-on-error`), og
+uten endringer på sidene skrives ingenting, så kilden beholder datoen da
+tidslinjen sist endret seg. Feiler en side, beholdes forrige datasett.
 
 *Fila:* `contracts` er en liste med én rad per kontrakt eller opsjon: `rig`
 (Sodir-navnet), `client`, `location`, `kind` (`firm`/`option`), `start`/`end` (ISO,
@@ -2446,6 +2450,39 @@ lyseblå stolper (mørkeblå er fast periode), regnet om fra x-posisjon med
 månedsrutene øverst. En opsjon knyttes til kontrakten den følger. Faste stolper
 som ingen tabellrad dekker, er avsluttede kontrakter rapporten ikke lister lenger,
 og tas med som historikk med kunde «Undisclosed».
+
+*Transocean-leseren:* én tabell over hele flåten med én linje per kontrakt
+eller opsjon (status Firm, Priced Option(s), Out of Service, Stacked), datoer
+(måned) og dagrate per linje. Kolonnene avgrenses midt mellom overskriftenes
+sentre; riggnavnet står bare på første linje. «Out of Service» (verft,
+mobilisering) og stablede rigger tas ikke med. NB: rapporten sier at innholdet
+ikke skal publiseres eller videreformidles uten Transoceans samtykke.
+
+*Odfjell (odfjelldrilling.com/our-fleet):* serverrendret HTML. Per rigg en
+stolpe av perioder (`contract`, `option`, `available` = «continued optionality
+under frame agreement», `empty`) med bredde i prosent, og årsmerker under.
+Etter temaets CSS har alle merkene unntatt det siste lik bredde og det siste
+bredde 0, så stolpen går fra 1. januar første år til 1. januar siste år.
+Breddene er avstanden mellom påfølgende sluttdatoer: Deepsea Stavanger har
+−47,6 % og 147,6 %, en kontrakt som sluttet før stolpen starter. Nettsiden
+oppgir bare «Current client», som settes på kontrakten som løper i dag (eller
+den første kommende); de andre får «Undisclosed». WordPress-API-et
+(`/wp-json/wp/v2/rig`) har ingen datoer. Navn som skiller seg fra Sodirs står i
+`WEB_ALIAS` (Deepsea Mira → WEST MIRA, Hercules → WEST HERCULES).
+
+*COSL (cosl.no):* tidslinjen tegnes av et skript med én status per år:
+`booked`, `options`, `partial-booked` (`bookedPercentage` % fast fra venstre,
+resten opsjon) og `alternate-booked-right` (`alternateBookedPercentage` % ledig
+fra høyre, resten opsjon). Alle år er skravert som opsjon i CSS-en med mindre noe
+dekker dem. Klient og sted står i teksten over hver tidslinje og antas å gjelde
+hele den faste perioden.
+
+Datoene fra grafene er omtrentlige (`precision: chart`, vist med ~). Kontrakter
+som løp allerede da grafen begynner, har `startOpen: true` og vises «before
+Jan 2026»; de tegnes fra venstre kant. Når grafen flytter seg til neste år,
+matches de på overlapp i stedet for startdato, og den tidligste kjente starten
+beholdes, så historikken ikke går tapt. Kundenavn normaliseres (`clean_client`:
+«A/S Norske Shell» → Shell, «Vår Energi ASA» → Vår Energi).
 
 *Historikk og fletting:* samme rigg, kunde og type med start innenfor 150 dager er
 samme kontrakt og oppdateres. En kontrakt som er avsluttet før den nye rapporten,

@@ -13535,6 +13535,8 @@ const conWhen = (c, which) => {
   const t = which === 'start' ? c.startText : c.endText;
   if (t) return t;
   const [y, m] = c[which].split('-');
+  // Ukjent start: kontrakten løp allerede da grafen i kilden begynner.
+  if (which === 'start' && c.startOpen) return `before ${MONTH_ABBR[+m - 1]} ${y}`;
   return `~${MONTH_ABBR[+m - 1]} ${y}`;
 };
 const conPeriod = c => `${conWhen(c, 'start')} – ${conWhen(c, 'end')}`;
@@ -13549,9 +13551,10 @@ function contractBars(name) {
   const out = [];
   let lastEnd = '';
   contractsFor(name).forEach(c => {
-    const s = lastEnd && c.start <= lastEnd && c.end > lastEnd ? addDays(lastEnd, 1) : c.start;
+    // Ukjent start tegnes fra venstre kant av grafen.
+    const s = c.startOpen ? '1900-01-01' : lastEnd && c.start <= lastEnd && c.end > lastEnd ? addDays(lastEnd, 1) : c.start;
     if (c.end < s) return;
-    out.push({...c, s, e: c.end, shifted: s !== c.start});
+    out.push({...c, s, e: c.end, shifted: !c.startOpen && s !== c.start});
     if (c.end > lastEnd) lastEnd = c.end;
   });
   return out;
@@ -13614,7 +13617,8 @@ function rigContractCard(name) {
       <th class="ex-l">Client</th><th class="ex-l">Location</th><th class="ex-l">Period</th><th>Dayrate</th><th class="ex-l">Comment</th>
       </tr></thead><tbody>${rows}</tbody></table></div>` : ''}
     <div class="pf-map-note">Source: ${lastSrc ? `${esc(lastSrc.contractor)} fleet status report, ${fmtShort(lastSrc.date)}` : 'data/rig_contracts.json'}.
-      Dates are the contractor's estimates, often only a month or a quarter; dates marked ~ are read from the report's timeline chart.
+      Dates are the contractor's estimates, often only a month or a quarter; dates marked ~ are read from a timeline chart
+      (the report's, or the contractor's website for Odfjell and COSL, which show only the current client).
       Completed contracts are kept from earlier reports (greyed). Dayrates exclude mobilisation and other fees.</div></div>`;
 }
 

@@ -313,7 +313,7 @@ def read_noble(pdf, text):
         cover = sum(max(0, (min(b, date.fromisoformat(r['end'])) - max(a, date.fromisoformat(r['start']))).days)
                     for r in out if r['rig'] == o['rig'])
         if cover < 0.2 * max(1, (b - a).days) and (b - a).days >= 20:
-            out.append({'rig': o['rig'], 'location': '', 'client': 'Undisclosed', 'kind': 'firm',
+            out.append({**({'startOpen': True} if o['before'] else {}), 'rig': o['rig'], 'location': '', 'client': 'Undisclosed', 'kind': 'firm',
                         'start': o['start'], 'end': o['end'], 'startText': '', 'endText': '',
                         'precision': 'chart', 'dayrate': None, 'dayrateText': '',
                         'note': 'Firm period read from the contract timeline chart; the report does not list this contract.'
@@ -331,7 +331,222 @@ def read_noble(pdf, text):
     return 'Noble', as_of, out, rigs
 
 
-READERS = [('Noble Corporation', read_noble)]
+# ── Transocean ───────────────────────────────────────────────────────────────
+TRANSOCEAN_STATUS = {'Firm': 'firm', 'Priced Option': 'option', 'Priced Options': 'option'}
+
+
+def read_transocean(pdf, text):
+    """Én tabell over hele flåten: én linje per kontrakt eller opsjon, med
+    status (Firm, Priced Options, Out of Service, Stacked), datoer og dagrate.
+    Riggnavnet står bare på første linje for hver rigg."""
+    from datetime import datetime
+    m = re.search(r'—\s*([A-Z][a-z]+ \d{1,2}, \d{4})\s*—', text) or re.search(r'As of ([A-Z][a-z]+ \d{1,2}, \d{4})', text)
+    as_of = datetime.strptime(m.group(1), '%B %d, %Y').date().isoformat()
+    out, rigs = [], {}
+    for page in pdf.pages:
+        words = page.extract_words()
+        hdr = {w['text']: w for w in words if w['text'] in ('Location', 'Customer', 'Status', 'Comments')}
+        if len(hdr) < 4:
+            continue
+        top = hdr['Customer']['top']
+        start = next(w for w in words if w['text'] == 'Start' and abs(w['top'] - top) < 15)
+        end = next(w for w in words if w['text'] == 'End' and abs(w['top'] - top) < 15)
+        dollars = next(w for w in words if w['text'] == '(Dollars)')
+        foot = next((w for w in words if w['text'] == 'Footnote'), None)
+        entered = next((w for w in words if w['text'] == 'Service' and abs(w['top'] - top) < 3), None)
+        ctr = lambda w: (w['x0'] + w['x1']) / 2
+        cols = [('location', ctr(hdr['Location'])), ('client', ctr(hdr['Customer'])), ('status', ctr(hdr['Status'])),
+                ('start', ctr(start)), ('end', ctr(end)), ('dayrate', ctr(dollars))]
+        bounds = {}
+        for i, (k, c) in enumerate(cols):
+            lo = (cols[i - 1][1] + c) / 2 if i else c - 45
+            hi = (c + cols[i + 1][1]) / 2 if i + 1 < len(cols) else hdr['Comments']['x0'] - 25
+            bounds[k] = (lo, hi)
+        name_hi = foot['x0'] - 4 if foot else 240
+        body = [w for w in words if w['top'] > top + 8]
+        cur = None
+        for ln in _lines(body):
+            ws = ln['words']
+            get = lambda k: _text([w for w in ws if bounds[k][0] <= ctr(w) < bounds[k][1]])
+            name = _text([w for w in ws if w['x1'] < name_hi])
+            st, en = get('start'), get('end')
+            if re.fullmatch(r'[A-Z][a-z]{2}-\d\d', st or '') is None:
+                if name and not re.search(r'\(\d+\)$', name) and get('status') in ('Stacked', 'Idle'):
+                    cur = name    # rigg uten kontrakt
+                continue
+            if name:
+                cur = name
+                yr = _text([w for w in ws if entered and abs(ctr(w) - ctr(entered)) < 25])
+                rigs[cur] = {'built': yr} if re.fullmatch(r'\d{4}', yr or '') else {}
+            status = get('status')
+            kind = TRANSOCEAN_STATUS.get(status)
+            if not kind or not cur:
+                continue    # Out of Service: verft, mobilisering
+            s, sp = parse_when(st, False)
+            e, ep = parse_when(en, True)
+            client = get('client')
+            rate = get('dayrate')
+            out.append({
+                'rig': cur, 'location': get('location'), 'client': 'Undisclosed' if client == 'Not Disclosed' else client,
+                'kind': kind, 'start': s, 'end': e or s, 'startText': st, 'endText': en, 'precision': 'month',
+                'dayrate': int(rate.replace(',', '')) if re.fullmatch(r'[\d,]+', rate) else None,
+                'dayrateText': rate if not re.fullmatch(r'[\d,]+', rate) else '',
+                'note': _text([w for w in ws if ctr(w) >= hdr['Comments']['x0'] - 25]),
+            })
+    return 'Transocean', as_of, out, rigs
+
+
+READERS = [('Noble Corporation', read_noble), ('Transocean', read_transocean)]
+
+
+# ── Nettsider ────────────────────────────────────────────────────────────────
+# Odfjell og COSL har ingen tabell, bare en grafisk tidslinje på nettsiden.
+# Begge leses rett fra HTML-en; datoene er det grafen viser, så de er omtrentlige.
+WEB_ALIAS = {'DEEPSEA MIRA': 'WEST MIRA', 'HERCULES': 'WEST HERCULES'}   # nettsidens navn -> Sodirs
+WEB_LOC = {'UK': 'United Kingdom', 'Norwegian Continental Shelf': 'Norway'}
+UA = {'User-Agent': 'Mozilla/5.0 (compatible; ncs-production rig contracts)'}
+
+
+def _get(url):
+    import requests
+    r = requests.get(url, headers=UA, timeout=60)
+    r.raise_for_status()
+    return r.text
+
+
+def _frac_date(y0, years):
+    """Dato for et punkt «years» år etter 1. januar y0."""
+    whole = int(years // 1)
+    y = y0 + whole
+    d = date(y, 1, 1) + timedelta(days=round((years - whole) * (366 if calendar.isleap(y) else 365)))
+    return d.isoformat()
+
+
+def _frac_end(y0, years):
+    """Sluttdato: dagen før punktet, så slutten av et år blir 31. desember."""
+    return (date.fromisoformat(_frac_date(y0, years)) - timedelta(days=1)).isoformat()
+
+
+def _web_row(rig, client, location, kind, s, e, note, open_start=False):
+    return {**({'startOpen': True} if open_start else {}), 'rig': rig, 'client': client or 'Undisclosed', 'location': location, 'kind': kind, 'start': s, 'end': e,
+            'startText': '', 'endText': '', 'precision': 'chart', 'dayrate': None, 'dayrateText': '', 'note': note}
+
+
+def read_odfjell():
+    """odfjelldrilling.com/our-fleet: per rigg en stolpe av perioder
+    (contract, option, available, empty) med bredde i prosent, og årsmerker
+    under. Merkene står med lik avstand, og det siste har bredde 0, så stolpen
+    går fra 1. januar første år til 1. januar siste år. Breddene er avstanden
+    mellom påfølgende sluttdatoer; en negativ bredde er en periode som sluttet
+    før stolpen starter (Deepsea Stavanger)."""
+    import html as H
+    url = 'https://www.odfjelldrilling.com/our-fleet/'
+    page = _get(url)
+    out, rigs = [], {}
+    for a in re.findall(r'<a class="fleet-rig"[\s\S]*?</a>', page):
+        name = H.unescape(re.search(r'fleet-rig__title">([^<]*)', a).group(1)).strip()
+        spec = {k.strip(' :'): H.unescape(v).strip() for k, v in
+                re.findall(r'spec-title">([^<]*)</div>\s*<div class="fleet-rig__spec-value">([^<]*)', a)}
+        per = [(k, float(v)) for k, v in re.findall(r'availability__period (\w+)" style="width: ([-\d.]+)%', a)]
+        years = [int(y) for y in re.findall(r'tick-year">\s*(\d{4})', a)]
+        if not per or len(years) < 2:
+            continue
+        y0, span = years[0], years[-1] - years[0]
+        rig = WEB_ALIAS.get(name.upper(), name)
+        rigs[rig] = {'built': spec.get('Year delivered', '')}
+        loc = WEB_LOC.get(spec.get('Location', ''), spec.get('Location', ''))
+        client = spec.get('Current client', '')
+        today = date.today().isoformat()
+        pos, mine = 0.0, []
+        for kind, w in per:
+            a0, pos = pos, pos + w / 100 * span
+            if w <= 0 or kind == 'empty':
+                continue
+            s, e = _frac_date(y0, max(a0, 0)), _frac_end(y0, pos)
+            note = 'Read from the timeline on odfjelldrilling.com.'
+            if kind == 'contract':
+                mine.append(_web_row(rig, '', loc, 'firm', s, e, note
+                                     + (' Began before the timeline does, so the start is unknown.' if a0 <= 0 else ''), a0 <= 0))
+            else:
+                mine.append(_web_row(rig, '', loc, 'option', s, e, note
+                                     + (' Continued optionality under a frame agreement.' if kind == 'available' else '')))
+        # Nettsiden oppgir bare «Current client»: den gjelder kontrakten som løper
+        # i dag, eller den første kommende. Opsjoner får kunden til kontrakten de følger.
+        firm = [r for r in mine if r['kind'] == 'firm']
+        cur = next((r for r in firm if r['start'] <= today <= r['end']), None) or next((r for r in firm if r['start'] > today), None)
+        for r in mine:
+            if r['kind'] == 'firm':
+                r['client'] = client if r is cur and client else 'Undisclosed'
+                if r['client'] == 'Undisclosed':
+                    r['note'] += ' The website names only the current client.'
+            else:
+                prev = [f for f in firm if f['end'] <= r['start']]
+                r['client'] = prev[-1]['client'] if prev else 'Undisclosed'
+        out += mine
+    return 'Odfjell', date.today().isoformat(), out, rigs, url
+
+
+def read_cosl():
+    """cosl.no: tidslinjen tegnes av et skript med én status per år:
+    booked (hele året fast), options, partial-booked (bookedPercentage % fast
+    fra venstre, resten opsjon) og alternate-booked-right (alternateBookedPercentage
+    % ledig fra høyre, resten opsjon). Alle år er skravert (opsjon) som
+    utgangspunkt. Klient og sted står i teksten over hver tidslinje."""
+    import html as H
+    url = 'https://www.cosl.no/'
+    page = _get(url)
+    heads = [(m.start(), m.group(1), re.sub(r'<[^>]+>', ' ', m.group(2)))
+             for m in re.finditer(r'<h2[^>]*><a href="/cosl\w+">(\w+)</a></h2>([\s\S]{0,800}?)</div>', page)]
+    script = next(m.group(1) for m in re.finditer(r'<script[^>]*>([\s\S]*?)</script>', page) if 'createTimeline' in m.group(1))
+    data = {}
+    for m in re.finditer(r'const (timelineData\d+) = \[([\s\S]*?)\];', script):
+        data[m.group(1)] = [dict(year=int(y), status=s, pct=float(p) if p else None) for y, s, p in re.findall(
+            r"year:\s*(\d{4}),\s*status:\s*'([\w-]+)'(?:,\s*\w+Percentage:\s*([\d.]+))?", m.group(2))]
+    calls = re.findall(r"createTimeline\('(timeline\d+)',\s*(timelineData\d+)\)", script)
+    tl_pos = {t: page.find(f'id="{t}"') for t, _ in calls}
+    out, rigs = [], {}
+    for tl, var in calls:
+        # Riggen er overskriften rett før tidslinjen på siden.
+        head = max((h for h in heads if h[0] < tl_pos[tl]), key=lambda h: h[0], default=None)
+        if not head or var not in data:
+            continue
+        rig = head[1]
+        txt = ' '.join(H.unescape(head[2]).split())
+        client = (re.search(r'Client:\s*(.*?)\s*(?:Location:|$)', txt) or [None, ''])[1]
+        loc = WEB_LOC.get((re.search(r'Location:\s*(.*)$', txt) or [None, ''])[1].strip(), '')
+        # Hvert år blir to delperioder: [fast | opsjon | ledig] i brøkdeler av året.
+        segs = []
+        for d in data[var]:
+            st, p = d['status'], (d['pct'] or 0) / 100
+            parts = {'booked': [('firm', 1)], 'options': [('option', 1)],
+                     'partial-booked': [('firm', p), ('option', 1 - p)],
+                     'alternate-booked-right': [('option', 1 - p), ('free', p)],
+                     'alternate-booked': [('free', p), ('option', 1 - p)]}.get(st, [('option', 1)])
+            x = d['year']
+            for k, f in parts:
+                if f > 0:
+                    segs.append([k, x, x + f])
+                x += f
+        merged = []
+        for k, a, b in segs:
+            if merged and merged[-1][0] == k and abs(merged[-1][2] - a) < 1e-6:
+                merged[-1][2] = b
+            else:
+                merged.append([k, a, b])
+        y0 = data[var][0]['year']
+        for k, a, b in merged:
+            if k == 'free':
+                continue
+            s, e = _frac_date(y0, a - y0), _frac_end(y0, b - y0)
+            out.append(_web_row(rig, client, loc, k, s, e,
+                                'Read from the timeline on cosl.no.' + (' Began before the timeline does, so the start is unknown.'
+                                                                        if k == 'firm' and a == y0 else '')
+                                + (' Client assumed to be the current client.' if client else ''), a == y0))
+        rigs[rig] = {}
+    return 'COSL', date.today().isoformat(), out, rigs, url
+
+
+WEB = {'odfjell': read_odfjell, 'cosl': read_cosl}
 
 
 # ── Fletting ─────────────────────────────────────────────────────────────────
@@ -350,8 +565,23 @@ def sodir_rigs():
 
 
 def same(a, b):
-    return (a['rig'] == b['rig'] and a['kind'] == b['kind'] and a['client'].lower() == b['client'].lower()
-            and abs((date.fromisoformat(a['start']) - date.fromisoformat(b['start'])).days) <= MATCH_DAYS)
+    if not (a['rig'] == b['rig'] and a['kind'] == b['kind'] and a['client'].lower() == b['client'].lower()):
+        return False
+    if a.get('startOpen') or b.get('startOpen'):
+        # Starten er bare starten på grafen; samme kontrakt hvis periodene overlapper.
+        return a['start'] <= b['end'] and b['start'] <= a['end']
+    return abs((date.fromisoformat(a['start']) - date.fromisoformat(b['start'])).days) <= MATCH_DAYS
+
+
+CLIENT = [(r'^A/S Norske Shell$', 'Shell'), (r'\s+(ASA|AS|S\.A\.|Limited|Ltd\.?|plc)$', ''), (r'^Bp$', 'bp'),
+          (r'^Not Disclosed$', 'Undisclosed')]
+
+
+def clean_client(c):
+    c = ' '.join((c or '').split())
+    for pat, rep in CLIENT:
+        c = re.sub(pat, rep, c)
+    return c or 'Undisclosed'
 
 
 def merge(db, contractor, as_of, rows, rigs, src_id, title):
@@ -361,7 +591,7 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
         name = known.get(r['rig'].upper())
         if not name:
             continue
-        keep_rows.append({**r, 'rig': name, 'contractor': contractor, 'source': src_id})
+        keep_rows.append({**r, 'rig': name, 'client': clean_client(r['client']), 'contractor': contractor, 'source': src_id})
     old = db['contracts']
     mine = [c for c in old if c.get('contractor') == contractor and c.get('source') != 'manual']
     others = [c for c in old if c not in mine]
@@ -376,6 +606,8 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
             used.add(hit)
             if as_of >= c_date:
                 n = keep_rows[hit]
+                if n.get('startOpen') and c['start'] < n['start']:
+                    n['start'] = c['start']    # tidligere kjent start; grafen har flyttet seg
                 if any(n.get(k) != c.get(k) for k in ('start', 'end', 'dayrate', 'location', 'note')):
                     log.append(f'  ~ {n["rig"]}: {n["client"]} {c["start"]}–{c["end"]} → {n["start"]}–{n["end"]}')
                 result.append(n)
@@ -403,25 +635,54 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
     return log
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('pdf')
-    ap.add_argument('--dry-run', action='store_true')
-    a = ap.parse_args()
-    import pdfplumber
-    with pdfplumber.open(a.pdf) as pdf:
-        text = '\n'.join((p.extract_text() or '') for p in pdf.pages[:3])
-        reader = next((fn for key, fn in READERS if key in text), None)
-        if not reader:
-            sys.exit('Kjenner ikke igjen rapporten. Lesere finnes for: ' + ', '.join(k for k, _ in READERS))
-        contractor, as_of, rows, rigs = reader(pdf, text)
+def prune_sources(db):
+    used = {c.get('source') for c in db['contracts']} | {r.get('source') for r in db['rigs'].values()}
+    db['sources'] = {k: v for k, v in db['sources'].items() if k in used}
+
+
+def run(db, contractor, as_of, rows, rigs, title, url=None):
     src_id = f'{contractor.lower()}-{as_of}'
-    db = load()
-    log = merge(db, contractor, as_of, rows, rigs, src_id, f'{contractor} Fleet Status Report {as_of}')
-    print(f'{contractor} {as_of}: {len(rows)} rader i rapporten, '
+    log = merge(db, contractor, as_of, rows, rigs, src_id, title)
+    if url:
+        db['sources'][src_id]['url'] = url
+    print(f'{contractor} {as_of}: {len(rows)} rader, '
           f'{sum(1 for c in db["contracts"] if c.get("source") == src_id)} på rigger Sodir kjenner')
     print('\n'.join(log) or '  ingen endringer')
-    if a.dry_run:
+    return log
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('pdf', nargs='*', help='fleet status report(er) som PDF')
+    ap.add_argument('--web', nargs='*', choices=sorted(WEB), help='les nettsidene (uten navn: alle)')
+    ap.add_argument('--dry-run', action='store_true')
+    a = ap.parse_args()
+    db = load()
+    changed = False
+    for path in a.pdf:
+        import pdfplumber
+        with pdfplumber.open(path) as pdf:
+            text = '\n'.join((p.extract_text() or '') for p in pdf.pages[:3])
+            reader = next((fn for key, fn in READERS if key in text), None)
+            if not reader:
+                sys.exit('Kjenner ikke igjen rapporten. Lesere finnes for: ' + ', '.join(k for k, _ in READERS))
+            contractor, as_of, rows, rigs = reader(pdf, text)
+        changed |= bool(run(db, contractor, as_of, rows, rigs, f'{contractor} Fleet Status Report {as_of}'))
+    if a.web is not None:
+        for name in (a.web or sorted(WEB)):
+            # Nettsidene leses daglig. Uten endringer skrives ingenting, så kilden
+            # beholder datoen da tidslinjen sist endret seg.
+            trial = json.loads(json.dumps(db))
+            try:
+                contractor, as_of, rows, rigs, url = WEB[name]()
+            except Exception as e:  # nettsiden endret eller nede: behold forrige datasett
+                print(f'{name}: feilet ({e}); beholder forrige datasett', file=sys.stderr)
+                continue
+            if run(trial, contractor, as_of, rows, rigs, f'{contractor} website (fleet timeline) {as_of}', url):
+                db = trial
+                changed = True
+    prune_sources(db)
+    if a.dry_run or not changed:
         return
     with open(PATH, 'w', encoding='utf-8') as fh:
         json.dump(db, fh, ensure_ascii=False, indent=1)
