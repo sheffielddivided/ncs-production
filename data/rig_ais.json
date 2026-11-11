@@ -15,16 +15,25 @@
     "DEEPSEA STAVANGER": {"mmsi": [310767000], "imo": 8769092, "ais": "DEEPSEA STAVANGER"},
     "DEEPSEA YANTAI": {"mmsi": [311000483], "imo": 9731638, "ais": "DEEPSEA YANTAI"},
     "LINUS": {"mmsi": [257095000], "imo": 9622356, "ais": "LINUS"},
+    "NOBLE CLAUS BACHMANN": {"mmsi": [538006218], "imo": 9697569, "ais": "NOBLE CLAUS BACHMANN"},
     "NOBLE INTEGRATOR": {"mmsi": [538010630], "imo": 9664627, "ais": "NOBLE INTEGRATOR"},
     "NOBLE INTERCEPTOR": {"mmsi": [538010662], "imo": 8771552, "ais": "NOBLE INTERCEPTOR"},
     "NOBLE INTREPID": {"mmsi": [538010631], "imo": 8771540, "ais": "NOBLE INTREPID"},
     "NOBLE INVINCIBLE": {"mmsi": [538010632], "imo": 9711858, "ais": "NOBLE INVINCIBLE"},
     "SCARABEO 8": {"mmsi": [308928000], "imo": 8768737, "ais": "SCARABEO 8"},
     "SHELF DRILLING BARSK": {"mmsi": [636016111], "imo": 9697272, "ais": "SHELF DRILLING BARSK"},
+    "TRANSOCEAN BARENTS": {"mmsi": [538004907], "imo": 8768854, "ais": "TRANSOCEAN BARENTS"},
     "TRANSOCEAN ENABLER": {"mmsi": [258615000], "imo": 8772087, "ais": "TRANSOCEAN ENABLER"},
     "TRANSOCEAN ENCOURAGE": {"mmsi": [258627000], "imo": 8772075, "ais": "TRANSOCEAN ENCOURAGE"},
+    "TRANSOCEAN ENDURANCE": {"mmsi": [538010768], "imo": 9633604, "ais": "TRANSOCEAN ENDURANCE"},
     "TRANSOCEAN NORGE": {"mmsi": [538007928], "imo": 9659309, "ais": "TRANSOCEAN NORGE"},
-    "TRANSOCEAN SPITSBERGEN": {"mmsi": [538004905], "imo": 8768517, "ais": "TRANSOCEAN SPITSBERG"}
+    "TRANSOCEAN SPITSBERGEN": {"mmsi": [538004905], "imo": 8768517, "ais": "TRANSOCEAN SPITSBERG"},
+    "WEST ELARA": {"mmsi": [259783000], "imo": 8769949, "ais": "WEST ELARA"},
+    "WEST HERCULES": {"mmsi": [210566000], "imo": 8768763, "ais": "HERCULES"},
+    "WEST PHOENIX": {"mmsi": [370506000], "imo": 8768294, "ais": "WEST PHOENIX"}
   },
-  "excluded": {"VISUND": "Fast produksjonsplattform (halvt nedsenkbar), ikke en flyttbar borerigg"}
+  "excluded": {
+    "VISUND": "Fast produksjonsplattform (halvt nedsenkbar), ikke en flyttbar borerigg",
+    "MÆRSK GIANT": "Solgt i 2019 (nå Petro Giant, Polen) og brukes bare i Østersjøen; står bare i gamle brønndata"
+  }
 }
