@@ -2512,8 +2512,9 @@ påfølgende kontrakter med samme kunde (høyst 45 dager mellom) til én periode
 statusteksten («until Mar-29»).
 
 *Visning:* riggtidslinjen tegner kontraktene som en stiplet forlengelse av
-riggens linje: fra der den siste kjente aktiviteten slutter (planlagte brønner og
-den stiplede «pågående»-delen medregnet, aldri før i dag) til kontraktens slutt,
+riggens linje: fra kontraktens start, eller fra der den siste kjente aktiviteten
+slutter hvis det er senere (planlagte brønner og den stiplede «pågående»-delen
+medregnet), til kontraktens slutt,
 med kundens navn; opsjoner er prikket og lysere. Avsluttede kontrakter vises ikke
 i grafen (historikken står i riggprofilen). Påfølgende kontrakter hos samme kunde
 (høyst 45 dager mellom) blir én stolpe, med alle i verktøytipset sammen med
