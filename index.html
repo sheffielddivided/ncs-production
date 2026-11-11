@@ -3539,12 +3539,44 @@ const barLabelPlugin = (fmt) => ({
 // Verdensbankens årspris for Brent (Pink Sheet), som de første årene er den
 // samme som for Dubai. Realvisningen bruker årssnitt av amerikansk KPI med
 // siste år som basis.
+// Inneværende periode i snittgrafene (måned, kvartal, år): dagene etter den
+// sammenskjøtte seriens siste dato fylles fram til periodens slutt, så snittet
+// er et anslag for hele perioden og ikke bare så langt. Serien er per
+// kalenderdag. Fram til siste EIA-notering brukes siste notering for hver dag
+// (helger arver fredagen); etter det fylles resten med siste observerte pris.
+// Returnerer [[dato, pris, erPrognose], …] fra dagen etter seriens slutt.
+function brentFillTo(end) {
+  const sp = priceSplice();
+  const last = sp.fit.length ? sp.fit[sp.fit.length - 1] : priceData.brent.rows[priceData.brent.rows.length - 1];
+  const q = sp.tail;
+  const lastQ = q.length ? q[q.length - 1][0] : last[0];
+  const out = [];
+  let v = last[1], j = 0;
+  for (let d = addDays(last[0], 1); d <= end; d = addDays(d, 1)) {
+    while (j < q.length && q[j][0] <= d) v = q[j++][1];
+    out.push([d, v, d > lastQ]);
+  }
+  return out;
+}
+// Siste observerte pris (den som brukes videre) og datoen for den.
+function brentLastObs() {
+  const sp = priceSplice();
+  const r = sp.tail.length ? sp.tail[sp.tail.length - 1]
+          : sp.fit.length ? sp.fit[sp.fit.length - 1] : priceData.brent.rows[priceData.brent.rows.length - 1];
+  return {d: r[0], v: r[1]};
+}
+const BRENT_FC_C = 'rgba(0,48,87,0.38)';
+const brentFcNote = (what) => { const o = brentLastObs();
+  return `<strong>${what}* (forecast):</strong> average for the whole period — prices observed to date, and the rest of the period at the latest observed price, ${o.v.toFixed(2)} $/bbl on ${fmtShort(o.d)} (EIA quote; weekends and holidays carry the previous quote)`; };
+
 function drawPriceBrentAnnual() {
   const sp = priceSplice();
   const acc = {};
   const add = ([d, v]) => { const y = +d.slice(0, 4); (acc[y] = acc[y] || []).push(v); };
   priceData.brent.rows.forEach(add);
-  sp.head.concat(sp.fit, sp.tail).forEach(add);
+  sp.head.concat(sp.fit).forEach(add);
+  // I år: resten av året fylles med siste observerte pris (brentFillTo).
+  brentFillTo(`${currentYear}-12-31`).forEach(add);
   const ph = (priceHist && priceHist.byYear) || {};
   const years = [];
   for (let y = prF.y0; y <= prF.y1; y++) years.push(y);
@@ -3563,13 +3595,14 @@ function drawPriceBrentAnnual() {
     <div class="legend-row">
       <div class="legend-item"><div class="legend-dot" style="background:${C}"></div>Dated Brent (Petroleum Price Board, extended with EIA)</div>
       <div class="legend-item"><div class="legend-dot" style="background:${W}"></div>Brent, World Bank annual average (before 1990)</div>
+      ${years.includes(currentYear) ? `<div class="legend-item"><div class="legend-dot" style="background:${BRENT_FC_C}"></div>${currentYear}*: year to date + rest of year at latest price</div>` : ''}
       ${avgDs ? `<div class="legend-item"><div class="legend-dot" style="background:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 8px);height:2px;border-radius:0"></div>${esc(avgDs.label)}</div>` : ''}</div>`;
   if (chartInstance) chartInstance.destroy();
   const many = years.length > 25;
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
     type: 'bar',
     data: {labels, datasets: [{label: `Brent, annual average${real ? ', real' : ''}`, data: vals,
-      backgroundColor: years.map(y => daily(y) ? C : W), borderWidth: 0}].concat(avgDs ? [avgDs] : [])},
+      backgroundColor: years.map(y => y === currentYear ? BRENT_FC_C : daily(y) ? C : W), borderWidth: 0}].concat(avgDs ? [avgDs] : [])},
     options: {responsive: true, maintainAspectRatio: false, animation: false, layout: {padding: {top: 26}},
       plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
         label: c => c.parsed.y == null ? null : ` ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 2})} $/bbl${real ? ` (${base} USD)` : ''}`}}},
@@ -3592,7 +3625,7 @@ function drawPriceBrentAnnual() {
   setInfo((real ? `<strong>Real prices:</strong> annual average × US CPI-U ${base} / CPI-U in the year (annual averages; ${base} so far this year) &nbsp;|&nbsp; ` : '') +
     (shown.length ? `<strong>Period${real ? ' (real)' : ''}:</strong> low ${Math.min(...shown).toFixed(2)}, high ${Math.max(...shown).toFixed(2)} $/bbl &nbsp;|&nbsp; ` : '') +
     `<strong>From 1990:</strong> average of the daily Dated Brent series (the Petroleum Price Board's figures from ${fmtShort(sp.firstP)}, extended with EIA Brent spot as in the daily view)` +
-    (labels.includes(`${currentYear}*`) ? `; ${currentYear}* is the year to date` : '') +
+    (labels.includes(`${currentYear}*`) ? ` &nbsp;|&nbsp; ${brentFcNote(String(currentYear))}` : '') +
     ` &nbsp;|&nbsp; <strong>Before 1990:</strong> World Bank Commodity Price Data (Pink Sheet), Crude oil, Brent, annual average; the World Bank uses the Dubai price for the earliest years &nbsp;|&nbsp; ${PRICE_SRC}; EIA; World Bank`);
 }
 
@@ -3616,8 +3649,13 @@ function drawPriceBrentBars(q) {
   };
   priceData.brent.rows.forEach(r => add(r, false));
   sp.head.concat(sp.fit).forEach(r => add(r, true));
-  const keys = Object.keys(acc).sort();
+  // Dagene etter seriens slutt (EIA-noteringer, så siste pris) fram til
+  // slutten av inneværende periode, så den får et anslag for hele perioden.
   const today = new Date().toISOString().slice(0, 10), cur = keyOf(today);
+  const [ty, tm] = [+today.slice(0, 4), +today.slice(5, 7)];
+  const endM = q ? Math.ceil(tm / 3) * 3 : tm;
+  brentFillTo(new Date(Date.UTC(ty, endM, 0)).toISOString().slice(0, 10)).forEach(([d, v]) => add([d, v], true));
+  const keys = Object.keys(acc).sort();
   const labels = keys.map(k => k === cur ? `${k}*` : k);
   const vals = keys.map(k => +(acc[k].reduce((a, b) => a + b, 0) / acc[k].length).toFixed(2));
   const C = 'rgba(0,48,87,0.85)', F = 'rgba(232,110,30,0.9)';
@@ -3627,14 +3665,15 @@ function drawPriceBrentBars(q) {
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">
       <div class="legend-item"><div class="legend-dot" style="background:${C}"></div>Dated Brent (Petroleum Price Board)</div>
-      ${keys.some(k => ext.has(k)) ? `<div class="legend-item"><div class="legend-dot" style="background:${F}"></div>Includes ${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average</div>` : ''}
+      ${keys.some(k => ext.has(k) && k !== cur) ? `<div class="legend-item"><div class="legend-dot" style="background:${F}"></div>Includes ${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot</div>` : ''}
+      ${keys.includes(cur) ? `<div class="legend-item"><div class="legend-dot" style="background:${BRENT_FC_C}"></div>${esc(cur)}*: to date + rest at latest price</div>` : ''}
       ${avgDs ? `<div class="legend-item"><div class="legend-dot" style="background:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 8px);height:2px;border-radius:0"></div>${esc(avgDs.label)}</div>` : ''}</div>`;
   if (chartInstance) chartInstance.destroy();
   const unit = prF.real ? `$/bbl, ${cpiLabel('USD')} USD` : '$/bbl';
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
     type: 'bar',
     data: {labels, datasets: [{label: `Brent, ${what.toLowerCase()}${prF.real ? ', real' : ''}`, data: vals,
-      backgroundColor: keys.map(k => ext.has(k) ? F : C), borderWidth: 0,
+      backgroundColor: keys.map(k => k === cur ? BRENT_FC_C : ext.has(k) ? F : C), borderWidth: 0,
       categoryPercentage: 0.9, barPercentage: keys.length > 120 ? 1 : 0.9}].concat(avgDs ? [avgDs] : [])},
     options: {responsive: true, maintainAspectRatio: false, animation: false, layout: {padding: {top: 26}},
       plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
@@ -3658,8 +3697,8 @@ function drawPriceBrentBars(q) {
   setInfo((prF.real ? cpiNote('USD') + ', applied to each daily value before averaging &nbsp;|&nbsp; ' : '') +
     `<strong>Official:</strong> ${lastBase[1].toLocaleString('en', {maximumFractionDigits: 2})} $/bbl on ${fmtShort(lastBase[0])} (latest from the Petroleum Price Board)` +
     (vals.length ? ` &nbsp;|&nbsp; <strong>Period${prF.real ? ' (real)' : ''}:</strong> low ${Math.min(...vals).toFixed(2)}, high ${Math.max(...vals).toFixed(2)} $/bbl` : '') +
-    ` &nbsp;|&nbsp; <strong>Construction:</strong> average of the daily series in the ${q ? 'quarter' : 'month'}: the Board's Dated Brent from ${fmtShort(sp.firstP)}, and EIA's Brent spot with the Board's 5-day rule before that date and after the Board's latest date (orange bars contain such days; after the Board's latest date they are preliminary)` +
-    (labels.some(l => l.endsWith('*')) ? `; ${cur}* is ${q ? 'the quarter' : 'the month'} to date` : '') +
+    ` &nbsp;|&nbsp; <strong>Construction:</strong> average of the daily series in the ${q ? 'quarter' : 'month'}: the Board's Dated Brent from ${fmtShort(sp.firstP)}, and EIA's Brent spot with the Board's 5-day rule before that date and after the Board's latest date, then EIA's latest daily quotes (orange bars contain such days; after the Board's latest date they are preliminary)` +
+    (labels.some(l => l.endsWith('*')) ? ` &nbsp;|&nbsp; ${brentFcNote(cur)}` : '') +
     ` &nbsp;|&nbsp; ${PRICE_SRC}; U.S. Energy Information Administration (EIA)`);
 }
 
