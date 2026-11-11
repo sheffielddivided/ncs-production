@@ -127,6 +127,14 @@ jobs:
         timeout-minutes: 30
         run: python fetch_rigs.py
 
+      # Riggkontrakter fra Odfjells og COSLs nettsider (grafiske tidslinjer).
+      # PDF-rapportene (Noble, Transocean) leses inn for hånd. Uten endringer
+      # på nettsidene skrives ingenting.
+      - name: Hent riggkontrakter (nettsider)
+        continue-on-error: true
+        timeout-minutes: 3
+        run: python import_fleet_report.py --web
+
       - name: Commit hvis dataene er endret
         run: |
           git config user.name  "github-actions[bot]"

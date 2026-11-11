@@ -296,6 +296,8 @@
     .ex-ax{font-size:10px;fill:#828282;}
     .ex-rig{font-size:11px;font-weight:600;fill:#1a2332;}
     .ex-bar-t{font-size:10px;pointer-events:none;}
+    .ex-con-t{font-size:8.5px;pointer-events:none;fill:#3d4a5a;}
+    .rc-past td{color:#8a94a3;}
     .wd-overlay{position:fixed;inset:0;background:rgba(26,16,24,0.5);z-index:300;display:none;
       overflow-y:auto;overscroll-behavior:contain;}
     .wd-overlay.open{display:block;}
@@ -2266,6 +2268,7 @@ function stateToHash() {
     if (!explF.aisOnly) q.set('xo', '0');
     if (explF.fixed) q.set('xf', '1');
     if (!explF.modu) q.set('xm', '0');
+    if (!explF.contracts) q.set('xk', '0');
     if (topMode === 'drilling') {
       const dd = drillDefaults();
       DRILL_PARAMS.forEach(([k, p]) => { if (drillF[k] !== dd[k]) q.set(p, drillF[k]); });
@@ -2498,6 +2501,7 @@ function applyHash() {
     if (g('xo') === '0') explF.aisOnly = false;
     if (g('xf') === '1') explF.fixed = true;
     if (g('xm') === '0') explF.modu = false;
+    if (g('xk') === '0') explF.contracts = false;
   }
   if (topMode === 'prices') {
     const py = (q.get('py') || '').match(/^(\d{4})-(\d{4})$/);
@@ -11683,7 +11687,7 @@ let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null, explRaw = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
                              purpose:'all', from:String(currentYear - 2), q:'', lic:'',
-                             dev:true, fixed:false, aisOnly:true, modu:true});   // dev/fixed/aisOnly/modu: bare riggfanen
+                             dev:true, fixed:false, aisOnly:true, modu:true, contracts:true});   // dev/fixed/aisOnly/modu/contracts: bare riggfanen
 let explF = {...explDefaults(), open:null};
 let explSort = {key:'start', dir:-1};
 let explLimit = 100;
@@ -11925,7 +11929,8 @@ function explRenderBar() {
       <label class="ex-chk"><input type="checkbox" ${f.dev ? 'checked' : ''} onchange="explSet('dev', this.checked, true)"> Development wells</label>
       <label class="ex-chk"><input type="checkbox" ${f.modu ? 'checked' : ''} onchange="explSet('modu', this.checked, true)"> MODUs only</label>
       <label class="ex-chk"><input type="checkbox" ${f.fixed ? 'checked' : ''} ${f.dev && !f.modu ? '' : 'disabled'} onchange="explSet('fixed', this.checked)"> Fixed platforms</label>
-      <label class="ex-chk"><input type="checkbox" ${f.aisOnly ? 'checked' : ''} onchange="explSet('aisOnly', this.checked)"> Port calls &amp; other stays</label>` : ''}
+      <label class="ex-chk"><input type="checkbox" ${f.aisOnly ? 'checked' : ''} onchange="explSet('aisOnly', this.checked)"> Port calls &amp; other stays</label>
+      <label class="ex-chk"><input type="checkbox" ${f.contracts ? 'checked' : ''} onchange="explSet('contracts', this.checked)"> Contracts</label>` : ''}
       <button class="grp-btn" onclick="explReset()">Reset</button>`}
     </div>`);
 }
@@ -12361,7 +12366,8 @@ async function refreshExploration() {
   setInfo('');
   await loadExploration();
   if (explSubView === 'perf') await loadDrill();
-  if (explSubView === 'rigs') await loadRigWells();
+  if (explSubView === 'rigs') await Promise.all([loadRigWells(), loadRigContracts(), loadRigFacts()]);
+  if (explSubView === 'fleet') await loadRigContracts();
   if (explSubView === 'rigs' || explSubView === 'fleet' || explF.rig) await loadRigAis();
   if (!explWells.length) {
     setBar('explBar', '');
@@ -13008,14 +13014,38 @@ function explRenderRigs() {
     return {name, bars};
   });
   planned.forEach(r => r.bars.filter(w => w.state === 'planned').forEach(w => { if (w.start > latestPlan) latestPlan = w.start; }));
-  const t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
+  let t1 = addDays(today, Math.min(548, Math.max(183, latestPlan ? (dayMs(latestPlan) - dayMs(today)) / 864e5 + 75 : 0)));
+
+  // Kontrakter (data/rig_contracts.json) tegnes i en egen linje under riggens
+  // aktiviteter. En rigg uten brønner i vinduet får en rad hvis den har en
+  // kontrakt på norsk sokkel i perioden, og med filtre bare når kunden eller
+  // riggen treffer søket. Tidsaksen strekkes til siste kontrakt, høyst to år fram.
+  const showCon = !!(explF.contracts && rigContracts);
+  if (showCon) {
+    const conMax = addDays(today, CON_AHEAD_DAYS);
+    const comp = explF.company.trim().toLowerCase(), q = explF.q.trim().toLowerCase();
+    const have = {};
+    planned.forEach(r => { have[r.name.toUpperCase()] = r; });
+    Object.entries(rigContracts.byRig).forEach(([key, l]) => {
+      if (!l.some(c => c.location === 'Norway' && c.end >= t0 && c.start <= conMax)) return;
+      if (explF.modu && fixedRigNames().has(l[0].rig)) return;
+      const hit = s => (comp && s.toLowerCase().includes(comp)) || (q && s.toLowerCase().includes(q));
+      if (filtersActive && !(l.some(c => hit(c.client)) || (q && key.toLowerCase().includes(q)))) return;
+      if (have[key]) have[key].conOk = true;
+      else planned.push({name: l[0].rig, bars: [], conOk: true});
+    });
+    const latest = planned.flatMap(r => contractsFor(r.name).map(c => c.end)).sort().pop();
+    if (latest && latest > t1) t1 = isoMin(addDays(latest, 20), conMax);
+  }
   const out = planned.map(r => {
     const ws = r.bars.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).filter(w => w.start <= t1 && endOf(w) >= t0);
     const now = ws.filter(w => w.state === 'drilling').pop();
     const next = ws.find(w => w.state === 'planned');
     const last = ws.filter(w => w.state === 'completed' && w.kind !== 'ais').pop();
-    return {name: r.name, ws, now, next, last, type: ws.length ? ws[0].rigType : ''};
-  }).filter(r => r.ws.length)
+    const cs = showCon ? contractBars(r.name).filter(c => c.e >= t0 && c.s <= t1) : [];
+    const facts = rigFacts && rigFacts[r.name.toUpperCase()];
+    return {name: r.name, ws, cs, now, next, last, conOk: r.conOk, type: ws.length ? ws[0].rigType : facts ? facts.kind : ''};
+  }).filter(r => r.ws.length || (r.conOk && r.cs.length))
     .sort((a, b) => a.name.localeCompare(b.name, 'nb'));
   const inWin = out.flatMap(r => r.ws);
 
@@ -13033,8 +13063,9 @@ function explRenderRigs() {
       ends[l] = endOf(w) > (ends[l] || '') ? endOf(w) : ends[l];
       w.lane = l;
     });
-    r.lanes = ends.length;
-    r.h = r.lanes === 1 ? 26 : r.lanes * 13 + 6;
+    r.lanes = Math.max(1, ends.length);
+    r.hb = !r.ws.length ? 7 : r.lanes === 1 ? 26 : r.lanes * 13 + 6;   // bare kontrakter: ingen tom stripe over
+    r.h = r.hb + (r.cs.length ? CON_H : 0);
   });
   let acc = 24;
   out.forEach(r => { r.y = acc; acc += r.h; });
@@ -13053,7 +13084,7 @@ function explRenderRigs() {
   // for når de blir ferdige, og kortes inn mot neste aktivitet på riggen.
   const ONGOING_DAYS = RIG_ONGOING_DAYS, ahead = addDays(today, ONGOING_DAYS);
   const bars = out.map(r => {
-    const y = r.y, RH = r.h, multi = r.lanes > 1;
+    const y = r.y, RH = r.hb, multi = r.lanes > 1;
     const row = r.ws.map(w => {
       const a = clampX(w.start), b = Math.max(clampX(endOf(w)), a + 3);
       const planned = w.state === 'planned', isDev = w.kind === 'dev';
@@ -13103,12 +13134,31 @@ function explRenderRigs() {
         ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + (multi ? 12 + w.lane * 13 : RH / 2 + 3)}" class="ex-bar-t" style="${multi ? 'font-size:8px' : ''}" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
         <title>${isAisOnly ? esc(w.title) + (w.cat === 'port' ? ' (port stay, AIS)' : ' (stay, no matching well data — AIS)') : esc(w.title) + (isDev ? ' (development)' : ` (${esc(w.name)})`) + ' · ' + esc(w.operator)} · ${fmtShort(w.start)}${to}${note}</title></g>`;
     }).join('');
-    return `<text x="4" y="${y + (multi ? 12 : RH / 2 + 3)}" class="ex-rig${hasRigAis(r.name) ? ' ex-rig-link' : ''}"${hasRigAis(r.name) ? ` onclick="openRigProfile(${esc(JSON.stringify(r.name))})"` : ''}>${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${row}`;
+    // Kontraktslinjen: stiplet stolpe med kundens navn; opsjoner prikket og lysere.
+    const cy = y + RH - 2, ch = CON_H - 3;
+    const con = r.cs.map(c => {
+      const a = clampX(c.s), b = clampX(c.e);
+      if (b - a < 2) return '';
+      const opt = c.kind === 'option';
+      const label = conLabel(c), room = Math.floor((b - a - 6) / 4.4);
+      const txt = room >= 3 ? (label.length > room ? label.slice(0, room - 1) + '…' : label) : '';
+      return `<g onclick="openRigProfile(${esc(JSON.stringify(r.name))})" style="cursor:pointer">
+        <rect x="${a.toFixed(1)}" y="${cy}" width="${(b - a).toFixed(1)}" height="${ch}" rx="2" fill="${opt ? '#fff' : CON_FILL}"
+          stroke="${opt ? '#9aa5b1' : CON_STROKE}" stroke-width="1" stroke-dasharray="${opt ? '1.5 2' : '4 2'}"/>
+        ${txt ? `<text x="${(a + 3).toFixed(1)}" y="${cy + ch - 2.5}" class="ex-con-t"${opt ? ' style="fill:#7a8796"' : ''}>${esc(txt)}</text>` : ''}
+        <title>${esc(contractTip(c))}</title></g>`;
+    }).join('');
+    const link = hasRigAis(r.name) || r.cs.length;
+    return `<text x="4" y="${!r.ws.length ? cy + ch - 1.5 : y + (multi ? 12 : RH / 2 + 3)}" class="ex-rig${link ? ' ex-rig-link' : ''}"${link ? ` onclick="openRigProfile(${esc(JSON.stringify(r.name))})"` : ''}>${esc(r.name.length > 20 ? r.name.slice(0, 19) + '…' : r.name)}</text>${con}${row}`;
   }).join('');
   const tx = clampX(today);
   const table = out.map(r => {
     const cell = (w, d) => w ? `<a href="#" onclick="${exOpen(w)};return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}${w.kind === 'dev' ? ' · development' : ''}</small>` : '—';
-    return `<tr><td class="ex-l"><strong>${rigLink(r.name)}</strong><small>${esc(tc(r.type))}</small></td>
+    const st = showCon ? contractStatus(r.name, today) : null;
+    const conCell = !st ? '' : `<td class="ex-l">${st.now ? `${esc(st.now.client)}<small>until ${esc(conWhen(st.now, 'end'))}${
+        st.next ? ` · then ${esc(st.next.client)}` : ''}</small>` : st.next ? `<span class="ex-none">free</span><small>${esc(st.next.client)} from ${esc(conWhen(st.next, 'start'))}</small>`
+        : contractsFor(r.name).length ? '<span class="ex-none">free</span>' : '<span class="ex-none">—</span>'}</td>`;
+    return `<tr><td class="ex-l"><strong>${rigLink(r.name)}</strong><small>${esc(tc(r.type))}</small></td>${conCell}
       <td class="ex-l">${cell(r.now, r.now ? 'since ' + fmtShort(r.now.start) + (r.now.maybe ? ' (probably)' : '') : '')}</td>
       <td class="ex-l">${cell(r.next, r.next ? (r.next.overdue ? 'planned ' + fmtShort(r.next.sodirPlanned) + ' ⚠' : fmtShort(r.next.planned)) : '')}</td>
       <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) + (r.last.noEnd ? ' (est.)' : '') : '')}</td></tr>`;
@@ -13118,7 +13168,8 @@ function explRenderRigs() {
   document.getElementById('explBody').innerHTML = `
     <div class="pf-card"><h3>Rig schedule</h3><div class="ex-slot"></div>
       <div class="ex-sum"><strong>${out.length}</strong> rigs · <strong>${out.filter(r => r.now).length}</strong> drilling now
-      · <strong>${out.filter(r => r.next).length}</strong> with a planned well${nDev ? ` · <strong>${nDev}</strong> development wellbores` : ''}</div>
+      · <strong>${out.filter(r => r.next).length}</strong> with a planned well${nDev ? ` · <strong>${nDev}</strong> development wellbores` : ''}${
+        showCon ? ` · <strong>${out.filter(r => r.cs.length).length}</strong> with contract data` : ''}</div>
       <div class="ex-scroll"><svg class="ex-gantt" viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Rig schedule">
         <defs><pattern id="exHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect width="6" height="6" fill="${DEV_COLOR}"/><rect width="3" height="6" fill="#86b9d1"/></pattern></defs>
@@ -13140,10 +13191,14 @@ function explRenderRigs() {
         until the rig's next activity starts (at most ${DEV_GAP_CAP} days). The green dashed part is a well started in the last
         60 days, probably still being drilled. Ongoing operations continue ${ONGOING_DAYS} days past today as a pale bar with a dashed
         outline; this only marks that they are not finished and is not an estimate of when they end. Dashed white bars are planned exploration wells (60-day placeholder). The red line is today.
-        Sodir has no planned dates for development wells, so those appear only once drilling has started.</div>
+        Sodir has no planned dates for development wells, so those appear only once drilling has started.${showCon ? `
+        <br><strong>Contracts</strong> are the thin line under each rig: a dashed grey bar named after the client is a firm contract, a dotted
+        bar an option. They come from the drilling contractors' fleet status reports (dates are often only a month or a quarter, and the
+        dayrate is in the tooltip), so far for ${Object.keys(rigContracts.byRig).length} rigs; click one for the rig's contract history.
+        Rigs without wells in the period are listed when they have a contract on the Norwegian shelf.` : ''}</div>
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
-      <th class="ex-l">Rig</th><th class="ex-l">Drilling now</th><th class="ex-l">Next planned</th><th class="ex-l">Last completed</th>
+      <th class="ex-l">Rig</th>${showCon ? '<th class="ex-l">Contract</th>' : ''}<th class="ex-l">Drilling now</th><th class="ex-l">Next planned</th><th class="ex-l">Last completed</th>
       </tr></thead><tbody>${table}</tbody></table></div>
     ${explDiscHtml(discAll)}`;
   dockBar('explBody');
@@ -13451,6 +13506,134 @@ function rigFactsCard(name) {
       «In service» is the first date the facility entered the phase IN SERVICE.</div></div>`;
 }
 
+// ── Riggkontrakter ───────────────────────────────────────────────────────────
+// data/rig_contracts.json: kontrakter fra riggselskapenes fleet status reports
+// (import_fleet_report.py) og manuelle rader. Oppslaget går på riggnavnet uten
+// hensyn til store og små bokstaver, som riggfaktaene.
+let rigContracts = null, rigContractsLoading = null;
+function loadRigContracts() {
+  if (rigContracts) return Promise.resolve();
+  if (rigContractsLoading) return rigContractsLoading;
+  rigContractsLoading = fetchBundle('rig_contracts').then(b => {
+    const byRig = {};
+    ((b && b.contracts) || []).forEach(c => { (byRig[c.rig.toUpperCase()] = byRig[c.rig.toUpperCase()] || []).push(c); });
+    Object.values(byRig).forEach(l => l.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)));
+    const rigs = {};
+    Object.entries((b && b.rigs) || {}).forEach(([k, v]) => { rigs[k.toUpperCase()] = v; });
+    rigContracts = {byRig, rigs, sources: (b && b.sources) || {}};
+  });
+  return rigContractsLoading;
+}
+const CON_AHEAD_DAYS = 730, CON_H = 14, CON_FILL = '#eef1f5', CON_STROKE = '#5b6776';
+const contractsFor = name => (rigContracts && rigContracts.byRig[String(name).toUpperCase()]) || [];
+const CON_LOC = {'United Kingdom': 'UK', 'Norway': '', 'US Gulf': 'US GoM'};
+const conLoc = c => (c.location in CON_LOC ? CON_LOC[c.location] : c.location || '');
+const conLabel = c => c.kind === 'option' ? 'option' : c.client + (conLoc(c) ? ` (${conLoc(c)})` : '');
+const fmtRate = v => v ? `$${Math.round(v / 1000)}k/day` : '';
+// Rapportens egen tekst («Apr-24», «Q3-27») der den finnes, ellers måneden fra grafen.
+const conWhen = (c, which) => {
+  const t = which === 'start' ? c.startText : c.endText;
+  if (t) return t;
+  const [y, m] = c[which].split('-');
+  // Ukjent start: kontrakten løp allerede da grafen i kilden begynner.
+  if (which === 'start' && c.startOpen) return `before ${MONTH_ABBR[+m - 1]} ${y}`;
+  return `~${MONTH_ABBR[+m - 1]} ${y}`;
+};
+const conPeriod = c => `${conWhen(c, 'start')} – ${conWhen(c, 'end')}`;
+// Kilden i klartekst: rapport, nettside eller manuelt registrert (id «manual…»).
+const srcLabel = (id, src) => !src ? (id && id.startsWith('manual') ? 'entered manually' : id || '')
+  : id.startsWith('manual') ? `${src.title}, entered manually ${fmtShort(src.date)}`
+  : src.url ? `${src.contractor} website, read ${fmtShort(src.date)}` : `${src.contractor} fleet status report, ${fmtShort(src.date)}`;
+const conSource = c => srcLabel(c.source, rigContracts && rigContracts.sources[c.source]);
+
+// Kontraktene til en rigg slik de tegnes: datoene er ofte bare kvartal eller
+// måned, så kontrakter som følger hverandre overlapper i rapporten (DNO og så
+// ConocoPhillips «in direct continuation», begge Q3-27). En kontrakt som
+// starter før den forrige slutter, tegnes fra der den forrige slutter.
+function contractBars(name) {
+  const out = [];
+  let lastEnd = '';
+  contractsFor(name).forEach(c => {
+    // Ukjent start tegnes fra venstre kant av grafen.
+    const s = c.startOpen ? '1900-01-01' : lastEnd && c.start <= lastEnd && c.end > lastEnd ? addDays(lastEnd, 1) : c.start;
+    if (c.end < s) return;
+    out.push({...c, s, e: c.end, shifted: !c.startOpen && s !== c.start});
+    if (c.end > lastEnd) lastEnd = c.end;
+  });
+  return out;
+}
+
+// Status i dag: den faste kontrakten som løper, opsjonene etter den, og neste.
+function contractStatus(name, today) {
+  const all = contractsFor(name), l = all.filter(c => c.kind === 'firm');
+  let now = l.filter(c => c.start <= today && c.end >= today).pop();
+  // Forlengelser og utøvde opsjoner hos samme kunde er én sammenhengende periode.
+  if (now) {
+    let last = now;
+    for (const c of l) {
+      if (c.start > now.start && c.client === now.client && c.start <= addDays(last.end, 45) && c.end > last.end) last = c;
+    }
+    now = {...now, end: last.end, endText: last.endText};
+  }
+  const next = l.find(c => c.start > (now ? now.end : today));
+  const opt = now ? all.filter(c => c.kind === 'option' && c.client === now.client && c.start >= now.end.slice(0, 7)) : [];
+  return {now, next, opt};
+}
+
+function contractTip(c) {
+  return `${c.kind === 'option' ? 'Option · ' : ''}${c.client}${c.location ? ' · ' + c.location : ''} · ${conPeriod(c)}`
+    + (c.dayrate ? ' · ' + fmtRate(c.dayrate) : c.dayrateText ? ' · dayrate ' + c.dayrateText.toLowerCase() : '')
+    + (c.note ? '\n' + c.note : '') + (c.shifted ? '\nDrawn from where the previous contract ends; the report gives only an approximate start.' : '')
+    + '\nSource: ' + conSource(c);
+}
+
+function fleetContractCell(name) {
+  if (!contractsFor(name).length) return '<span class="ex-none">—</span>';
+  const st = contractStatus(name, new Date().toISOString().slice(0, 10));
+  return st.now ? `${esc(st.now.client)} <small>until ${esc(conWhen(st.now, 'end'))}</small>`
+    : st.next ? `<span class="ex-none">free</span> <small>${esc(st.next.client)} from ${esc(conWhen(st.next, 'start'))}</small>` : '<span class="ex-none">free</span>';
+}
+
+function rigContractCard(name) {
+  const list = contractsFor(name);
+  const meta = rigContracts && rigContracts.rigs[String(name).toUpperCase()];
+  if (!list.length && !meta) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  const st = contractStatus(name, today);
+  const srcIds = [...new Set(list.map(c => c.source).concat(meta ? [meta.source] : []))]
+    .filter(k => rigContracts.sources[k]).sort((a, b) => (rigContracts.sources[a].date < rigContracts.sources[b].date ? 1 : -1));
+  const lastSrc = srcIds.length ? rigContracts.sources[srcIds[0]] : null;
+  const until = c => conWhen(c, 'end').replace(/^~/, '');
+  let lead;
+  if (st.now) {
+    lead = `Under contract to <strong>${esc(st.now.client)}</strong>${st.now.location ? ' in ' + esc(st.now.location) : ''} until ${esc(until(st.now))}`
+      + (st.opt.length ? `, with options to ${esc(until(st.opt[st.opt.length - 1]))}` : '')
+      + (st.next ? `. Next: <strong>${esc(st.next.client)}</strong>${st.next.location ? ' in ' + esc(st.next.location) : ''} from ${esc(conWhen(st.next, 'start'))}` : '') + '.';
+  } else if (st.next) {
+    lead = `No firm contract now. Next: <strong>${esc(st.next.client)}</strong>${st.next.location ? ' in ' + esc(st.next.location) : ''} from ${esc(conWhen(st.next, 'start'))}.`;
+  } else {
+    lead = 'Available: no current or future contract in the sources' + (lastSrc ? ` (${esc(srcLabel(srcIds[0], lastSrc))})` : '') + '.';
+  }
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+  const rows = list.slice().reverse().map(c => `
+    <tr class="${c.end < today ? 'rc-past' : ''}">
+      <td class="ex-l">${esc(c.client)}${c.kind === 'option' ? ' <small>(option)</small>' : ''}</td>
+      <td class="ex-l">${esc(c.location || '—')}</td><td class="ex-l" style="white-space:nowrap">${esc(conPeriod(c))}</td>
+      <td>${c.dayrate ? esc(fmtRate(c.dayrate)) : `<span class="ex-none">${esc(c.dayrateText || '—')}</span>`}</td>
+      <td class="ex-l"><small>${esc(c.note || '')}</small></td></tr>`).join('');
+  return `<div class="pf-card"><h3>Contracts</h3>
+    <p class="wd-lead">${lead}</p>
+    ${meta ? `<div class="pf-facts">${fact('Contractor', meta.contractor)}${fact('Design', meta.design)}${fact('Built', meta.built)}${
+      fact('Water depth', meta.waterDepthFt ? (+meta.waterDepthFt).toLocaleString('en-US') + ' ft' : '')}</div>` : ''}
+    ${list.length ? `<div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Client</th><th class="ex-l">Location</th><th class="ex-l">Period</th><th>Dayrate</th><th class="ex-l">Comment</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>` : ''}
+    <div class="pf-map-note">Source: ${srcIds.length ? srcIds.map(k => esc(srcLabel(k, rigContracts.sources[k]))).join('; ') : 'data/rig_contracts.json'}.
+      Dates are the contractor's estimates, often only a month or a quarter; dates marked ~ are read from a timeline chart
+      (the report's, or the contractor's website for Odfjell and COSL, which show only the current client).
+      Completed contracts are kept from earlier reports (greyed). Dayrates exclude mobilisation and other fees.</div></div>`;
+}
+
 const rigRes = (map, name) => {
   const r = map && map[name];
   return r && r.alias ? map[r.alias] : r;
@@ -13579,6 +13762,7 @@ async function explRenderFleet() {
       <td class="ex-l"><span class="ex-dot" style="background:${RIG_STATE[r.state].color}"></span>${RIG_STATE[r.state].label}</td>
       <td class="ex-l">${esc(placeText(r.n.place))}</td>
       <td>${r.n.since ? fmtMin(r.n.since) : '—'}</td>
+      <td class="ex-l">${fleetContractCell(r.name)}</td>
       <td class="ex-l">${esc(r.n.dest) || '—'}</td>
       <td>${r.n.sog != null ? r.n.sog.toFixed(1) + ' kn' : '—'}</td>
       <td>${fmtMin(r.n.t)}</td></tr>`).join('');
@@ -13598,7 +13782,7 @@ async function explRenderFleet() {
         Coverage is the Norwegian economic zone, Svalbard and Jan Mayen.</div>
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
-      <th class="ex-l">Rig</th><th class="ex-l">State</th><th class="ex-l">Place</th><th>Since</th>
+      <th class="ex-l">Rig</th><th class="ex-l">State</th><th class="ex-l">Place</th><th>Since</th><th class="ex-l">Contract</th>
       <th class="ex-l">AIS destination</th><th>Speed</th><th>Last signal</th></tr></thead><tbody>${table}</tbody></table></div>
     ${rigHealthHtml(rigAis.health)}`;
   dockBar('explBody');
@@ -13709,7 +13893,7 @@ const RG_SPEEDS = [[1, '1 day / s'], [3, '3 days / s'], [7, '1 week / s'], [30, 
 const RG_PERIODS = [[90, 'Last 3 months'], [180, 'Last 6 months'], [365, 'Last 12 months'], [0, 'All']];
 
 async function openRigProfile(name, quiet, seekMin) {
-  await Promise.all([loadRigAis(), loadRigFacts()]);
+  await Promise.all([loadRigAis(), loadRigFacts(), loadRigContracts()]);
   await loadExploration();
   const data = rigData(name);
   const body = document.getElementById('wdBody');
@@ -13728,6 +13912,7 @@ async function openRigProfile(name, quiet, seekMin) {
       <div class="wd-head"><div><h2>${esc(name)}</h2><div class="wd-sub">Rig</div></div>
         <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button></div>
       ${rigFactsCard(name)}
+      ${rigContractCard(name)}
       ${havtilRigCard(name)}
       <div class="pf-card"><p class="wd-lead">No AIS history for this rig. It has no matching AIS identity in data/rig_ais.json,
         or it has not been seen in Norwegian waters in the period.</p></div>
@@ -13802,6 +13987,7 @@ function rigBuild(reset) {
       <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
     </div>
     ${rigFactsCard(name)}
+    ${rigContractCard(name)}
     <div class="pf-card">
       <svg id="rgSvg" class="ex-map rg-map" viewBox="0 0 ${RG_W} ${RG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Track of ${esc(name)}">
         ${rigBaseLayers(P)}
