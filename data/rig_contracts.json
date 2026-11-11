@@ -32,6 +32,11 @@
    "contractor": "Shelf Drilling",
    "title": "Shelf Drilling announcements (April 2023, April 2024) and quarterly reports",
    "date": "2026-11-11"
+  },
+  "manual-linus": {
+   "contractor": "Odfjell Technology",
+   "title": "Odfjell Technology rig management page, SFL announcements and Havtil consent (West Linus)",
+   "date": "2026-11-11"
   }
  },
  "rigs": {
@@ -176,6 +181,10 @@
   "SHELF DRILLING BARSK": {
    "contractor": "Shelf Drilling",
    "source": "manual-shelf"
+  },
+  "LINUS": {
+   "contractor": "Odfjell Technology (manager); owner SFL",
+   "source": "manual-linus"
   }
  },
  "contracts": [
@@ -460,6 +469,38 @@
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
    "source": "odfjell-2026-11-11"
+  },
+  {
+   "rig": "LINUS",
+   "location": "Norway",
+   "client": "ConocoPhillips",
+   "kind": "firm",
+   "start": "2014-01-01",
+   "end": "2019-05-31",
+   "startText": "2014",
+   "endText": "May-19",
+   "precision": "year/month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Original contract for West Linus (now Linus) in the Greater Ekofisk Area, from delivery in 2014.",
+   "contractor": "Odfjell Technology",
+   "source": "manual-linus"
+  },
+  {
+   "rig": "LINUS",
+   "location": "Norway",
+   "client": "ConocoPhillips",
+   "kind": "firm",
+   "start": "2019-06-01",
+   "end": "2028-12-31",
+   "startText": "Jun-19",
+   "endText": "Q4-28",
+   "precision": "month/quarter",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Extended in 2017 from May 2019 to the end of 2028 at a market-indexed dayrate. Havtil consent for use in the Greater Ekofisk Area runs to 31 Dec 2028. Managed by Odfjell Technology since 2022 (owner SFL). A claimed extension to May 2029 could not be confirmed.",
+   "contractor": "Odfjell Technology",
+   "source": "manual-linus"
   },
   {
    "rig": "NOBLE CLAUS BACHMANN",
