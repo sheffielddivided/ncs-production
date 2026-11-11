@@ -42,6 +42,8 @@ som statiske JSON-filer i dette repoet.
 | `data/rig_wells.json` | Utviklingsbrønner (lag 5000, siste to år) til riggoversikten i Exploration |
 | `fetch_rigs.py` | Henter AIS-posisjoner for borerigger fra Kystverkets åpne API og bygger `rig_*.json` |
 | `data/rig_ais.json` | Kobling riggnavn (Sodir) til MMSI/IMO — redigeres for hånd |
+| `import_fleet_report.py` | Leser riggselskapenes fleet status reports (PDF; i dag Noble) og fletter kontraktene inn i `data/rig_contracts.json`. Kjøres for hånd |
+| `data/rig_contracts.json` | Riggkontrakter (kunde, periode, opsjoner, dagrate, kilde) med historikk — fra rapportene og manuelle rader |
 | `data/rig_tracks.json` | Veipunkter og opphold per rigg, til riggprofilen med avspilling |
 | `data/rig_now.json` | Dagens posisjon, status og AIS-destinasjon per rigg, til flåtekartet |
 | `fetch_havtil.py` | Henter tilsynssaker fra Havtils RSS-feed, listesider og saksider, kobler dem til felt og selskap og bygger `data/havtil.json`. `--backfill` leser alle listesidene (tilbake til 2012–2014) |

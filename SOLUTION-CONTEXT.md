@@ -2420,6 +2420,52 @@ Detaljvisningen viser kampanjens brønnbaner med Sodirs egne datoer. Det som
 gjenstår av overlapp i tegningen er bare klipping mot venstre kant av
 vinduet.
 
+**Riggkontrakter, `import_fleet_report.py` → `data/rig_contracts.json`:** kontrakter
+fra riggselskapenes fleet status reports. Sodir har ingen planlagte datoer for
+utviklingsbrønner, så kontraktene er det eneste som viser hvem som har riggen
+framover. Rapportene kommer hvert kvartal eller oftere, som PDF i hvert selskaps
+eget format. Skriptet kjøres derfor for hånd når en ny rapport er lastet ned
+(`python import_fleet_report.py rapport.pdf [--dry-run]`); den daglige jobben rører
+ikke fila. Hvert selskap har sin egen leser (`READERS`), i dag bare Noble.
+
+*Fila:* `contracts` er en liste med én rad per kontrakt eller opsjon: `rig`
+(Sodir-navnet), `client`, `location`, `kind` (`firm`/`option`), `start`/`end` (ISO,
+utledet av rapportens `startText`/`endText`: måned gir første/siste dag i måneden,
+kvartal første/siste dag i kvartalet, «Mid 2027» mai–august), `precision`, `dayrate`
+(USD/dag eller null, med `dayrateText`), `note` (rapportens kommentar), `contractor`
+og `source` (nøkkel i `sources`, med rapportdato). `rigs` har riggdata fra siste
+rapport (design, byggeår, vanndybde). Bare rigger Sodir kjenner (`rig_facts.json`)
+tas med, men med alle kontraktene deres, også i utlandet, så det synes hvor
+riggen er.
+
+*Noble-leseren:* tabellsidene («Fleet Contract Status») leses med pdfplumber på
+ordposisjoner, med kolonnegrenser fra overskriften. Riggnavn, sted og kunde står
+sentrert over flere rader, så hver rad arver nærmeste tekst innenfor riggen, og
+kommentaravsnittene går til raden nærmest midten. Tidslinjesidene gir opsjonene:
+lyseblå stolper (mørkeblå er fast periode), regnet om fra x-posisjon med
+månedsrutene øverst. En opsjon knyttes til kontrakten den følger. Faste stolper
+som ingen tabellrad dekker, er avsluttede kontrakter rapporten ikke lister lenger,
+og tas med som historikk med kunde «Undisclosed».
+
+*Historikk og fletting:* samme rigg, kunde og type med start innenfor 150 dager er
+samme kontrakt og oppdateres. En kontrakt som er avsluttet før den nye rapporten,
+blir liggende. En kommende kontrakt som er borte fra rapporten, er endret eller
+kansellert og fjernes. En eldre rapport kan leses inn i etterkant og legger da bare
+til kontrakter som var avsluttet før den nyeste. Rader med `"source": "manual"`
+(pressemeldinger, selskaper uten rapport) røres aldri av skriptet.
+
+*Visning:* riggtidslinjen tegner kontraktene i en egen linje under hver rigg:
+stiplet grå stolpe med kundens navn for fast periode, prikket for opsjon,
+dagrate og kommentar i verktøytipset. Datoene er ofte bare måned eller kvartal,
+så kontrakter som følger hverandre overlapper i rapporten (DNO og så
+ConocoPhillips, begge Q3-27); `contractBars` tegner den neste fra der den forrige
+slutter. Tidsaksen strekkes til siste kontrakt, høyst to år fram
+(`CON_AHEAD_DAYS`). En rigg uten brønner i vinduet får en rad når den har en
+kontrakt på norsk sokkel i perioden. Riggtabellen og Fleet-tabellen har kolonnen
+«Contract» (kunde og «until …», eller «free» og neste kontrakt), og riggprofilen har
+kortet «Contracts» (`rigContractCard`) med status, riggdata og alle kontraktene,
+avsluttede i grått. Bryteren «Contracts» slår linjen av (`xk=0` i hashen).
+
 **Riggposisjoner (AIS), `fetch_rigs.py`:** to nye faner i Exploration — *Fleet*
 (kart og tabell over alle rigger nå) og en *riggprofil* som åpnes ved klikk på
 en rigg (Fleet, riggtidslinjen eller riggtabellen). Profilen har kart med spor og
