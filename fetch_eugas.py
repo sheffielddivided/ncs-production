@@ -1,6 +1,6 @@
 """
-Henter data fra eugas-løsningen i repoet sheffielddivided/eia, som samler dem
-inn daglig, til to filer:
+Henter data fra repoet sheffielddivided/eia, som samler dem inn daglig (eugas
+og EIA-delen), til disse filene:
 
 - data/ttf_daily.json: daglige TTF day-ahead-priser (EEX TTF Neutral Gas
   Price, EUR/MWh). Brukes bare til prognosen for inneværende periode i
@@ -11,6 +11,9 @@ inn daglig, til to filer:
 - data/eu_lng.json: LNG send-out (regassifisering) fra europeiske
   LNG-terminaler per dag, GWh/d (ALSI+, Gas Infrastructure Europe), for EU
   totalt og Spania, Frankrike, Italia og Nederland. Til samme fane.
+- data/us_supply.json: amerikanske lagre av råolje og produkter (EIA, ukentlig,
+  tusen fat), LNG-eksport (EIA, månedlig, MMcf) og LNG-eksportprisen (EIA,
+  månedlig, USD/MMBtu). Til US supply-fanen og gassprisgrafen i Market.
 
 Feiler en henting, beholdes forrige fil for den. Steget i arbeidsflyten er
 continue-on-error.
@@ -86,7 +89,27 @@ def lng():
     print(f'eugas: LNG {", ".join(out)}; år {", ".join(sorted(out["eu"]))}')
 
 
+def us_supply():
+    inv = get('eia/inventory.json')
+    flows = get('eia/flows.json')
+    prices = get('eia/prices.json')
+    if not inv or not (inv.get('series') or {}).get('WCRSTUS1'):
+        print('eugas: ingen EIA-lagerdata i kilden; beholder forrige fil', file=sys.stderr)
+        return
+    def pairs(arr):
+        return [[x['date'], x['value']] for x in (arr or []) if x.get('value') is not None]
+    write('us_supply.json', {
+        'updated': inv.get('updatedAt'),
+        'inventory': {k: pairs(v) for k, v in inv['series'].items()},
+        'lng': pairs((flows or {}).get('lng')),
+        'lngPrice': pairs((prices or {}).get('lng_price')),
+        'source': 'U.S. Energy Information Administration (EIA), via sheffielddivided/eia',
+    })
+    print(f'eugas: US supply {", ".join(inv["series"])}; LNG {len((flows or {}).get("lng") or [])} mnd')
+
+
 if __name__ == '__main__':
     ttf()
     storage()
     lng()
+    us_supply()
