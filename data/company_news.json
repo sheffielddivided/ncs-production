@@ -39,7 +39,7 @@
   "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no": {
    "company": "DNO Norge AS",
    "title": "\"site:dno.no\" - Google Nyheter",
-   "n": 71
+   "n": 78
   },
   "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=": {
    "company": "DNO Norge AS",
@@ -3190,10 +3190,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO to Acquire Sval Energi in Transformative Transaction; Quadruples North Sea Output-2025-03-07 - dno.no",
+   "t": "DNO to Acquire Sval Energi in Transformative Transaction; Quadruples North Sea Output-2025-03-07 - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxQcHJuY3FOM2tCNzRBdnZ1bTlXSDF6ZWtNbnpIbjZMdnBaWWFWcHFuajZmSDNpdGhILU5fb1NwYXNEVGlteWM2dzlBZHZCTU5wTENtOVI2dFYxbUk5Y2dIc2RuQks2WXVsaVZZU3h3NDkzdFRLaVVhMER4QlNCUEZUMXU4LVYwdlE0TGw1bWFJdGVRbWg4TjN1dTlKMU5tQ3pyNUJVWlAzLTVHcTQtZjdhSjFEZW9Xek5PM25wY2o2S3lkY1A5X2x4cFJhYXpmaUd4ZENxbVYxZkpSdw?oc=5",
    "d": "2025-03-07",
-   "s": "DNO to Acquire Sval Energi in Transformative Transaction; Quadruples North Sea Output-2025-03-07 dno.no"
+   "s": "DNO to Acquire Sval Energi in Transformative Transaction; Quadruples North Sea Output-2025-03-07 DNO ASA"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -3474,6 +3474,13 @@
    "u": "https://news.google.com/rss/articles/CBMifkFVX3lxTE1KcXJNMTE1YVN1YXBta0dKbkYxSGVrbGNXQlItb29KLU04TWZTQnVGZWlscTliMm5yeGdCTV9wRXZnMDUxaWV1eV9qd2tnZXY0b1pmSHBfOG1xbko2b3V2NmlTcU9vdlczWjJWWWJFMjM4anFfZWlOUjJDWjZYUQ?oc=5",
    "d": "2024-08-28",
    "s": "Produksjonsøkning for DNO | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Oljefunn på West Heather | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMifEFVX3lxTE5zWEpBVmkxWTBCWFlTNkdJS2hDT0VObU4tX1JTMmhPWmc3cXh4d2Y4RjRKcmoxZzJ5ako5STQ1Y3JLYm12STAybnpfc2xSa0NlTGZQM0xvYkh6cHNLTTZ3TkxUNTlWbUtJc1JkZEl5cWo0eTZMN1Q4QUNQV3Y?oc=5",
+   "d": "2024-08-28",
+   "s": "Oljefunn på West Heather | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4107,10 +4114,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Quarterly reports | Reports and presentations | Investors - dno.no",
+   "t": "Quarterly reports | Reports and presentations | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQZFM0ZFJ2OFdTRjk5djVlQkJaajBhY2ZHdEtHT2d4SVhsaWV6WW9QY3daRDRROFBiQ3Y0SW5UelNEUlB4bm5QdFhHRV90SDJ4RGs0Wm5uVU5DdVd0MWJhcE85cFJQNTFITXlwUkJSRHA1RktwbXBwQWNQRmh2UUNwOVhNOU5DSXp4Z0VRRGx3?oc=5",
    "d": "2022-04-10",
-   "s": "Quarterly reports | Reports and presentations | Investors dno.no"
+   "s": "Quarterly reports | Reports and presentations | Investors DNO ASA"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -4520,10 +4527,24 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "salg av eiendeler - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMifEFVX3lxTE1EVExoTXRJSHdjYW81YUFhU0NvY1BjQUtFYTRlcjd6OW9Ddk9SZ1FwaWxzaWNGekVTNXpvM3Z5SEdYbkZNWGFGRFFrZHdIUEJTVG1BdnBYZlBxXzJXNUw0UGFzRkFiVFdieHpDSjc0M0pvTnh6cEppdW4wSDU?oc=5",
+   "d": "2020-11-30",
+   "s": "salg av eiendeler DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Presentasjon Pareto Oil and Offshore Conference - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPTnQ2ZFB4X3BWWFBma2RDekc2dFVPMW0wdUs5R1piUEEwelVpT3lNcGhhU0ZPWVJBeUtOUVNJWnFSRmVvNmNCYm5nZ0UzbGctdUlHZEIxb2g0TVc2cGdLOGpCdFJDVi1aMS1DaEhBRk9ObVJjSzVmV2JRdXVkVW1wYklMS09EZ1h2VVgwLWJDYnZGR2JyNVJSMjJJbFoyTWFsVllQNA?oc=5",
    "d": "2020-11-19",
    "s": "Presentasjon Pareto Oil and Offshore Conference DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Dokumenter til generalforsamling | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxPSHZ3eW5uVk9GdEwyR3BLaHg5LV95bjF3bHFMT0NscnhHOHZhcVVVLWpuaVd3bDVVR2lEOG9qUkNCS1ZVVVZFSC1TZ2RLVXd3MFlWdWVOME90dkhWMUYxYUc3Q0ZTWlRsak5kYnhfLXBfU1FzRWpYUjNzVDJkSVJ0QTI5Skpudw?oc=5",
+   "d": "2020-11-19",
+   "s": "Dokumenter til generalforsamling | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4552,6 +4573,27 @@
    "u": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNNWtSamFMOEZNV0lUeFBHdGtpbWdMNzYwNFpMZ0hnLTVFWENTSE9IbklUWEowblR1dFFUcXdzOWlHNmZ6TWk2NFM5UnlBbGk0WTF4b0JwRmNodEwwN3Q2bWZJNmt2Qllyb1kwcFhFa2tHOF9RVWVvR1ZUcWV1cnhDdm1fUENQaE13SzlIRVItTkNDUzUwMlRKSDdrQkNqenF4TC1oQjZaZFJRSmN0MEFEbGpQcF92Zw?oc=5",
    "d": "2020-11-18",
    "s": "DNO International ASA - Presentation at Pareto Oil & Offshore Conference | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Petrolia Drilling ASA - Flagging DNO ASA / IOT AS (1) | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPak1sOVpnNG9ybXV4b2tpUGNKSVA5OGlZekZrLW1JU2FLN045OUVmcFl1NW9pem5BbXpIZmVZaUpJNDhoQnl4SFR2QzlVdjB4MVd0Z3lLcGJaczhybU1LNkxGUXYyQjY5UjN6aHhyRFc1ank5Y2xVMjM3TjRDQzJUMk1kWFFkdTlJX1JMSjRvaGNhYmRpYmFOdXBn?oc=5",
+   "d": "2020-11-18",
+   "s": "Petrolia Drilling ASA - Flagging DNO ASA / IOT AS (1) | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Erklæring av opsjoner i DNO ASA | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxNNGVqN3hRV2ROVE94c3N5VEltWjh6a1Z4Zm9vMERsX1M2TnlFQzE0bTZFVW5zY1RBbzR4M25ENG10cEl2RnBzbmVrNllzUlRuLU9jZW44RV9yZmpzNVlibzd1ZXhjYzJjQjFuTVdnQzhEVmdpWEhOeGVxYU5iNUl5clY2Z2NUQQ?oc=5",
+   "d": "2020-11-18",
+   "s": "Erklæring av opsjoner i DNO ASA | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "UK License Award - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBwb1ZJM1B5Y2ZLZjRyb1BsVVI3OEN2MUdJTVk4RzctY1p1cExTZHhCRHkxd0Q3WXc1TEZfNG5vVW1FcXF6anExdnVBRWZPRTgwb09SZ2JlMHRxamNGQmxhelVYaTJIMzg1STlZMVFBZmF4cHlnVEZsaEZfaw?oc=5",
+   "d": "2020-11-18",
+   "s": "UK License Award DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4601,6 +4643,13 @@
    "u": "https://news.google.com/rss/articles/CBMigAFBVV95cUxNRlppWW1UaFdqQ2dTNThUUWpnZkRBdUs3SGFRZ2RqYXh3aGFLd0tTTEhBMGJLMzgwSElSc1lpSGViajhrRExYQlpfNDNSMUJDcWxxbXpMd2x2SnNEN3B6akxGOTdKenQxcXR2VDZmbnlYOGZMd2FzaUJoMUhYMjY0UQ?oc=5",
    "d": "2020-11-13",
    "s": "Status lisenser - Norsk sokkel | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO ekspanderer i Afrika | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTE9qazBGTXFzaV9FeWdEb3FsdkFOaW5kRDl3WE9UWjE2TmpSajktaTRIRDltczlBNnItelpuazRoaUVzYVl4NFhzT3RocW9QSFVXakp5NXJSZXpsWFJxXzAzcVVUVkRTVy1oOEVFYmdNTXhaV3JpVVpaMnNwQQ?oc=5",
+   "d": "2020-11-13",
+   "s": "DNO ekspanderer i Afrika | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4744,10 +4793,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO ASA | dno.no - dno.no",
+   "t": "DNO ASA | dno.no - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMiOkFVX3lxTE8yWjZmQWtfX3FVeUtMaC1PbVZwTmtJUkV5OWtwRVhkSE80cTZfYnVvNGl1TVVlbFMxMGc?oc=5",
    "d": "2015-09-16",
-   "s": "DNO ASA | dno.no dno.no"
+   "s": "DNO ASA | dno.no DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
