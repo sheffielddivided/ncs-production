@@ -13841,16 +13841,16 @@ function explRenderRigs() {
     // fra der riggens siste kjente aktivitet slutter hvis det er senere (planlagte
     // brønner og den stiplede «pågående»-delen medregnet), til kontraktens slutt.
     // Opsjoner prikket og lysere.
-    let busy = '';
-    r.ws.forEach(w => {
-      const e = rigOngoing({...w, end: endOf(w)}, today) && endOf(w) <= ahead ? ahead : endOf(w);
-      if (e > busy) busy = e;
-    });
+    // Bare aktiviteter som starter før kontrakten er slutt teller: en planlagt
+    // brønn som er flyttet til etter en annen kundes faste kontrakt (Arkenstone)
+    // skal ikke skyve den kontrakten ut av grafen.
+    const acts = r.ws.map(w => [w.start, rigOngoing({...w, end: endOf(w)}, today) && endOf(w) <= ahead ? ahead : endOf(w)]);
+    const busyBefore = end => acts.reduce((m, [s, e]) => (s < end && e > m ? e : m), '');
     const cry = y + 3, crh = multi ? 11 : RH - 8;
     // Påfølgende kontrakter hos samme kunde (forlengelser, nye dagrater) blir én stolpe.
     const segs = [];
     r.cs.forEach(c => {
-      const s0 = c.s > busy ? c.s : busy;
+      const busy = busyBefore(c.e), s0 = c.s > busy ? c.s : busy;
       if (c.e <= s0) return;
       const p = segs[segs.length - 1];
       if (p && p.client === c.client && p.kind === c.kind && s0 <= addDays(p.e, 45)) {
@@ -13890,7 +13890,8 @@ function explRenderRigs() {
   const nDev = inWin.filter(w => w.kind === 'dev').reduce((t, b) => t + b.items.length, 0);
   const nAisOnly = inWin.filter(w => w.kind === 'ais').length;
   document.getElementById('explBody').innerHTML = `
-    <div class="pf-card"><h3>Rig schedule</h3><div class="ex-slot"></div>
+    <div class="pf-card"><h3 class="cn-head"><span>Rig schedule</span>
+      <button class="cn-gear" style="margin-right:62px" onclick="openRigDataInfo()" title="Where the rig contracts come from, when each was last updated and how to update them">${GEAR_SVG}Data sources</button></h3><div class="ex-slot"></div>
       <div class="ex-sum"><strong>${out.length}</strong> rigs · <strong>${out.filter(r => r.now).length}</strong> drilling now
       · <strong>${out.filter(r => r.next).length}</strong> with a planned well${nDev ? ` · <strong>${nDev}</strong> development wellbores` : ''}${
         showCon ? ` · <strong>${out.filter(r => r.cs.length).length}</strong> with contract data` : ''}</div>
@@ -14166,6 +14167,84 @@ function openWell(id, quiet) {
 // fromNav: lukkes som del av en navigasjon eller tilbake-knappen. Ellers (×,
 // Close, Escape, klikk utenfor) går vi ett steg tilbake når panelet ble åpnet som
 // eget steg i historikken, slik at tilbake-knappen ikke åpner det igjen.
+// Drilling → Rigs: kildene til riggkontraktene (data/rig_contracts.json),
+// når hver sist ble oppdatert, og hvordan de oppdateres. PDF-rapportene og de
+// manuelle radene krever at noen gjør noe; nettsidene leses av den daglige jobben.
+const RIG_SRC_HOW = {
+  pdf: 'Fleet status report (PDF), imported by hand',
+  web: 'Company website, read by the daily job',
+  manual: 'Entered by hand',
+};
+const RIG_SRC_WHERE = {Noble: 'https://www.noblecorp.com/investors', Transocean: 'https://www.deepwater.com/investors'};
+function openRigDataInfo() {
+  const rc = rigContracts;
+  if (!rc) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const bySrc = {};
+  Object.values(rc.byRig).flat().forEach(c => {
+    const x = bySrc[c.source] = bySrc[c.source] || {rigs: new Set(), n: 0};
+    x.rigs.add(c.rig); x.n++;
+  });
+  // Ett innslag per riggselskap: nyeste kilde av hver type.
+  const rows = {};
+  Object.entries(rc.sources).forEach(([k, src]) => {
+    const how = k.startsWith('manual') ? 'manual' : src.url ? 'web' : 'pdf';
+    const key = `${src.contractor}|${how}`, r = rows[key];
+    const u = bySrc[k] || {rigs: new Set(), n: 0};
+    if (!r || src.date > r.date) rows[key] = {contractor: src.contractor, how, date: src.date, title: src.title, url: src.url,
+      n: (r ? r.n : 0) + u.n, rigs: new Set([...(r ? r.rigs : []), ...u.rigs])};
+    else { r.n += u.n; u.rigs.forEach(x => r.rigs.add(x)); }
+  });
+  const list = Object.values(rows).sort((a, b) => a.how.localeCompare(b.how) || a.contractor.localeCompare(b.contractor, 'en'));
+  const age = d => Math.round((dayMs(today) - dayMs(d)) / 864e5);
+  // PDF-rapporter kommer om lag hvert kvartal; eldre enn 100 dager er trolig utdatert.
+  const stale = r => (r.how === 'pdf' && age(r.date) > 100) || (r.how === 'web' && age(r.date) > 120) || (r.how === 'manual' && age(r.date) > 180);
+  const tr = r => `<tr><td class="ex-l"><strong>${esc(r.contractor)}</strong>${RIG_SRC_WHERE[r.contractor] && r.how === 'pdf'
+      ? `<small><a href="${RIG_SRC_WHERE[r.contractor]}" target="_blank" rel="noopener">investor pages ↗</a></small>` : r.url ? `<small><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''))} ↗</a></small>` : ''}</td>
+    <td class="ex-l">${RIG_SRC_HOW[r.how]}<small>${esc(r.title)}</small></td>
+    <td>${fmtShort(r.date)}<small${stale(r) ? ' style="color:#c0392b;font-weight:600"' : ''}>${age(r.date) === 0 ? 'today' : age(r.date) + ' days ago'}${stale(r) ? ' · check for a newer one' : ''}</small></td>
+    <td>${r.rigs.size}</td><td>${r.n}</td></tr>`;
+  document.getElementById('wdBody').innerHTML = `
+    <div class="wd-head">
+      <div><h2>Rig contracts · data sources</h2>
+        <div class="wd-sub">data/rig_contracts.json · the contract bars, the Contract column and the rig profiles</div></div>
+      <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="pf-card"><h3>Last updated</h3>
+      <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
+        <th class="ex-l">Rig company</th><th class="ex-l">Source</th><th>Updated</th><th>Rigs</th><th>Contracts</th></tr></thead>
+        <tbody>${list.map(tr).join('')}</tbody></table></div>
+      <div class="pf-map-note">The date is the report date for PDF reports, the last time the timeline on the website changed for
+        websites, and the last manual edit for hand-entered rows. Red marks a source that is probably out of date: a PDF report older
+        than 100 days (they come about quarterly), a website unchanged for 120 days, or manual rows older than 180 days.</div></div>
+    <div class="pf-card"><h3>How to update</h3>
+      <div class="pf-map-note rig-howto" style="font-size:0.74rem;line-height:1.5">
+        <style>.rig-howto p{margin:0 0 8px}</style>
+        <p><strong>PDF reports (Noble, Transocean)</strong> — needs doing by hand, about once a quarter. Download the latest
+          fleet status report from the company's investor pages and run, in the repository:</p>
+        <pre style="background:#f4f6f9;padding:6px 8px;border-radius:6px;white-space:pre-wrap">pip install pdfplumber
+python import_fleet_report.py report.pdf --dry-run
+python import_fleet_report.py report.pdf</pre>
+        <p>The dry run shows what will change. Then commit and push <code>data/rig_contracts.json</code>. Contracts that ended
+          before the new report are kept as history; upcoming contracts missing from it are removed as changed or cancelled.
+          Several PDFs can be given at once. A new rig company needs its own reader in <code>import_fleet_report.py</code> (<code>READERS</code>).</p>
+        <p><strong>Websites (Odfjell, COSL)</strong> — automatic. The daily data job runs
+          <code>python import_fleet_report.py --web</code>; nothing is written when the timeline is unchanged. If the date here
+          stops moving while the website has changed, the page layout has probably changed and the reader needs fixing.</p>
+        <p><strong>Hand-entered rows (Saipem, Shelf Drilling, Linus)</strong> — edit the rows whose <code>source</code> starts
+          with <code>manual-</code> in <code>data/rig_contracts.json</code> (from press releases and quarterly reports), and set
+          the source's <code>date</code> in <code>sources</code>. The import script never touches these rows.</p>
+        <p><strong>Rule in the chart:</strong> a planned well whose operator is not the client on the rig's firm contract at
+          that time is drawn after that contract (today: Arkenstone on Deepsea Atlantic). This follows the contract data
+          automatically.</p>
+        <p>Claude can do any of these: upload the PDF or name the rig company and ask it to update the rig contracts.</p>
+      </div></div>
+    <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
+  document.getElementById('wdOverlay').classList.add('open');
+  document.getElementById('wdOverlay').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
 function closeWell(fromNav) {
   if (!fromNav && history.state && history.state.ov && (explF.open || explF.rig)) { history.back(); return; }
   explF.open = null;
