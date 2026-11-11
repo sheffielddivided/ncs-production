@@ -2395,11 +2395,10 @@ function pageSources() {
   const add = (...k) => k.forEach(x => { if (!out.includes(x)) out.push(x); });
   if (m === 'prices') {
     if (v === 'brent' || v === 'oilgas') add('ppb', 'eia', 'fred');
-    if (v === 'diff') add('ppb');
     if (v === 'gas' || v === 'oilgas') add('ssb', 'imf', 'eia', 'nb');
     if (v === 'gas' && priceData && priceData.ttfd) add('eex');
     if (v === 'storage') add('gie', 'gie_lng');
-    if (prF.real && v !== 'diff') {
+    if (prF.real) {
       const cur = v === 'gas' ? gasCur() : 'USD';
       add(cur === 'USD' ? 'bls' : cur === 'EUR' ? 'eurostat' : 'ssb');
     }
@@ -2465,7 +2464,9 @@ function applyHash() {
              : topMode === 'prices' ? PRICE_TABS
              : topMode === 'dcs' ? DCS_TABS : COMPANY_TABS;
   // Prices / Heatmap er erstattet av Oil vs gas; gamle lenker sendes dit.
-  const v = topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas' : q.get('v');
+  // Differentials er flyttet nederst på Brent-siden; gamle lenker sendes dit.
+  const v = topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas'
+          : topMode === 'prices' && q.get('v') === 'diff' ? 'brent' : q.get('v');
   if (tabs.some(t => t.id === v)) {
     if (topMode === 'fields') fieldSubView = v;
     else if (topMode === 'hubs') hubSubView = v;
@@ -3301,8 +3302,7 @@ function drawDcsMap() {
 // Feltfavorittene lagres i nettleseren under samme nøkkel som den gamle
 // siden brukte, så lagrede favoritter følger med.
 const PRICE_TABS = [
-  {id: 'brent',   label: 'Dated Brent'},
-  {id: 'diff',    label: 'Differentials'},
+  {id: 'brent',   label: 'Brent'},
   {id: 'gas',     label: 'Gas'},
   {id: 'oilgas',  label: 'Oil vs gas'},
   {id: 'storage', label: 'EU storage'},
@@ -3485,17 +3485,19 @@ function drawPrices() {
   // Tvinger PPT-knappene til å sjekke tilstanden på nytt (tellerutenettet har ingen graf).
   document.getElementById('downloadBtn').disabled = true;
   setProfile(''); setChartTable('');
-  if (priceSubView === 'diff') drawPriceDiff();
-  else if (priceSubView === 'gas') drawPriceGas();
+  if (diffChart) { diffChart.destroy(); diffChart = null; }
+  if (priceSubView === 'gas') drawPriceGas();
   else if (priceSubView === 'oilgas') drawPriceOilGas();
   else if (priceSubView === 'storage') drawPriceStorage();
-  else drawPriceBrent();
+  else { drawPriceBrent(); drawPriceDiff(); }
   document.getElementById('downloadBtn').disabled = false;
 }
 
+// opts.canvas: tegn i et annet lerret enn hovedgrafen; grafen returneres da
+// og hovedgrafen (chartInstance) røres ikke.
 function priceLineChart(labels, datasets, yTitle, opts = {}) {
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+  if (!opts.canvas && chartInstance) chartInstance.destroy();
+  const chart = new Chart(document.getElementById(opts.canvas || 'prodChart').getContext('2d'), {
     type: 'line', data: {labels, datasets},
     options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
       plugins: {legend: {display: false}, tooltip: {callbacks: {
@@ -3506,6 +3508,8 @@ function priceLineChart(labels, datasets, yTitle, opts = {}) {
             grid: {color: opts.zeroLine ? (ctx => ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)') : 'rgba(0,0,0,0.05)'}},
       }},
   });
+  if (opts.canvas) return chart;
+  chartInstance = chart;
 }
 
 // Snittlinjen i Brent-visningene: gjennomsnittet av verdiene som vises i
@@ -3776,6 +3780,9 @@ function drawPriceBrent() {
     ` &nbsp;|&nbsp; ${PRICE_SRC}; U.S. Energy Information Administration (EIA)`);
 }
 
+// Brent-siden: norm price-differensialene i et eget kort nederst, med
+// feltvalget og samme periode som Brent-grafen over.
+let diffChart = null;
 function drawPriceDiff() {
   const d = priceData.diff, months = priceMonths(), full = prF.sel.length >= PRICE_MAX_SEL;
   const favs = priceFavs();
@@ -3784,7 +3791,13 @@ function drawPriceDiff() {
     return `<button class="np-chip${on ? ' on' : ''}" ${!on && full ? 'disabled' : ''} aria-pressed="${on}"
       onclick="priceToggle(${esc(jsStr(f))})"><span class="np-dot" ${on ? `style="background:${PRICE_COLORS[prF.slot[f]]};border-color:${PRICE_COLORS[prF.slot[f]]}"` : ''}></span>${esc(f)}</button>`;
   }).join('');
-  document.getElementById('chartArea').innerHTML = `${priceBar()}
+  const datasets = prF.sel.map(f => {
+    const c = PRICE_COLORS[prF.slot[f]];
+    return {label: f, data: months.map(m => d.fields[f][m] ?? null), borderColor: c, backgroundColor: c, borderWidth: 2,
+      spanGaps: false, pointRadius: months.length > 60 ? 1.5 : 3, tension: 0};
+  });
+  setProfile(`<div class="pf-card pf-wide"><h3>Norm price differentials</h3>
+    <div class="pf-map-note" style="margin:0 0 8px">Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1} (the period above)</div>
     <div class="np-chips">${chips}</div>
     <div class="np-bar">
       <button class="grp-btn" onclick="priceSelAction('reset')">${favs.length ? 'My favourites' : 'Default selection'}</button>
@@ -3792,18 +3805,13 @@ function drawPriceDiff() {
       <button class="grp-btn" onclick="priceSelAction('save')" ${prF.sel.length ? '' : 'disabled'} title="Save the selected fields as favourites in this browser">★ Save as favourites</button>
       ${favs.length ? `<button class="grp-btn" onclick="priceSelAction('unsave')">Delete favourites</button>` : ''}
       <span class="pf-map-note" style="margin:0">Up to ${PRICE_MAX_SEL} fields.</span></div>
-    ${prF.sel.length ? '<div class="chart-container"><canvas id="prodChart"></canvas></div>' : '<div class="status">Pick one or more fields above.</div>'}`;
-  const datasets = prF.sel.map(f => {
-    const c = PRICE_COLORS[prF.slot[f]];
-    return {label: f, data: months.map(m => d.fields[f][m] ?? null), borderColor: c, backgroundColor: c, borderWidth: 2,
-      spanGaps: false, pointRadius: months.length > 60 ? 1.5 : 3, tension: 0};
-  });
-  if (prF.sel.length) priceLineChart(months, datasets, 'differential, $/bbl', {zeroLine: true});
-  else if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-  lastLabels = months; lastXTitle = 'Month';
-  lastDatasets = datasets.map(x => ({label: x.label + ', $/bbl', data: x.data.map(v => v ?? '')}));
-  setChartTitle('Norm price differentials', `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`);
-  setInfo(`<strong>Differential:</strong> the field's norm price minus Dated Brent, set monthly by the Petroleum Price Board &nbsp;|&nbsp; Gaps mean no monthly value: probably no oil sold, or several differentials in the month (sub-periods in 2018 and 2020, not imported) &nbsp;|&nbsp; ${PRICE_SRC}`);
+    ${prF.sel.length ? `<div class="chart-container"><canvas id="diffChart"></canvas></div>
+      <div class="legend-row">${datasets.map(x => `<div class="legend-item"><div class="legend-dot" style="background:${x.borderColor}"></div>${esc(x.label)}</div>`).join('')}</div>`
+      : '<div class="status">Pick one or more fields above.</div>'}
+    <div class="pf-map-note"><strong>Differential:</strong> the field's norm price minus Dated Brent, set monthly by the Petroleum Price Board.
+      Gaps mean no monthly value: probably no oil sold, or several differentials in the month (sub-periods in 2018 and 2020, not imported).
+      ${PRICE_SRC}.</div></div>`);
+  if (prF.sel.length) diffChart = priceLineChart(months, datasets, 'differential, $/bbl', {zeroLine: true, canvas: 'diffChart'});
 }
 
 // ── PRICES: GAS ──
