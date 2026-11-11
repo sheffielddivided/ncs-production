@@ -22,6 +22,11 @@
    "title": "Odfjell website (fleet timeline) 2026-11-11",
    "date": "2026-11-11",
    "url": "https://www.odfjelldrilling.com/our-fleet/"
+  },
+  "manual-saipem": {
+   "contractor": "Saipem",
+   "title": "Saipem press releases and Q1 2026 results presentation",
+   "date": "2026-11-11"
   }
  },
  "rigs": {
@@ -156,6 +161,12 @@
    "contractor": "Odfjell",
    "built": "2019",
    "source": "odfjell-2026-11-11"
+  },
+  "SCARABEO 8": {
+   "contractor": "Saipem",
+   "design": "6th-generation semisubmersible (DP and mooring, dual derrick)",
+   "built": "2012",
+   "source": "manual-saipem"
   }
  },
  "contracts": [
@@ -632,6 +643,86 @@
    "dayrate": null,
    "contractor": "Noble",
    "source": "noble-2026-10-26"
+  },
+  {
+   "rig": "SCARABEO 8",
+   "location": "Norway",
+   "client": "Aker BP",
+   "kind": "firm",
+   "start": "2023-01-01",
+   "end": "2025-12-31",
+   "startText": "Jan-23",
+   "endText": "Dec-25",
+   "precision": "month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Original three-year contract awarded in March 2022, valued at USD 325 million, with two one-year options. Includes a performance bonus scheme and a mechanism that adjusts the dayrate to market level from the third year.",
+   "contractor": "Saipem",
+   "source": "manual-saipem"
+  },
+  {
+   "rig": "SCARABEO 8",
+   "location": "Norway",
+   "client": "Aker BP",
+   "kind": "firm",
+   "start": "2026-01-01",
+   "end": "2026-12-31",
+   "startText": "Jan-26",
+   "endText": "Dec-26",
+   "precision": "month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "First one-year option, exercised in 2024.",
+   "contractor": "Saipem",
+   "source": "manual-saipem"
+  },
+  {
+   "rig": "SCARABEO 8",
+   "location": "Norway",
+   "client": "Aker BP",
+   "kind": "firm",
+   "start": "2027-01-01",
+   "end": "2027-12-31",
+   "startText": "Jan-27",
+   "endText": "Dec-27",
+   "precision": "month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Second one-year option, exercised in July 2025.",
+   "contractor": "Saipem",
+   "source": "manual-saipem"
+  },
+  {
+   "rig": "SCARABEO 8",
+   "location": "Norway",
+   "client": "Aker BP",
+   "kind": "firm",
+   "start": "2028-01-01",
+   "end": "2028-12-31",
+   "startText": "Jan-28",
+   "endText": "Dec-28",
+   "precision": "month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Third extension, announced December 2025: USD 157 million including rig rental, excluding fuel and additional services (about USD 430k/day implied). A new clause allows further extensions.",
+   "contractor": "Saipem",
+   "source": "manual-saipem"
+  },
+  {
+   "rig": "SCARABEO 8",
+   "location": "Norway",
+   "client": "Aker BP",
+   "kind": "firm",
+   "start": "2029-01-01",
+   "end": "2029-03-31",
+   "startText": "Jan-29",
+   "endText": "Mar-29",
+   "precision": "month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Further extension finalised in Q1 2026 (Saipem Q1 2026 presentation): the rig works for Aker BP until March 2029. Value not disclosed.",
+   "contractor": "Saipem",
+   "source": "manual-saipem"
   },
   {
    "rig": "TRANSOCEAN BARENTS",

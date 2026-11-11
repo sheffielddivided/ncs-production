@@ -19,7 +19,8 @@ eldre rapport kan leses inn i etterkant; den fyller bare på med kontrakter
 som var avsluttet før den nyeste rapporten fra samme selskap.
 
 Fila kan også rettes og fylles på for hånd (kontrakter fra pressemeldinger,
-selskaper uten rapport). Rader med "source": "manual" røres aldri av skriptet.
+selskaper uten rapport). Rader med en kilde som begynner med "manual" (f.eks.
+"manual-saipem", beskrevet i sources) røres aldri av skriptet.
 """
 
 import argparse
@@ -37,7 +38,7 @@ MATCH_DAYS = 150    # samme rigg, kunde og type, og start innenfor så mange dag
 MONTHS = {m.lower(): i for i, m in enumerate(calendar.month_abbr) if m}
 
 NOTE = ('Kontrakter per rigg fra riggselskapenes fleet status reports (import_fleet_report.py) '
-        'og manuelle rader (source "manual", røres ikke av skriptet). start/end er ISO-datoer '
+        'og manuelle rader (source "manual…", røres ikke av skriptet). start/end er ISO-datoer '
         'utledet av rapportens tekst (startText/endText) og precision (month, quarter, half, year, chart). '
         'kind: firm eller option. dayrate i USD per dag, null når den ikke er oppgitt (se dayrateText). '
         'rigs: riggdata fra siste rapport (design, byggeår, vanndybde).')
@@ -593,7 +594,7 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
             continue
         keep_rows.append({**r, 'rig': name, 'client': clean_client(r['client']), 'contractor': contractor, 'source': src_id})
     old = db['contracts']
-    mine = [c for c in old if c.get('contractor') == contractor and c.get('source') != 'manual']
+    mine = [c for c in old if c.get('contractor') == contractor and not str(c.get('source', '')).startswith('manual')]
     others = [c for c in old if c not in mine]
     newest = max((db['sources'][c['source']]['date'] for c in mine if c['source'] in db['sources']), default='')
     log = []

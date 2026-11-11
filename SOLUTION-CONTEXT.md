@@ -2488,8 +2488,15 @@ beholdes, så historikken ikke går tapt. Kundenavn normaliseres (`clean_client`
 samme kontrakt og oppdateres. En kontrakt som er avsluttet før den nye rapporten,
 blir liggende. En kommende kontrakt som er borte fra rapporten, er endret eller
 kansellert og fjernes. En eldre rapport kan leses inn i etterkant og legger da bare
-til kontrakter som var avsluttet før den nyeste. Rader med `"source": "manual"`
-(pressemeldinger, selskaper uten rapport) røres aldri av skriptet.
+til kontrakter som var avsluttet før den nyeste.
+
+*Manuelle rader* (pressemeldinger, selskaper uten rapport) har en kilde-id som
+begynner med `manual` og beskrives i `sources` med `title` og `date`, f.eks.
+`manual-saipem` for Scarabeo 8 (Saipems meldinger og Q1 2026-presentasjonen:
+Aker BP fra januar 2023 til mars 2029, utøvde opsjoner og forlengelser som egne
+rader). Skriptet rører dem aldri. Riggprofilen og tabellene slår sammen
+påfølgende kontrakter med samme kunde (høyst 45 dager mellom) til én periode i
+statusteksten («until Mar-29»).
 
 *Visning:* riggtidslinjen tegner kontraktene i en egen linje under hver rigg:
 stiplet grå stolpe med kundens navn for fast periode, prikket for opsjon,

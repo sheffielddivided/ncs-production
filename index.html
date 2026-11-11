@@ -13540,8 +13540,11 @@ const conWhen = (c, which) => {
   return `~${MONTH_ABBR[+m - 1]} ${y}`;
 };
 const conPeriod = c => `${conWhen(c, 'start')} – ${conWhen(c, 'end')}`;
-const conSource = c => c.source === 'manual' ? 'entered manually'
-  : (rigContracts && rigContracts.sources[c.source]) ? `${rigContracts.sources[c.source].contractor} fleet status report ${fmtShort(rigContracts.sources[c.source].date)}` : c.source || '';
+// Kilden i klartekst: rapport, nettside eller manuelt registrert (id «manual…»).
+const srcLabel = (id, src) => !src ? (id && id.startsWith('manual') ? 'entered manually' : id || '')
+  : id.startsWith('manual') ? `${src.title}, entered manually ${fmtShort(src.date)}`
+  : src.url ? `${src.contractor} website, read ${fmtShort(src.date)}` : `${src.contractor} fleet status report, ${fmtShort(src.date)}`;
+const conSource = c => srcLabel(c.source, rigContracts && rigContracts.sources[c.source]);
 
 // Kontraktene til en rigg slik de tegnes: datoene er ofte bare kvartal eller
 // måned, så kontrakter som følger hverandre overlapper i rapporten (DNO og så
@@ -13563,8 +13566,16 @@ function contractBars(name) {
 // Status i dag: den faste kontrakten som løper, opsjonene etter den, og neste.
 function contractStatus(name, today) {
   const all = contractsFor(name), l = all.filter(c => c.kind === 'firm');
-  const now = l.filter(c => c.start <= today && c.end >= today).pop();
-  const next = l.find(c => c.start > today);
+  let now = l.filter(c => c.start <= today && c.end >= today).pop();
+  // Forlengelser og utøvde opsjoner hos samme kunde er én sammenhengende periode.
+  if (now) {
+    let last = now;
+    for (const c of l) {
+      if (c.start > now.start && c.client === now.client && c.start <= addDays(last.end, 45) && c.end > last.end) last = c;
+    }
+    now = {...now, end: last.end, endText: last.endText};
+  }
+  const next = l.find(c => c.start > (now ? now.end : today));
   const opt = now ? all.filter(c => c.kind === 'option' && c.client === now.client && c.start >= now.end.slice(0, 7)) : [];
   return {now, next, opt};
 }
@@ -13589,8 +13600,9 @@ function rigContractCard(name) {
   if (!list.length && !meta) return '';
   const today = new Date().toISOString().slice(0, 10);
   const st = contractStatus(name, today);
-  const lastSrc = list.map(c => c.source).concat(meta ? [meta.source] : [])
-    .map(k => rigContracts.sources[k]).filter(Boolean).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  const srcIds = [...new Set(list.map(c => c.source).concat(meta ? [meta.source] : []))]
+    .filter(k => rigContracts.sources[k]).sort((a, b) => (rigContracts.sources[a].date < rigContracts.sources[b].date ? 1 : -1));
+  const lastSrc = srcIds.length ? rigContracts.sources[srcIds[0]] : null;
   const until = c => conWhen(c, 'end').replace(/^~/, '');
   let lead;
   if (st.now) {
@@ -13600,7 +13612,7 @@ function rigContractCard(name) {
   } else if (st.next) {
     lead = `No firm contract now. Next: <strong>${esc(st.next.client)}</strong>${st.next.location ? ' in ' + esc(st.next.location) : ''} from ${esc(conWhen(st.next, 'start'))}.`;
   } else {
-    lead = 'Available: no current or future contract in the fleet status report' + (lastSrc ? ` (${esc(lastSrc.contractor)}, ${fmtShort(lastSrc.date)})` : '') + '.';
+    lead = 'Available: no current or future contract in the sources' + (lastSrc ? ` (${esc(srcLabel(srcIds[0], lastSrc))})` : '') + '.';
   }
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
   const rows = list.slice().reverse().map(c => `
@@ -13616,7 +13628,7 @@ function rigContractCard(name) {
     ${list.length ? `<div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Client</th><th class="ex-l">Location</th><th class="ex-l">Period</th><th>Dayrate</th><th class="ex-l">Comment</th>
       </tr></thead><tbody>${rows}</tbody></table></div>` : ''}
-    <div class="pf-map-note">Source: ${lastSrc ? `${esc(lastSrc.contractor)} fleet status report, ${fmtShort(lastSrc.date)}` : 'data/rig_contracts.json'}.
+    <div class="pf-map-note">Source: ${srcIds.length ? srcIds.map(k => esc(srcLabel(k, rigContracts.sources[k]))).join('; ') : 'data/rig_contracts.json'}.
       Dates are the contractor's estimates, often only a month or a quarter; dates marked ~ are read from a timeline chart
       (the report's, or the contractor's website for Odfjell and COSL, which show only the current client).
       Completed contracts are kept from earlier reports (greyed). Dayrates exclude mobilisation and other fees.</div></div>`;
