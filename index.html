@@ -13841,16 +13841,16 @@ function explRenderRigs() {
     // fra der riggens siste kjente aktivitet slutter hvis det er senere (planlagte
     // brønner og den stiplede «pågående»-delen medregnet), til kontraktens slutt.
     // Opsjoner prikket og lysere.
-    let busy = '';
-    r.ws.forEach(w => {
-      const e = rigOngoing({...w, end: endOf(w)}, today) && endOf(w) <= ahead ? ahead : endOf(w);
-      if (e > busy) busy = e;
-    });
+    // Bare aktiviteter som starter før kontrakten er slutt teller: en planlagt
+    // brønn som er flyttet til etter en annen kundes faste kontrakt (Arkenstone)
+    // skal ikke skyve den kontrakten ut av grafen.
+    const acts = r.ws.map(w => [w.start, rigOngoing({...w, end: endOf(w)}, today) && endOf(w) <= ahead ? ahead : endOf(w)]);
+    const busyBefore = end => acts.reduce((m, [s, e]) => (s < end && e > m ? e : m), '');
     const cry = y + 3, crh = multi ? 11 : RH - 8;
     // Påfølgende kontrakter hos samme kunde (forlengelser, nye dagrater) blir én stolpe.
     const segs = [];
     r.cs.forEach(c => {
-      const s0 = c.s > busy ? c.s : busy;
+      const busy = busyBefore(c.e), s0 = c.s > busy ? c.s : busy;
       if (c.e <= s0) return;
       const p = segs[segs.length - 1];
       if (p && p.client === c.client && p.kind === c.kind && s0 <= addDays(p.e, 45)) {
