@@ -53,7 +53,7 @@ jobs:
 
       # Fra eugas (repoet sheffielddivided/eia): daglige TTF day-ahead-priser
       # til prognosen i Gas-fanen, og fyllingsgraden i europeiske gasslagre
-      # til EU storage-fanen.
+      # og LNG send-out til EU storage-fanen.
       - name: Hent TTF-priser og gasslagre fra eugas
         continue-on-error: true
         timeout-minutes: 5

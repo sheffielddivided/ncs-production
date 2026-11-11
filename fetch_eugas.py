@@ -8,6 +8,9 @@ inn daglig, til to filer:
 - data/eu_storage.json: fyllingsgraden i europeiske gasslagre per dag, i % av
   kapasitet (AGSI+, Gas Infrastructure Europe), for EU totalt og Tyskland,
   Italia, Nederland og Frankrike. Til EU storage-fanen i Market.
+- data/eu_lng.json: LNG send-out (regassifisering) fra europeiske
+  LNG-terminaler per dag, GWh/d (ALSI+, Gas Infrastructure Europe), for EU
+  totalt og Spania, Frankrike, Italia og Nederland. Til samme fane.
 
 Feiler en henting, beholdes forrige fil for den. Steget i arbeidsflyten er
 continue-on-error.
@@ -70,6 +73,20 @@ def storage():
     print(f'eugas: lager {", ".join(out)}; år {", ".join(sorted(out["eu"]))}')
 
 
+def lng():
+    src = get('alsi.json')
+    sel = (src or {}).get('selections') or {}
+    out = {k: {y: {d: v for d, v in days.items() if v is not None} for y, days in (s.get('sendOut') or {}).items()}
+           for k, s in sel.items()}
+    if not out.get('eu'):
+        print('eugas: ingen LNG-data i kilden; beholder forrige fil', file=sys.stderr)
+        return
+    write('eu_lng.json', {'updated': src.get('updatedAt'), 'sendOut': out,
+                          'source': 'ALSI+ (Gas Infrastructure Europe), via sheffielddivided/eia (eugas)'})
+    print(f'eugas: LNG {", ".join(out)}; år {", ".join(sorted(out["eu"]))}')
+
+
 if __name__ == '__main__':
     ttf()
     storage()
+    lng()
