@@ -589,14 +589,14 @@
   <div class="ctrl-row">
     <div class="mode-switcher">
       <button class="mode-btn" id="modeBtnNcs" onclick="switchMode('ncs')">NCS</button>
+      <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Company</button>
+      <button class="mode-btn" id="modeBtnLicences" onclick="switchMode('licences')">Licence</button>
       <button class="mode-btn" id="modeBtnHubs" onclick="switchMode('hubs')">Hub</button>
       <button class="mode-btn" id="modeBtnFields" onclick="switchMode('fields')">Field</button>
-      <button class="mode-btn active" id="modeBtnCompanies" onclick="switchMode('companies')">Company</button>
       <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
       <button class="mode-btn" id="modeBtnDrilling" onclick="switchMode('drilling')">Drilling</button>
-      <button class="mode-btn" id="modeBtnLicences" onclick="switchMode('licences')">Licences</button>
-      <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Prices</button>
+      <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Market</button>
       <button class="mode-btn" id="modeBtnDcs" onclick="switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS</button>
     </div>
   </div>
@@ -2735,7 +2735,7 @@ async function refreshCompanies() {
   }
   // Lisenstabellen trenger funndataene til lenkene i siste kolonne.
   if (companySubView === 'licences') {
-    await Promise.all([loadDiscoveries(),
+    await Promise.all([loadDiscoveries(), licLoadTransfers(),
       bundle.licence_outlines ? null : fetchBundle('licence_outlines').then(b => { bundle.licence_outlines = b; })]);
     drawChart();
     return;
@@ -7519,7 +7519,7 @@ function havtilCompanyCard(name) {
                    [n('investigation'), 'investigation', 'investigations'], [n('notice'), 'order / notice', 'orders / notices']]
       .filter(([c]) => c).map(([c, one, many]) => `${c} ${c === 1 ? one : many}`);
     return havtilList(items,
-      'linked to the company by the name in the title or the consent\'s operator, grouped by corporate group as in Licences',
+      'linked to the company by the name in the title or the consent\'s operator, grouped by corporate group as in Licence',
       parts.length ? `<div class="pf-map-note" style="margin:0 0 8px">${parts.join(' · ')}</div>` : '');
   });
 }
@@ -7732,7 +7732,7 @@ function drawCompanyNews() {
       <div class="pf-map-note">Sodir press releases are drilling permits and drilling results for wells where the group is operator or
         partner (interests as recorded by Sodir for the well), and other Sodir news about fields the group has an interest in or that
         names it. Well events come from comparing each daily data run with the previous one. Deals are licence stakes the group bought or sold (transfers, state (SDFI) transfers, withdrawals and mergers; transfers within
-        the group are left out), as in Licences → Transactions. Rig moves (AIS) are shown when a rig arrives
+        the group are left out), as in Licence → Transactions. Rig moves (AIS) are shown when a rig arrives
         at or leaves a well where the group is operator or partner, or a field it has an interest in. Company press releases come from the RSS
         feeds added with the Feeds button; they are fetched daily.</div>
     </div>
@@ -9762,19 +9762,60 @@ function buildLicenceRows(name) {
     }));
 }
 
+function licContentHtml(fields, ds) {
+  const parts = [];
+  fields.forEach(f => parts.push(fieldLink(f.id, f.name)));
+  ds.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, d.name)));
+  if (ds.length > 3) parts.push(`<span class="lic-more" title="${esc(ds.slice(3).map(d => d.name).join(', '))}">+${ds.length - 3} more</span>`);
+  return parts.join(', ');
+}
+
+// Companies → Licences: lisenstransaksjonene konsernet har vært part i, som i
+// Licences → Transactions (samme standardtyper, ikke navneendringer, og ikke
+// overføringer innad i konsernet). Alle fra i år vises, men minst de fem siste;
+// resten ligger bak «Show … earlier».
+function licenceDealsCard(name) {
+  if (!licTransfers) return '';
+  const key = concernKey(name), kinds = new Set(LIC_DEAL_KINDS.split(','));
+  const deals = licTransfers.filter(t => {
+    if (!kinds.has(t.kind)) return false;
+    const buy = !!t.buyer && concernKey(t.buyer) === key, sell = !!t.seller && concernKey(t.seller) === key;
+    return buy !== sell;
+  }).sort((a, b) => b.day - a.day || b.lic - a.lic);
+  if (!deals.length) return `<div class="pf-card pf-wide"><h3>Recent transactions</h3>
+    <div class="pf-map-note">No licence transactions found for the company's group. Source: Sodir layer 3003.</div></div>`;
+  const thisYear = deals.filter(t => licDayYear(t.day) === currentYear).length;
+  const shown = Math.max(5, thisYear);
+  const {byField, byDisc} = licenceInfo();
+  const chip = t => { const k = licKindOf(t.kind) || {label: t.kind, color: '#9aa5b1'};
+    return `<span class="lc-kind" style="--c:${k.color}">${esc(k.label.replace(/s$/, ''))}</span>`; };
+  const row = t => { const ln = licName(t.lic);
+    return `<tr><td class="ex-l">${licDayStr(t.day)}</td><td class="ex-l"><strong>${licenceLink(ln)}</strong></td>
+      <td>${licPct(t.share)}</td><td class="ex-l">${t.seller ? companyLink(t.seller) : '—'}</td>
+      <td class="ex-l">${t.buyer ? companyLink(t.buyer) : '—'}</td><td class="ex-l">${chip(t)}</td>
+      <td class="ex-l lic-info">${licContentHtml(byField[ln] || [], byDisc[ln] || [])}</td></tr>`; };
+  const table = rows => `<div class="pf-scroll"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">Date</th><th class="ex-l">Licence</th><th>Share</th><th class="ex-l">Seller</th>
+      <th class="ex-l">Buyer</th><th class="ex-l">Type</th><th class="ex-l">Field / discoveries</th></tr></thead>
+      <tbody>${rows.map(row).join('')}</tbody></table></div>`;
+  const rest = deals.slice(shown);
+  return `<div class="pf-card pf-wide"><h3>Recent transactions</h3>
+    <div class="ex-sum"><strong>${thisYear}</strong> ${thisYear === 1 ? 'transaction' : 'transactions'} in ${currentYear} ·
+      ${deals.length} in total</div>
+    ${table(deals.slice(0, shown))}
+    ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} earlier</summary>${table(rest)}</details>` : ''}
+    <div class="pf-map-note">Licence stakes the company's group bought or sold: transfers, state (SDFI) transfers,
+      withdrawals and mergers. Name changes and transfers within the group are left out. All transactions this year
+      are shown, and at least the five latest. The last column is the same as in the licence table below.
+      Source: Sodir layer 3003.</div></div>`;
+}
+
 function licenceTableHtml(rows) {
   if (!rows.length) return '';
   const {key, dir} = licenceSort;
   // Infokolonnen: feltet lisensen eier først, deretter funnene i den. Lange
   // lister kuttes — PL 050 har 26 funn — og hele listen ligger i title.
-  const info = r => {
-    const parts = [];
-    r.fields.forEach(f => parts.push(fieldLink(f.id, f.name)));
-    const ds = r.discoveries;
-    ds.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, d.name)));
-    if (ds.length > 3) parts.push(`<span class="lic-more">+${ds.length - 3} more</span>`);
-    return parts.join(', ');
-  };
+  const info = r => licContentHtml(r.fields, r.discoveries);
   const sortVal = (r, k) =>
     k === 'validTo' ? (r.validTo || 0)
     : k === 'share' ? r.share
@@ -9865,11 +9906,13 @@ function drawCompanyLicences() {
   setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Source:</strong> Sodir layers 3000 and 3007`);
   setProfile(licenceRows.length ? `
     ${licenceSummaryCard(name, licenceRows, false)}
+    ${licenceDealsCard(name)}
     <div class="pf-card pf-wide"><h3>Licence map</h3>${licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})))}</div>
     <div class="pf-card pf-wide"><h3>All licences</h3>
       <div id="licenceBox">${licenceTableHtml(licenceRows)}</div>
-      <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licences →</button></div></div>`
-    : '<div class="pf-card pf-wide"><div class="pf-map-note">The company holds no active production licences.</div></div>');
+      <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licence →</button></div></div>`
+    : '<div class="pf-card pf-wide"><div class="pf-map-note">The company holds no active production licences.</div></div>'
+      + licenceDealsCard(name));
 }
 
 function setLicenceSort(key) {
