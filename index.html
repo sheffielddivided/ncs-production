@@ -13138,10 +13138,11 @@ function explRenderRigs() {
         ${txt ? `<text x="${(a + 4).toFixed(1)}" y="${y + (multi ? 12 + w.lane * 13 : RH / 2 + 3)}" class="ex-bar-t" style="${multi ? 'font-size:8px' : ''}" fill="${dark ? '#fff' : '#1a2332'}">${esc(txt)}</text>` : ''}
         <title>${isAisOnly ? esc(w.title) + (w.cat === 'port' ? ' (port stay, AIS)' : ' (stay, no matching well data — AIS)') : esc(w.title) + (isDev ? ' (development)' : ` (${esc(w.name)})`) + ' · ' + esc(w.operator)} · ${fmtShort(w.start)}${to}${note}</title></g>`;
     }).join('');
-    // Kontraktene er en stiplet forlengelse av linjen: fra der riggens siste kjente
-    // aktivitet slutter (planlagte brønner og den stiplede «pågående»-delen
-    // medregnet, og aldri før i dag) til kontraktens slutt. Opsjoner prikket og lysere.
-    let busy = today;
+    // Kontraktene er en stiplet forlengelse av linjen: fra kontraktens start, eller
+    // fra der riggens siste kjente aktivitet slutter hvis det er senere (planlagte
+    // brønner og den stiplede «pågående»-delen medregnet), til kontraktens slutt.
+    // Opsjoner prikket og lysere.
+    let busy = '';
     r.ws.forEach(w => {
       const e = rigOngoing({...w, end: endOf(w)}, today) && endOf(w) <= ahead ? ahead : endOf(w);
       if (e > busy) busy = e;
@@ -13216,8 +13217,8 @@ function explRenderRigs() {
         60 days, probably still being drilled. Ongoing operations continue ${ONGOING_DAYS} days past today as a pale bar with a dashed
         outline; this only marks that they are not finished and is not an estimate of when they end. Dashed white bars are planned exploration wells (60-day placeholder). The red line is today.
         Sodir has no planned dates for development wells, so those appear only once drilling has started.${showCon ? `
-        <br><strong>Contracts</strong> continue each rig's line as a dashed grey bar named after the client, from where the rig's last
-        known activity ends to the end of the contract; a dotted bar is an option. Completed contracts are not shown here. They come from the drilling contractors' fleet status reports (dates are often only a month or a quarter, and the
+        <br><strong>Contracts</strong> continue each rig's line as a dashed grey bar named after the client, from the start of the contract
+        or, if later, where the rig's last known activity ends, to the end of the contract; a dotted bar is an option. Completed contracts are not shown here. They come from the drilling contractors' fleet status reports (dates are often only a month or a quarter, and the
         dayrate is in the tooltip), so far for ${Object.keys(rigContracts.byRig).length} rigs; click one for the rig's full contract history.
         Rigs without wells in the period are listed when they have a contract on the Norwegian shelf.` : ''}</div>
     </div>
