@@ -70,6 +70,11 @@
    "company": "Aker BP ASA",
    "title": "NewsWeb · Aker BP ASA",
    "n": 65
+  },
+  "https://akerbp.com/en/feed/": {
+   "company": "Aker BP ASA",
+   "title": "Aker BP",
+   "n": 10
   }
  },
  "items": [
@@ -473,7 +478,21 @@
    "s": "Oslo, 19 October 2026 – Aker BP and Höegh Evi have been awarded EUR 223 million from the European Union Innovation Fund for the Atlas Project, a large-scale CCS network connecting European industry with permanent CO2 storage on the Norwegian Continental Shelf. Atlas combines regional CO₂ …"
   },
   {
+   "f": "https://akerbp.com/en/feed/",
+   "t": "EU Innovation Fund awards EUR 223 million to Aker BP and Höegh Evi for the Atlas CO2 transport and storage project",
+   "u": "https://akerbp.com/en/eu-innovation-fund-awards-eur-223-million-to-aker-bp-and-hoegh-evi-for-the-atlas-co2-transport-and-storage-project/",
+   "d": "2026-10-20",
+   "s": "Oslo, 19 October 2026 – Aker BP and Höegh Evi have been awarded EUR 223 million from the European Union Innovation Fund for the Atlas Project, a large-scale CCS network connecting European industry with permanent CO2 storage on the Norwegian Continental Shelf. Atlas combines regional CO₂ …"
+  },
+  {
    "f": "https://akerbp.com/en/news/",
+   "t": "Official opening of the Skarv satellites in the Norwegian Sea",
+   "u": "https://akerbp.com/en/official-opening-of-the-skarv-satellites-in-the-norwegian-sea/",
+   "d": "2026-10-19",
+   "s": "On Monday, 19 October, Minister of Energy Terje Aasland officially opens the Skarv satellites at Skarv FPSO in the Norwegian Sea. The opening marks that the Alve Nord, Idun Nord and Ørn fields have started production. The three fields are tied into existing infrastructure at Skarv and reinforce the …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Official opening of the Skarv satellites in the Norwegian Sea",
    "u": "https://akerbp.com/en/official-opening-of-the-skarv-satellites-in-the-norwegian-sea/",
    "d": "2026-10-19",
@@ -551,6 +570,13 @@
   },
   {
    "f": "https://akerbp.com/en/news/",
+   "t": "Ula turns 40: a story about people, technology and value creation",
+   "u": "https://akerbp.com/en/ula-turns-40-a-story-about-people-technology-and-value-creation/",
+   "d": "2026-10-06",
+   "s": "On 6 October, it is 40 years since Ula started oil and gas production. The field was originally expected to produce for around 10–11 years. Four decades later, Ula is still in operation, thanks to technology development, continuous improvement and strong professional communities. When production …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Ula turns 40: a story about people, technology and value creation",
    "u": "https://akerbp.com/en/ula-turns-40-a-story-about-people-technology-and-value-creation/",
    "d": "2026-10-06",
@@ -656,6 +682,13 @@
   },
   {
    "f": "https://akerbp.com/en/news/",
+   "t": "Great experiences and important messages at Oilers’ first home games",
+   "u": "https://akerbp.com/en/great-experiences-and-important-messages-at-oilers-first-home-games/",
+   "d": "2026-09-28",
+   "s": "When Stavanger Oilers played their first two home games of the season, it was about more than what happened on the ice. Together with Aker BP, Oilers invited children from Stavanger Ski Club and young people from Frøyland secondary school to enjoy sport, community, and meaningful conversations. …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Great experiences and important messages at Oilers’ first home games",
    "u": "https://akerbp.com/en/great-experiences-and-important-messages-at-oilers-first-home-games/",
    "d": "2026-09-28",
@@ -768,6 +801,13 @@
   },
   {
    "f": "https://akerbp.com/en/news/",
+   "t": "Next generation party leaders visit the Edvard Grieg field offshore",
+   "u": "https://akerbp.com/en/next-generation-party-leaders-visit-the-edvard-grieg-field-offshore/",
+   "d": "2026-09-14",
+   "s": "Where were today’s party leaders for Young Conservatives, AUF, Progress Party Youth, Centre Youth, Socialist Youth, Young Liberals, Young Christian Democrats and Green Youth when the Edvard Grieg field started oil and gas production in 2016? How do these young politicians view the future of the …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Next generation party leaders visit the Edvard Grieg field offshore",
    "u": "https://akerbp.com/en/next-generation-party-leaders-visit-the-edvard-grieg-field-offshore/",
    "d": "2026-09-14",
@@ -929,6 +969,13 @@
   },
   {
    "f": "https://akerbp.com/en/news/",
+   "t": "Standing Committee on Energy and the Environment visits Aker BP for dialogue on the future of the Norwegian continental shelf",
+   "u": "https://akerbp.com/en/standing-committee-on-energy-and-the-environment-visits-aker-bp-for-dialogue-on-the-future-of-the-norwegian-continental-shelf/",
+   "d": "2026-08-25",
+   "s": "On Tuesday, 25 August, the Norwegian Parliament’s Energy and the Environment committee visited Aker BP in Stavanger to discuss the future of the Norwegian continental shelf, Norway’s role as an energy supplier to Europe, and how the industry can create as much value as possible with the lowest …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Standing Committee on Energy and the Environment visits Aker BP for dialogue on the future of the Norwegian continental shelf",
    "u": "https://akerbp.com/en/standing-committee-on-energy-and-the-environment-visits-aker-bp-for-dialogue-on-the-future-of-the-norwegian-continental-shelf/",
    "d": "2026-08-25",
@@ -1173,7 +1220,21 @@
    "s": "What will the robots of the future look like, and what will they be able to do? That was the challenge when Aker BP hosted a workshop during TENK Tech Camp at Vitenfabrikken in Sandnes. TENK Tech Camp, held on August 6 and 7, is a free technology camp for girls aged 13 to 19. […] The post Girls …"
   },
   {
+   "f": "https://akerbp.com/en/feed/",
+   "t": "Girls designed the robots of the future",
+   "u": "https://akerbp.com/en/girls-designed-the-robots-of-the-future/",
+   "d": "2026-08-07",
+   "s": "What will the robots of the future look like, and what will they be able to do? That was the challenge when Aker BP hosted a workshop during TENK Tech Camp at Vitenfabrikken in Sandnes. TENK Tech Camp, held on August 6 and 7, is a free technology camp for girls aged 13 to 19. […] The post Girls …"
+  },
+  {
    "f": "https://akerbp.com/en/news/",
+   "t": "Cracking the carbonate code at Symra",
+   "u": "https://akerbp.com/en/cracking-the-carbonate-code-at-symra/",
+   "d": "2026-08-07",
+   "s": "The Symra field on the Utsira High in the North Sea has presented some of the greatest drilling challenges for Aker BP in recent years. Even so, the team has succeeded in delivering safe, producing wells in a reservoir that is notably complex to manage. “The Zechstein carbonate at Symra remains one …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Cracking the carbonate code at Symra",
    "u": "https://akerbp.com/en/cracking-the-carbonate-code-at-symra/",
    "d": "2026-08-07",
@@ -1188,6 +1249,13 @@
   },
   {
    "f": "https://akerbp.com/en/news/",
+   "t": "Eight alliances. One shared ambition",
+   "u": "https://akerbp.com/en/eight-alliances-one-shared-ambition/",
+   "d": "2026-08-06",
+   "s": "Most companies manage complex offshore projects through contracts. Aker BP manages them through alliances. Instead of dividing work between operator, contractors and service companies, Aker BP bring people together in integrated teams with shared goals, shared incentives and a common responsibility …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Eight alliances. One shared ambition",
    "u": "https://akerbp.com/en/eight-alliances-one-shared-ambition/",
    "d": "2026-08-06",
@@ -1734,6 +1802,13 @@
   },
   {
    "f": "https://akerbp.com/en/news/",
+   "t": "Ran subsea operation from shore – reduced 14 days to 12 hours",
+   "u": "https://akerbp.com/en/ran-subsea-operation-from-shore-reduced-14-days-to-12-hours/",
+   "d": "2026-06-15",
+   "s": "For the first time, Aker BP and DeepOcean have carried out an advanced subsea operation without sending key personnel offshore. A job that previously took two weeks offshore was completed in a single working day, controlled from a remote operations center in Haugesund. Together with strategic …"
+  },
+  {
+   "f": "https://akerbp.com/en/feed/",
    "t": "Ran subsea operation from shore – reduced 14 days to 12 hours",
    "u": "https://akerbp.com/en/ran-subsea-operation-from-shore-reduced-14-days-to-12-hours/",
    "d": "2026-06-15",
