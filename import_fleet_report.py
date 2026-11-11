@@ -636,6 +636,61 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
     return log
 
 
+# ── Kobling til Sodirs selskaper ─────────────────────────────────────────────
+# Rapportene bruker kortnavn («Aker BP», «Equinor»). Hver kontrakt får feltet
+# companies med Sodirs selskapsnavn (data/companies.json), så selskapsfilteret i
+# Drilling treffer også rigger som bare har en kommende kontrakt for selskapet.
+# Kjente kunder står her; andre kobles til det aktive selskapet hvis navn begynner
+# med kundenavnet (operatør foran rettighetshaver). Delte kunder («Harbour
+# Energy / OMV») kobles til hver av dem.
+CLIENT_COMPANY = {
+    'aker bp': 'Aker BP ASA',
+    'conocophillips': 'ConocoPhillips Skandinavia AS',
+    'dno': 'DNO Norge AS',
+    'equinor': 'Equinor Energy AS',
+    'harbour energy': 'Harbour Energy Norge AS',
+    'omv': 'OMV Norge AS',
+    'orlen': 'ORLEN Upstream Norway AS',
+    'shell': 'A/S Norske Shell',
+    'vår energi': 'Vår Energi ASA',
+}
+NO_COMPANY = {'undisclosed', 'various', 'bp'}   # bp er ikke aktiv på norsk sokkel
+
+
+def link_companies(db):
+    with open(os.path.join('data', 'companies.json'), encoding='utf-8') as fh:
+        cb = json.load(fh)
+    rows = [dict(zip(cb['columns'], r)) for r in cb['rows']]
+    names = {r['name'] for r in rows}
+    active = sorted((r for r in rows if r.get('activeNcs')),
+                    key=lambda r: (-int(r.get('licenceOper') or 0), -int(r.get('licensee') or 0), r['name']))
+
+    def one(client):
+        k = client.strip().lower()
+        if not k or k in NO_COMPANY:
+            return None
+        if k in CLIENT_COMPANY and CLIENT_COMPANY[k] in names:
+            return CLIENT_COMPANY[k]
+        hit = next((r['name'] for r in active if r['name'].lower() == k or r['name'].lower().startswith(k + ' ')), None)
+        return hit
+
+    changed, missing = False, set()
+    for c in db['contracts']:
+        found = []
+        for part in re.split(r'\s*/\s*', c['client']):
+            n = one(part)
+            if n:
+                found.append(n)
+            elif part.strip().lower() not in NO_COMPANY:
+                missing.add(part)
+        if c.get('companies') != found:
+            c['companies'] = found
+            changed = True
+    if missing:
+        print('  uten selskapskobling: ' + ', '.join(sorted(missing)))
+    return changed
+
+
 def prune_sources(db):
     used = {c.get('source') for c in db['contracts']} | {r.get('source') for r in db['rigs'].values()}
     db['sources'] = {k: v for k, v in db['sources'].items() if k in used}
@@ -683,6 +738,7 @@ def main():
                 db = trial
                 changed = True
     prune_sources(db)
+    changed |= link_companies(db)
     if a.dry_run or not changed:
         return
     with open(PATH, 'w', encoding='utf-8') as fh:

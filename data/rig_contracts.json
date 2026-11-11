@@ -205,7 +205,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Began before the timeline does, so the start is unknown. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "COSLInnovator",
@@ -221,7 +224,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "startOpen": true,
@@ -238,7 +244,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Began before the timeline does, so the start is unknown. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Vår Energi ASA"
+   ]
   },
   {
    "rig": "COSLPioneer",
@@ -254,7 +263,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Vår Energi ASA"
+   ]
   },
   {
    "startOpen": true,
@@ -271,7 +283,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Began before the timeline does, so the start is unknown. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "COSLPromoter",
@@ -287,7 +302,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "startOpen": true,
@@ -304,7 +322,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Began before the timeline does, so the start is unknown. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Vår Energi ASA"
+   ]
   },
   {
    "rig": "COSLProspector",
@@ -320,7 +341,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on cosl.no. Client assumed to be the current client.",
    "contractor": "COSL",
-   "source": "cosl-2026-11-11"
+   "source": "cosl-2026-11-11",
+   "companies": [
+    "Vår Energi ASA"
+   ]
   },
   {
    "startOpen": true,
@@ -337,7 +361,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "DEEPSEA ABERDEEN",
@@ -353,7 +380,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "startOpen": true,
@@ -370,7 +400,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "rig": "DEEPSEA ATLANTIC",
@@ -386,7 +417,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "startOpen": true,
@@ -403,7 +435,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": [
+    "OMV Norge AS"
+   ]
   },
   {
    "startOpen": true,
@@ -420,7 +455,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "DEEPSEA NORDKAPP",
@@ -436,7 +474,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "startOpen": true,
@@ -453,7 +494,10 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "startOpen": true,
@@ -470,7 +514,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "rig": "LINUS",
@@ -486,7 +531,10 @@
    "dayrateText": "Undisclosed",
    "note": "Original contract for West Linus (now Linus) in the Greater Ekofisk Area, from delivery in 2014.",
    "contractor": "Odfjell Technology",
-   "source": "manual-linus"
+   "source": "manual-linus",
+   "companies": [
+    "ConocoPhillips Skandinavia AS"
+   ]
   },
   {
    "rig": "LINUS",
@@ -502,7 +550,10 @@
    "dayrateText": "Undisclosed",
    "note": "Extended in 2017 from May 2019 to the end of 2028 at a market-indexed dayrate, and later to Q2 2029: the owner SFL lists the firm period until Q2 2029 (sflcorp.com, November 2026). Odfjell Technology's page and the Havtil consent (valid to 31 Dec 2028) still give Q4 2028. No option period is listed. Managed by Odfjell Technology since 2022.",
    "contractor": "Odfjell Technology",
-   "source": "manual-linus"
+   "source": "manual-linus",
+   "companies": [
+    "ConocoPhillips Skandinavia AS"
+   ]
   },
   {
    "rig": "NOBLE CLAUS BACHMANN",
@@ -518,7 +569,8 @@
    "precision": "month",
    "dayrate": 320000,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": []
   },
   {
    "rig": "NOBLE CLAUS BACHMANN",
@@ -534,7 +586,10 @@
    "precision": "month",
    "dayrate": null,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "NOBLE INNOVATOR",
@@ -550,7 +605,8 @@
    "dayrateText": "",
    "note": "Firm period read from the contract timeline chart; the report does not list this contract. It began before the chart does, so the start is unknown.",
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": []
   },
   {
    "rig": "NOBLE INTEGRATOR",
@@ -566,7 +622,10 @@
    "precision": "month",
    "dayrate": null,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "NOBLE INTERCEPTOR",
@@ -582,7 +641,10 @@
    "precision": "month",
    "dayrate": null,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "NOBLE INTERCEPTOR",
@@ -598,7 +660,10 @@
    "dayrateText": "",
    "note": "Option period read from the contract timeline chart; client is the contract it follows.",
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "NOBLE INTERCEPTOR",
@@ -614,7 +679,10 @@
    "precision": "quarter",
    "dayrate": null,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "DNO Norge AS"
+   ]
   },
   {
    "rig": "NOBLE INTERCEPTOR",
@@ -630,7 +698,10 @@
    "precision": "quarter",
    "dayrate": null,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "ConocoPhillips Skandinavia AS"
+   ]
   },
   {
    "rig": "NOBLE INTREPID",
@@ -646,7 +717,8 @@
    "precision": "month",
    "dayrate": 150000,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": []
   },
   {
    "rig": "NOBLE INTREPID",
@@ -662,7 +734,10 @@
    "precision": "month",
    "dayrate": null,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "ORLEN Upstream Norway AS"
+   ]
   },
   {
    "rig": "NOBLE INTREPID",
@@ -678,7 +753,10 @@
    "dayrateText": "",
    "note": "Option period read from the contract timeline chart; client is the contract it follows.",
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "ORLEN Upstream Norway AS"
+   ]
   },
   {
    "rig": "NOBLE INVINCIBLE",
@@ -694,7 +772,10 @@
    "precision": "month",
    "dayrate": null,
    "contractor": "Noble",
-   "source": "noble-2026-10-26"
+   "source": "noble-2026-10-26",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "SCARABEO 8",
@@ -710,7 +791,10 @@
    "dayrateText": "Undisclosed",
    "note": "Original three-year contract awarded in March 2022, valued at USD 325 million, with two one-year options. Includes a performance bonus scheme and a mechanism that adjusts the dayrate to market level from the third year.",
    "contractor": "Saipem",
-   "source": "manual-saipem"
+   "source": "manual-saipem",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "SCARABEO 8",
@@ -726,7 +810,10 @@
    "dayrateText": "Undisclosed",
    "note": "First one-year option, exercised in 2024.",
    "contractor": "Saipem",
-   "source": "manual-saipem"
+   "source": "manual-saipem",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "SCARABEO 8",
@@ -742,7 +829,10 @@
    "dayrateText": "Undisclosed",
    "note": "Second one-year option, exercised in July 2025.",
    "contractor": "Saipem",
-   "source": "manual-saipem"
+   "source": "manual-saipem",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "SCARABEO 8",
@@ -758,7 +848,10 @@
    "dayrateText": "Undisclosed",
    "note": "Third extension, announced December 2025: USD 157 million including rig rental, excluding fuel and additional services (about USD 430k/day implied). A new clause allows further extensions.",
    "contractor": "Saipem",
-   "source": "manual-saipem"
+   "source": "manual-saipem",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "SCARABEO 8",
@@ -774,7 +867,10 @@
    "dayrateText": "Undisclosed",
    "note": "Further extension finalised in Q1 2026 (Saipem Q1 2026 presentation): the rig works for Aker BP until March 2029. Value not disclosed.",
    "contractor": "Saipem",
-   "source": "manual-saipem"
+   "source": "manual-saipem",
+   "companies": [
+    "Aker BP ASA"
+   ]
   },
   {
    "rig": "SHELF DRILLING BARSK",
@@ -790,7 +886,10 @@
    "dayrateText": "Undisclosed",
    "note": "Awarded April 2023: two wells on Sleipner Vest, about 270 days, about USD 61 million (about USD 226k/day). Extended April 2024 with two firm wells on Gudrun, 254 days, about USD 81 million (about USD 319k/day), and an exercised option well on Sleipner Vest of at least 83 days. Start delayed to November 2024 by the missing Norwegian AoC (about USD 54 million in lost revenue). December 2026 is the latest documented end; no further firm extension is confirmed. Contract values are estimates, not pure rig rental.",
    "contractor": "Shelf Drilling",
-   "source": "manual-shelf"
+   "source": "manual-shelf",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN BARENTS",
@@ -806,7 +905,8 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": []
   },
   {
    "rig": "TRANSOCEAN BARENTS",
@@ -822,7 +922,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Vår Energi ASA"
+   ]
   },
   {
    "rig": "TRANSOCEAN BARENTS",
@@ -838,7 +941,10 @@
    "dayrateText": "Not Disclosed",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Vår Energi ASA"
+   ]
   },
   {
    "rig": "TRANSOCEAN ENABLER",
@@ -854,7 +960,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN ENABLER",
@@ -870,7 +979,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN ENABLER",
@@ -886,7 +998,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN ENCOURAGE",
@@ -902,7 +1017,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN ENCOURAGE",
@@ -918,7 +1036,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN ENCOURAGE",
@@ -934,7 +1055,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN ENDURANCE",
@@ -950,7 +1074,10 @@
    "dayrateText": "402,000 75 days -",
    "note": "Contract Preparation",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN EQUINOX",
@@ -966,7 +1093,8 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": []
   },
   {
    "rig": "TRANSOCEAN EQUINOX",
@@ -982,7 +1110,8 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": []
   },
   {
    "rig": "TRANSOCEAN EQUINOX",
@@ -998,7 +1127,8 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": []
   },
   {
    "rig": "TRANSOCEAN EQUINOX",
@@ -1014,7 +1144,8 @@
    "dayrateText": "Not Disclosed",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": []
   },
   {
    "rig": "TRANSOCEAN NORGE",
@@ -1030,7 +1161,11 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Harbour Energy Norge AS",
+    "OMV Norge AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN NORGE",
@@ -1046,7 +1181,11 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Harbour Energy Norge AS",
+    "OMV Norge AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN NORGE",
@@ -1062,7 +1201,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Harbour Energy Norge AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN NORGE",
@@ -1078,7 +1220,10 @@
    "dayrateText": "Not Disclosed",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Harbour Energy Norge AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN NORGE",
@@ -1094,7 +1239,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "A/S Norske Shell"
+   ]
   },
   {
    "rig": "TRANSOCEAN NORGE",
@@ -1110,7 +1258,10 @@
    "dayrateText": "Not Disclosed",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "A/S Norske Shell"
+   ]
   },
   {
    "rig": "TRANSOCEAN SPITSBERGEN",
@@ -1126,7 +1277,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "TRANSOCEAN SPITSBERGEN",
@@ -1142,7 +1296,10 @@
    "dayrateText": "",
    "note": "",
    "contractor": "Transocean",
-   "source": "transocean-2026-11-02"
+   "source": "transocean-2026-11-02",
+   "companies": [
+    "Equinor Energy AS"
+   ]
   },
   {
    "rig": "WEST HERCULES",
@@ -1158,7 +1315,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. The website names only the current client.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "rig": "WEST HERCULES",
@@ -1174,7 +1332,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "startOpen": true,
@@ -1191,7 +1350,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. Began before the timeline does, so the start is unknown. The website names only the current client.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "rig": "WEST MIRA",
@@ -1207,7 +1367,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "rig": "WEST MIRA",
@@ -1223,7 +1384,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com. The website names only the current client.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   },
   {
    "rig": "WEST MIRA",
@@ -1239,7 +1401,8 @@
    "dayrateText": "",
    "note": "Read from the timeline on odfjelldrilling.com.",
    "contractor": "Odfjell",
-   "source": "odfjell-2026-11-11"
+   "source": "odfjell-2026-11-11",
+   "companies": []
   }
  ]
 }

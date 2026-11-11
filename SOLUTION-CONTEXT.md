@@ -2484,6 +2484,19 @@ matches de på overlapp i stedet for startdato, og den tidligste kjente starten
 beholdes, så historikken ikke går tapt. Kundenavn normaliseres (`clean_client`:
 «A/S Norske Shell» → Shell, «Vår Energi ASA» → Vår Energi).
 
+*Kobling til Sodirs selskaper:* rapportene bruker kortnavn («Aker BP»,
+«Equinor»). `link_companies` i importskriptet gir hver kontrakt feltet
+`companies` med Sodirs selskapsnavn fra data/companies.json: kjente kunder står i
+`CLIENT_COMPANY` (Aker BP → Aker BP ASA, Equinor → Equinor Energy AS,
+ConocoPhillips → ConocoPhillips Skandinavia AS osv.); andre kobles til det aktive
+selskapet hvis navn begynner med kundenavnet, operatører først. Delte kunder
+(«Harbour Energy / OMV») kobles til begge; bp, Undisclosed og Various kobles ikke.
+Koblingen kjøres ved hver import, også for manuelle rader, og skriptet lister
+kunder uten kobling. Selskapsfilteret i riggtidslinjen (`contractForCompany`)
+treffer når et av selskapene inneholder filterteksten eller er i samme konsern
+(`concernKey`), så en rigg med bare en kommende kontrakt for selskapet (Noble
+Claus Bachmann for Aker BP) kommer med.
+
 *Historikk og fletting:* samme rigg, kunde og type med start innenfor 150 dager er
 samme kontrakt og oppdateres. En kontrakt som er avsluttet før den nye rapporten,
 blir liggende. En kommende kontrakt som er borte fra rapporten, er endret eller

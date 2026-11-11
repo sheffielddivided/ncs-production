@@ -13033,8 +13033,9 @@ function explRenderRigs() {
     Object.entries(rigContracts.byRig).forEach(([key, l]) => {
       if (!l.some(c => c.location === 'Norway' && c.end >= t0 && c.start <= conMax)) return;
       if (explF.modu && fixedRigNames().has(l[0].rig)) return;
-      const hit = s => (comp && s.toLowerCase().includes(comp)) || (q && s.toLowerCase().includes(q));
-      if (filtersActive && !(l.some(c => hit(c.client)) || (q && key.toLowerCase().includes(q)))) return;
+      // Selskapsfilteret går mot Sodir-selskapene kontrakten er koblet til (companies), søket mot kundenavnet.
+      const hit = c => (comp && contractForCompany(c, explF.company.trim())) || (q && c.client.toLowerCase().includes(q));
+      if (filtersActive && !(l.some(hit) || (q && key.toLowerCase().includes(q)))) return;
       if (have[key]) have[key].conOk = true;
       else planned.push({name: l[0].rig, bars: [], conOk: true});
     });
@@ -13548,6 +13549,14 @@ function loadRigContracts() {
   return rigContractsLoading;
 }
 const CON_AHEAD_DAYS = 730, CON_FILL = '#eef1f5', CON_STROKE = '#5b6776';
+// Kontrakten gjelder selskapet når et av Sodir-selskapene den er koblet til
+// (import_fleet_report.py, link_companies) inneholder navnet, som filteret for
+// brønnene, eller hører til samme konsern (Aker BP ASA og Aker BP AS).
+function contractForCompany(c, name) {
+  const n = String(name || '').toLowerCase();
+  if (!n) return false;
+  return (c.companies || []).some(x => x.toLowerCase().includes(n) || concernKey(x) === concernKey(name));
+}
 const contractsFor = name => (rigContracts && rigContracts.byRig[String(name).toUpperCase()]) || [];
 const CON_LOC = {'United Kingdom': 'UK', 'Norway': '', 'US Gulf': 'US GoM'};
 const conLoc = c => (c.location in CON_LOC ? CON_LOC[c.location] : c.location || '');
