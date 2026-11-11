@@ -11330,6 +11330,26 @@ function pptPointRows(series, sizes) {
     ({name: s.name, values: cols[si], ...(sizes ? {sizes: sz[si]} : {})})));
 }
 
+// Tidsserier med mange punkter (etiketter som 2026-07 eller 2026-07-15):
+// som datoakse i PowerPoint, der aksen får jevne, vannrette etiketter (år,
+// eller måned og år for korte perioder) i stedet for én loddrett etikett per
+// punkt. Returnerer {labels, opts} eller null.
+function pptDateAxis(labels) {
+  if (labels.length < 25 || !labels.every(l => /^\d{4}-\d{2}(-\d{2})?$/.test(l))) return null;
+  const monthly = labels.every(l => l.length === 7);
+  const ms = l => Date.UTC(+l.slice(0, 4), +l.slice(5, 7) - 1, l.length > 7 ? +l.slice(8, 10) : 1);
+  const serial = l => (ms(l) - Date.UTC(1899, 11, 30)) / 864e5;
+  const years = (ms(labels[labels.length - 1]) - ms(labels[0])) / (365.25 * 864e5);
+  const major = years > 12 ? [2, 'years', 'yyyy'] : years > 3 ? [1, 'years', 'yyyy'] : years > 1.5 ? [6, 'months', 'mmm yy'] : [3, 'months', 'mmm yy'];
+  // Aksen starter ved et årsskifte (eller kvartal), så etikettene står der
+  // året eller måneden begynner og ikke ved første datapunkt.
+  const y0 = +labels[0].slice(0, 4), m0 = +labels[0].slice(5, 7);
+  const start = major[1] === 'years' ? `${y0}-01` : `${y0}-${String(m0 - (m0 - 1) % 3).padStart(2, '0')}`;
+  return {labels: labels.map(serial), opts: {catLabelFormatCode: major[2], catAxisBaseTimeUnit: monthly ? 'months' : 'days',
+    catAxisMajorTimeUnit: major[1], catAxisMajorUnit: major[0], catAxisMajorTickMark: 'none', catAxisLabelRotate: 0,
+    catAxisMinVal: serial(start)}};
+}
+
 function pptAddChart(pptx, slide, spec, box) {
   const C = pptx.charts;
   const font = {catAxisLabelFontSize: 10, valAxisLabelFontSize: 10, legendFontSize: 11, dataLabelFontSize: 9,
@@ -11468,15 +11488,18 @@ function pptAddChart(pptx, slide, spec, box) {
     return;
   }
   if (!bars.length && !lines2.length) {
+    const da = pptDateAxis(spec.labels);
+    if (da) spec = {...spec, labels: da.labels};
+    const dOpts = da ? da.opts : {};
     // Blandet heltrukket og stiplet: to linjegrupper, siden strektypen gjelder hele gruppen.
     const dashed = lines1.filter(x => x.dash);
     if (dashed.length && dashed.length < lines1.length) {
       const solid = lines1.filter(x => !x.dash);
       slide.addChart([{type: C.LINE, data: toData(solid), options: lineOpts(solid)},
-                      {type: C.LINE, data: toData(dashed), options: {...lineOpts(dashed), lineDash: 'dash'}}], {...common, ...axisTitle(spec.yTitle)});
+                      {type: C.LINE, data: toData(dashed), options: {...lineOpts(dashed), lineDash: 'dash'}}], {...common, ...axisTitle(spec.yTitle), ...dOpts});
       return;
     }
-    slide.addChart(C.LINE, toData(lines1), {...common, ...lineOpts(lines1), ...axisTitle(spec.yTitle)});
+    slide.addChart(C.LINE, toData(lines1), {...common, ...lineOpts(lines1), ...axisTitle(spec.yTitle), ...dOpts});
     return;
   }
   // Kombinasjon. Høyreaksen får sin egen verdiakse og en skjult kategoriakse.
