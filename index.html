@@ -2747,7 +2747,7 @@ async function refreshCompanies() {
     return;
   }
   if (companySubView === 'news') {
-    await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis(), licLoadTransfers()]);
+    await Promise.all([loadExploration(), loadChanges(), loadCompanyNews(), loadRigAis(), licLoadTransfers(), loadHavtil()]);
     drawChart();
     return;
   }
@@ -7507,22 +7507,6 @@ function havtilRigCard(name) {
     (havtilData.items || []).filter(it => (it.rigs || []).some(r => hvWellKey(r) === key)),
     'linked to the rig by name in the title, summary or consent details'));
 }
-// Selskapsprofilen: alle saker for konsernet, så Statoil-sakene kommer med hos
-// Equinor og Det norske hos Aker BP. Havtil-navnet er koblet til en juridisk
-// enhet i fetch_havtil.py (cmp); konsernet er det samme som i Licences.
-function havtilCompanyCard(name) {
-  return havtilLazy(`c${name}`, () => {
-    const key = concernKey(name);
-    const items = (havtilData.items || []).filter(it => (it.cmp || []).some(c => concernKey(c) === key));
-    const n = k => items.filter(it => it.kind === k).length;
-    const parts = [[n('inspection'), 'inspection', 'inspections'], [n('consent'), 'consent', 'consents'],
-                   [n('investigation'), 'investigation', 'investigations'], [n('notice'), 'order / notice', 'orders / notices']]
-      .filter(([c]) => c).map(([c, one, many]) => `${c} ${c === 1 ? one : many}`);
-    return havtilList(items,
-      'linked to the company by the name in the title or the consent\'s operator, grouped by corporate group as in Licence',
-      parts.length ? `<div class="pf-map-note" style="margin:0 0 8px">${parts.join(' · ')}</div>` : '');
-  });
-}
 function havtilList(items, linkNote, intro = '') {
   if (!items.length) return '';
   const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -7675,6 +7659,21 @@ function companyNewsItems(name) {
         <span class="nw-why">${esc(k ? k.label.replace(/s$/, '') : t.kind)} · ${esc(buy ? t.buyer : t.seller)}</span>`});
   });
 
+  // Havtil: tilsyn, samtykker, granskinger og pålegg for konsernet, koblet som
+  // på navnet i tittelen eller samtykkets operatør (cmp fra fetch_havtil.py), slik
+  // at Statoil-sakene kommer med hos Equinor og Det norske hos Aker BP.
+  ((havtilData && havtilData.items) || []).forEach(it => {
+    if (!it.date || !(it.cmp || []).some(c => concernKey(c) === key)) return;
+    const res = [];
+    if (it.nonconf != null) res.push(`${it.nonconf} ${it.nonconf === 1 ? 'nonconformity' : 'nonconformities'}`);
+    if (it.improve != null) res.push(`${it.improve} improvement ${it.improve === 1 ? 'point' : 'points'}`);
+    const pdf = /^https:\/\/www\.havtil\.no\//.test(it.pdf || '') ? ` · <a href="${esc(it.pdf)}" target="_blank" rel="noopener">Report (PDF)</a>` : '';
+    out.push({d: it.date, src: 'havtil', cls: 'havtil', label: 'Havtil',
+      html: `<a href="https://www.havtil.no${esc(it.id)}" target="_blank" rel="noopener">${esc(it.title)} ↗</a>
+        ${it.desc ? `<span class="nw-sum">${esc(it.desc)}</span>` : ''}
+        <span class="nw-why">${esc(HV_KIND[it.kind] || it.kind)}${res.length ? ' · ' + res.join(' · ') : ''}${pdf}</span>`});
+  });
+
   const feeds = (companyNewsData && companyNewsData.feeds) || {};
   const label = Object.fromEntries((companyFeeds || []).map(f => [f.url, f.label || '']));
   ((companyNewsData && companyNewsData.items) || []).forEach(it => {
@@ -7726,7 +7725,7 @@ function drawCompanyNews() {
     <div class="pf-card pf-wide">
       <h3 class="cn-head"><span>Latest news</span>
         <button class="cn-gear" onclick="openFeedSettings()" title="Company news feeds">${GEAR_SVG}Feeds${myFeeds.length ? ` (${myFeeds.length})` : ''}</button></h3>
-      <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}${chip('deals', 'Deals', n('deals'))}</div>
+      <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}${chip('deals', 'Deals', n('deals'))}${chip('havtil', 'Havtil', n('havtil'))}</div>
       ${rows || empty}
       ${list.length > cnShown ? `<button class="grp-btn ex-more" onclick="cnShown+=60;drawCompanyNews()">Show more (${list.length - cnShown} older)</button>` : ''}
       <div class="pf-map-note">Sodir press releases are drilling permits and drilling results for wells where the group is operator or
@@ -7734,9 +7733,9 @@ function drawCompanyNews() {
         names it. Well events come from comparing each daily data run with the previous one. Deals are licence stakes the group bought or sold (transfers, state (SDFI) transfers, withdrawals and mergers; transfers within
         the group are left out), as in Licence → Transactions. Rig moves (AIS) are shown when a rig arrives
         at or leaves a well where the group is operator or partner, or a field it has an interest in. Company press releases come from the RSS
-        feeds added with the Feeds button; they are fetched daily.</div>
+        feeds added with the Feeds button; they are fetched daily. Havtil items are inspections, consents, investigations and
+        orders linked to the group by the name in the title or the consent's operator (${HV_SOURCE.replace(/^Source: /, '')}).</div>
     </div>
-    ${havtilCompanyCard(name)}
   `);
 }
 
@@ -13944,6 +13943,7 @@ async function explRenderNews() {
   if (explSubView !== 'news') return;
   const f = explF, c = f.company.trim().toLowerCase(), q = f.q.trim().toLowerCase();
   const list = changesData.filter(e => {
+    if (e.t === 'havtil' && e.k !== 'consent') return false;   // bare samtykker fra Havtil her
     if (newsType !== 'all' && NEWS_TYPES[e.t].group !== newsType) return false;
     if (c) {
       const g = e.w != null ? explById[e.w] : null;
@@ -13970,8 +13970,8 @@ async function explRenderNews() {
       ${html || '<div class="pf-map-note">Nothing new matches the filters yet. The log is filled by the daily data run.</div>'}
       ${list.length > newsShown ? `<button class="grp-btn ex-more" onclick="newsShown+=60;explRenderNews()">Show more (${list.length - newsShown} older)</button>` : ''}
       <div class="pf-map-note">Detected by comparing each daily data run with the previous one; the first entries are dated from the wells' own start
-        and completion dates. Rig moves come from AIS stays. Havtil entries are new inspection reports, consents, investigations and
-        orders from the Norwegian Ocean Industry Authority; they open on havtil.no.</div></div>`;
+        and completion dates. Rig moves come from AIS stays. Havtil entries are new consents from the Norwegian Ocean Industry
+        Authority (inspections, investigations and orders are left out); they open on havtil.no.</div></div>`;
   dockBar('explBody');
 }
 
