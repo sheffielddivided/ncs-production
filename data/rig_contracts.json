@@ -27,6 +27,11 @@
    "contractor": "Saipem",
    "title": "Saipem press releases and Q1 2026 results presentation",
    "date": "2026-11-11"
+  },
+  "manual-shelf": {
+   "contractor": "Shelf Drilling",
+   "title": "Shelf Drilling announcements (April 2023, April 2024) and quarterly reports",
+   "date": "2026-11-11"
   }
  },
  "rigs": {
@@ -167,6 +172,10 @@
    "design": "6th-generation semisubmersible (DP and mooring, dual derrick)",
    "built": "2012",
    "source": "manual-saipem"
+  },
+  "SHELF DRILLING BARSK": {
+   "contractor": "Shelf Drilling",
+   "source": "manual-shelf"
   }
  },
  "contracts": [
@@ -723,6 +732,22 @@
    "note": "Further extension finalised in Q1 2026 (Saipem Q1 2026 presentation): the rig works for Aker BP until March 2029. Value not disclosed.",
    "contractor": "Saipem",
    "source": "manual-saipem"
+  },
+  {
+   "rig": "SHELF DRILLING BARSK",
+   "location": "Norway",
+   "client": "Equinor",
+   "kind": "firm",
+   "start": "2024-11-01",
+   "end": "2026-12-31",
+   "startText": "Nov-24",
+   "endText": "Dec-26",
+   "precision": "month",
+   "dayrate": null,
+   "dayrateText": "Undisclosed",
+   "note": "Awarded April 2023: two wells on Sleipner Vest, about 270 days, about USD 61 million (about USD 226k/day). Extended April 2024 with two firm wells on Gudrun, 254 days, about USD 81 million (about USD 319k/day), and an exercised option well on Sleipner Vest of at least 83 days. Start delayed to November 2024 by the missing Norwegian AoC (about USD 54 million in lost revenue). December 2026 is the latest documented end; no further firm extension is confirmed. Contract values are estimates, not pure rig rental.",
+   "contractor": "Shelf Drilling",
+   "source": "manual-shelf"
   },
   {
    "rig": "TRANSOCEAN BARENTS",
