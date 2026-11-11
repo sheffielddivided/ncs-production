@@ -12351,7 +12351,7 @@ const EXPL_TABS = [
 // Drilling: boreytelse per brønn, og riggene (flyttet fra Exploration).
 const DRILL_TABS = [
   {id:'rigs',  label:'Rigs'},
-  {id:'fleet', label:'Fleet'},
+  {id:'fleet', label:'Map'},
   {id:'perf',  label:'Performance'},
 ];
 const explMode = () => topMode === 'exploration' || topMode === 'drilling';
@@ -14540,7 +14540,7 @@ const FLEET_REGIONS = [
   ['norwegian', 'Norwegian Sea', n => n.lat >= 62.5 && n.lat < 68],
   ['barents', 'Barents Sea', n => n.lat >= 68],
 ];
-function setFleetRegion(r) { fleetRegion = r; explRenderFleet(); }
+function setFleetRegion(r) { fmStop(); fleetRegion = r; explRenderFleet(); }
 
 async function explRenderFleet() {
   const box = document.getElementById('explBody');
@@ -14562,23 +14562,27 @@ async function explRenderFleet() {
     return;
   }
   const W = 900, H = 560;
-  const P = rigProject(rows.map(r => [r.n.lon, r.n.lat]), W, H, {pad: 1.25, minSpan: fleetRegion === 'all' ? 4 : 2.5});
-  // Etiketter: først til mølla, med enkel kollisjonstest.
-  const placed = [];
-  const lbl = rows.slice().sort((a, b) => a.name.localeCompare(b.name)).map(r => {
-    const x = P.px(r.n.lon), y = P.py(r.n.lat), w = r.name.length * 6.6 + 4, h = 13;
-    for (const [dx, dy, anchor] of [[9, 3, 'start'], [-9, 3, 'end'], [0, -10, 'middle'], [0, 17, 'middle']]) {
-      const bx = anchor === 'start' ? x + dx : anchor === 'end' ? x + dx - w : x - w / 2;
-      const box_ = [bx, y + dy - h, bx + w, y + dy + 2];
-      if (box_[0] < 0 || box_[2] > W || placed.some(p => box_[0] < p[2] && box_[2] > p[0] && box_[1] < p[3] && box_[3] > p[1])) continue;
-      placed.push(box_);
-      return `<text x="${(x + dx).toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${anchor}" class="pf-lbl pf-lbl-own">${esc(r.name)}</text>`;
-    }
-    return '';
-  }).join('');
-  const dots = rows.map(r => `<circle cx="${P.px(r.n.lon).toFixed(1)}" cy="${P.py(r.n.lat).toFixed(1)}" r="6" fill="${RIG_STATE[r.state].color}"
-      stroke="#fff" stroke-width="1.6" style="cursor:pointer" onclick="openRigProfile(${esc(JSON.stringify(r.name))})">
-      <title>${esc(r.name)} · ${RIG_STATE[r.state].label}</title></circle>`).join('');
+  // Avspilling: alle riggenes AIS-spor (rig_tracks.json) over tid. Kartutsnittet
+  // dekker dagens posisjoner og sporene i perioden, så ingen rigg forsvinner ut.
+  fmStop();
+  const tr = rows.map(r => ({...r, d: rigData(r.name)})).map(r => ({...r, wp: r.d && r.d.wp && r.d.wp.length > 1 ? r.d.wp : null}));
+  const wpAll = tr.flatMap(r => r.wp || []);
+  const tMax = wpAll.length ? Math.max(...wpAll.map(p => p[0])) : 0, tMin = wpAll.length ? Math.min(...wpAll.map(p => p[0])) : 0;
+  const t1 = Math.max(tMax, asOf || 0);
+  const t0 = fm.period ? Math.max(tMin, t1 - fm.period * 1440) : tMin;
+  const inView = tr.flatMap(r => (r.wp || []).filter(p => p[0] >= t0).map(p => [p[1], p[2]])).filter(([lon, lat]) => regionOf[2]({lon, lat}));
+  const P = rigProject(rows.map(r => [r.n.lon, r.n.lat]).concat(inView), W, H, {pad: 1.15, minSpan: fleetRegion === 'all' ? 4 : 2.5});
+  // Én farge per rigg (gyllent snitt rundt fargehjulet), stabil etter navn.
+  const names = rows.map(r => r.name).sort((x, y) => x.localeCompare(y));
+  const colorOf = n => `hsl(${Math.round((names.indexOf(n) * 137.508) % 360)}, 68%, ${names.indexOf(n) % 2 ? 38 : 46}%)`;
+  fm.rigs = tr.map(r => ({name: r.name, wp: r.wp, now: [r.n.lon, r.n.lat], color: colorOf(r.name), state: r.state}));
+  fm.P = P; fm.t0 = t0; fm.t1 = t1; fm.W = W;
+  if (fm.t == null || fm.t < t0 || fm.t > t1) fm.t = t1;
+  const groups = fm.rigs.map((r, i) => `<g id="fmR${i}" style="cursor:pointer" onclick="fmStop();openRigProfile(${esc(JSON.stringify(r.name))})">
+      <polyline class="fm-trail" points="" fill="none" stroke="${r.color}" stroke-width="2" stroke-opacity="0.55" stroke-linejoin="round"/>
+      <g class="fm-mk"><circle r="6" fill="${r.color}" stroke="#fff" stroke-width="1.6"/>
+        <text x="9" y="3.5" class="pf-lbl fm-lbl" style="fill:${r.color};text-anchor:start;font-weight:600">${esc(r.name)}</text></g>
+      <title>${esc(r.name)} · now: ${RIG_STATE[r.state].label}</title></g>`).join('');
   const order = ['location', 'transit', 'quay', 'sea', 'stale'];
   const table = rows.slice().sort((a, b) => order.indexOf(a.state) - order.indexOf(b.state) || a.name.localeCompare(b.name)).map(r => `
     <tr class="ex-row" tabindex="0" onclick="openRigProfile(${esc(JSON.stringify(r.name))})">
@@ -14593,23 +14597,106 @@ async function explRenderFleet() {
   const count = k => rows.filter(r => r.state === k).length;
   const legend = order.filter(k => count(k)).map(k =>
     `<span class="ex-leg"><span class="ex-dot" style="background:${RIG_STATE[k].color}"></span>${RIG_STATE[k].label} (${count(k)})</span>`).join('');
+  const hasTracks = fm.rigs.some(r => r.wp);
   box.innerHTML = `
     <div class="pf-card ex-mapcard"><h3>Rig positions</h3><div class="ex-slot"></div>
-      <div class="ex-sum"><strong>${rows.length}</strong> rigs with AIS · positions as of ${fmtMin(asOf)} · click a rig for its history</div>
+      <div class="ex-sum"><strong>${rows.length}</strong> rigs with AIS · positions as of ${fmtMin(asOf)} · press play to replay all rig movements · click a rig for its history</div>
     <div class="grp-row">${FLEET_REGIONS.filter(r => r[0] === 'all' || allRows.some(x => r[2](x.n))).map(r =>
       `<button class="grp-btn${fleetRegion === r[0] ? ' active' : ''}" onclick="setFleetRegion('${r[0]}')">${r[1]}</button>`).join('')}</div>
-      <svg class="ex-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Rig positions">
-        ${rigBaseLayers(P)}${lbl}${dots}
+      <svg id="fmSvg" class="ex-map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Rig positions">
+        ${rigBaseLayers(P)}<g id="fmRigs">${groups}</g>
+        <text id="fmDate" x="12" y="24" class="rg-date" font-size="15"></text>
       </svg>
-      <div class="ex-legend">${legend}</div>
+      ${hasTracks ? `<div class="rg-ctl">
+        <button class="ex-btn ex-btn-main" id="fmPlay" onclick="fmToggle()">▶ Play</button>
+        <select class="year-select" onchange="fm.speed=+this.value" aria-label="Speed">
+          ${RG_SPEEDS.map(([v, l]) => `<option value="${v}"${v === fm.speed ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <input id="fmSlider" class="rg-slider" type="range" min="${t0}" max="${t1}" step="60" value="${fm.t}" oninput="fmStop();fm.t=+this.value;fmRender()" aria-label="Time">
+        <select class="year-select" onchange="fmStop();fm.period=+this.value;fm.t=null;explRenderFleet()" aria-label="Period">
+          ${RG_PERIODS.map(([v, l]) => `<option value="${v}"${v === fm.period ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <button class="grp-btn" onclick="fmStop();fm.t=fm.t1;fmRender()">Now</button>
+      </div>` : ''}
+      <div class="ex-legend"><span class="ex-leg">Each rig has its own colour; the line behind it is the last ${FM_TRAIL_DAYS} days. State now, in the table:</span>${legend}</div>
       <div class="pf-map-note">Positions from Kystverket's open AIS data (Kystdatahuset), updated with the daily data run. Fields in grey.
-        Coverage is the Norwegian economic zone, Svalbard and Jan Mayen.</div>
+        Coverage is the Norwegian economic zone, Svalbard and Jan Mayen. During playback positions are interpolated between AIS points;
+        a rig is hidden before its first and after its last known position in the period.</div>
     </div>
     <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Rig</th><th class="ex-l">State</th><th class="ex-l">Place</th><th>Since</th><th class="ex-l">Contract</th>
       <th class="ex-l">AIS destination</th><th>Speed</th><th>Last signal</th></tr></thead><tbody>${table}</tbody></table></div>
     ${rigHealthHtml(rigAis.health)}`;
   dockBar('explBody');
+  fmRender();
+}
+
+// ── Flåtekartets avspilling ──────────────────────────────────────────────────
+const FM_TRAIL_DAYS = 14;
+const fm = {t: null, speed: 7, period: 180, playing: false, raf: 0, lastTs: 0, rigs: []};
+function fmStop() {
+  if (fm.raf) cancelAnimationFrame(fm.raf);
+  fm.playing = false; fm.raf = 0;
+  const b = document.getElementById('fmPlay');
+  if (b) b.textContent = '▶ Play';
+}
+function fmToggle() {
+  if (fm.playing) { fmStop(); return; }
+  if (fm.t >= fm.t1) fm.t = fm.t0;   // fra start igjen når den står på slutten
+  fm.playing = true; fm.lastTs = 0;
+  document.getElementById('fmPlay').textContent = '❚❚ Pause';
+  const step = ts => {
+    if (!fm.playing || !document.getElementById('fmSvg')) { fmStop(); return; }
+    if (fm.lastTs) fm.t = Math.min(fm.t1, fm.t + (ts - fm.lastTs) / 1000 * fm.speed * 1440);
+    fm.lastTs = ts;
+    fmRender();
+    if (fm.t >= fm.t1) { fmStop(); return; }
+    fm.raf = requestAnimationFrame(step);
+  };
+  fm.raf = requestAnimationFrame(step);
+}
+// Tegner alle riggene ved tidspunkt fm.t: posisjon, spor bakover og navn til
+// høyre. Navn som ville overlappe et annet flyttes ned en linje eller to.
+function fmRender() {
+  const svg = document.getElementById('fmSvg');
+  if (!svg || !fm.P) return;
+  const {P, t} = fm, atEnd = t >= fm.t1 - 1440;
+  const boxes = [];
+  const pos = fm.rigs.map(r => {
+    // Ved slutten brukes dagens posisjon (rig_now), ellers sporet.
+    if (atEnd && r.now[0] != null) return r.now;
+    if (!r.wp || t < r.wp[0][0] || t > r.wp[r.wp.length - 1][0]) return atEnd ? r.now : null;
+    return rigPosAt(r.wp, t);
+  });
+  const order = fm.rigs.map((r, i) => i).filter(i => pos[i]).sort((a, b) => P.py(pos[a][1]) - P.py(pos[b][1]));
+  order.forEach(i => { const x = P.px(pos[i][0]), y = P.py(pos[i][1]); boxes.push([x - 6, y - 6, x + 6, y + 6]); });
+  fm.rigs.forEach((r, i) => {
+    const g = document.getElementById('fmR' + i);
+    if (!g) return;
+    g.style.display = pos[i] ? '' : 'none';
+    const trail = g.querySelector('.fm-trail');
+    if (!pos[i]) { trail.setAttribute('points', ''); return; }
+    const pts = r.wp ? r.wp.filter(p => p[0] >= t - FM_TRAIL_DAYS * 1440 && p[0] <= t).map(p => [p[1], p[2]]) : [];
+    if (!atEnd && pts.length) pts.push(pos[i]);
+    trail.setAttribute('points', atEnd ? '' : pts.map(([lon, lat]) => `${P.px(lon).toFixed(1)},${P.py(lat).toFixed(1)}`).join(' '));
+  });
+  order.forEach(i => {
+    const g = document.getElementById('fmR' + i), mk = g.querySelector('.fm-mk'), lbl = g.querySelector('.fm-lbl');
+    const x = P.px(pos[i][0]), y = P.py(pos[i][1]);
+    mk.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    const w = fm.rigs[i].name.length * 6.6 + 4;
+    // Rett til høyre for markøren; kolliderer den, prøves en linje under og
+    // over, så to. Går ingen, skjules navnet (det står i verktøytipset).
+    let ok = null;
+    for (const dy of [3.5, 14.5, -7.5, 25.5, -18.5]) {
+      const bx = [x + 8, y + dy - 10, x + 10 + w, y + dy + 2];
+      if (!boxes.some(b => bx[0] < b[2] && bx[2] > b[0] && bx[1] < b[3] && bx[3] > b[1])) { boxes.push(bx); ok = dy; break; }
+    }
+    lbl.style.display = ok == null ? 'none' : '';
+    if (ok != null) lbl.setAttribute('y', ok.toFixed(1));
+  });
+  const d = document.getElementById('fmDate');
+  if (d) d.textContent = atEnd ? `Now · ${fmtMin(fm.t1)}` : fmtMin(t);
+  const sl = document.getElementById('fmSlider');
+  if (sl && +sl.value !== Math.round(t)) sl.value = t;
 }
 
 // Driftsrapporten fra fetch_rigs.py: det som bør følges opp i AIS-dataene.
