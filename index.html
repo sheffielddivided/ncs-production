@@ -2280,7 +2280,7 @@ function stateToHash() {
   else if (topMode === 'prices') {
     if (prF.y0) q.set('py', prF.y0 + '-' + prF.y1);
     if (prF.selSet) q.set('pf', prF.sel.join(SEP));
-    if (prF.ba) q.set('pm', 'y'); else if (prF.bm) q.set('pm', '1');
+    if (prF.ba) q.set('pm', 'y'); else if (prF.bq) q.set('pm', 'q'); else if (prF.bm) q.set('pm', '1');
     if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
     if (prF.real) q.set('pr', '1');
     if (prF.avg) q.set('pa', '1');
@@ -2508,6 +2508,7 @@ function applyHash() {
     if (q.has('pf')) { prF.sel = q.get('pf') ? q.get('pf').split(SEP) : []; prF.selSet = true; }
     prF.bm = q.get('pm') === '1';
     prF.ba = q.get('pm') === 'y';
+    prF.bq = q.get('pm') === 'q';
     if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
     prF.real = q.get('pr') === '1';
     prF.avg = q.get('pa') === '1';
@@ -3300,7 +3301,7 @@ const PRICE_DEFAULT_SEL = ['TROLL', 'JOHAN SVERDRUP', 'EKOFISK', 'OSEBERG'];
 const PRICE_FAV_KEY = 'normpris.favoriteFields.v1';
 const PRICE_SRC = 'Source: Norwegian Petroleum Price Board / Ministry of Energy (regjeringen.no)';
 let priceData = null, priceLoading = null;
-// y0/y1: periode · sel: valgte felt i valgrekkefølge · slot: felt -> farge 0..7 · bm: Brent som månedssnitt · ba: årssnitt
+// y0/y1: periode · sel: valgte felt i valgrekkefølge · slot: felt -> farge 0..7 · bm: Brent som månedssnitt · bq: kvartalssnitt · ba: årssnitt
 // · avg: Brent med snittlinje for det som vises
 let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
 
@@ -3413,7 +3414,7 @@ function pricePeriod(which, v) {
   syncUrl(); drawChart();
 }
 function priceSet(k, v) { prF[k] = v; syncUrl(); drawChart(); }
-function priceRes(r) { prF.bm = r === 'm'; prF.ba = r === 'y'; syncUrl(); drawChart(); }
+function priceRes(r) { prF.bm = r === 'm'; prF.bq = r === 'q'; prF.ba = r === 'y'; syncUrl(); drawChart(); }
 
 const PRICE_COLORS = PALETTE.map(p => p[0]);
 
@@ -3447,8 +3448,9 @@ function priceBar(extra = '') {
   const sel = (k) => `<select class="year-select" onchange="pricePeriod('${k}', this.value)" aria-label="${k === 'y0' ? 'From year' : 'To year'}">
     ${years.map(y => `<option value="${y}"${y === prF[k] ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
   const bm = priceSubView === 'brent' ? `<div class="pill-group">
-      <button class="pill-btn${prF.bm || prF.ba ? '' : ' active'}" onclick="priceRes('d')">Daily</button>
-      <button class="pill-btn${prF.bm && !prF.ba ? ' active' : ''}" onclick="priceRes('m')">Monthly average</button>
+      <button class="pill-btn${prF.bm || prF.bq || prF.ba ? '' : ' active'}" onclick="priceRes('d')">Daily</button>
+      <button class="pill-btn${prF.bm && !prF.ba && !prF.bq ? ' active' : ''}" onclick="priceRes('m')">Monthly average</button>
+      <button class="pill-btn${prF.bq && !prF.ba ? ' active' : ''}" onclick="priceRes('q')">Quarterly average</button>
       <button class="pill-btn${prF.ba ? ' active' : ''}" onclick="priceRes('y')">Annual average</button></div>
     <div class="pill-group"><button class="pill-btn${prF.avg ? ' active' : ''}" onclick="priceSet('avg', !prF.avg)"
       title="Dashed line at the average of the values shown in the chart">Average line</button></div>` : '';
@@ -3594,8 +3596,76 @@ function drawPriceBrentAnnual() {
     ` &nbsp;|&nbsp; <strong>Before 1990:</strong> World Bank Commodity Price Data (Pink Sheet), Crude oil, Brent, annual average; the World Bank uses the Dubai price for the earliest years &nbsp;|&nbsp; ${PRICE_SRC}; EIA; World Bank`);
 }
 
+// Måneds- og kvartalssnitt som stolper. Snittet tas av den sammenskjøtte
+// dagsserien: rådets tall, og EIA-skjøten før rådets første og etter dets
+// siste dato. Halen (EIA-notering uten fem påfølgende) er ikke med, som før.
+// Perioder med skjøtedager får skjøtens farge; inneværende periode merkes *.
+// Realvisningen justerer hver dagsverdi med KPI for måneden før snittet.
+function drawPriceBrentBars(q) {
+  const sp = priceSplice();
+  const inP = d => { const y = +d.slice(0, 4); return y >= prF.y0 && y <= prF.y1; };
+  const keyOf = d => q ? `${d.slice(0, 4)} Q${Math.floor((+d.slice(5, 7) - 1) / 3) + 1}` : d.slice(0, 7);
+  const acc = {}, ext = new Set();
+  const add = ([d, v], isExt) => {
+    if (!inP(d)) return;
+    const f = prF.real ? cpiFactor('USD', d.slice(0, 7)) : 1;
+    if (f == null) return;
+    const k = keyOf(d);
+    (acc[k] = acc[k] || []).push(v * f);
+    if (isExt) ext.add(k);
+  };
+  priceData.brent.rows.forEach(r => add(r, false));
+  sp.head.concat(sp.fit).forEach(r => add(r, true));
+  const keys = Object.keys(acc).sort();
+  const today = new Date().toISOString().slice(0, 10), cur = keyOf(today);
+  const labels = keys.map(k => k === cur ? `${k}*` : k);
+  const vals = keys.map(k => +(acc[k].reduce((a, b) => a + b, 0) / acc[k].length).toFixed(2));
+  const C = 'rgba(0,48,87,0.85)', F = 'rgba(232,110,30,0.9)';
+  const avgDs = priceAvgDataset(labels, vals, 'line');
+  const what = q ? 'Quarterly average' : 'Monthly average';
+  document.getElementById('chartArea').innerHTML = `${priceBar()}
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:${C}"></div>Dated Brent (Petroleum Price Board)</div>
+      ${keys.some(k => ext.has(k)) ? `<div class="legend-item"><div class="legend-dot" style="background:${F}"></div>Includes ${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average</div>` : ''}
+      ${avgDs ? `<div class="legend-item"><div class="legend-dot" style="background:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 8px);height:2px;border-radius:0"></div>${esc(avgDs.label)}</div>` : ''}</div>`;
+  if (chartInstance) chartInstance.destroy();
+  const unit = prF.real ? `$/bbl, ${cpiLabel('USD')} USD` : '$/bbl';
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'bar',
+    data: {labels, datasets: [{label: `Brent, ${what.toLowerCase()}${prF.real ? ', real' : ''}`, data: vals,
+      backgroundColor: keys.map(k => ext.has(k) ? F : C), borderWidth: 0,
+      categoryPercentage: 0.9, barPercentage: keys.length > 120 ? 1 : 0.9}].concat(avgDs ? [avgDs] : [])},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, layout: {padding: {top: 26}},
+      plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
+        label: c => c.parsed.y == null ? null : ` ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 2})} ${unit}`}}},
+      scales: {
+        x: {ticks: {maxRotation: 0, autoSkipPadding: 12, font: {size: 9}}, grid: {display: false}},
+        y: {beginAtZero: true, title: {display: true, text: unit, color: '#4a5568', font: {size: 10}},
+            ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
+      }},
+    // Verdiene over stolpene bare når det er plass til dem.
+    plugins: keys.length <= 48 ? [barLabelPlugin(v => v.toFixed(keys.length > 24 ? 0 : 1))] : [],
+  });
+  lastLabels = labels; lastXTitle = q ? 'Quarter' : 'Month';
+  lastDatasets = [{label: `Brent, ${what.toLowerCase()}, ${unit}`, data: vals}]
+    .concat(avgDs ? [{label: avgDs.label, data: avgDs.data}] : []);
+  pptSpec = {kind: 'cat', dir: 'col', labels, yTitle: unit,
+    series: [{name: `Brent, ${what.toLowerCase()}`, type: 'bar', color: pptHex(C), values: vals}]
+      .concat(avgDs ? [{name: avgDs.label, type: 'line', dash: true, color: '000000', values: avgDs.data}] : [])};
+  const lastBase = priceData.brent.rows[priceData.brent.rows.length - 1];
+  setChartTitle('Dated Brent', `${what} · $/bbl${prF.real ? ` · real, ${cpiLabel('USD')} prices` : ''} · ${prF.y0}–${prF.y1}`);
+  setInfo((prF.real ? cpiNote('USD') + ', applied to each daily value before averaging &nbsp;|&nbsp; ' : '') +
+    `<strong>Official:</strong> ${lastBase[1].toLocaleString('en', {maximumFractionDigits: 2})} $/bbl on ${fmtShort(lastBase[0])} (latest from the Petroleum Price Board)` +
+    (vals.length ? ` &nbsp;|&nbsp; <strong>Period${prF.real ? ' (real)' : ''}:</strong> low ${Math.min(...vals).toFixed(2)}, high ${Math.max(...vals).toFixed(2)} $/bbl` : '') +
+    ` &nbsp;|&nbsp; <strong>Construction:</strong> average of the daily series in the ${q ? 'quarter' : 'month'}: the Board's Dated Brent from ${fmtShort(sp.firstP)}, and EIA's Brent spot with the Board's 5-day rule before that date and after the Board's latest date (orange bars contain such days; after the Board's latest date they are preliminary)` +
+    (labels.some(l => l.endsWith('*')) ? `; ${cur}* is ${q ? 'the quarter' : 'the month'} to date` : '') +
+    ` &nbsp;|&nbsp; ${PRICE_SRC}; U.S. Energy Information Administration (EIA)`);
+}
+
 function drawPriceBrent() {
   if (prF.ba) return drawPriceBrentAnnual();
+  if (prF.bq || prF.bm) return drawPriceBrentBars(prF.bq);
   const sp = priceSplice();
   const inP = d => { const y = +d.slice(0, 4); return y >= prF.y0 && y <= prF.y1; };
   const base = priceData.brent.rows.filter(r => inP(r[0]));
@@ -3603,32 +3673,17 @@ function drawPriceBrent() {
   const fit = sp.head.concat(sp.fit).filter(r => inP(r[0])), tail = sp.tail.filter(r => inP(r[0]));
   const lastBase = priceData.brent.rows[priceData.brent.rows.length - 1];
   let labels, dBase, dFit, dTail;
-  if (prF.bm) {
-    // Månedssnitt av den sammenskjøtte dagsserien. Måneder med skjøtedager
-    // hører til skjøten; halen er for kort til et månedssnitt og utelates.
-    // Skjøten tar med nabomåneden fra rådets serie, så linjene møtes.
-    const acc = {}, ext = new Set();
-    base.forEach(([d, v]) => { (acc[d.slice(0, 7)] = acc[d.slice(0, 7)] || []).push(v); });
-    fit.forEach(([d, v]) => { (acc[d.slice(0, 7)] = acc[d.slice(0, 7)] || []).push(v); ext.add(d.slice(0, 7)); });
-    labels = Object.keys(acc).sort();
-    const avg = m => +(acc[m].reduce((a, b) => a + b, 0) / acc[m].length).toFixed(2);
-    const isExt = i => ext.has(labels[i]);
-    dBase = labels.map((m, i) => (isExt(i) ? null : avg(m)));
-    dFit = labels.map((m, i) => (isExt(i) || (i > 0 && isExt(i - 1)) || (i < labels.length - 1 && isExt(i + 1)) ? avg(m) : null));
-    dTail = labels.map(() => null);
-  } else {
-    const all = new Map();
-    base.forEach(([d, v]) => all.set(d, {b: v}));
-    fit.forEach(([d, v]) => all.set(d, {...(all.get(d) || {}), f: v}));
-    tail.forEach(([d, v]) => all.set(d, {...(all.get(d) || {}), t: v}));
-    labels = [...all.keys()].sort();
-    // Linjene møtes: forlengelsen starter i siste offisielle punkt, halen i
-    // siste punkt av forlengelsen.
-    const lastFitD = fit.length ? fit[fit.length - 1][0] : null;
-    dBase = labels.map(d => all.get(d).b ?? null);
-    dFit = labels.map(d => all.get(d).f ?? (fit.length && (d === sp.lastP || d === sp.firstP) ? all.get(d).b ?? null : null));
-    dTail = labels.map(d => all.get(d).t ?? (tail.length && d === (lastFitD || sp.lastP) ? (all.get(d).f ?? all.get(d).b ?? null) : null));
-  }
+  const all = new Map();
+  base.forEach(([d, v]) => all.set(d, {b: v}));
+  fit.forEach(([d, v]) => all.set(d, {...(all.get(d) || {}), f: v}));
+  tail.forEach(([d, v]) => all.set(d, {...(all.get(d) || {}), t: v}));
+  labels = [...all.keys()].sort();
+  // Linjene møtes: forlengelsen starter i siste offisielle punkt, halen i
+  // siste punkt av forlengelsen.
+  const lastFitD = fit.length ? fit[fit.length - 1][0] : null;
+  dBase = labels.map(d => all.get(d).b ?? null);
+  dFit = labels.map(d => all.get(d).f ?? (fit.length && (d === sp.lastP || d === sp.firstP) ? all.get(d).b ?? null : null));
+  dTail = labels.map(d => all.get(d).t ?? (tail.length && d === (lastFitD || sp.lastP) ? (all.get(d).f ?? all.get(d).b ?? null) : null));
   // Realvisning: alle tre linjene realjusteres med amerikansk KPI, og den
   // nominelle serien vises som svak linje bak.
   let nominal = null;
@@ -3639,11 +3694,11 @@ function drawPriceBrent() {
   }
   const C = 'rgba(0,48,87,0.9)', F = 'rgba(232,110,30,0.95)', T = 'rgba(232,110,30,0.6)';
   const datasets = [];
-  if (dBase.some(v => v != null)) datasets.push({label: 'Dated Brent (Petroleum Price Board)' + (prF.real ? ', real' : ''), data: dBase, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0});
+  if (dBase.some(v => v != null)) datasets.push({label: 'Dated Brent (Petroleum Price Board)' + (prF.real ? ', real' : ''), data: dBase, borderColor: C, backgroundColor: C, borderWidth: 2, pointRadius: 0, tension: 0});
   // Forklaringen nevner bare de skjøtene som faktisk er med i perioden.
   const when = [fit.some(r => r[0] < sp.firstP) ? `before ${sp.firstP.slice(0, 4)}` : '',
                 fit.some(r => r[0] > sp.lastP) ? 'after the Board\'s latest date' : ''].filter(Boolean).join(' and ');
-  if (dFit.some(v => v != null)) datasets.push({label: `${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average${when ? ', ' + when : ''}`, data: dFit, borderColor: F, backgroundColor: F, borderWidth: 2, pointRadius: prF.bm ? 2 : 0, tension: 0});
+  if (dFit.some(v => v != null)) datasets.push({label: `${sp.src === 'FRED' ? 'EIA via FRED' : 'EIA'} Brent spot, same 5-day average${when ? ', ' + when : ''}`, data: dFit, borderColor: F, backgroundColor: F, borderWidth: 2, pointRadius: 0, tension: 0});
   if (dTail.some(v => v != null)) datasets.push({label: 'Latest EIA daily quotes (not averaged)', data: dTail, borderColor: T, backgroundColor: T, borderWidth: 2, borderDash: [4, 3], pointRadius: 0, tension: 0});
   if (nominal) datasets.push({label: 'Nominal', data: nominal, borderColor: 'rgba(0,48,87,0.25)', backgroundColor: 'rgba(0,48,87,0.25)', borderWidth: 1.5, pointRadius: 0, tension: 0});
   // Snittet av det som vises: rådets serie, skjøten og halen (realjustert i
@@ -3654,13 +3709,13 @@ function drawPriceBrent() {
   document.getElementById('chartArea').innerHTML = `${priceBar()}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="${dot(d)}"></div>${esc(d.label)}</div>`).join('')}</div>`;
-  priceLineChart(labels, datasets, '$/bbl', {tick: prF.bm ? undefined : function (v) { return this.getLabelForValue(v).slice(0, 7); }});
-  lastLabels = labels; lastXTitle = prF.bm ? 'Month' : 'Date';
+  priceLineChart(labels, datasets, '$/bbl', {tick: function (v) { return this.getLabelForValue(v).slice(0, 7); }});
+  lastLabels = labels; lastXTitle = 'Date';
   lastDatasets = datasets.map(d => ({label: d.label + ', $/bbl', data: d.data.map(v => v ?? '')}));
   const vals = labels.map((_, i) => dBase[i] ?? dFit[i]).filter(v => v != null);
   const fmtD = d => fmtShort(d);
   const lastFit = sp.fit.length ? sp.fit[sp.fit.length - 1] : null, lastTail = sp.tail.length ? sp.tail[sp.tail.length - 1] : null;
-  setChartTitle('Dated Brent', `${prF.bm ? 'Monthly average' : 'Daily'} · $/bbl${prF.real ? ` · real, ${cpiLabel('USD')} prices` : ''} · ${prF.y0}–${prF.y1}`);
+  setChartTitle('Dated Brent', `Daily · $/bbl${prF.real ? ` · real, ${cpiLabel('USD')} prices` : ''} · ${prF.y0}–${prF.y1}`);
   setInfo((prF.real ? cpiNote('USD') + '; the latest values below are nominal &nbsp;|&nbsp; ' : '') + `<strong>Official:</strong> ${lastBase[1].toLocaleString('en', {maximumFractionDigits: 2})} $/bbl on ${fmtD(lastBase[0])} (latest from the Petroleum Price Board)` +
     (lastFit ? ` &nbsp;|&nbsp; <strong>Extended to ${fmtD(lastFit[0])}:</strong> ${lastFit[1].toFixed(2)} $/bbl` : '') +
     (lastTail ? ` &nbsp;|&nbsp; <strong>Latest EIA quote:</strong> ${lastTail[1].toFixed(2)} $/bbl on ${fmtD(lastTail[0])}` : '') +
