@@ -2830,7 +2830,7 @@ function setChartNone() {
 }
 
 function drawChart() {
-  pptSpec = null;
+  pptSpec = null; pptExtra = [];
   if (topMode === 'fields') {
     const sv = fieldSubView;
     if (sv === 'oilgas')          drawFieldsOilGas();
@@ -3811,7 +3811,12 @@ function drawPriceDiff() {
     <div class="pf-map-note"><strong>Differential:</strong> the field's norm price minus Dated Brent, set monthly by the Petroleum Price Board.
       Gaps mean no monthly value: probably no oil sold, or several differentials in the month (sub-periods in 2018 and 2020, not imported).
       ${PRICE_SRC}.</div></div>`);
-  if (prF.sel.length) diffChart = priceLineChart(months, datasets, 'differential, $/bbl', {zeroLine: true, canvas: 'diffChart'});
+  if (prF.sel.length) {
+    diffChart = priceLineChart(months, datasets, 'differential, $/bbl', {zeroLine: true, canvas: 'diffChart'});
+    pptExtra = pptExtra.filter(x => x.id !== 'diff').concat([{id: 'diff', spec: pptSpecFromChart(diffChart),
+      meta: {title: 'Norm price differentials', subtitle: `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`,
+             source: 'Source: Petroleum Price Board / Ministry of Energy'}}]);
+  }
 }
 
 // ── PRICES: GAS ──
@@ -4081,6 +4086,19 @@ function seasonalChart(canvas, S, o) {
   return {chart, legend};
 }
 
+// PowerPoint-beskrivelse av sesonggrafen: båndet som stablet flate, snittet
+// stiplet, i fjor og i år heltrukket. Kategoriene er dagene; bare den første
+// i hver måned har etikett, så aksen viser månedene.
+function seasonalPptSpec(S, o) {
+  const labels = STORAGE_DAYS.map(d => d.endsWith('-01') ? STORAGE_MON[+d.slice(0, 2) - 1] : '');
+  const r = a => a.map(v => (v == null ? null : +v));
+  return {kind: 'cat', dir: 'col', labels, yTitle: o.yTitle, yMin: o.y.min ?? 0, yMax: o.y.max, yFormat: o.yFormat, catLabelSkip: 1,
+    series: [{name: `Range ${S.span}`, type: 'band', lo: r(S.minD), hi: r(S.maxD), color: pptHex(o.bandSolid), opacity: 28, values: r(S.maxD)},
+             {name: `Average ${S.span}`, type: 'line', dash: true, color: pptHex(o.avg), values: r(S.avgD)},
+             {name: String(S.cur - 1), type: 'line', color: pptHex(o.prev), values: r(S.prevD)},
+             {name: String(S.cur), type: 'line', color: pptHex(o.cur), values: r(S.curD)}]};
+}
+
 // Nøkkeltall for siste dag med data: mot i fjor og femårsspennet.
 function seasonalSummary(S, f, diff) {
   const {cur, span, curD, prevD, minD, maxD, avgD, li} = S;
@@ -4112,9 +4130,11 @@ function drawPriceStorage() {
   if (chartInstance) chartInstance.destroy();
   const pct = x => x == null ? '—' : x.toFixed(1) + ' %';
   const ppDiff = (a, b) => a == null || b == null ? '' : ` (${a - b >= 0 ? '+' : '−'}${Math.abs(a - b).toFixed(1)} pp)`;
-  const sc = seasonalChart(document.getElementById('prodChart'), S, {band: 'rgba(42,111,168,0.18)', avg: 'rgba(42,111,168,0.6)',
-    prev: 'rgba(42,111,168,0.55)', cur: 'rgba(0,48,87,0.95)', fmt: pct, yTitle: '% of capacity', y: {min: 0, max: 100}, tick: v => v + ' %'});
+  const so = {band: 'rgba(42,111,168,0.18)', bandSolid: '#2a6fa8', avg: 'rgba(42,111,168,0.6)',
+    prev: 'rgba(42,111,168,0.55)', cur: 'rgba(0,48,87,0.95)', fmt: pct, yTitle: '% of capacity', y: {min: 0, max: 100}, tick: v => v + ' %', yFormat: '0"%"'};
+  const sc = seasonalChart(document.getElementById('prodChart'), S, so);
   chartInstance = sc.chart;
+  pptSpec = seasonalPptSpec(S, so);
   document.getElementById('storageLegend').innerHTML = sc.legend;
   lastLabels = STORAGE_DAYS; lastXTitle = 'Day (MM-DD)';
   lastDatasets = [{label: `${S.cur}, %`, data: S.curD.map(v => v ?? '')}, {label: `${S.cur - 1}, %`, data: S.prevD.map(v => v ?? '')},
@@ -4145,9 +4165,13 @@ function drawLngCard() {
     <div class="np-bar">${pills}</div>
     <div class="chart-container"><canvas id="lngChart"></canvas></div><div class="legend-row" id="lngLegend"></div>
     <div class="pf-map-note">${seasonalSummary(S, gwh, pctDiff)}${upd ? ` &nbsp;|&nbsp; ALSI+ data updated ${upd}` : ''}</div></div>`);
-  const sc = seasonalChart(document.getElementById('lngChart'), S, {band: 'rgba(227,167,58,0.22)', avg: 'rgba(190,130,20,0.7)',
-    prev: 'rgba(227,167,58,0.6)', cur: 'rgba(176,112,0,0.95)', fmt: gwh, yTitle: 'GWh/d', y: {beginAtZero: true}, tick: v => v.toLocaleString('en')});
+  const lo = {band: 'rgba(227,167,58,0.22)', bandSolid: '#e3a73a', avg: 'rgba(190,130,20,0.7)',
+    prev: 'rgba(227,167,58,0.6)', cur: 'rgba(176,112,0,0.95)', fmt: gwh, yTitle: 'GWh/d', y: {beginAtZero: true}, tick: v => v.toLocaleString('en'), yFormat: '#,##0'};
+  const sc = seasonalChart(document.getElementById('lngChart'), S, lo);
   lngChart = sc.chart;
+  pptExtra = pptExtra.filter(x => x.id !== 'lng').concat([{id: 'lng', spec: seasonalPptSpec(S, lo),
+    meta: {title: `LNG send-out · ${name}`, subtitle: `GWh/d, 14-day centred moving average · ${S.cur} against ${S.cur - 1} and the ${S.span} range`,
+           source: 'Source: ALSI+, Gas Infrastructure Europe (via eugas)'}}]);
   document.getElementById('lngLegend').innerHTML = sc.legend;
 }
 
@@ -11030,6 +11054,10 @@ function setInfo(html) {
 const PPTX_URL = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
 let pptxLoading = null;
 let pptSpec = null;   // eksplisitt grafbeskrivelse for visninger uten Chart.js; nullstilles i drawChart
+// Flere grafer på samme side (LNG under gasslagrene, differensialene under
+// Brent): ekstra lysbilder, [{spec, meta}], som følger med hovedgrafen i
+// «Download PPT» og «Add to PPT». Nullstilles også i drawChart.
+let pptExtra = [];
 
 function loadPptx() {
   if (window.PptxGenJS) return Promise.resolve();
@@ -11121,7 +11149,8 @@ function pptMeta() {
   const title = [...el.childNodes].filter(n => n !== sub).map(n => n.textContent).join('').trim();
   const ssb = /\bSSB\b/.test(document.getElementById('infoBox').innerText);
   return {title, subtitle: sub ? sub.textContent.trim() : '',
-    source: ssb ? 'Source: Statistics Norway (SSB)' : 'Source: Norwegian Offshore Directorate (Sodir), FactPages'};
+    source: topMode === 'prices' ? 'Source: ' + pageSources().map(k => SOURCES[k][0]).join('; ')
+          : ssb ? 'Source: Statistics Norway (SSB)' : 'Source: Norwegian Offshore Directorate (Sodir), FactPages'};
 }
 
 // Data til PptxGenJS sine punkt- og boblegrafer, som deler én x-rekke på
@@ -11239,6 +11268,24 @@ function pptAddChart(pptx, slide, spec, box) {
   });
   const lines1 = spec.series.filter(s => s.type === 'line' && !s.secondary);
   const lines2 = spec.series.filter(s => s.type === 'line' && s.secondary);
+  // Bånd (min–maks): stablet flate der den nederste serien er usynlig, og
+  // linjene over, gruppert etter strek (PowerPoint har én strektype per
+  // gruppe). Kategoriaksen kan vise bare noen etiketter (catLabelSkip).
+  const bands = spec.series.filter(s => s.type === 'band');
+  if (bands.length) {
+    const b = bands[0], types = [];
+    types.push({type: C.AREA, data: [{name: ' ', labels: spec.labels, values: b.lo},
+      {name: b.name, labels: spec.labels, values: b.hi.map((v, i) => (v == null || b.lo[i] == null ? null : +(v - b.lo[i]).toFixed(3)))}],
+      options: {barGrouping: 'stacked', chartColors: ['transparent', b.color], chartColorsOpacity: b.opacity || 30, lineSize: 0}});
+    const solid = lines1.filter(x => !x.dash), dashed = lines1.filter(x => x.dash);
+    const lo = list => ({chartColors: list.map(x => x.color), lineSize: 2, lineDataSymbol: 'none'});
+    if (dashed.length) types.push({type: C.LINE, data: toData(dashed), options: {...lo(dashed), lineSize: 1.25, lineDash: 'dash'}});
+    if (solid.length) types.push({type: C.LINE, data: toData(solid), options: lo(solid)});
+    slide.addChart(types, {...common, ...axisTitle(spec.yTitle), ...(spec.catLabelSkip ? {catAxisLabelFrequency: spec.catLabelSkip, catAxisMajorTickMark: 'none'} : {}),
+      ...(spec.yMin != null ? {valAxisMinVal: spec.yMin} : {}), ...(spec.yMax != null ? {valAxisMaxVal: spec.yMax} : {}),
+      ...(spec.yFormat ? {valAxisLabelFormatCode: spec.yFormat} : {})});
+    return;
+  }
   const barOpts = {barDir: spec.dir || 'col', barGrouping: spec.stacked ? 'stacked' : 'clustered',
     barGapWidthPct: spec.labels.length > 30 ? 30 : 60, chartColors: bars.map(s => s.color),
     ...(spec.stacked || (rawBars.length === 1 && bars.length > 1) ? {barOverlapPct: 100} : {})};
@@ -11252,6 +11299,14 @@ function pptAddChart(pptx, slide, spec, box) {
     return;
   }
   if (!bars.length && !lines2.length) {
+    // Blandet heltrukket og stiplet: to linjegrupper, siden strektypen gjelder hele gruppen.
+    const dashed = lines1.filter(x => x.dash);
+    if (dashed.length && dashed.length < lines1.length) {
+      const solid = lines1.filter(x => !x.dash);
+      slide.addChart([{type: C.LINE, data: toData(solid), options: lineOpts(solid)},
+                      {type: C.LINE, data: toData(dashed), options: {...lineOpts(dashed), lineDash: 'dash'}}], {...common, ...axisTitle(spec.yTitle)});
+      return;
+    }
     slide.addChart(C.LINE, toData(lines1), {...common, ...lineOpts(lines1), ...axisTitle(spec.yTitle)});
     return;
   }
@@ -11297,6 +11352,7 @@ async function downloadPpt() {
     pptx.layout = 'LAYOUT_WIDE';   // 13.33 × 7.5 tommer
     pptx.title = meta.title;
     pptAddChartSlide(pptx, spec, meta);
+    pptExtra.forEach(x => pptAddChartSlide(pptx, x.spec, x.meta));
     const name = (meta.title || 'NCS chart').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim();
     await pptx.writeFile({fileName: `${name}.pptx`});
   } catch (e) {
@@ -11350,8 +11406,9 @@ function pptAddCurrent() {
   const spec = pptSpec || (chartInstance ? pptSpecFromChart(chartInstance) : null);
   if (!spec) return;
   pptBasket.push({kind: 'chart', spec, meta: pptMeta()});
+  pptExtra.forEach(x => pptBasket.push({kind: 'chart', spec: x.spec, meta: x.meta}));
   pptBasketSave();
-  pptToast(`Added to PPT basket (${pptBasket.length})`);
+  pptToast(`Added ${1 + pptExtra.length} chart${pptExtra.length ? 's' : ''} to PPT basket (${pptBasket.length})`);
 }
 
 // SVG med stilene lagt inn. Arvbare egenskaper skrives bare der de avviker
