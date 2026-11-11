@@ -51,10 +51,11 @@ jobs:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: python fetch_gas.py
 
-      # Fra eugas (repoet sheffielddivided/eia): daglige TTF day-ahead-priser
-      # til prognosen i Gas-fanen, og fyllingsgraden i europeiske gasslagre
-      # og LNG send-out til EU storage-fanen.
-      - name: Hent TTF-priser og gasslagre fra eugas
+      # Fra repoet sheffielddivided/eia (eugas og EIA): daglige TTF
+      # day-ahead-priser til prognosen i Gas-fanen, gasslagre og LNG send-out
+      # til EU storage-fanen, og amerikanske lagre, LNG-eksport og
+      # LNG-eksportpris til US supply og Gas.
+      - name: Hent TTF-priser, gasslagre og EIA-data fra eia-repoet
         continue-on-error: true
         timeout-minutes: 5
         run: python fetch_eugas.py

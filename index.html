@@ -2285,6 +2285,7 @@ function stateToHash() {
     if (prF.gr === 'q' || prF.gr === 'y') q.set('pq', prF.gr);
     if (prF.sk && prF.sk !== 'eu') q.set('ps', prF.sk);
     if (prF.lk && prF.lk !== 'eu') q.set('pl', prF.lk);
+    US_PARAMS.forEach(([k, p, d]) => { if (prF[k] != null && prF[k] !== d) q.set(p, prF[k]); });
     if (prF.real) q.set('pr', '1');
     if (prF.avg) q.set('pa', '1');
     if (prF.og === 'grid') q.set('po', 'grid');
@@ -2398,6 +2399,7 @@ function pageSources() {
     if (v === 'gas' || v === 'oilgas') add('ssb', 'imf', 'eia', 'nb');
     if (v === 'gas' && priceData && priceData.ttfd) add('eex');
     if (v === 'storage') add('gie', 'gie_lng');
+    if (v === 'us') add('eia');
     if (prF.real) {
       const cur = v === 'gas' ? gasCur() : 'USD';
       add(cur === 'USD' ? 'bls' : cur === 'EUR' ? 'eurostat' : 'ssb');
@@ -2522,6 +2524,7 @@ function applyHash() {
     prF.gr = ['q', 'y'].includes(q.get('pq')) ? q.get('pq') : 'm';
     prF.sk = ['de', 'it', 'nl', 'fr'].includes(q.get('ps')) ? q.get('ps') : 'eu';
     prF.lk = ['es', 'fr', 'it', 'nl'].includes(q.get('pl')) ? q.get('pl') : 'eu';
+    US_PARAMS.forEach(([k, p, d, ok]) => { prF[k] = ok.includes(q.get(p)) ? q.get(p) : d; });
     prF.real = q.get('pr') === '1';
     prF.avg = q.get('pa') === '1';
     prF.og = q.get('po') === 'grid' ? 'grid' : 'scatter';
@@ -3306,6 +3309,7 @@ const PRICE_TABS = [
   {id: 'gas',     label: 'Gas'},
   {id: 'oilgas',  label: 'Oil vs gas'},
   {id: 'storage', label: 'EU storage'},
+  {id: 'us',      label: 'US supply'},
 ];
 let priceSubView = 'brent';
 const PRICE_MAX_SEL = 8;
@@ -3320,8 +3324,8 @@ let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily')]).then(([b, d, e, g, c, , t]) => {
-    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t} : {};
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily'), fetchBundle('us_supply')]).then(([b, d, e, g, c, , t, us]) => {
+    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t, us} : {};
     if (!priceData.diff) return;
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
@@ -3486,9 +3490,11 @@ function drawPrices() {
   document.getElementById('downloadBtn').disabled = true;
   setProfile(''); setChartTable('');
   if (diffChart) { diffChart.destroy(); diffChart = null; }
+  if (usCharts.length) { usCharts.forEach(c => c.destroy()); usCharts = []; }
   if (priceSubView === 'gas') drawPriceGas();
   else if (priceSubView === 'oilgas') drawPriceOilGas();
   else if (priceSubView === 'storage') drawPriceStorage();
+  else if (priceSubView === 'us') drawPriceUs();
   else { drawPriceBrent(); drawPriceDiff(); }
   document.getElementById('downloadBtn').disabled = false;
 }
@@ -3842,8 +3848,10 @@ function gasRows() {
   const b = priceData.gas;
   if (!b) return [];
   const i = Object.fromEntries(b.columns.map((c, k) => [c, k]));
+  // Amerikansk LNG-eksportpris (EIA, USD/MMBtu, månedlig) fra us_supply.json.
+  const lng = Object.fromEntries((priceData.us && priceData.us.lngPrice) || []);
   return b.rows.map(r => ({m: r[i.month], nok: r[i.export_nok], sm3: r[i.export_sm3], eu: r[i.eu_usd_mmbtu],
-    hh: r[i.hh_usd_mmbtu], usd: r[i.usdnok], eur: r[i.eurnok]}));
+    hh: r[i.hh_usd_mmbtu], lng: lng[r[i.month]] ?? null, usd: r[i.usdnok], eur: r[i.eurnok]}));
 }
 
 // Pris i valgt enhet. Norsk eksportpris kommer i NOK/Sm³, IMF og Henry Hub
@@ -3928,7 +3936,8 @@ function drawPriceGas() {
   const need = res === 'y' ? 12 : res === 'q' ? 3 : 1;
   const series = [['eu', 'Europe, TTF-based (IMF)', 'rgba(232,110,30,0.75)', 0, 'bar'],
                   ['no', 'Norwegian export price (SSB)', 'rgba(0,48,87,0.9)', 2.5, 'line'],
-                  ['hh', 'Henry Hub, US', 'rgba(0,150,100,0.9)', 2, 'line']];
+                  ['hh', 'Henry Hub, US', 'rgba(0,150,100,0.9)', 2, 'line'],
+                  ['lng', 'US LNG export price (EIA)', 'rgba(142,107,191,0.95)', 2, 'line']];
   const keys = [...new Set(rows.map(r => keyOf(r.m)))];
   const byKey = {};
   rows.forEach(r => { (byKey[keyOf(r.m)] = byKey[keyOf(r.m)] || []).push(r); });
@@ -4019,6 +4028,12 @@ const STORAGE_DAYS = (() => { const out = []; for (let d = Date.UTC(2000, 0, 1);
 const STORAGE_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const storageLabel = d => `${+d.slice(3)} ${STORAGE_MON[+d.slice(0, 2) - 1]}`;
 let storageLoading = null, lngChart = null;
+// Aksen i sesonggrafene: n punkter, etikett per punkt (lab), månedsnavn der
+// en måned starter (tick), og Excel-dato i et skuddår til PowerPoint (serial).
+const XL0 = Date.UTC(1899, 11, 30);
+const SEASON_DAILY = {n: STORAGE_DAYS.length, lab: i => storageLabel(STORAGE_DAYS[i]),
+  tick: i => STORAGE_DAYS[i].endsWith('-01') ? STORAGE_MON[+STORAGE_DAYS[i].slice(0, 2) - 1] : null,
+  serial: i => (Date.UTC(2024, +STORAGE_DAYS[i].slice(0, 2) - 1, +STORAGE_DAYS[i].slice(3)) - XL0) / 864e5};
 
 // Sentrert glidende snitt over 14 dager; krever minst en tredjedel av dagene.
 function rolling14(a) {
@@ -4044,7 +4059,7 @@ function seasonalSeries(byYear, smooth) {
   const curD = line(cur).map((v, i) => (i > lastRaw ? null : v));
   let li = -1;
   for (let i = curD.length - 1; i >= 0; i--) if (curD[i] != null) { li = i; break; }
-  return {cur, span: `${hist[0]}–${hist[hist.length - 1]}`, curD, prevD: line(cur - 1), li,
+  return {cur, span: `${hist[0]}–${hist[hist.length - 1]}`, curD, prevD: line(cur - 1), li, ...SEASON_DAILY,
           minD: band(v => Math.min(...v)), maxD: band(v => Math.max(...v)), avgD: band(v => v.reduce((t, x) => t + x, 0) / v.length)};
 }
 
@@ -4067,16 +4082,16 @@ function seasonalChart(canvas, S, o) {
     ctx.save(); ctx.strokeStyle = 'rgba(74,85,104,0.45)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
     ctx.setLineDash([]); ctx.fillStyle = '#4a5568'; ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText(storageLabel(STORAGE_DAYS[li]), x + 4, top + 10); ctx.restore();
+    ctx.fillText(S.lab(li), x + 4, top + 10); ctx.restore();
   }};
   const chart = new Chart(canvas.getContext('2d'), {
-    type: 'line', data: {labels: STORAGE_DAYS.map(storageLabel), datasets},
+    type: 'line', data: {labels: Array.from({length: S.n}, (_, i) => S.lab(i)), datasets},
     options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
       plugins: {legend: {display: false}, tooltip: {filter: c => !c.dataset.label.startsWith('_') && c.parsed.y != null, callbacks: {
         label: c => ` ${c.dataset.label.startsWith('Range') ? `Min ${span}` : c.dataset.label}: ${o.fmt(c.parsed.y)}`,
         afterBody: items => { const i = items[0] && items[0].dataIndex; return maxD[i] != null ? ` Max ${span}: ${o.fmt(maxD[i])}` : ''; }}}},
       scales: {
-        x: {ticks: {maxRotation: 0, autoSkip: false, font: {size: 9}, callback: (_, i) => STORAGE_DAYS[i].endsWith('-01') ? STORAGE_MON[+STORAGE_DAYS[i].slice(0, 2) - 1] : null},
+        x: {ticks: {maxRotation: 0, autoSkip: false, font: {size: 9}, callback: (_, i) => S.tick(i)},
             grid: {display: false}},
         y: {...o.y, title: {display: true, text: o.yTitle, color: '#4a5568', font: {size: 10}},
             ticks: {font: {size: 9}, callback: o.tick}, grid: {color: 'rgba(0,0,0,0.05)'}},
@@ -4091,8 +4106,7 @@ function seasonalChart(canvas, S, o) {
 // et skuddår (2024, så alle 366 dagene finnes), vist på en datoakse med
 // månedsnavn.
 function seasonalPptSpec(S, o) {
-  const xl0 = Date.UTC(1899, 11, 30);
-  const labels = STORAGE_DAYS.map(d => (Date.UTC(2024, +d.slice(0, 2) - 1, +d.slice(3)) - xl0) / 864e5);
+  const labels = Array.from({length: S.n}, (_, i) => S.serial(i));
   const r = a => a.map(v => (v == null ? null : +v));
   return {kind: 'cat', dir: 'col', labels, yTitle: o.yTitle, yMin: o.y.min ?? 0, yMax: o.y.max, yFormat: o.yFormat, dateAxis: true,
     series: [{name: `Range ${S.span}`, type: 'band', lo: r(S.minD), hi: r(S.maxD), color: pptHex(o.bandSolid), opacity: 28, values: r(S.maxD)},
@@ -4108,7 +4122,7 @@ function seasonalSummary(S, f, diff) {
   const v = curD[li];
   const status = minD[li] != null && v < minD[li] ? 'below the five-year minimum'
                : maxD[li] != null && v > maxD[li] ? 'above the five-year maximum' : 'within the five-year range';
-  return `<strong>Latest:</strong> ${f(v)} on ${storageLabel(STORAGE_DAYS[li])} ${cur}, ${status} &nbsp;|&nbsp; ` +
+  return `<strong>Latest:</strong> ${f(v)} on ${S.lab(li)} ${cur}, ${status} &nbsp;|&nbsp; ` +
     `<strong>Same day ${cur - 1}:</strong> ${f(prevD[li])}${diff(v, prevD[li])} &nbsp;|&nbsp; ` +
     `<strong>${span}:</strong> min ${f(minD[li])}, average ${f(avgD[li])}${diff(v, avgD[li])}, max ${f(maxD[li])}`;
 }
@@ -4175,6 +4189,154 @@ function drawLngCard() {
     meta: {title: `LNG send-out · ${name}`, subtitle: `GWh/d, 14-day centred moving average · ${S.cur} against ${S.cur - 1} and the ${S.span} range`,
            source: 'Source: ALSI+, Gas Infrastructure Europe (via eugas)'}}]);
   document.getElementById('lngLegend').innerHTML = sc.legend;
+}
+
+// ── MARKET: US SUPPLY ──
+// Amerikanske lagre og LNG-eksport fra EIA, som i eia-løsningen
+// (data/us_supply.json fra fetch_eugas.py):
+//   · Crude: råoljelagre inkl. eller ekskl. SPR, eller bare SPR (ukentlig).
+//   · Products: bensin, destillat og jetdrivstoff (ukentlig).
+//   · LNG: samlet LNG-eksport per måned, MMcf.
+// Lagrene vises sesongvis (i år, i fjor, snitt og spenn for de N foregående
+// årene, per uke) eller historisk (hele serien siste N år). Ukene telles fra
+// 1. januar som i eia-løsningen (53 uker); siste uke i tidligere år mangler
+// oftest og interpoleres mellom årets siste og neste års første rapport.
+// Standard: Crude inkl. SPR, 5 år, sesong; Products bensin, 5 år, sesong;
+// LNG 10 år. «SPR only» går til 10 år historisk, som i eia-løsningen.
+const US_CRUDE = [['WCRSTUS1', 'Incl. SPR', 'Crude oil stocks incl. SPR'], ['WCESTUS1', 'Excl. SPR', 'Crude oil stocks excl. SPR'],
+                  ['WCSSTUS1', 'SPR only', 'Strategic Petroleum Reserve (SPR)']];
+const US_PROD = [['WGTSTUS1', 'Gasoline', 'Total gasoline stocks'], ['WDISTUS1', 'Distillate', 'Distillate stocks'],
+                 ['WKJSTUS1', 'Jet fuel', 'Jet fuel stocks']];
+// [prF-nøkkel, URL-parameter, standard, gyldige verdier]
+const US_PARAMS = [['uc', 'uc', 'WCRSTUS1', US_CRUDE.map(x => x[0])], ['ucy', 'ucy', '5', ['3', '5', '10']], ['ucm', 'ucm', 'seasonal', ['seasonal', 'historic']],
+                   ['up', 'up', 'WGTSTUS1', US_PROD.map(x => x[0])], ['upy', 'upy', '5', ['3', '5', '10']], ['upm', 'upm', 'seasonal', ['seasonal', 'historic']],
+                   ['ul', 'ul', '10', ['1', '2', '5', '10', '20']]];
+let usCharts = [];
+
+function usWeekly(rows, yearsBack) {
+  const NW = 53, DAY = 864e5, utc = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  const wk = s => Math.floor((utc(s) - Date.UTC(+s.slice(0, 4), 0, 1)) / (7 * DAY));
+  const cy = new Date().getUTCFullYear(), by = {}, first = {}, last = {};
+  rows.forEach(([d, v]) => {
+    const y = +d.slice(0, 4), w = wk(d);
+    if (w >= 0 && w < NW) (by[y] = by[y] || {})[w] = v / 1000;
+    if (!first[y] || d < first[y][0]) first[y] = [d, v / 1000];
+    if (!last[y] || d > last[y][0]) last[y] = [d, v / 1000];
+  });
+  Object.keys(by).map(Number).forEach(y => {
+    if (y >= cy || by[y][NW - 1] != null || !last[y] || !first[y + 1]) return;
+    const [da, a] = last[y], [db, b] = first[y + 1], t = Date.UTC(y, 11, 31), ta = utc(da), tb = utc(db);
+    if (tb - ta <= 14 * DAY) by[y][NW - 1] = a + (b - a) * (t - ta) / (tb - ta);
+  });
+  const hist = []; for (let y = cy - 1; y >= cy - yearsBack; y--) if (by[y]) hist.push(y);
+  const line = y => Array.from({length: NW}, (_, w) => (by[y] || {})[w] ?? null);
+  const at = w => hist.map(y => by[y][w]).filter(v => v != null);
+  const band = fn => Array.from({length: NW}, (_, w) => { const v = at(w); return v.length ? fn(v) : null; });
+  const curD = line(cy);
+  let li = -1; for (let i = NW - 1; i >= 0; i--) if (curD[i] != null) { li = i; break; }
+  const wDate = i => new Date(Date.UTC(cy, 0, 1 + i * 7));
+  const MON = STORAGE_MON;
+  return {cur: cy, span: `${hist[hist.length - 1]}–${hist[0]}`, curD, prevD: line(cy - 1), li, n: NW,
+    minD: band(v => Math.min(...v)), maxD: band(v => Math.max(...v)), avgD: band(v => v.reduce((t, x) => t + x, 0) / v.length),
+    lab: i => { const d = wDate(i); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; },
+    tick: i => { const d = wDate(i); return d.getUTCDate() <= 7 ? MON[d.getUTCMonth()] : null; },
+    serial: i => (Date.UTC(2024, 0, 1 + i * 7) - XL0) / 864e5};
+}
+
+const usPills = (key, opts, cur) => `<div class="pill-group">${opts.map(([v, l]) =>
+  `<button class="pill-btn${cur === v ? ' active' : ''}" onclick="usSet('${key}','${v}')">${l}</button>`).join('')}</div>`;
+function usSet(k, v) {
+  prF[k] = v;
+  // «SPR only» vises best historisk over ti år, som i eia-løsningen.
+  if (k === 'uc' && v === 'WCSSTUS1') { prF.ucy = '10'; prF.ucm = 'historic'; }
+  syncUrl(); drawChart();
+}
+
+// Ett lagerkort: sesong- eller historisk graf i lerretet id, med toggler.
+// Returnerer {html, draw()} der draw tegner grafen etter at HTML er satt inn.
+function usStockBlock(id, list, sk, yk, mk, unitNote) {
+  const us = priceData.us, sid = prF[sk], years = +prF[yk], mode = prF[mk];
+  const name = list.find(x => x[0] === sid)[2];
+  const rows = (us.inventory[sid] || []);
+  const S = usWeekly(rows, years);
+  const bars = `<div class="np-bar">${usPills(sk, list.map(x => [x[0], x[1]]), sid)}
+    ${usPills(yk, [['3', '3y'], ['5', '5y'], ['10', '10y']], prF[yk])}
+    ${usPills(mk, [['seasonal', 'Seasonal'], ['historic', 'Historical']], mode)}</div>`;
+  const mb = x => x == null ? '—' : x.toLocaleString('en', {maximumFractionDigits: 1}) + ' million bbl';
+  const diff = (a, b) => a == null || b == null ? '' : ` (${a - b >= 0 ? '+' : '−'}${Math.abs(a - b).toLocaleString('en', {maximumFractionDigits: 1})})`;
+  const lastRow = rows[rows.length - 1];
+  const sub = mode === 'seasonal' ? `${name}, million bbl · ${S.cur} against ${S.cur - 1} and the ${S.span} range, by week`
+                                  : `${name}, million bbl · last ${years} years, weekly`;
+  const html = `${bars}<div class="chart-container"><canvas id="${id}"></canvas></div><div class="legend-row" id="${id}Leg"></div>
+    <div class="pf-map-note">${mode === 'seasonal' ? seasonalSummary(S, mb, diff) : lastRow ? `<strong>Latest:</strong> ${mb(lastRow[1] / 1000)} in the week to ${fmtShort(lastRow[0])}` : ''}
+      &nbsp;|&nbsp; EIA Weekly Petroleum Status Report${lastRow ? `, latest week ${fmtShort(lastRow[0])}` : ''}.</div>`;
+  const draw = () => {
+    const cv = document.getElementById(id);
+    if (mode === 'seasonal') {
+      const o = {band: 'rgba(42,111,168,0.18)', bandSolid: '#2a6fa8', avg: 'rgba(42,111,168,0.6)', prev: 'rgba(232,110,30,0.55)', cur: 'rgba(206,90,10,0.95)',
+                 fmt: mb, yTitle: 'million bbl', y: {}, tick: v => v.toLocaleString('en'), yFormat: '#,##0'};
+      const sc = seasonalChart(cv, S, o);
+      sc.chart.options.scales.y.beginAtZero = false; sc.chart.update('none');
+      document.getElementById(id + 'Leg').innerHTML = sc.legend;
+      const spec = seasonalPptSpec(S, o); spec.yMin = undefined;
+      return {chart: sc.chart, spec, sub};
+    }
+    const cut = new Date(); cut.setUTCFullYear(cut.getUTCFullYear() - years);
+    const vis = rows.filter(r => r[0] >= cut.toISOString().slice(0, 10));
+    const C = 'rgba(0,48,87,0.9)';
+    const chart = new Chart(cv.getContext('2d'), {type: 'line',
+      data: {labels: vis.map(r => r[0]), datasets: [{label: name, data: vis.map(r => +(r[1] / 1000).toFixed(1)), borderColor: C,
+        backgroundColor: 'rgba(0,48,87,0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2}]},
+      options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${mb(c.parsed.y)}`}}},
+        scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 24, font: {size: 9}, callback: function (v) { return this.getLabelForValue(v).slice(0, 7); }}, grid: {display: false}},
+                 y: {title: {display: true, text: 'million bbl', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+    document.getElementById(id + 'Leg').innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:${C};height:3px;border-radius:0"></div>${esc(name)}</div>`;
+    return {chart, spec: pptSpecFromChart(chart), sub};
+  };
+  return {html, draw, name};
+}
+
+function drawPriceUs() {
+  usCharts.forEach(c => c.destroy()); usCharts = [];
+  US_PARAMS.forEach(([k, , d]) => { if (prF[k] == null) prF[k] = d; });
+  const us = priceData.us;
+  if (!us || !us.inventory) { setChartEmpty('Could not load the EIA data.'); setInfo(''); return; }
+  const crude = usStockBlock('prodChart', US_CRUDE, 'uc', 'ucy', 'ucm');
+  const prod = usStockBlock('usProdChart', US_PROD, 'up', 'upy', 'upm');
+  // LNG-eksport per måned, siste N år.
+  const ly = +prF.ul, cut = new Date(); cut.setUTCMonth(cut.getUTCMonth() - Math.max(12, ly * 12));
+  const lng = (us.lng || []).filter(r => r[0] >= cut.toISOString().slice(0, 7));
+  const lastL = lng[lng.length - 1];
+  document.getElementById('chartArea').innerHTML = crude.html;
+  setProfile(`<div class="pf-card pf-wide"><h3>US product stocks</h3>${prod.html}</div>
+    <div class="pf-card pf-wide"><h3>US LNG exports</h3>
+      <div class="np-bar">${usPills('ul', [['1', '1y'], ['2', '2y'], ['5', '5y'], ['10', '10y'], ['20', '20y']], prF.ul)}</div>
+      <div class="chart-container"><canvas id="usLngChart"></canvas></div>
+      <div class="pf-map-note">${lastL ? `<strong>Latest:</strong> ${Math.round(lastL[1]).toLocaleString('en')} MMcf in ${lastL[0]} (about ${(lastL[1] / 1000 / new Date(Date.UTC(+lastL[0].slice(0, 4), +lastL[0].slice(5, 7), 0)).getUTCDate()).toFixed(1)} Bcf/d) &nbsp;|&nbsp; ` : ''}
+        Total US LNG exports per month, million cubic feet (MMcf). EIA, U.S. Natural Gas Exports and Re-Exports by Point of Exit.</div></div>`);
+  if (chartInstance) chartInstance.destroy();
+  const c1 = crude.draw(); chartInstance = c1.chart;
+  const c2 = prod.draw(); usCharts.push(c2.chart);
+  const LC = 'rgba(142,107,191,0.95)';
+  const lc = new Chart(document.getElementById('usLngChart').getContext('2d'), {type: 'line',
+    data: {labels: lng.map(r => r[0]), datasets: [{label: 'US LNG exports, MMcf', data: lng.map(r => r[1]), borderColor: LC, backgroundColor: LC,
+      borderWidth: 2, pointRadius: lng.length > 150 ? 0 : 2, tension: 0.3}]},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${Math.round(c.parsed.y).toLocaleString('en')} MMcf`}}},
+      scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 24, font: {size: 9}}, grid: {display: false}},
+               y: {beginAtZero: true, title: {display: true, text: 'MMcf per month', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+  usCharts.push(lc);
+  pptSpec = c1.spec;
+  pptExtra = [{id: 'usprod', spec: c2.spec, meta: {title: `US product stocks · ${prod.name}`, subtitle: c2.sub, source: 'Source: U.S. Energy Information Administration (EIA)'}},
+              {id: 'uslng', spec: pptSpecFromChart(lc), meta: {title: 'US LNG exports', subtitle: `MMcf per month · last ${ly} year${ly > 1 ? 's' : ''}`, source: 'Source: U.S. Energy Information Administration (EIA)'}}];
+  const ds = c1.chart.data.datasets;
+  lastLabels = c1.chart.data.labels; lastXTitle = prF.ucm === 'seasonal' ? 'Week starting' : 'Week';
+  lastDatasets = ds.filter(d => !d.label.startsWith('_')).map(d => ({label: `${d.label.replace(/^Range/, 'Min')}, million bbl`, data: d.data.map(v => v ?? '')}))
+    .concat(prF.ucm === 'seasonal' ? [{label: `Max ${ds[1].label.replace(/^Range /, '')}, million bbl`, data: ds[0].data.map(v => v ?? '')}] : []);
+  setChartTitle(`US crude oil stocks · ${crude.name}`, c1.sub);
+  setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA): weekly stocks of crude oil and products (Weekly Petroleum Status Report)
+    and monthly LNG exports, collected daily by the eia solution${us.updated ? `, updated ${fmtShort(us.updated.slice(0, 10))}` : ''}`);
 }
 
 // ── PRICES: OIL VS GAS ──
