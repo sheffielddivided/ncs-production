@@ -85,7 +85,13 @@
       "url": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
       "label": "Vår Energi press releases (Cision)",
       "added": "2026-11-01"
+    },
+    {
+      "company": "Vår Energi ASA",
+      "url": "https://rss.app/feeds/IC5DNh4Rw79NTW5a.xml",
+      "label": "LinkedIn",
+      "added": "2026-11-11"
     }
   ],
-  "updated": "2026-11-04"
+  "updated": "2026-11-11"
 }
