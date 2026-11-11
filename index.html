@@ -3310,8 +3310,8 @@ let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory()]).then(([b, d, e, g, c]) => {
-    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c} : {};
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily')]).then(([b, d, e, g, c, , t]) => {
+    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t} : {};
     if (!priceData.diff) return;
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
@@ -3855,10 +3855,51 @@ function gasValue(r, kind) {
 // det gassen faktisk ble solgt for i perioden. Perioder der en serie mangler
 // måneder (som inneværende) merkes * og er snittet av månedene som finnes.
 const GAS_RES = [['m', 'Monthly'], ['q', 'Quarterly average'], ['y', 'Annual average']];
+// TTF-prognosen: måneder etter IMFs siste, fram til slutten av inneværende
+// periode (måned, kvartal eller år), får TTF-verdien fra de daglige EEX
+// day-ahead-prisene (data/ttf_daily.json, fra eugas): snittet per
+// kalenderdag, der dagene etter siste notering fylles med siste observerte
+// pris — samme prinsipp som for Dated Brent. Prisen er i EUR/MWh og regnes
+// om til IMFs USD/MMBtu med månedens kurser, eller de siste kursene for
+// måneder Norges Bank ikke har ennå. ttf: 'eex' (hele måneden observert)
+// eller 'fc' (inneholder prognosedager).
+const GAS_FC_C = 'rgba(232,110,30,0.38)';
+function gasRowsTtf(res) {
+  const rows = gasRows(), t = priceData.ttfd;
+  if (!t || !t.rows || !t.rows.length) return rows;
+  const now = new Date(), ty = now.getUTCFullYear(), tm = now.getUTCMonth() + 1;
+  const endM = res === 'y' ? 12 : res === 'q' ? Math.ceil(tm / 3) * 3 : tm;
+  const end = `${ty}-${String(endM).padStart(2, '0')}`;
+  const lastImf = rows.filter(r => r.eu != null).map(r => r.m).pop() || '';
+  const daily = new Map(t.rows), lastD = t.rows[t.rows.length - 1][0], lastV = t.rows[t.rows.length - 1][1];
+  const firstD = t.rows[0][0];
+  const fx = rows.filter(r => r.usd && r.eur).pop();
+  const byM = Object.fromEntries(rows.map(r => [r.m, r]));
+  for (let m = addMonths(lastImf, 1); lastImf && m <= end; m = addMonths(m, 1)) {
+    const y = +m.slice(0, 4), mo = +m.slice(5, 7), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    if (`${m}-01` < firstD) continue;   // dagsprisene dekker ikke hele måneden
+    let sum = 0, n = 0, fc = false, v = null;
+    for (let d = 1; d <= days; d++) {
+      const iso = `${m}-${String(d).padStart(2, '0')}`;
+      if (daily.has(iso)) v = daily.get(iso);
+      else if (iso > lastD) { v = lastV; fc = true; }
+      if (v == null) continue;      // før første notering i måneden
+      sum += v; n++;
+    }
+    if (!n) continue;
+    const r = byM[m] || (byM[m] = {m, nok: null, sm3: null, eu: null, hh: null, usd: null, eur: null, _new: true});
+    const usd = r.usd || fx.usd, eur = r.eur || fx.eur;
+    r.eu = (sum / n) * 1.055056 / 3.6 * eur / usd;
+    if (!r.usd) { r.usd = usd; r.eur = eur; }
+    r.ttf = fc ? 'fc' : 'eex';
+  }
+  return Object.values(byM).sort((a, b) => (a.m < b.m ? -1 : 1));
+}
+const addMonths = (m, k) => { const d = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + k, 1)); return d.toISOString().slice(0, 7); };
 function drawPriceGas() {
-  const rows = gasRows().filter(r => { const y = +r.m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; });
-  const unit = (GAS_UNITS.find(x => x[0] === (prF.gu || 'eurmwh')) || GAS_UNITS[0])[1];
   const res = prF.gr || 'm';
+  const rows = gasRowsTtf(res).filter(r => { const y = +r.m.slice(0, 4); return y >= prF.y0 && y <= prF.y1; });
+  const unit = (GAS_UNITS.find(x => x[0] === (prF.gu || 'eurmwh')) || GAS_UNITS[0])[1];
   const keyOf = m => res === 'y' ? m.slice(0, 4) : res === 'q' ? `${m.slice(0, 4)} Q${Math.ceil(+m.slice(5, 7) / 3)}` : m;
   const need = res === 'y' ? 12 : res === 'q' ? 3 : 1;
   const series = [['eu', 'Europe, TTF-based (IMF)', 'rgba(232,110,30,0.75)', 0, 'bar'],
@@ -3877,9 +3918,12 @@ function drawPriceGas() {
   };
   const vals = Object.fromEntries(series.map(([kind]) => [kind, keys.map(k => agg(k, kind, gasValue))]));
   const nominal = prF.real ? keys.map(k => agg(k, 'no', (r, kind) => gasConvert(r, kind))) : null;
-  const labels = keys.map(k => res !== 'm' && short.has(k) ? `${k}*` : k);
+  // Perioder der TTF helt eller delvis kommer fra dagsprisene (eller prognosen).
+  const ttfKind = {};
+  rows.forEach(r => { if (r.ttf) { const k = keyOf(r.m); ttfKind[k] = ttfKind[k] === 'fc' || r.ttf === 'fc' ? 'fc' : 'eex'; } });
+  const labels = keys.map(k => (res !== 'm' && short.has(k)) || ttfKind[k] === 'fc' ? `${k}*` : k);
   const datasets = series.map(([k, l, c, w, type]) => type === 'bar'
-    ? {type, label: l + (prF.real ? ', real' : ''), data: vals[k], backgroundColor: c, borderColor: c, borderWidth: 0,
+    ? {type, label: l + (prF.real ? ', real' : ''), data: vals[k], backgroundColor: keys.map(k2 => ttfKind[k2] ? GAS_FC_C : c), borderColor: c, borderWidth: 0,
        order: 2, categoryPercentage: 0.9, barPercentage: keys.length > 120 ? 1 : 0.9}
     : {type, label: l + (prF.real ? ', real' : ''), data: vals[k], borderColor: c, backgroundColor: c, borderWidth: w,
        pointRadius: keys.length > 48 ? 0 : 2.5, tension: 0, spanGaps: false, order: 1});
@@ -3892,7 +3936,8 @@ function drawPriceGas() {
     `<button class="pill-btn${(prF.gu || 'eurmwh') === k ? ' active' : ''}" onclick="priceSet('gu','${k}')">${l}</button>`).join('')}</div>`;
   document.getElementById('chartArea').innerHTML = `${priceBar(pills)}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
-    <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}${d.type === 'line' ? ';height:3px;border-radius:0' : ''}"></div>${esc(d.label)}</div>`).join('')}</div>`;
+    <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}${d.type === 'line' ? ';height:3px;border-radius:0' : ''}"></div>${esc(d.label)}</div>`).join('')}
+      ${Object.keys(ttfKind).length ? `<div class="legend-item"><div class="legend-dot" style="background:${GAS_FC_C}"></div>TTF day-ahead (EEX), rest of period at latest price</div>` : ''}</div>`;
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
     type: 'bar', data: {labels, datasets},
@@ -3911,8 +3956,10 @@ function drawPriceGas() {
   lastDatasets = datasets.map(d => ({label: `${d.label}, ${unit}`, data: d.data.map(v => v ?? '')}))
     .concat([{label: 'Export volume, million Sm³', data: keys.map(k => sum(k, 'sm3') ? +(sum(k, 'sm3') / 1e6).toFixed(1) : '')},
              {label: 'Export value, NOK million', data: keys.map(k => sum(k, 'nok') ? +(sum(k, 'nok') / 1e6).toFixed(1) : '')}]);
-  const resNote = res === 'm' ? '' : `<strong>${res === 'y' ? 'Annual' : 'Quarterly'} average:</strong> mean of the monthly prices in the chosen unit${prF.real ? ' (each month real-adjusted first)' : ''}; the Norwegian export price is weighted by export volume, i.e. export value / export volume for the period` +
-    (labels.some(l => l.endsWith('*')) ? `; * marks periods where a series lacks months (such as the current period), averaged over the months available` : '') + ' &nbsp;|&nbsp; ';
+  const td = priceData.ttfd && priceData.ttfd.rows && priceData.ttfd.rows.length ? priceData.ttfd.rows[priceData.ttfd.rows.length - 1] : null;
+  const fcNote = Object.keys(ttfKind).length && td ? `<strong>TTF after IMF's latest month (light bars):</strong> average of the daily TTF day-ahead price (EEX Neutral Gas Price) per calendar day; days after the latest price, ${td[1].toFixed(2)} EUR/MWh on ${fmtShort(td[0])}, are filled with that price to the end of the ${res === 'y' ? 'year' : res === 'q' ? 'quarter' : 'month'}, so * marks a forecast for the whole period. Converted with the latest exchange rates where Norges Bank has none yet &nbsp;|&nbsp; ` : '';
+  const resNote = fcNote + (res === 'm' ? '' : `<strong>${res === 'y' ? 'Annual' : 'Quarterly'} average:</strong> mean of the monthly prices in the chosen unit${prF.real ? ' (each month real-adjusted first)' : ''}; the Norwegian export price is weighted by export volume, i.e. export value / export volume for the period` +
+    (labels.some(l => l.endsWith('*')) ? `; * marks periods where a series lacks months (such as the current period), averaged over the months available` : '') + ' &nbsp;|&nbsp; ');
 
   // Tabell: de siste tolv månedene med norsk eksport.
   const withNo = gasRows().filter(r => r.sm3).slice(-12).reverse();
@@ -3930,7 +3977,7 @@ function drawPriceGas() {
   setInfo((prF.real ? cpiNote(gasCur()) + ' &nbsp;|&nbsp; ' : '') + resNote + `<strong>Latest Norwegian export price:</strong> ${last ? `${f2(gasValue(last, 'no'))} ${unit} (${last.m}), ${f1(last.sm3 / 1e9)} bn Sm³ exported` : '—'} &nbsp;|&nbsp; ` +
     `<strong>Norwegian export price</strong> = export value / export volume of natural gas in gaseous state (HS 27112100), i.e. what Norwegian gas was actually sold for, including long-term contracts &nbsp;|&nbsp; ` +
     `<strong>Conversion:</strong> monthly average exchange rates from Norges Bank; energy content assumed ${GAS_MJ_PER_SM3} MJ/Sm³ (gross), so converted figures are approximate; USD/boe uses Sodir's oil-equivalent convention (1 000 Sm³ gas = 1 Sm³ o.e. = ${BBL_PER_SM3} bbl, about ${Math.round(1 / GAS_BOE_PER_SM3)} Sm³ per boe), which makes it directly comparable with Brent in $/bbl &nbsp;|&nbsp; ` +
-    `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank. Daily European hub prices (TTF, NBP) are licensed and not shown`);
+    `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank${td ? '; EEX TTF Neutral Gas Price (day-ahead), collected daily by eugas' : ''}`);
 }
 
 // ── PRICES: OIL VS GAS ──

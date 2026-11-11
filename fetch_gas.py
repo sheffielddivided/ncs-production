@@ -14,8 +14,9 @@ Kilder (alle åpne, med kildehenvisning):
 - Norges Bank, månedssnitt av USD/NOK og EUR/NOK, til omregning mellom
   enheter. Fri bruk med kildehenvisning.
 
-Daglige europeiske gasspriser (TTF, NBP) er lisensierte børs- og
-prisbyrådata og er bevisst ikke med.
+Daglige europeiske gasspriser er ikke med her. TTF day-ahead (EEX) hentes
+separat av fetch_ttf_daily.py og brukes bare til prognosen for inneværende
+periode i Gas-fanen.
 
 Feiler en kilde, beholdes forrige verdier for den; feiler alt, beholdes
 forrige fil. Steget i arbeidsflyten er continue-on-error.
