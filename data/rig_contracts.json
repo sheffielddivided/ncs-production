@@ -35,7 +35,7 @@
   },
   "manual-linus": {
    "contractor": "Odfjell Technology",
-   "title": "Odfjell Technology rig management page, SFL announcements and Havtil consent (West Linus)",
+   "title": "SFL fleet page (Linus), Odfjell Technology rig management page and Havtil consent",
    "date": "2026-11-11"
   }
  },
@@ -184,6 +184,8 @@
   },
   "LINUS": {
    "contractor": "Odfjell Technology (manager); owner SFL",
+   "design": "Jack-up (Jurong), 450 ft",
+   "built": "2014",
    "source": "manual-linus"
   }
  },
@@ -492,13 +494,13 @@
    "client": "ConocoPhillips",
    "kind": "firm",
    "start": "2019-06-01",
-   "end": "2028-12-31",
+   "end": "2029-06-30",
    "startText": "Jun-19",
-   "endText": "Q4-28",
+   "endText": "Q2-29",
    "precision": "month/quarter",
    "dayrate": null,
    "dayrateText": "Undisclosed",
-   "note": "Extended in 2017 from May 2019 to the end of 2028 at a market-indexed dayrate. Havtil consent for use in the Greater Ekofisk Area runs to 31 Dec 2028. Managed by Odfjell Technology since 2022 (owner SFL). A claimed extension to May 2029 could not be confirmed.",
+   "note": "Extended in 2017 from May 2019 to the end of 2028 at a market-indexed dayrate, and later to Q2 2029: the owner SFL lists the firm period until Q2 2029 (sflcorp.com, November 2026). Odfjell Technology's page and the Havtil consent (valid to 31 Dec 2028) still give Q4 2028. No option period is listed. Managed by Odfjell Technology since 2022.",
    "contractor": "Odfjell Technology",
    "source": "manual-linus"
   },
