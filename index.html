@@ -13943,6 +13943,7 @@ async function explRenderNews() {
   if (explSubView !== 'news') return;
   const f = explF, c = f.company.trim().toLowerCase(), q = f.q.trim().toLowerCase();
   const list = changesData.filter(e => {
+    if (e.t === 'havtil' && e.k !== 'consent') return false;   // bare samtykker fra Havtil her
     if (newsType !== 'all' && NEWS_TYPES[e.t].group !== newsType) return false;
     if (c) {
       const g = e.w != null ? explById[e.w] : null;
@@ -13969,8 +13970,8 @@ async function explRenderNews() {
       ${html || '<div class="pf-map-note">Nothing new matches the filters yet. The log is filled by the daily data run.</div>'}
       ${list.length > newsShown ? `<button class="grp-btn ex-more" onclick="newsShown+=60;explRenderNews()">Show more (${list.length - newsShown} older)</button>` : ''}
       <div class="pf-map-note">Detected by comparing each daily data run with the previous one; the first entries are dated from the wells' own start
-        and completion dates. Rig moves come from AIS stays. Havtil entries are new inspection reports, consents, investigations and
-        orders from the Norwegian Ocean Industry Authority; they open on havtil.no.</div></div>`;
+        and completion dates. Rig moves come from AIS stays. Havtil entries are new consents from the Norwegian Ocean Industry
+        Authority (inspections, investigations and orders are left out); they open on havtil.no.</div></div>`;
   dockBar('explBody');
 }
 
