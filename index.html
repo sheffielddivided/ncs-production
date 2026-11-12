@@ -6746,6 +6746,18 @@ function valCompute(cmp, price) {
           reserves: hubs.reduce((t, h) => t + h.reserves, 0), prod: hubs.reduce((t, h) => t + h.prod, 0), hubNpv};
 }
 
+// Advarselen øverst i Valuation BETA, for både selskap og hub. Hubmodellen har
+// ingen funn, så det leddet tas bare med for selskaper.
+function valWarnCard(discoveries) {
+  return `
+    <div class="pf-card pf-wide val-warn" role="note">
+      <strong>Beta · indicative only.</strong> This is a simplified, high-level analysis built on generic, standardised
+      assumptions (flat cost per barrel, a mechanical production decline${discoveries ? ', a flat tax rate and a fixed value for discoveries' : ' and a flat tax rate'}).
+      It does not reflect company-specific costs, contracts, tariffs, tax positions, hedging or reserve assessments, and it
+      must not be used for investment or other decisions.
+    </div>`;
+}
+
 function drawCompanyValuation() {
   const cmp = [...selectedCompanyNames][0];
   if (valChartCf) { valChartCf.destroy(); valChartCf = null; }
@@ -6767,12 +6779,7 @@ function drawCompanyValuation() {
 
   // Verdikort.
   const head = `
-    <div class="pf-card pf-wide val-warn" role="note">
-      <strong>Beta · indicative only.</strong> This is a simplified, high-level analysis built on generic, standardised
-      assumptions (flat cost per barrel, a mechanical production decline, a flat tax rate and a fixed value for discoveries).
-      It does not reflect company-specific costs, contracts, tariffs, tax positions, hedging or reserve assessments, and it
-      must not be used for investment or other decisions.
-    </div>
+    ${valWarnCard(true)}
     <div class="pf-card pf-wide">
       <div class="val-head">
         <div><h3>Indicative value, after tax</h3>
@@ -10140,8 +10147,9 @@ function drawHubValuation() {
   const ids = hubFieldIds(names);
   const {partialSrc, lastYear, hasFc, y0} = drawHubProdChart(ids, true);
   setChartTitle(hubName, 'Valuation BETA · simulated cash flow and production forecast');
-  setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production per member field, with forecast &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages, price paths from the World Bank and FRED`);
+  setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production per member field, with forecast &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages, price paths from the World Bank and FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
   setProfile(`
+    ${valWarnCard(false)}
     ${hubCashFlowCard(ids)}
     <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
       <div class="pf-map-note">Annual gross production per member field, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above (producing fields decline together; fields under development come on top from their start-up year with ramp-up, plateau and decline).` : ''} Source: Sodir FactPages.</div></div>
