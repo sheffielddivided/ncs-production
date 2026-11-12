@@ -19,7 +19,7 @@
   "https://news.cision.com/var-energi-asa/ListItems?format=rss": {
    "company": "Vår Energi ASA",
    "title": "Cision News",
-   "n": 24
+   "n": 25
   },
   "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318": {
    "company": "Petoro AS",
@@ -39,7 +39,7 @@
   "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no": {
    "company": "DNO Norge AS",
    "title": "\"site:dno.no\" - Google Nyheter",
-   "n": 78
+   "n": 86
   },
   "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=": {
    "company": "DNO Norge AS",
@@ -73,6 +73,13 @@
   }
  },
  "items": [
+  {
+   "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
+   "t": "Vår Energi ASA: Extraordinary general meeting held",
+   "u": "https://news.cision.com/var-energi-asa/r/var-energi-asa--extraordinary-general-meeting-held,c4423013",
+   "d": "2026-11-11",
+   "s": "Sandnes, Norway, 11 November 2026: The extraordinary general meeting of Vår Energi ASA (the \"Company\", OSE: VAR) was held today, 11 November 2026, at 15:00 CET. The meeting was held as a digital event. In accordance with the proposals made by the Board of Directors, the general meeting approved a …"
+  },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - fourth tranche for 2026",
@@ -2398,6 +2405,13 @@
    "s": "Ex date"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Hjelp og støtte (page 1) - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE1PWldXOVpkOC1Zc01wbmRJSXBuY2ozTElDdy00M2ZLc2lsWi1QUTZDeHU1aC1Jbmw0bzV3ajMtSFJTRWpsaUg0aUIyMHNUQ2tPTlRERjJDUF8?oc=5",
+   "d": "2026-02-15",
+   "s": "Hjelp og støtte (page 1) TotalEnergies Nordic"
+  },
+  {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Shares Traded Ex-Dividend",
    "u": "https://newsweb.oslobors.no/message/665753",
@@ -3358,6 +3372,20 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO - Rekordproduksjon på over 23.000 fat pr. dag i april | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiowFBVV95cUxPRFFsSWd2dGREaU5JQkN2cE9NZUhTbjl6cVZIVkkwU3FBTVRzTndnVGdudlRmcG05dzU2WVIyODFxZ2FTN2ZjYmZXUGpDMkxSS1lYSzlDX1MtMDRING5hRHZjOXdjQjBRN1FvU0lZT2o3c0ZXcWMyOWtSRFBkeUZZSkpXS0N4OUo1Rl9Nay11V1hqUDZnMUl5dXhSeHpsX3hoRDVr?oc=5",
+   "d": "2024-08-28",
+   "s": "DNO - Rekordproduksjon på over 23.000 fat pr. dag i april | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Delårsrapport pr. 3. kvartal og 3. kvartal 2003 - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQZFlJOFV6TFpaQXRKQTNrVERublVKTWl5S01EbFF6VXJnY0RhaTI0RUEwa1hDM0V2N1I5dXZWRUR4b2NGNlBRaUp5V0M1UUpaYWlCeUdxYmNBZ0lTei1UMXUtMjZCV2NhVDE1OHk0dkJ2bkhHYVBCSHYwN1FJOHJpbkhTbkZOVFNjaEdQNW9USUtnNi1LOUphV180S0s0aEtpQUE?oc=5",
+   "d": "2024-08-28",
+   "s": "Delårsrapport pr. 3. kvartal og 3. kvartal 2003 DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Presentasjon av resultat for 1. halvår 2001 - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNNWFzS2FHLXhYMkY4MnMzR1hGTElubTlwVmhKZzljd0Nrbl9LdjFGZkdkeUxBTjV5cTN2RE16TGN5UmJFcXJSTUdJSDhaWUplQld4cnk4Y0h1M0Vvek9IbG1NM1EzaWhlRlkyU0RsRFl4blpqOVl2M2hnZ3dJRERLcGk1OUNPVElhVEprNEc1Y0pxbDFCWUpERXZCVG9GRU0?oc=5",
    "d": "2024-08-28",
@@ -3425,6 +3453,13 @@
    "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQSWJkSzljSm5Kam4wZkJoTWpDR2syMG1KWjdxY3RZUFVscmlJa2dfc2NXeHNoeVBSelV4MTNxMVo2TVU3Vjh5MlFjZEJobUlXRFF2bks4RnVHR2RFbms0OTFnQ3RvQ216MmhPZXN2X3R1a09ad3Npd1pEaTBoVFJtUlhocF9icVJ3Q0E?oc=5",
    "d": "2024-08-28",
    "s": "KJØP AV SMÅ AKSJEPOSTER (1) DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO: Produksjonstest på Seven Heads | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxOMmlUWWJnUnV0UEhiVzY5cUlodXZxYzJjX2cxTEhBaFMwcXVPbVlWdGlBWkpmT3NJWkZoLXFleEFxS1hKWkYyQ2lqUkprc09lczdTZUlEUXJaeGNoYmVucXZUMEFMdWtnamJmX2g2RzlCempWaWdQR25rd3BGdzhMN1RKQVU5OXdsNkE?oc=5",
+   "d": "2024-08-28",
+   "s": "DNO: Produksjonstest på Seven Heads | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4030,6 +4065,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Restrukturering av organisasjonen | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMihwFBVV95cUxQN1ZzeXVsaDhqR19HNUdvRFJJX0x5YkV4eDFzdnI2ZTNBaThTU2VkeFRLUXdDQ1lrbV9wZ3VBdXFHSTF0QzdHc19rSkNWTUlQcUhLY05KOC1mY0ZoYlUzY3NYanRyYlVaLVJ3c19yY2k3R05uY3FodEk0aUd3SlNmdk1LTl9tV0U?oc=5",
+   "d": "2022-09-13",
+   "s": "Restrukturering av organisasjonen | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Untitled - dno.no",
    "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxPSGVFZUlVVEt0akVzTHlpQ1RxT041OHNXUkMtWU5HOFRaU2hvR1ZrX1czeGNCdFpydkwweHNRNVdfZnZVUWVacDMwOFg0Z19lWEYzTEVWbExBWTVkcWpJYjVoQjktMldoTjdpNzlhckdBTVVfeWpBMmN3NmZjUEVnVzhn?oc=5",
    "d": "2022-09-13",
@@ -4435,13 +4477,6 @@
    "s": "Turbin- og sirkulasjonsoljer TotalEnergies Nordic"
   },
   {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Bruk riktig girolje for din maskin | TotalEnergies - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTE5YSGxUa3pseG9jVUlURG1meEtFYUVKbV9FYXA1eTRiSjdVRGhoOEY4cmNOUXFEUjlKaEZkNXN1c3RtOHpHRG9vOGt1cVZNWk5EQVNOX1RBOHByeTh4N2tWTFdmVE14UF8zNk1uQmhZMA?oc=5",
-   "d": "2021-06-01",
-   "s": "Bruk riktig girolje for din maskin | TotalEnergies TotalEnergies Nordic"
-  },
-  {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
    "t": "Proposed share consolidation 2021",
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/proposed-share-consolidation-2021/",
@@ -4541,10 +4576,24 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Ordinær Generalforsamling - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPRWc3cTZRWjhRdlZpWjdvbUVQdlIweHBJX3VmMnpVQnctUG5JTUVnS1lsUG1hdmtudG5JV29mc3hxMWFnZ1hwQWxiT2UxQjJkNnVCWnM2TUw4bndYc2dvbkhuWUl5ZVRUWGowR3JkdjZpcUF0MWtienhOR09hXzlGdktBeEhhMDc5?oc=5",
+   "d": "2020-11-19",
+   "s": "Ordinær Generalforsamling DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Dokumenter til generalforsamling | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxPSHZ3eW5uVk9GdEwyR3BLaHg5LV95bjF3bHFMT0NscnhHOHZhcVVVLWpuaVd3bDVVR2lEOG9qUkNCS1ZVVVZFSC1TZ2RLVXd3MFlWdWVOME90dkhWMUYxYUc3Q0ZTWlRsak5kYnhfLXBfU1FzRWpYUjNzVDJkSVJ0QTI5Skpudw?oc=5",
    "d": "2020-11-19",
    "s": "Dokumenter til generalforsamling | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Generalforsamlingsdokumenter | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMigAFBVV95cUxQd3FmbWNMVVBDN3RqdlMwMmFzMVU5Y0tDTm1FZFBqalIzWDN5TERKeEtLZEp2M05iUzh5MjdVUnVYRFJIMkZxSEVrNC0yR3I4XzRNSGVlbVg4cjNWdHE2LWdJUnVWSlk0OTNLWmJYbmdqZjc5MXFoS0pmTnZkcUtSQw?oc=5",
+   "d": "2020-11-19",
+   "s": "Generalforsamlingsdokumenter | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4580,6 +4629,13 @@
    "u": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPak1sOVpnNG9ybXV4b2tpUGNKSVA5OGlZekZrLW1JU2FLN045OUVmcFl1NW9pem5BbXpIZmVZaUpJNDhoQnl4SFR2QzlVdjB4MVd0Z3lLcGJaczhybU1LNkxGUXYyQjY5UjN6aHhyRFc1ank5Y2xVMjM3TjRDQzJUMk1kWFFkdTlJX1JMSjRvaGNhYmRpYmFOdXBn?oc=5",
    "d": "2020-11-18",
    "s": "Petrolia Drilling ASA - Flagging DNO ASA / IOT AS (1) | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Ordinær generalforsamling i DNO ASA | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxOYXE0TFh0ZkNoSjE0LURiR2NtazJjT1p4RVlnN3JwVHZFVWZ4M25JVUJUSXJURHktcEhwVFBOdTRwSUJ6N0h1WkFQQWRzQ2pfNHhKX290V0NyT3FzVXQwMXk1WDhMVW9Mbk1VSFZvSE15TkMzSnN6VmI1azUzSkRlTUI5R1dscjVBQW5N?oc=5",
+   "d": "2020-11-18",
+   "s": "Ordinær generalforsamling i DNO ASA | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4839,6 +4895,13 @@
    "u": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBLSko1SmY1YzE0b0JKQ2NpSS1oRjFoSUhKakpUakZ4WU01M1lZaE5FQkpDajMyVHJHZXRndUNWQlVIYW10VFlFMVJZcDBQQjBjMFdDdFFFVTd6ZmgyM3RYZ2hObGRCNUFTdlNjRE9QUnQ4SGhOUVpEekU1dw?oc=5",
    "d": "2005-04-01",
    "s": "Informasjon til Markedet | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Restrukturering av styrende organer (\"Corporate Governance\") - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxPVzJ4aVAyRVFfRmVFcGFqR1NJM3RXRXM3el9mLWlOU3hleHZPanpiMEFkQkN1V0R4U1BvTzJLQ3MwR2RveWxSNzNPWGFLZ0c4cGF5SzVfOE9ldWtMZmQ1ZW1uUjNoMUo0NmRuMXlLN1VvQjZZaFFsR2NFVzNmR212NFNTanJaY0gwYXRrWDJWbUt1alMzV282b1V0cVF0cHlGdzZpZDR1VDgtcFNKd1FhYw?oc=5",
+   "d": "2002-06-13",
+   "s": "Restrukturering av styrende organer (\"Corporate Governance\") DNO ASA"
   }
  ]
 }
