@@ -2533,6 +2533,7 @@ function applyHash() {
     if (!['count','net','gross'].includes(licF.metric)) licF.metric = 'count';
     if (!['all','operator'].includes(licF.role)) licF.role = 'all';
     if (!['count','pct'].includes(licF.ovm)) licF.ovm = 'count';
+    if (!['area','op'].includes(licF.rby)) licF.rby = 'area';
     if (!['any','buy','sell'].includes(licF.txRole)) licF.txRole = 'any';
     if (!['group','entity'].includes(licF.txLevel)) licF.txLevel = 'group';
     if (!/^\d+$/.test(licF.ovn)) licF.ovn = '15';
@@ -15504,10 +15505,10 @@ const LIC_SEAS = [
 let licSubView = 'overview';
 const LIC_DEAL_KINDS = 'transfer,sdfi,withdrawal,merger';
 const licDefaults = () => ({company: '', metric: 'count', role: 'all', q: '', top: 20, all: false,
-  tableAll: false, rowsAll: false, round: '', ova: '', ovb: '', ovn: '15', ovm: 'count',
+  tableAll: false, rowsAll: false, round: '', rby: 'area', ova: '', ovb: '', ovn: '15', ovm: 'count',
   txRole: 'any', txFrom: '', txTo: '', txKinds: LIC_DEAL_KINDS, txAll: false, txLevel: 'group', date: '', lic: ''});
 // Parametrene i adressen. Bare avvik fra standardverdiene skrives.
-const LIC_PARAMS = [['company','lc'],['metric','lm'],['role','lr'],['q','lq'],['round','lrd'],
+const LIC_PARAMS = [['company','lc'],['metric','lm'],['role','lr'],['q','lq'],['round','lrd'],['rby','lb'],
   ['ova','lo'],['ovb','lp'],['ovn','ln'],['ovm','lx'],['txRole','tr'],['txFrom','tf'],['txTo','tt'],
   ['txKinds','tk'],['txLevel','tl'],['date','md'],['lic','ll']];
 let licF = licDefaults();
@@ -16465,6 +16466,10 @@ function licRoundsBuild() {
   }).sort((a, b) => a.first - b.first || a.key.localeCompare(b.key, 'en', {numeric: true}));
 }
 
+function licRoundsSet(key, val) { licF[key] = val; syncUrl(); licRenderRounds(); }
+// «Licences awarded per company» delt på havområde eller på operatørskap.
+const LIC_ROLE_SEGS = [{key: 'op', label: 'Operator', color: '#ce0f69'}, {key: 'part', label: 'Non-operated', color: '#e9a6c4'}];
+
 function licSelectRound(key) { licF.round = key; licF.rowsAll = false; syncUrl(); licRenderRounds(); }
 
 function licRoundDetail(rd) {
@@ -16537,9 +16542,13 @@ function licRenderRounds() {
   // Tildelinger per selskap som liggende stolper, synkende, delt på havområde
   // som stolpene i Overview.
   const coMax = names.length ? awarded[names[0]].n : 1;
+  const byOp = licF.rby === 'op';
+  const coSegs = byOp ? LIC_ROLE_SEGS : LIC_SEAS;
+  const segVal = (c, z) => byOp ? (z.key === 'op' ? c.op : c.n - c.op) : c.sea[z.key] || 0;
+  const coLegend = byOp ? LIC_ROLE_SEGS.map(z => `<span class="ex-leg"><span class="ex-dot" style="background:${z.color}"></span>${z.label}</span>`).join('') : legend;
   pptCardSpecs.licRounds = {kind: 'cat', dir: 'bar', stacked: true, labels: names, yTitle: 'licences',
-    subtitle: `Licences awarded per company · ${rd.label} (${licDayYear(rd.first)})`,
-    series: LIC_SEAS.map(z => ({name: z.label, type: 'bar', color: pptHex(z.color), values: names.map(n => awarded[n].sea[z.key] || 0)}))};
+    subtitle: `Licences awarded per company${byOp ? ', operated and non-operated' : ''} · ${rd.label} (${licDayYear(rd.first)})`,
+    series: coSegs.map(z => ({name: z.label, type: 'bar', color: pptHex(z.color), values: names.map(n => segVal(awarded[n], z))}))};
   const coBars = names.map(n => {
     const c = awarded[n], link = licStats[n];
     const open = link ? ` onclick="licOpenCompany(${esc(JSON.stringify(n))})" role="link" tabindex="0"
@@ -16547,8 +16556,8 @@ function licRenderRounds() {
     return `
     <div class="lc-row"${open || ' style="cursor:default"'}>
       <div class="lc-name" title="${esc(n)}">${esc(n)}</div>
-      <div class="lc-track" style="width:${(c.n / coMax * 100).toFixed(1)}%">${LIC_SEAS.map(z => {
-        const v = c.sea[z.key] || 0;
+      <div class="lc-track" style="width:${(c.n / coMax * 100).toFixed(1)}%">${coSegs.map(z => {
+        const v = segVal(c, z);
         return v > 0 ? `<span style="flex:${v};background:${z.color}" title="${esc(n)} · ${z.label}: ${v} licences"></span>` : '';
       }).join('')}</div>
       <div class="lc-val">${c.n}</div>
@@ -16592,9 +16601,11 @@ function licRenderRounds() {
     <div class="lc-two">
     <div class="pf-card"><h3>Licence map</h3>${map}</div>
     ${names.length ? `<div class="pf-card" data-ppt-spec="licRounds"><h3>Licences awarded per company</h3>
+      <div class="pill-group"><button class="pill-btn${!byOp ? ' active' : ''}" onclick="licRoundsSet('rby','area')">By area</button>
+        <button class="pill-btn${byOp ? ' active' : ''}" onclick="licRoundsSet('rby','op')">By operatorship</button></div>
       ${coBars}
-      <div class="ex-legend">${legend}</div>
-      <div class="pf-map-note">Number of the round's licences each company was awarded an interest in, as partner or operator.</div></div>` : ''}
+      <div class="ex-legend">${coLegend}</div>
+      <div class="pf-map-note">Number of the round's licences each company was awarded an interest in, as partner or operator.${byOp ? ' Operator is the operator at award; non-operated are the other licences the company got an interest in.' : ''}</div></div>` : ''}
     </div>
     <div class="pf-card"><h3>Awards per company</h3>
       <div class="pf-scroll"><table class="res-table ex-table"><thead><tr><th class="ex-l">Company</th><th>Licences awarded</th><th>Operator</th>
