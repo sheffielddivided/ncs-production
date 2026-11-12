@@ -67,6 +67,13 @@ jobs:
         timeout-minutes: 5
         run: python fetch_fx.py
 
+      # Styringsrenter, inflasjon og rentekurver for NO, US, EU, UK og SE til
+      # Interest-fanen i Market (fra convert-repoet, pluss Fed og Treasury).
+      - name: Hent renter og inflasjon
+        continue-on-error: true
+        timeout-minutes: 8
+        run: python fetch_rates.py
+
       # Konsumprisindekser (USD, EUR, NOK) til realprisvisningen i Prices.
       - name: Hent konsumprisindekser
         continue-on-error: true

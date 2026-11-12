@@ -1463,6 +1463,30 @@ periode som `ÅÅÅÅ-MM-DD_ÅÅÅÅ-MM-DD`. Faste perioder starter i siste kurs
 eller før referansedatoen (YTD: siste kurs året før), så første punkt er
 det endringen regnes fra.
 
+**Interest** (`drawPriceInterest`): styringsrente, inflasjon og
+statsrentekurve for Norge, USA, euroområdet, Storbritannia og Sverige.
+`fetch_rates.py` bygger `data/rates.json` (eget steg, `continue-on-error`) fra
+`data/nb/interest.json` og `data/nb/inflation.json` i
+`sheffielddivided/convert` (dataene bak nb.html), og henter i tillegg Feds
+målintervall (FRED `DFEDTARL`/`DFEDTARU`; serien er midtpunktet) og hele
+Treasury-kurven (convert mangler 2 år). FRED avviser ukjente User-Agent-er,
+så scriptet bruker standardverdien. Styringsrentene lagres som
+endringspunkter. Kilder: Norges Bank, ECB (innskuddsrenten), Bank of England,
+Riksbanken; inflasjon fra SSB (KPI), BLS (CPI-U via FRED), Eurostat (HICP for
+euroområdet og Sverige) og ONS (CPI); kurver fra Norges Bank, U.S. Treasury,
+ECB (AAA-kurven, med tyske Bund fra Bundesbank som stiplet linje), Bank of
+England og Riksbanken.
+
+Tabellen viser siste styringsrente, siste 12-månedersinflasjon, implisitt
+realrente (styringsrente − inflasjon, ex post) og statsrentene for 1, 2 og 10
+år. Norges Bank publiserer ingen 2-årsrente og Riksbanken ingen 1-årsrente; de
+interpoleres lineært mellom nabopunktene (`irYield`) og merkes med *.
+Historikkgrafen er månedlig: styringsrenten ved månedsslutt, inflasjonen for
+måneden og realrenten der begge finnes. Rentekurvegrafen viser valgt land med
+styringsrenten som stiplet linje, eller alle landene. Lenkeparametre: `ic`
+land (standard øverste linje, Norge), `ip` periode (`2y`, `5y`, `10y`
+standard, `20y`), `ia=1` alle kurvene.
+
 **Konstruksjonen av Datert Brent og skjøten.** Petroleumsprisrådets Datert
 Brent for dato *d* er snittet av de **fem neste publiserte Platts Dated
 Brent-noteringene (PCAAS00) etter *d*** — ikke *d* selv — rundet til nærmeste

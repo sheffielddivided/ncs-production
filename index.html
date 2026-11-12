@@ -577,6 +577,13 @@
     .fx-chart-head{font-size:0.85rem;margin-bottom:8px;}
     .fx-chart-head span{color:var(--muted);font-size:0.72rem;margin-left:4px;}
     @media (max-width: 560px){ .fx-name{display:none;} }
+    .ir-month{color:var(--muted);font-size:0.62rem;margin-left:4px;}
+    .ir-real{font-weight:600;}
+    .ir-real.up{color:#00895a;}
+    .ir-real.down{color:#c0392b;}
+    .ir-interp{font-style:italic;color:#4a5568;}
+    .ir-note{max-width:520px;}
+    .ir-curve-head{margin-top:18px;}
     .fx-dates{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);}
     .cf-chart{flex:1 1 600px;min-width:0;}
     .cf-npv{flex:0 1 230px;min-width:0;overflow-x:auto;}
@@ -2316,6 +2323,11 @@ function stateToHash() {
       if (prF.fp && prF.fp !== '1y') q.set('fp', prF.fp);
       if (prF.fp === 'custom' && prF.f0 && prF.f1) q.set('fd', prF.f0 + '_' + prF.f1);
     }
+    if (priceSubView === 'interest') {
+      if (prF.ic) q.set('ic', prF.ic);
+      if (prF.ip && prF.ip !== '10y') q.set('ip', prF.ip);
+      if (prF.ia) q.set('ia', '1');
+    }
   }
   else if (topMode === 'dcs') {
     const dflt = dcsDefaults();
@@ -2411,6 +2423,12 @@ const SOURCES = {
   bls:      ['U.S. Bureau of Labor Statistics (CPI-U), via FRED', 'https://fred.stlouisfed.org/series/CPIAUCSL', ''],
   eurostat: ['Eurostat (HICP)', 'https://ec.europa.eu/eurostat', ''],
   nb:       ['Norges Bank (exchange rates)', 'https://www.norges-bank.no', ''],
+  nb_ir:    ['Norges Bank (policy rate, government yields)', 'https://www.norges-bank.no', ''],
+  ecb:      ['European Central Bank', 'https://data.ecb.europa.eu', ''],
+  boe:      ['Bank of England', 'https://www.bankofengland.co.uk/statistics', ''],
+  riksbank: ['Sveriges Riksbank', 'https://www.riksbank.se', ''],
+  ons:      ['Office for National Statistics (ONS)', 'https://www.ons.gov.uk', ''],
+  ustreas:  ['U.S. Department of the Treasury', 'https://home.treasury.gov', ''],
   ne:       ['Natural Earth (coastline)', 'https://www.naturalearthdata.com', 'public domain'],
   ens:      ['Danish Energy Agency (Energistyrelsen, ENS)', 'https://ens.dk/en/energy-sources/monthly-and-yearly-production', ''],
   eex:      ['EEX, TTF Neutral Gas Price', 'https://www.eex.com', ''],
@@ -2427,6 +2445,7 @@ function pageSources() {
     if (v === 'storage') add('gie', 'gie_lng');
     if (v === 'us') add('eia');
     if (v === 'forex') add('nb');
+    if (v === 'interest') add('nb_ir', 'fred', 'ecb', 'boe', 'riksbank', 'ssb', 'eurostat', 'ons', 'ustreas');
     if (prF.real) {
       const cur = v === 'gas' ? gasCur() : 'USD';
       add(cur === 'USD' ? 'bls' : cur === 'EUR' ? 'eurostat' : 'ssb');
@@ -2561,6 +2580,9 @@ function applyHash() {
     prF.fp = FX_PERIODS.some(p => p[0] === q.get('fp')) ? q.get('fp') : '1y';
     const fd = (q.get('fd') || '').match(/^(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/);
     if (fd) { prF.f0 = fd[1]; prF.f1 = fd[2]; }
+    prF.ic = IR_C.some(c => c.id === q.get('ic')) ? q.get('ic') : null;
+    prF.ip = IR_PERIODS.some(p => p[0] === q.get('ip')) ? q.get('ip') : '10y';
+    prF.ia = q.get('ia') === '1' ? 1 : 0;
   }
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
@@ -3343,6 +3365,7 @@ const PRICE_TABS = [
   {id: 'storage', label: 'EU storage'},
   {id: 'us',      label: 'US supply'},
   {id: 'forex',   label: 'Forex'},
+  {id: 'interest', label: 'Interest'},
 ];
 let priceSubView = 'brent';
 const PRICE_MAX_SEL = 8;
@@ -3529,6 +3552,7 @@ function drawPrices() {
   else if (priceSubView === 'storage') drawPriceStorage();
   else if (priceSubView === 'us') drawPriceUs();
   else if (priceSubView === 'forex') drawPriceForex();
+  else if (priceSubView === 'interest') drawPriceInterest();
   else { drawPriceBrent(); drawPriceDiff(); }
   document.getElementById('downloadBtn').disabled = false;
 }
@@ -4560,6 +4584,197 @@ function drawPriceForex() {
   setInfo(`<strong>Source:</strong> Norges Bank, official exchange rates (EXR), set daily at the ECB concertation at 14:15 CET.
     Cross rates against other base currencies are calculated from the NOK rates. 1D is the change since the previous banking day,
     YTD since the last rate of ${+last.slice(0, 4) - 1}${fxData.updated ? ` &nbsp;|&nbsp; Updated ${fmtShort(fxData.updated.slice(0, 10))}` : ''}`);
+}
+
+// ── MARKET: INTEREST ──
+// Styringsrente, inflasjon og statsrentekurve for fem økonomier
+// (data/rates.json fra fetch_rates.py, som bygger på nb.html-dataene i
+// sheffielddivided/convert, pluss Feds målintervall og Treasury-kurven).
+//
+// Venstre: tabellen med styringsrente, siste 12-månedersinflasjon, implisitt
+// realrente (styringsrente − inflasjon) og statsrentene for 1, 2 og 10 år.
+// Mangler kilden en løpetid (Norge 2 år, Sverige 1 år), interpoleres den
+// lineært mellom nabopunktene og merkes. Høyre: historikken for valgt land
+// (prF.ic; uten valg øverste linje) med periodeknapper (prF.ip), og
+// rentekurven for landet — eller alle landene (prF.ia).
+const IR_C = [
+  {id: 'NO', name: 'Norway',         cb: 'Norges Bank',        inf: 'CPI, SSB',          curve: 'Government bills and bonds, Norges Bank'},
+  {id: 'US', name: 'United States',  cb: 'Fed funds target range',         inf: 'CPI-U, BLS',        curve: 'Treasury par yield curve, U.S. Treasury'},
+  {id: 'EU', name: 'Euro area',      cb: 'ECB deposit facility rate',      inf: 'HICP, Eurostat',    curve: 'AAA government spot curve, ECB', curve2: 'German Bund, Bundesbank'},
+  {id: 'UK', name: 'United Kingdom', cb: 'Bank of England Bank Rate',      inf: 'CPI, ONS',          curve: 'Gilt nominal spot curve, Bank of England'},
+  {id: 'SE', name: 'Sweden',         cb: 'Riksbank',           inf: 'HICP, Eurostat',    curve: 'Government bills and bonds, Riksbank'},
+];
+const IR_PERIODS = [['2y', '2Y', 2], ['5y', '5Y', 5], ['10y', '10Y', 10], ['20y', '20Y', 20]];
+const IR_COL = {policy: 'rgba(125,34,72,0.95)', inf: 'rgba(246,141,46,0.95)', real: 'rgba(0,150,100,0.95)', realFill: 'rgba(0,179,115,0.12)'};
+const IR_CURVE_COL = {NO: 'rgba(206,15,105,0.9)', US: 'rgba(42,111,168,0.9)', EU: 'rgba(246,141,46,0.9)', UK: 'rgba(0,150,100,0.9)', SE: 'rgba(125,34,72,0.9)'};
+let irData, irLoading = null;
+
+// Styringsrenten på en dato: siste endringspunkt på eller før datoen.
+function irPolicyAt(pol, d) {
+  let v = null;
+  for (const [t, x] of pol) { if (t <= d) v = x; else break; }
+  return v;
+}
+// Rente for en løpetid i år; interpolert lineært hvis kurven mangler punktet.
+function irYield(cv, years) {
+  const p = cv && cv.points;
+  if (!p || !p.length) return null;
+  const hit = p.find(q => Math.abs(q[0] - years) < 1e-6);
+  if (hit) return {v: hit[2]};
+  const lo = [...p].reverse().find(q => q[0] < years), hi = p.find(q => q[0] > years);
+  if (!lo || !hi) return null;
+  return {v: lo[2] + (hi[2] - lo[2]) * (years - lo[0]) / (hi[0] - lo[0]), interp: `${lo[1]}–${hi[1]}`};
+}
+const irNum = (v, dp = 2) => v == null ? '—' : `${v < 0 ? '−' : ''}${Math.abs(v).toFixed(dp)}`;
+const irPct = (v, dp = 2) => v == null ? '—' : irNum(v, dp) + ' %';
+const irMonth = m => `${MONTH_ABBR[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}`;
+function irLatest(c) {
+  const C = irData.countries[c.id], pol = C.policy, inf = C.inflation;
+  const p = pol.length ? pol[pol.length - 1][1] : null, i = inf.length ? inf[inf.length - 1] : null;
+  return {p, i: i ? i[1] : null, im: i ? i[0] : null, real: p != null && i ? p - i[1] : null};
+}
+
+function irSet(k, v) { prF[k] = v; syncUrl(); drawChart(); }
+
+function drawPriceInterest() {
+  if (irData === undefined) {
+    document.getElementById('chartArea').innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+    irLoading = irLoading || fetchBundle('rates').then(d => { irData = d && d.countries ? d : false; });
+    irLoading.then(() => { if (topMode === 'prices' && priceSubView === 'interest') drawChart(); });
+    return;
+  }
+  if (!irData) { setChartEmpty('Could not load the interest rate data.'); setChartTitle('Interest', ''); setInfo(''); return; }
+  const rows = IR_C.filter(c => irData.countries[c.id]);
+  const sel = rows.find(c => c.id === prF.ic) || rows[0];
+  const per = IR_PERIODS.find(p => p[0] === prF.ip) || IR_PERIODS[2];
+  const all = !!prF.ia;
+  let anyInterp = false;
+
+  // Tabellen.
+  const yc = (cv, y) => {
+    const r = irYield(cv, y);
+    if (!r) return '<td>—</td>';
+    if (r.interp) anyInterp = true;
+    return r.interp ? `<td class="ir-interp" title="Interpolated between ${r.interp}">${irNum(r.v)}*</td>` : `<td>${irNum(r.v)}</td>`;
+  };
+  const tbody = rows.map(c => {
+    const C = irData.countries[c.id], L = irLatest(c);
+    const pol = C.range ? `${C.range[0].toFixed(2)}–${C.range[1].toFixed(2)}` : irNum(L.p);
+    return `<tr class="fx-row${c === sel ? ' sel' : ''}" onclick="irSet('ic','${c.id}')" title="Show ${c.name} in the charts">
+      <td><span class="fx-code">${c.id}</span><span class="fx-name">${c.name}</span></td>
+      <td class="fx-rate">${pol}</td>
+      <td>${irNum(L.i, 1)}${L.im ? `<span class="ir-month">${MONTH_ABBR[+L.im.slice(5, 7) - 1]}</span>` : ''}</td>
+      <td class="ir-real ${L.real == null ? '' : L.real < 0 ? 'down' : 'up'}">${irNum(L.real)}</td>
+      ${yc(C.curve, 1)}${yc(C.curve, 2)}${yc(C.curve, 10)}</tr>`;
+  }).join('');
+
+  // Historikk per måned: styringsrenten ved månedsslutt, inflasjonen for
+  // måneden, og realrenten der begge finnes.
+  const C = irData.countries[sel.id];
+  const infMap = Object.fromEntries(C.inflation);
+  const lastPol = C.policy.length ? C.policy[C.policy.length - 1][0].slice(0, 7) : '';
+  const lastInf = C.inflation.length ? C.inflation[C.inflation.length - 1][0] : '';
+  const end = lastPol > lastInf ? lastPol : lastInf;
+  const months = [];
+  for (let y = +end.slice(0, 4) - per[2], m = +end.slice(5, 7); ; ) {
+    m++; if (m > 12) { m = 1; y++; }
+    const k = `${y}-${String(m).padStart(2, '0')}`;
+    if (k > end) break;
+    months.push(k);
+  }
+  const firstPol = C.policy.length ? C.policy[0][0].slice(0, 7) : end;
+  const dPol = months.map(m => m < firstPol ? null : irPolicyAt(C.policy, m + '-31'));
+  const dInf = months.map(m => infMap[m] ?? null);
+  const dReal = months.map((m, i) => dPol[i] != null && dInf[i] != null ? +(dPol[i] - dInf[i]).toFixed(2) : null);
+
+  // Rentekurven.
+  const curveSets = [], tenors = new Map();
+  const addCurve = (cid, cv, label, opts = {}) => {
+    if (!cv || !cv.points) return;
+    cv.points.forEach(p => tenors.set(p[1], p[0]));
+    curveSets.push({cv, label, ...opts});
+  };
+  if (all) rows.forEach(c => addCurve(c.id, irData.countries[c.id].curve, c.name,
+    {color: IR_CURVE_COL[c.id], width: c === sel ? 3 : 1.6}));
+  else {
+    addCurve(sel.id, C.curve, sel.curve, {color: IR_CURVE_COL[sel.id], width: 2.5});
+    if (C.curve2) addCurve(sel.id, C.curve2, sel.curve2, {color: IR_CURVE_COL[sel.id], width: 1.5, dash: [5, 4]});
+  }
+  const tLabels = [...tenors.entries()].sort((a, b) => a[1] - b[1]).map(e => e[0]);
+  const cDatasets = curveSets.map(s => {
+    const m = Object.fromEntries(s.cv.points.map(p => [p[1], p[2]]));
+    return {label: s.label, data: tLabels.map(t => m[t] ?? null), borderColor: s.color, backgroundColor: s.color,
+            borderWidth: s.width, borderDash: s.dash || [], pointRadius: 2.5, pointHoverRadius: 4, tension: 0.25, spanGaps: true};
+  });
+  const L = irLatest(sel);
+  if (!all && L.p != null) cDatasets.push({label: `Policy rate, ${irPct(L.p)}`, data: tLabels.map(() => L.p), borderColor: IR_COL.policy,
+    backgroundColor: IR_COL.policy, borderWidth: 1.2, borderDash: [2, 3], pointRadius: 0, pointHoverRadius: 0, tension: 0});
+  const curveDate = (C.curve && C.curve.date) ? fmtShort(C.curve.date) : '';
+
+  const pills = `<div class="pill-group">${IR_PERIODS.map(([k, l]) =>
+    `<button class="pill-btn${per[0] === k ? ' active' : ''}" onclick="irSet('ip','${k}')">${l}</button>`).join('')}</div>`;
+  const cPills = `<div class="pill-group">
+    <button class="pill-btn${all ? '' : ' active'}" onclick="irSet('ia', 0)">${sel.name}</button>
+    <button class="pill-btn${all ? ' active' : ''}" onclick="irSet('ia', 1)">All countries</button></div>`;
+  const leg = ds => `<div class="legend-row">${ds.map(d => `<div class="legend-item"><div class="legend-dot" style="${d.borderDash && d.borderDash.length
+    ? `background:repeating-linear-gradient(90deg,${d.borderColor} 0 5px,transparent 5px 8px);height:2px;border-radius:0` : `background:${d.borderColor}`}"></div>${esc(d.label)}</div>`).join('')}</div>`;
+  const hist = [
+    {label: `Policy rate (${sel.cb}${C.range ? ', midpoint' : ''})`, data: dPol, borderColor: IR_COL.policy, backgroundColor: IR_COL.policy, borderWidth: 2.2, stepped: 'before', pointRadius: 0, spanGaps: true},
+    {label: `Inflation (${sel.inf}, 12-month change)`, data: dInf, borderColor: IR_COL.inf, backgroundColor: IR_COL.inf, borderWidth: 1.8, pointRadius: 0, tension: 0.2},
+    {label: 'Real rate (policy rate − inflation)', data: dReal, borderColor: IR_COL.real, backgroundColor: IR_COL.realFill, fill: 'origin', borderWidth: 1.5, borderDash: [5, 3], pointRadius: 0, tension: 0.2},
+  ];
+  document.getElementById('chartArea').innerHTML = `<div class="fx-wrap">
+    <div class="fx-table">
+      <table class="res-table">
+        <caption>Latest policy rate, 12-month inflation, implied real rate and government bond yields, % · click a row to chart it</caption>
+        <thead><tr><th>Country</th><th>Policy</th><th>Inflation</th><th>Real</th><th>1Y</th><th>2Y</th><th>10Y</th></tr></thead>
+        <tbody>${tbody}</tbody></table>
+      <div class="pf-map-note ir-note">Real rate = policy rate − latest 12-month inflation (ex post).
+        ${anyInterp ? '* Interpolated linearly between the neighbouring maturities (Norges Bank publishes no 2-year and the Riksbank no 1-year government yield).' : ''}
+        US policy rate is the Fed's target range; charts use its midpoint.</div>
+    </div>
+    <div class="fx-chart">
+      <div class="fx-chart-head"><strong>${sel.name}</strong> <span>Policy rate, inflation and real rate · % · monthly</span></div>
+      <div class="np-bar">${pills}</div>
+      <div class="chart-container"><canvas id="prodChart"></canvas></div>
+      ${leg(hist)}
+      <div class="fx-chart-head ir-curve-head"><strong>Yield curve</strong> <span>${all ? 'Government yields by maturity, latest' : `${esc(sel.curve)}${curveDate ? ' · ' + curveDate : ''}`}</span></div>
+      <div class="np-bar">${cPills}</div>
+      <div class="chart-container"><canvas id="irCurveChart"></canvas></div>
+      ${leg(cDatasets)}
+    </div></div>`;
+
+  if (chartInstance) chartInstance.destroy();
+  const pctTick = v => `${v} %`;
+  const tip = c => c.parsed.y == null ? null : ` ${c.dataset.label.replace(/ \(.*$/, '').replace(/, [−\d.]+ %$/, '')}: ${irPct(c.parsed.y)}`;
+  const grid = {color: ctx => ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'};
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'line', data: {labels: months, datasets: hist},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {title: it => irMonth(it[0].label), label: tip}}},
+      scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 24, font: {size: 9},
+                   callback: function (v) { const m = this.getLabelForValue(v); return per[2] <= 2 ? irMonth(m).replace(/ 20/, ' ') : m.slice(0, 4); }}, grid: {display: false}},
+               y: {title: {display: true, text: '%', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}, callback: pctTick}, grid}}}});
+  const cc = new Chart(document.getElementById('irCurveChart').getContext('2d'), {
+    type: 'line', data: {labels: tLabels, datasets: cDatasets},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {title: it => `Maturity ${it[0].label}`, label: tip}}},
+      scales: {x: {title: {display: true, text: 'Maturity', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {display: false}},
+               y: {title: {display: true, text: 'Yield, %', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}, callback: pctTick}, grid}}}});
+  usCharts.push(cc);
+
+  lastLabels = months; lastXTitle = 'Month';
+  lastDatasets = hist.map(d => ({label: d.label + ', %', data: d.data.map(v => v ?? '')}));
+  const curveTitle = all ? 'Government yield curves' : `Yield curve · ${sel.name}`;
+  pptExtra = [{id: 'ircurve', spec: pptSpecFromChart(cc), meta: {title: curveTitle,
+    subtitle: all ? 'Yield by maturity, %, latest' : `${sel.curve}, %${curveDate ? ' · ' + curveDate : ''}`,
+    source: 'Source: ' + (all ? IR_C.map(c => c.curve.split(', ').pop()).join(', ') : sel.curve.split(', ').pop())}}];
+  setChartTitle(`Interest · ${sel.name}`, `Policy rate, inflation and real rate · % · last ${per[1]}`);
+  const upd = irData.convertUpdated ? fmtShort(irData.convertUpdated) : '';
+  setInfo(`<strong>${esc(sel.name)}:</strong> policy rate ${C.range ? `${C.range[0].toFixed(2)}–${C.range[1].toFixed(2)} %` : irPct(L.p)} (${esc(sel.cb)}) &nbsp;|&nbsp;
+    inflation ${irPct(L.i, 1)} in ${L.im ? irMonth(L.im) : '—'} (${esc(sel.inf)}) &nbsp;|&nbsp; real rate ${irPct(L.real)}
+    &nbsp;|&nbsp; <strong>Sources:</strong> Norges Bank, Federal Reserve (via FRED), ECB, Bank of England, Riksbank; SSB, BLS (via FRED), Eurostat, ONS;
+    U.S. Treasury, Bundesbank. Collected daily by the convert solution${upd ? `, updated ${upd}` : ''}. The policy rate in the history chart is the rate at the end of each month`);
 }
 
 // ── PRICES: OIL VS GAS ──
