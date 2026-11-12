@@ -60,6 +60,13 @@ jobs:
         timeout-minutes: 5
         run: python fetch_eugas.py
 
+      # Daglige valutakurser fra Norges Bank (NOK, USD, EUR, GBP, SEK, DKK,
+      # CHF, CAD) til Forex-fanen i Market.
+      - name: Hent valutakurser (Norges Bank)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_fx.py
+
       # Konsumprisindekser (USD, EUR, NOK) til realprisvisningen i Prices.
       - name: Hent konsumprisindekser
         continue-on-error: true
