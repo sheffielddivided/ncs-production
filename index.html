@@ -2597,7 +2597,6 @@ function applyHash() {
     if (['rem', 'orig', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
     if (['mboe', 'scatter'].includes(q.get('nd'))) ncsF.chg = q.get('nd');
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
-    if (q.get('ns') === 'acc') ncsF.es = 'acc';
     if (q.get('ni') === 'real') ncsF.inv = 'real';
   }
   if (topMode === 'dcs') {
@@ -4951,13 +4950,13 @@ let ncsSubView = 'production';
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline'
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
-// · ec: 'employment' | 'investments' | 'survey' | 'share' · es: 'rev' | 'acc'
+// · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
 const ncsDefaults = () => ({prod: 'product', res: 'oe', vol: false, from: '2000', year: '', rank: 'res', all: false,
-                            cr: 'curve', crArea: false, fl: 'rank', chg: 'pct', ec: 'employment', es: 'rev', inv: 'nom'});
+                            cr: 'curve', crArea: false, fl: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
 const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
-                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['chg', 'nd'], ['ec', 'ne'], ['es', 'ns'], ['inv', 'ni']];
+                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
 // Havområdene, i samme farger som i Licences. Felt uten område i
@@ -5982,8 +5981,7 @@ function drawNcsEconomy() {
   const toggle = ncsPills('ec', [['employment', 'Employment'], ['investments', 'Investments'],
                                   ['survey', 'Investment estimates'], ['share', 'Share of investments']]);
   if (ncsF.ec === 'investments') drawSsbInvestments(toggle);
-  else if (ncsF.ec === 'survey' && ncsF.es === 'acc' && ssbData.sectors) drawSsbAccuracy(toggle);
-  else if (ncsF.ec === 'survey') drawSsbSurvey(toggle);
+  else if (ncsF.ec === 'survey' && ssbData.sectors) drawSsbAccuracy(toggle);
   else if (ncsF.ec === 'share' && ssbData.sectors) drawSsbShare(toggle);
   else drawSsbEmployment(toggle);
 }
@@ -6071,45 +6069,10 @@ function drawSsbInvestments(toggle) {
   setInfo(`<strong>Source:</strong> Statistics Norway (SSB), table 04170 (accrued, ${inv.years[0]}–${lastY}) and 08050 (investment survey estimates) &nbsp;|&nbsp; <strong>Scope:</strong> exploration, field development, fields in operation, onshore activities, shutdown and removal, and pipeline transport. This is wider than Sodir's per-field investments in the Investments tab, and collected differently, so the figures differ &nbsp;|&nbsp; Current prices`);
 }
 
-// Underveksler i «Investment estimates»: revisjonene år for år (08050, fra
-// 2002, med februar året før) eller treffsikkerheten over hele perioden
-// (07155, fra 1986).
-const ssbEsToggle = () => ssbData.sectors ? ncsPills('es', [['rev', 'Revisions'], ['acc', 'Accuracy since 1986']]) : '';
-
-function drawSsbSurvey(toggle) {
-  toggle += ssbEsToggle();
-  const s = ssbData.survey, vals = s.values['0'];
-  // De siste åtte årene, hvert som en linje gjennom undersøkelsesrundene.
-  const idx = s.years.map((y, i) => i).filter(i => s.points.some(p => ssbV(vals[p][i]) != null)).slice(-8);
-  const labels = s.points.map(p => SSB_POINTS[p]);
-  const pal = PALETTE.map(p => p[0]);
-  const datasets = idx.map((i, n) => ({label: String(s.years[i]), data: s.points.map(p => { const v = ssbV(vals[p][i]); return v == null ? null : +(v / 1000).toFixed(1); }),
-    borderColor: pal[n % pal.length], backgroundColor: pal[n % pal.length], borderWidth: n === idx.length - 1 || n === idx.length - 2 ? 2.5 : 1.5,
-    pointRadius: 3, tension: 0.15, spanGaps: false}));
-  document.getElementById('chartArea').innerHTML = `${toggle}
-    <div class="chart-container"><canvas id="prodChart"></canvas></div>
-    <div class="legend-row">${datasets.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}"></div>${d.label}</div>`).join('')}</div>
-    <div class="pf-map-note">Each line is one year's investments as estimated in SSB's quarterly survey, from February the year before to the accrued figure.</div>`;
-  ssbChart(labels, datasets, 'NOK bn', {type: 'line', fmt: v => `NOK ${v.toLocaleString('en', {maximumFractionDigits: 1})} bn`});
-  lastLabels = labels; lastXTitle = 'Survey';
-  lastDatasets = datasets.map(d => ({label: d.label + ', NOK bn', data: d.data.map(v => v ?? '')}));
-  const n1 = v => (v / 1000).toLocaleString('en', {maximumFractionDigits: 1});
-  setChartTable(`
-    <table class="res-table">
-      <caption>Estimates by survey round · NOK bn · current prices</caption>
-      <thead><tr><th>Year</th>${s.points.map(p => `<th>${SSB_POINTS[p]}</th>`).join('')}</tr></thead>
-      <tbody>${idx.slice().reverse().map(i => `<tr><td>${s.years[i]}</td>${s.points.map(p => { const v = ssbV(vals[p][i]); return `<td>${v == null ? '—' : n1(v)}</td>`; }).join('')}</tr>`).join('')}</tbody>
-    </table>`);
-  setChartTitle('Norwegian Continental Shelf · Investment estimates', 'How each year\'s investments were estimated in SSB\'s survey · NOK bn');
-  setInfo(`<strong>Source:</strong> Statistics Norway (SSB), table 08050, investment survey for oil and gas extraction and pipeline transport &nbsp;|&nbsp; Estimates typically rise through the survey rounds as projects are approved and added &nbsp;|&nbsp; Current prices`);
-}
-
-
 // Treffsikkerhet: påløpte investeringer per år som søyler, og det første
 // anslaget (mai året før) og anslaget i august samme år som linjer. Avviket
 // er første anslag mot påløpt.
 function drawSsbAccuracy(toggle) {
-  toggle += ssbEsToggle();
   const sec = ssbData.sectors, v = sec.values.P102B;
   const idx = sec.years.map((y, i) => i).filter(i => ssbV(v['99'][i]) != null || ssbV(v['5'][i]) != null);
   const years = idx.map(i => sec.years[i]), labels = years.map(String);
