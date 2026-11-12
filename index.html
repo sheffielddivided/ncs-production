@@ -1599,7 +1599,7 @@ const FIELD_TABS   = [
   {id:'oe_per_company', label:'Prod per company'},
   {id:'reserves',       label:'Reserves'},
   {id:'map',            label:'Map'},
-  {id:'profile',        label:'Profile'},
+  {id:'profile',        label:'Factsheet'},
   {id:'havtil',         label:'Havtil'},
   {id:'downtime',       label:'Gas outage'},
 ];
@@ -1608,7 +1608,7 @@ const HUB_TABS     = [
   {id:'oe_per_company', label:'Prod per company'},
   {id:'oilgas',         label:'Oil & Gas'},
   {id:'reserves',       label:'Reserves'},
-  {id:'profile',        label:'Profile'},
+  {id:'profile',        label:'Factsheet'},
   {id:'installations',  label:'Installations'},
   {id:'havtil',         label:'Havtil'},
   {id:'downtime',       label:'Gas outage'},
@@ -1618,7 +1618,7 @@ const DISCOVERY_TABS = [
   {id:'per_discovery', label:'Resources'},
   {id:'per_company',   label:'Per company'},
   {id:'maturity',      label:'Maturity'},
-  {id:'profile',       label:'Profile'},
+  {id:'profile',       label:'Factsheet'},
 ];
 const COMPANY_TABS = [
   {id:'oe_per_hub',    label:'Prod per hub'},
@@ -1629,7 +1629,7 @@ const COMPANY_TABS = [
   {id:'licences',      label:'Licences'},
   {id:'exploration',   label:'Exploration'},
   {id:'downtime',      label:'Gas outage'},
-  {id:'profile',       label:'Profile'},
+  {id:'profile',       label:'Factsheet'},
   {id:'news',          label:'News'},
   {id:'valuation',     label:'Valuation BETA'},
 ];
@@ -2254,7 +2254,7 @@ const HOME_SECTIONS = [
     '<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>'],
   ['hubs', 'Hub', 'Fields grouped around their host installations, with production, reserves and installations.',
     '<circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="6" r="2"/><circle cx="19.5" cy="6" r="2"/><circle cx="12" cy="20.5" r="2"/><path d="M6.2 7.1l3.4 3M17.8 7.1l-3.4 3M12 15v3.5"/>'],
-  ['fields', 'Field', 'Oil and gas production, reserves, maps and profiles for every field on the shelf.',
+  ['fields', 'Field', 'Oil and gas production, reserves, maps and factsheets for every field on the shelf.',
     '<path d="M12 2s6 7 6 12a6 6 0 01-12 0c0-5 6-12 6-12z"/>'],
   ['discoveries', 'Discoveries', 'Undeveloped discoveries, contingent resources and how far each has matured.',
     '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>'],
@@ -5826,7 +5826,7 @@ function drawNcsFields() {
       <span class="ex-leg"><span class="ex-dot" style="background:${GAS_COLOR}"></span>Gas</span>
       <span class="ex-leg">Showing ${shown.length} of ${list.length}
       ${list.length > 25 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 25' : 'show all'}</a>` : ''}</span></div>
-    <div class="pf-map-note">${note} Click a field for its profile.</div>`;
+    <div class="pf-map-note">${note} Click a field for its factsheet.</div>`;
   setChartTitle('Norwegian Continental Shelf · Fields', sub);
   setInfo(info);
   const r = v => unit === 'boe/day' ? Math.round(v) : +v.toFixed(1);
@@ -5920,7 +5920,7 @@ function drawNcsReserveChange(toggle) {
       <span class="ex-leg"><span class="ex-dot" style="background:${NEG_C}"></span>Revised down</span>
       <span class="ex-leg">Showing ${shown.length} of ${list.length}
       ${list.length > 2 * N ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? `show top and bottom ${N}` : 'show all'}</a>` : ''}</span></div>
-    <div class="pf-map-note">Change in original recoverable reserves from each field's first to its latest reserve vintage, ${pct ? 'percent' : 'million boe'}. Hover a bar for the vintages and volumes; click a field for its profile.</div>`;
+    <div class="pf-map-note">Change in original recoverable reserves from each field's first to its latest reserve vintage, ${pct ? 'percent' : 'million boe'}. Hover a bar for the vintages and volumes; click a field for its factsheet.</div>`;
   setChartTitle('Norwegian Continental Shelf · Fields', `Change in recoverable reserves, first to latest vintage · ${unit}`);
   setInfo(`<strong>Change:</strong> original recoverable reserves (produced plus remaining, OE) in the field's latest Sodir vintage minus its first vintage with volumes (${y0}–${y1}), so production does not count as a reduction &nbsp;|&nbsp; ` +
     `<strong>Average total change:</strong> simple mean of the fields' percentage changes &nbsp;|&nbsp; <strong>Volume-weighted:</strong> sum of changes / sum of first estimates (${fM(sFirst).replace(/^\+/, '')} → ${fM(sLast).replace(/^\+/, '')} million boe) &nbsp;|&nbsp; ` +
@@ -5975,7 +5975,7 @@ function drawNcsReserveScatter(list, head, k) {
       `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
       <div class="legend-item"><div class="legend-dot" style="background:${AVG_C};height:3px;border-radius:0"></div>Average (${k.fP(k.avgPct)})</div>
       <div class="legend-item"><div class="legend-dot" style="background:${W_C};height:3px;border-radius:0"></div>Volume-weighted (${k.fP(k.wPct)})</div></div>
-    <div class="pf-map-note">Each bubble is a field, placed on its production start year; bubble area is proportional to the first reserve estimate (largest: ${esc(pts[0].f.name)}, ${k.fM(maxFirst).replace(/^\+/, '')} million boe). Click a bubble for the field's profile.</div>`;
+    <div class="pf-map-note">Each bubble is a field, placed on its production start year; bubble area is proportional to the first reserve estimate (largest: ${esc(pts[0].f.name)}, ${k.fM(maxFirst).replace(/^\+/, '')} million boe). Click a bubble for the field's factsheet.</div>`;
   if (chartInstance) chartInstance.destroy();
   const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}});
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
@@ -6469,7 +6469,7 @@ function drawNcsCompanies() {
     <div class="ex-legend">${SEG.map(([, l, c]) => `<span class="ex-leg"><span class="ex-dot" style="background:${c}"></span>${l}</span>`).join('')}
       <span class="ex-leg">Showing ${shown.length} of ${list.length}
       ${list.length > 20 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 20' : 'show all'}</a>` : ''}</span></div>
-    <div class="pf-map-note">Click a company for its profile. Values in million boe, share of the total shown.</div>`;
+    <div class="pf-map-note">Click a company for its factsheet. Values in million boe, share of the total shown.</div>`;
   setChartTitle('Norwegian Continental Shelf · Companies', `Ranked by remaining reserves${withRes ? ' and contingent resources' : ''}, equity-adjusted · million boe`);
   setInfo(`<strong>Reserves:</strong> Sodir field reserves, vintage ${vintage}, multiplied by each company's licence share today &nbsp;|&nbsp; ${withRes ? '<strong>Contingent resources:</strong> undeveloped discoveries (resource classes 4F, 5F, 7F) by licence share &nbsp;|&nbsp; ' : ''}<strong>Total:</strong> ${n(grand)} million boe across ${list.length} companies. Cross-border shares held outside Norway are not included`);
   lastLabels = list.map(o => o.name); lastXTitle = 'Company';
@@ -6526,7 +6526,7 @@ function drawNcsCompaniesProd() {
     <div class="ex-legend">${SEG.map(([, l, c]) => `<span class="ex-leg"><span class="ex-dot" style="background:${c}"></span>${l}</span>`).join('')}
       <span class="ex-leg">Showing ${shown.length} of ${list.length}
       ${list.length > 20 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 20' : 'show all'}</a>` : ''}</span></div>
-    <div class="pf-map-note">Average net production ${span}, boe/day, with share of the total. Click a company for its profile.</div>`;
+    <div class="pf-map-note">Average net production ${span}, boe/day, with share of the total. Click a company for its factsheet.</div>`;
   setChartTitle('Norwegian Continental Shelf · Companies', `Ranked by production, last 12 months (${span}), equity-adjusted · boe/day`);
   setInfo(`<strong>Ranking:</strong> average net production over the last 12 months with reported data, multiplied by each company's licence share in each month &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate &nbsp;|&nbsp; <strong>Total:</strong> ${n(grand)} boe/day across ${list.length} companies. Cross-border shares held outside Norway are not included`);
   lastLabels = list.map(o => o.name); lastXTitle = 'Company';
@@ -6834,7 +6834,7 @@ function drawCompanyValuation() {
   const row = `<div class="pf-row2">
       <div class="pf-card"><h3>Value by hub, after tax, ${pct(CF_RATES[0])} · USD bn</h3>${bars}
         ${v.hubs.length > shown.length ? `<div class="pf-map-note">Largest ${shown.length} of ${v.hubs.length} hubs; all are in the table below.</div>` : ''}
-        <div class="pf-map-note">Click a hub for its profile and cash flow.</div></div>
+        <div class="pf-map-note">Click a hub for its factsheet and cash flow.</div></div>
       <div class="pf-card"><h3>Sensitivity and value bridge</h3>${sens}</div></div>`;
 
   // Hubtabell.
@@ -6874,7 +6874,7 @@ function drawCompanyValuation() {
     ['Horizon', `${CF_HORIZON} years`, `Production after ${y0 + CF_HORIZON - 1} is not included`],
     ['Discoveries', `USD ${VAL_DISC_USD} per boe`, 'Equity share of contingent resources in discoveries; added after tax, not discounted'],
     ['Ownership', 'Today\'s licence shares', 'Forecast only; history uses the share in each year'],
-    ['Hubs', 'Fields sharing a host facility', 'Production per hub as in the hub profile; fields without a shared facility are valued one by one'],
+    ['Hubs', 'Fields sharing a host facility', 'Production per hub as in the hub factsheet; fields without a shared facility are valued one by one'],
     ['Exchange rate', 'Annual average USD/NOK', 'Latest annual average for future capex'],
   ];
   const assumptions = `<div class="pf-card pf-wide"><h3>Assumptions</h3><div class="pf-scroll"><table class="res-table val-ass">
@@ -7704,7 +7704,7 @@ const jsStr = v => "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") +
 // klikkes videre — og ser likt ut — uansett hvor det står. Finnes det ingen
 // profil å gå til, blir navnet stående som ren tekst.
 const rowLink = (label, call, title) =>
-  `<a class="row-link" href="#" title="${esc(title || `Open the profile for ${label}`)}"` +
+  `<a class="row-link" href="#" title="${esc(title || `Open the factsheet for ${label}`)}"` +
   ` onclick="event.stopPropagation();${call};return false;">${esc(label)}</a>`;
 const fieldByName = name => name ? allFields.find(f => f.name === String(name).toUpperCase()) : null;
 function fieldLink(idOrName, label) {
@@ -8282,7 +8282,7 @@ function drawFieldProfile() {
   const ids = [...selectedFieldIds];
   if (ids.length !== 1) {
     setChartEmpty(ids.length
-      ? 'Select a single field to see its profile.'
+      ? 'Select a single field to see its factsheet.'
       : 'Tap the button below to select a field.');
     setInfo('');
     return;
@@ -10056,7 +10056,7 @@ function drawHubProfile() {
   const names = [...selectedHubNames];
   if (names.length !== 1) {
     setChartEmpty(names.length
-      ? 'Select a single hub to see its profile.'
+      ? 'Select a single hub to see its factsheet.'
       : 'Tap the button below to select a hub.');
     setInfo('');
     return;
@@ -10710,7 +10710,7 @@ function drawDiscoveryProfile() {
     // Funnvisningen starter med hele porteføljen valgt, så her er det nesten
     // alltid for mange — meldingen sier derfor hvordan man kommer videre.
     setChartEmpty(list.length
-      ? `${list.length} discoveries selected. Open the list below and pick a single one to see its profile.`
+      ? `${list.length} discoveries selected. Open the list below and pick a single one to see its factsheet.`
       : 'Tap the button below to select a discovery.');
     setInfo('');
     return;
@@ -11123,7 +11123,7 @@ function drawCompanyProfile() {
   const names = [...selectedCompanyNames];
   if (names.length !== 1) {
     setChartEmpty(names.length
-      ? 'Select a single company to see its profile.'
+      ? 'Select a single company to see its factsheet.'
       : 'Tap the button below to select a company.');
     setInfo('');
     return;
@@ -11517,7 +11517,7 @@ function reserveTableHtml(groups, headLabel, caption, opts = {}) {
   // discoveryId; reservetabellene for huber og felt setter fieldId og company.
   // Rader uten noen av dem får ren tekst.
   const link = (r, call) =>
-    `<a class="row-link" href="#" title="Open the profile for ${esc(r.name)}"` +
+    `<a class="row-link" href="#" title="Open the factsheet for ${esc(r.name)}"` +
     ` onclick="event.stopPropagation();${call};return false;">${esc(r.name)}</a>`;
   const nm = r => r.discoveryId ? link(r, `openDiscoveryProfile(${r.discoveryId})`)
     : r.fieldId ? link(r, `openFieldProfile(${r.fieldId})`)
@@ -14505,7 +14505,7 @@ function openDevWell(id) {
           : g.noEnd || g.maybe ? ' Sodir reports completion dates with a delay, so the end of the bar on the rig schedule is an estimate.' : ''}</p>
       <div class="ex-btns">
         <a class="ex-btn" href="https://factpages.sodir.no/wellbore/pageview/development/all/${g.items[0].id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>
-        ${fld ? `<button class="ex-btn" onclick="openFieldProfile(${fld.id})">Field profile →</button>` : ''}
+        ${fld ? `<button class="ex-btn" onclick="openFieldProfile(${fld.id})">Field factsheet →</button>` : ''}
       </div>
     </div>
     <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">
@@ -14966,8 +14966,8 @@ function openWell(id, quiet) {
   const links = [
     w.pressUrl ? `<a class="ex-btn ex-btn-main" href="${esc(w.pressUrl)}" target="_blank" rel="noopener">Press release at Sodir ↗</a>` : '',
     `<a class="ex-btn" href="https://factpages.sodir.no/wellbore/pageview/exploration/all/${w.id}" target="_blank" rel="noopener">Sodir FactPage ↗</a>`,
-    w.discoveryId && known.has(w.discoveryId) ? `<button class="ex-btn" onclick="explOpenDiscovery(${w.discoveryId})">Discovery profile →</button>` : '',
-    w.operator && allCompanies.includes(w.operator) ? `<button class="ex-btn" onclick="explOpenCompany(${esc(JSON.stringify(w.operator))})">Operator profile →</button>` : '',
+    w.discoveryId && known.has(w.discoveryId) ? `<button class="ex-btn" onclick="explOpenDiscovery(${w.discoveryId})">Discovery factsheet →</button>` : '',
+    w.operator && allCompanies.includes(w.operator) ? `<button class="ex-btn" onclick="explOpenCompany(${esc(JSON.stringify(w.operator))})">Operator factsheet →</button>` : '',
   ].join('');
   document.getElementById('wdBody').innerHTML = `
     <div class="wd-head">
@@ -16213,7 +16213,7 @@ function openLicenceProfile(name) {
     licSubView = 'licence';
   });
 }
-const licenceLink = name => name ? rowLink(name, `openLicenceProfile(${esc(jsStr(name))})`, `Open the profile for licence ${name}`) : '';
+const licenceLink = name => name ? rowLink(name, `openLicenceProfile(${esc(jsStr(name))})`, `Open the factsheet for licence ${name}`) : '';
 
 function licPickLicence(name) {
   const n = String(name || '').trim().toUpperCase();
@@ -16453,7 +16453,7 @@ function licRenderOverview() {
       <div class="ex-legend">${legend}
         <span class="ex-leg">Showing ${shown.length} of ${rows.length}
         ${rows.length > f.top ? `· <a href="#" onclick="licSet('all',${!f.all},false);return false;" class="row-link">${f.all ? 'show top ' + f.top : 'show all'}</a>` : ''}</span></div>
-      <div class="pf-map-note">Click a company for its profile. Net area = licence area × ownership share.
+      <div class="pf-map-note">Click a company for its factsheet. Net area = licence area × ownership share.
         Area in km² as of today (Sodir layer 3000).</div>
     </div>
     <div class="pf-card">
@@ -16552,7 +16552,7 @@ function licRenderCompany() {
       <div class="lc-links">
         <button class="grp-btn" onclick="licOpenTab('map', ${esc(JSON.stringify(c))})">Portfolio timeline →</button>
         <button class="grp-btn" onclick="licF.txRole='any';licOpenTab('transactions', ${esc(JSON.stringify(licConcern(c).label))})">Deals →</button>
-        <button class="grp-btn" onclick="explOpenCompany(${esc(JSON.stringify(c))})">Production profile →</button>
+        <button class="grp-btn" onclick="explOpenCompany(${esc(JSON.stringify(c))})">Company factsheet →</button>
       </div>
     </div>
     <div class="pf-card"><h3>Licence map</h3>${licCompanyMap(rows)}</div>
