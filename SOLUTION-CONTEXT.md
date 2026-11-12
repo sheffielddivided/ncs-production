@@ -1447,6 +1447,22 @@ punktgrafen en ekte graf uten linjer med trendlinjen lagt over som figur
 (faste akser og plottområde, `spec.markers`), og rutenettet en tabell med de
 tykke linjene som cellekanter.
 
+**Forex** (`drawPriceForex`): daglige valutakurser fra Norges Bank
+(datasett EXR, `B.<valuta>.NOK.SP`, fra 2000) for NOK, USD, EUR, GBP, SEK,
+DKK, CHF og CAD — samme kilde som `nb.html` i `sheffielddivided/convert`.
+`fetch_fx.py` henter dem daglig til `data/fx.json` (eget steg,
+`continue-on-error`) som kroner per **1** enhet; SEK og DKK, som Norges Bank
+oppgir per 100, deles på `10^UNIT_MULT`. Fila lastes først når fanen åpnes.
+Krysskurser mot annen basisvaluta B regnes i nettleseren som kurs(X) /
+kurs(B), altså B per 1 X (`fxCross`). Venstre side er tabellen (siste kurs og
+endring 1D, 1M, YTD, 1Y), høyre side (under på smal skjerm) grafen for
+valutaen som er klikket i tabellen; uten valg øverste linje. Lenkeparametre:
+`fb` basisvaluta (standard NOK), `fc` valgt valuta, `fp` periode
+(`1m`, `3m`, `ytd`, `1y` standard, `5y`, `custom`) og `fd` egendefinert
+periode som `ÅÅÅÅ-MM-DD_ÅÅÅÅ-MM-DD`. Faste perioder starter i siste kurs på
+eller før referansedatoen (YTD: siste kurs året før), så første punkt er
+det endringen regnes fra.
+
 **Konstruksjonen av Datert Brent og skjøten.** Petroleumsprisrådets Datert
 Brent for dato *d* er snittet av de **fem neste publiserte Platts Dated
 Brent-noteringene (PCAAS00) etter *d*** — ikke *d* selv — rundet til nærmeste

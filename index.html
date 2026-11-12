@@ -558,6 +558,26 @@
     /* Kontantstrømkortet i hubprofilen: grafen til venstre, NPV-tabellen til
        høyre; under hverandre på smale skjermer. */
     .cf-wrap{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;}
+    .fx-wrap{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;}
+    .fx-table{flex:0 1 auto;max-width:100%;min-width:0;overflow-x:auto;}
+    .fx-table caption{white-space:normal;}
+    .fx-chart{flex:1 1 440px;min-width:0;}
+    .fx-table .res-table td, .fx-table .res-table th{padding-left:7px;padding-right:7px;white-space:nowrap;}
+    .fx-row{cursor:pointer;}
+    .fx-row td{border-top:1px solid #eee;}
+    .fx-row:hover{background:#faf0f5;}
+    .fx-row.sel{background:var(--light);}
+    .fx-row.sel td:first-child{box-shadow:inset 3px 0 0 var(--blue);}
+    .fx-code{font-weight:700;color:#1a2332;margin-right:6px;}
+    .fx-name{color:var(--muted);font-size:0.66rem;}
+    .fx-rate{font-weight:600;font-variant-numeric:tabular-nums;}
+    .fx-chg{font-variant-numeric:tabular-nums;color:var(--muted);}
+    .fx-chg.up{color:#00895a;}
+    .fx-chg.down{color:#c0392b;}
+    .fx-chart-head{font-size:0.85rem;margin-bottom:8px;}
+    .fx-chart-head span{color:var(--muted);font-size:0.72rem;margin-left:4px;}
+    @media (max-width: 560px){ .fx-name{display:none;} }
+    .fx-dates{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);}
     .cf-chart{flex:1 1 600px;min-width:0;}
     .cf-npv{flex:0 1 230px;min-width:0;overflow-x:auto;}
     .cf-npv .res-table caption{text-align:left;}
@@ -2290,6 +2310,12 @@ function stateToHash() {
     if (prF.avg) q.set('pa', '1');
     if (prF.og === 'grid') q.set('po', 'grid');
     if (prF.gk && prF.gk !== 'no') q.set('pg', prF.gk);
+    if (priceSubView === 'forex') {
+      if (prF.fb && prF.fb !== 'NOK') q.set('fb', prF.fb);
+      if (prF.fc) q.set('fc', prF.fc);
+      if (prF.fp && prF.fp !== '1y') q.set('fp', prF.fp);
+      if (prF.fp === 'custom' && prF.f0 && prF.f1) q.set('fd', prF.f0 + '_' + prF.f1);
+    }
   }
   else if (topMode === 'dcs') {
     const dflt = dcsDefaults();
@@ -2400,6 +2426,7 @@ function pageSources() {
     if (v === 'gas' && priceData && priceData.ttfd) add('eex');
     if (v === 'storage') add('gie', 'gie_lng');
     if (v === 'us') add('eia');
+    if (v === 'forex') add('nb');
     if (prF.real) {
       const cur = v === 'gas' ? gasCur() : 'USD';
       add(cur === 'USD' ? 'bls' : cur === 'EUR' ? 'eurostat' : 'ssb');
@@ -2529,6 +2556,11 @@ function applyHash() {
     prF.avg = q.get('pa') === '1';
     prF.og = q.get('po') === 'grid' ? 'grid' : 'scatter';
     prF.gk = ['eu', 'hh'].includes(q.get('pg')) ? q.get('pg') : 'no';
+    prF.fb = FX_CUR.includes(q.get('fb')) ? q.get('fb') : 'NOK';
+    prF.fc = FX_CUR.includes(q.get('fc')) ? q.get('fc') : null;
+    prF.fp = FX_PERIODS.some(p => p[0] === q.get('fp')) ? q.get('fp') : '1y';
+    const fd = (q.get('fd') || '').match(/^(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/);
+    if (fd) { prF.f0 = fd[1]; prF.f1 = fd[2]; }
   }
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
@@ -3310,6 +3342,7 @@ const PRICE_TABS = [
   {id: 'oilgas',  label: 'Oil vs gas'},
   {id: 'storage', label: 'EU storage'},
   {id: 'us',      label: 'US supply'},
+  {id: 'forex',   label: 'Forex'},
 ];
 let priceSubView = 'brent';
 const PRICE_MAX_SEL = 8;
@@ -3495,6 +3528,7 @@ function drawPrices() {
   else if (priceSubView === 'oilgas') drawPriceOilGas();
   else if (priceSubView === 'storage') drawPriceStorage();
   else if (priceSubView === 'us') drawPriceUs();
+  else if (priceSubView === 'forex') drawPriceForex();
   else { drawPriceBrent(); drawPriceDiff(); }
   document.getElementById('downloadBtn').disabled = false;
 }
@@ -4367,6 +4401,165 @@ function drawPriceUs() {
   setChartTitle(`US crude oil stocks · ${crude.name}`, c1.sub);
   setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA): weekly stocks of crude oil and products (Weekly Petroleum Status Report)
     and monthly LNG exports, collected daily by the eia solution${us.updated ? `, updated ${fmtShort(us.updated.slice(0, 10))}` : ''}`);
+}
+
+// ── MARKET: FOREX ──
+// Valutakurser fra Norges Bank (data/fx.json fra fetch_fx.py; samme kilde som
+// nb.html i sheffielddivided/convert). Filen har kroner per 1 enhet for hver
+// valuta per bankdag; krysskursen mot en annen basisvaluta B er
+// kurs(X) / kurs(B), altså B per 1 X.
+//
+// Venstre: tabellen med siste kurs og endring for alle valutaene mot valgt
+// basisvaluta (prF.fb, standard NOK). Høyre (under på smal skjerm): grafen for
+// valutaen som er valgt i tabellen (prF.fc; uten valg øverste linje), med
+// periodeknapper (prF.fp) og egendefinert periode (prF.f0–prF.f1).
+const FX_CUR = ['NOK', 'USD', 'EUR', 'GBP', 'SEK', 'DKK', 'CHF', 'CAD'];
+const FX_NAME = {NOK: 'Norwegian krone', USD: 'US dollar', EUR: 'Euro', GBP: 'British pound', SEK: 'Swedish krona',
+                 DKK: 'Danish krone', CHF: 'Swiss franc', CAD: 'Canadian dollar'};
+const FX_PERIODS = [['1m', '1M'], ['3m', '3M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['custom', 'Custom']];
+const FX_COLOR = 'rgba(206,15,105,0.9)';
+let fxData, fxLoading = null;
+
+const fxRate = (cur, i) => cur === 'NOK' ? 1 : fxData.rates[cur][i];
+function fxCross(cur, base, i) {
+  const a = fxRate(cur, i), b = fxRate(base, i);
+  return a == null || b == null ? null : a / b;
+}
+// Indeksen til siste bankdag på eller før datoen (-1 hvis ingen).
+function fxIdx(date) {
+  const d = fxData.dates;
+  let lo = 0, hi = d.length - 1, r = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (d[m] <= date) { r = m; lo = m + 1; } else hi = m - 1; }
+  return r;
+}
+function fxShift(date, months) {
+  const [y, m, d] = date.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(d, last));
+  return t.toISOString().slice(0, 10);
+}
+// Referansedato for en periode, regnet bakover fra siste kursdato. YTD
+// starter i siste kurs fra året før.
+function fxStartDate(p, last) {
+  if (p === '1m') return fxShift(last, -1);
+  if (p === '3m') return fxShift(last, -3);
+  if (p === '1y') return fxShift(last, -12);
+  if (p === '5y') return fxShift(last, -60);
+  if (p === 'ytd') return `${+last.slice(0, 4) - 1}-12-31`;
+  return null;
+}
+const fxFmt = v => v == null ? '—' : v.toLocaleString('en', v >= 100 ? {minimumFractionDigits: 2, maximumFractionDigits: 2}
+  : v >= 1 ? {minimumFractionDigits: 4, maximumFractionDigits: 4} : {minimumFractionDigits: 5, maximumFractionDigits: 5});
+function fxChg(now, then) {
+  if (now == null || then == null || !then) return '<td class="fx-chg">—</td>';
+  const p = (now / then - 1) * 100, r = Math.abs(p) < 0.005 ? 0 : p;
+  return `<td class="fx-chg ${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r).toFixed(2)} %</td>`;
+}
+
+function fxSet(k, v) {
+  prF[k] = v;
+  if (k === 'fb' && prF.fc === v) prF.fc = null;
+  if (k === 'fp' && v === 'custom' && !(prF.f0 && prF.f1)) {
+    const last = fxData.dates[fxData.dates.length - 1];
+    prF.f0 = fxStartDate('1y', last); prF.f1 = last;
+  }
+  syncUrl(); drawChart();
+}
+function fxCustom(which, v) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+  prF[which] = v;
+  if (prF.f0 > prF.f1) { if (which === 'f0') prF.f1 = v; else prF.f0 = v; }
+  syncUrl(); drawChart();
+}
+
+function drawPriceForex() {
+  if (fxData === undefined) {
+    document.getElementById('chartArea').innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+    fxLoading = fxLoading || fetchBundle('fx').then(d => { fxData = d && d.dates && d.dates.length ? d : false; });
+    fxLoading.then(() => { if (topMode === 'prices' && priceSubView === 'forex') drawChart(); });
+    return;
+  }
+  if (!fxData) { setChartEmpty('Could not load the exchange rates.'); setChartTitle('Forex', ''); setInfo(''); return; }
+  const base = FX_CUR.includes(prF.fb) ? prF.fb : 'NOK';
+  const rows = FX_CUR.filter(c => c !== base);
+  const cur = rows.includes(prF.fc) ? prF.fc : rows[0];
+  const per = FX_PERIODS.some(p => p[0] === prF.fp) ? prF.fp : '1y';
+  const D = fxData.dates, n = D.length - 1, last = D[n];
+
+  // Tabellen: siste kurs, og endring siden forrige bankdag, 1M, YTD og 1Y.
+  const ref = {d: n - 1, m: fxIdx(fxStartDate('1m', last)), ytd: fxIdx(fxStartDate('ytd', last)), y: fxIdx(fxStartDate('1y', last))};
+  const at = (c, i) => i < 0 ? null : fxCross(c, base, i);
+  const tbody = rows.map(c => {
+    const now = at(c, n);
+    return `<tr class="fx-row${c === cur ? ' sel' : ''}" onclick="fxSet('fc','${c}')" title="Show ${c}/${base} in the chart">
+      <td><span class="fx-code">${c}</span><span class="fx-name">${FX_NAME[c]}</span></td>
+      <td class="fx-rate">${fxFmt(now)}</td>${fxChg(now, at(c, ref.d))}${fxChg(now, at(c, ref.m))}${fxChg(now, at(c, ref.ytd))}${fxChg(now, at(c, ref.y))}</tr>`;
+  }).join('');
+  const baseSel = `<select class="year-select" aria-label="Base currency" onchange="fxSet('fb', this.value)">
+    ${FX_CUR.map(c => `<option value="${c}"${c === base ? ' selected' : ''}>${c} · ${FX_NAME[c]}</option>`).join('')}</select>`;
+
+  // Grafperioden. Faste perioder tar med kursen på referansedatoen, så første
+  // punkt er det endringen regnes fra.
+  let i0, i1 = n;
+  if (per === 'custom') {
+    const f0 = prF.f0 || fxStartDate('1y', last), f1 = prF.f1 || last;
+    i0 = Math.max(0, D.findIndex(d => d >= f0)); i1 = Math.max(0, fxIdx(f1));
+    if (i0 > i1) i0 = i1;
+  } else i0 = Math.max(0, fxIdx(fxStartDate(per, last)));
+  const labels = D.slice(i0, i1 + 1), data = labels.map((_, k) => { const v = fxCross(cur, base, i0 + k); return v == null ? null : +v.toPrecision(6); });
+  const vals = data.filter(v => v != null);
+  const pills = `<div class="pill-group">${FX_PERIODS.map(([k, l]) =>
+    `<button class="pill-btn${per === k ? ' active' : ''}" onclick="fxSet('fp','${k}')">${l}</button>`).join('')}</div>`;
+  const custom = per === 'custom' ? `<div class="fx-dates"><label>From</label>
+      <input type="date" class="year-select" value="${D[i0]}" min="${D[0]}" max="${last}" onchange="fxCustom('f0', this.value)"/>
+      <label>To</label><input type="date" class="year-select" value="${D[i1]}" min="${D[0]}" max="${last}" onchange="fxCustom('f1', this.value)"/></div>` : '';
+  let stats = '';
+  if (vals.length) {
+    const first = vals[0], lastV = vals[vals.length - 1], p = (lastV / first - 1) * 100;
+    stats = `<strong>${fmtShort(labels[0])} – ${fmtShort(labels[labels.length - 1])}:</strong> ${fxFmt(first)} → ${fxFmt(lastV)} ${base}
+      (${p >= 0 ? '+' : '−'}${Math.abs(p).toFixed(2)} %) &nbsp;|&nbsp; <strong>Low</strong> ${fxFmt(Math.min(...vals))} &nbsp;|&nbsp; <strong>High</strong> ${fxFmt(Math.max(...vals))}`;
+  }
+  document.getElementById('chartArea').innerHTML = `<div class="fx-wrap">
+    <div class="fx-table">
+      <div class="np-bar"><span class="ctrl-label">Base currency</span>${baseSel}</div>
+      <table class="res-table">
+        <caption>${base} per 1 unit of each currency · Norges Bank, ${fmtShort(last)} · click a row to chart it</caption>
+        <thead><tr><th>Currency</th><th>Rate</th><th>1D</th><th>1M</th><th>YTD</th><th>1Y</th></tr></thead>
+        <tbody>${tbody}</tbody></table>
+    </div>
+    <div class="fx-chart">
+      <div class="fx-chart-head"><strong>${cur}/${base}</strong> <span>${base} per 1 ${cur}</span></div>
+      <div class="np-bar">${pills}${custom}</div>
+      <div class="chart-container"><canvas id="prodChart"></canvas></div>
+      <div class="pf-map-note">${stats}</div>
+    </div></div>`;
+
+  if (chartInstance) chartInstance.destroy();
+  const short = labels.length <= 95;
+  const tick = function (v) {
+    const d = this.getLabelForValue(v), m = MONTH_ABBR[+d.slice(5, 7) - 1];
+    return short ? `${+d.slice(8)} ${m}` : `${m} ${d.slice(2, 4)}`;
+  };
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'line',
+    data: {labels, datasets: [{label: `${cur}/${base}`, data, borderColor: FX_COLOR, backgroundColor: FX_COLOR,
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: true}]},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        title: items => fmtShort(items[0].label),
+        label: c => c.parsed.y == null ? null : ` ${cur}/${base}: ${fxFmt(c.parsed.y)}`}}},
+      scales: {
+        x: {ticks: {maxRotation: 0, autoSkipPadding: 24, font: {size: 9}, callback: tick}, grid: {display: false}},
+        y: {title: {display: true, text: `${base} per ${cur}`, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
+            grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+  lastLabels = labels; lastXTitle = 'Date';
+  lastDatasets = [{label: `${cur}/${base}, ${base} per ${cur}`, data: data.map(v => v ?? '')}];
+  const perLabel = per === 'custom' ? `${fmtShort(labels[0])} – ${fmtShort(labels[labels.length - 1])}` : FX_PERIODS.find(p => p[0] === per)[1];
+  setChartTitle(`Forex · ${cur}/${base}`, `${base} per 1 ${cur} · daily · ${perLabel}`);
+  setInfo(`<strong>Source:</strong> Norges Bank, official exchange rates (EXR), set daily at the ECB concertation at 14:15 CET.
+    Cross rates against other base currencies are calculated from the NOK rates. 1D is the change since the previous banking day,
+    YTD since the last rate of ${+last.slice(0, 4) - 1}${fxData.updated ? ` &nbsp;|&nbsp; Updated ${fmtShort(fxData.updated.slice(0, 10))}` : ''}`);
 }
 
 // ── PRICES: OIL VS GAS ──

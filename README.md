@@ -79,6 +79,7 @@ som statiske JSON-filer i dette repoet.
 | `.htaccess` | Apache-oppsett for energy.kbak.no: skjuler skript og rådata, kort cache og komprimering av datafilene |
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
 | `fetch_gas.py` | Henter månedlige gasspriser (SSB eksportpris, IMF Europa, Henry Hub, Norges Bank-kurser) til `data/gas_prices.json` |
+| `fetch_fx.py` | Henter daglige valutakurser fra Norges Bank (NOK, USD, EUR, GBP, SEK, DKK, CHF, CAD) til `data/fx.json`, Forex-fanen i Market |
 | `fetch_cpi.py` | Henter konsumprisindekser (US CPI-U, euroområdets HICP, SSBs KPI) til `data/cpi.json`, realprisene i Prices |
 | `fetch_eia.py` | Henter daglig Brent spot fra 1990 (EIA RBRTE, ev. FRED) til `data/brent_eia.json`. Skjøter Datert Brent bakover før 2011 og framover etter Petroleumsprisrådets siste dato |
 | `fetch_normpris.py` | Bygger `data/normpris_*.json` fra xlsx-filene |
