@@ -4457,6 +4457,8 @@ function drawLngCard() {
 //   · Crude: råoljelagre inkl. eller ekskl. SPR, eller bare SPR (ukentlig).
 //   · Products: bensin, destillat og jetdrivstoff (ukentlig).
 //   · LNG: samlet LNG-eksport per måned, MMcf.
+//   · Råoljeproduksjon: ukentlig anslag (WCRFPUS2) og månedstall (MCRFPUS2),
+//     tusen fat per dag, i samme graf. Månedstallene plasseres midt i måneden.
 // Lagrene vises sesongvis (i år, i fjor, snitt og spenn for de N foregående
 // årene, per uke) eller historisk (hele serien siste N år). Ukene telles fra
 // 1. januar som i eia-løsningen (53 uker); siste uke i tidligere år mangler
@@ -4470,7 +4472,7 @@ const US_PROD = [['WGTSTUS1', 'Gasoline', 'Total gasoline stocks'], ['WDISTUS1',
 // [prF-nøkkel, URL-parameter, standard, gyldige verdier]
 const US_PARAMS = [['uc', 'uc', 'WCRSTUS1', US_CRUDE.map(x => x[0])], ['ucy', 'ucy', '5', ['3', '5', '10']], ['ucm', 'ucm', 'seasonal', ['seasonal', 'historic']],
                    ['up', 'up', 'WGTSTUS1', US_PROD.map(x => x[0])], ['upy', 'upy', '5', ['3', '5', '10']], ['upm', 'upm', 'seasonal', ['seasonal', 'historic']],
-                   ['ul', 'ul', '10', ['1', '2', '5', '10', '20']]];
+                   ['ul', 'ul', '10', ['1', '2', '5', '10', '20']], ['uq', 'uq', '5', ['2', '5', '10', '20']]];
 let usCharts = [];
 
 function usWeekly(rows, yearsBack) {
@@ -4594,8 +4596,24 @@ function drawPriceUs() {
   const ly = +prF.ul, cut = new Date(); cut.setUTCMonth(cut.getUTCMonth() - Math.max(12, ly * 12));
   const lng = (us.lng || []).filter(r => r[0] >= cut.toISOString().slice(0, 7));
   const lastL = lng[lng.length - 1];
+  // Råoljeproduksjon: uke- og månedstall på felles akse (datoene slås sammen).
+  const cp = us.crudeProd || {}, qy = +prF.uq, qCut = new Date();
+  qCut.setUTCFullYear(qCut.getUTCFullYear() - qy);
+  const qc = qCut.toISOString().slice(0, 10);
+  const pw = (cp.weekly || []).filter(r => r[0] >= qc), pm = (cp.monthly || []).map(r => [r[0] + '-15', r[1]]).filter(r => r[0] >= qc);
+  const qLabels = [...new Set(pw.map(r => r[0]).concat(pm.map(r => r[0])))].sort();
+  const qAt = rows => { const m = new Map(rows); return qLabels.map(d => m.has(d) ? +(m.get(d) / 1000).toFixed(3) : null); };
+  const lastW = pw[pw.length - 1], lastM = (cp.monthly || [])[(cp.monthly || []).length - 1];
+  const mbd = v => `${(v / 1000).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})} million b/d`;
+  const monthLbl = ym => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1)).toLocaleString('en', {month: 'long', year: 'numeric', timeZone: 'UTC'});
+  const prodCard = qLabels.length ? `<div class="pf-card pf-wide"><h3>US crude oil production</h3>
+      <div class="np-bar">${usPills('uq', [['2', '2y'], ['5', '5y'], ['10', '10y'], ['20', '20y']], prF.uq)}</div>
+      <div class="chart-container"><canvas id="usCrudeProdChart"></canvas></div><div class="legend-row" id="usCrudeProdLeg"></div>
+      <div class="pf-map-note">${lastW ? `<strong>Latest week:</strong> ${mbd(lastW[1])} in the week to ${fmtShort(lastW[0])}` : ''}${lastW && lastM ? ' &nbsp;|&nbsp; ' : ''}${lastM ? `<strong>Latest month:</strong> ${mbd(lastM[1])} in ${monthLbl(lastM[0])}` : ''}
+        &nbsp;|&nbsp; Field production of crude oil. The weekly figures are EIA's estimates in the Weekly Petroleum Status Report;
+        the monthly figures (Petroleum Supply Monthly) are based on fuller data, come about two months later and are usually the better measure.</div></div>` : '';
   document.getElementById('chartArea').innerHTML = crude.html;
-  setProfile(`<div class="pf-card pf-wide"><h3>US product stocks</h3>${prod.html}</div>
+  setProfile(`${prodCard}<div class="pf-card pf-wide"><h3>US product stocks</h3>${prod.html}</div>
     <div class="pf-card pf-wide"><h3>US LNG exports</h3>
       <div class="np-bar">${usPills('ul', [['1', '1y'], ['2', '2y'], ['5', '5y'], ['10', '10y'], ['20', '20y']], prF.ul)}</div>
       <div class="chart-container"><canvas id="usLngChart"></canvas></div>
@@ -4615,8 +4633,33 @@ function drawPriceUs() {
       scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 24, font: {size: 9}}, grid: {display: false}},
                y: {beginAtZero: true, title: {display: true, text: 'MMcf per month', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
   usCharts.push(lc);
+  let qch = null;
+  if (prodCard) {
+    const WC = 'rgba(42,111,168,0.7)', MC = 'rgba(206,15,105,0.95)';
+    // Én etikett per år (ved 20 år annethvert år), per kvartal ved 2 år.
+    const qKey = d => qy <= 2 ? d.slice(0, 4) + Math.floor((+d.slice(5, 7) - 1) / 3) : d.slice(0, 4);
+    const qTick = qLabels.map((d, i) => {
+      if (i && qKey(qLabels[i - 1]) === qKey(d)) return null;
+      if (qy <= 2) return d.slice(5, 7) === '01' || i === 0 ? d.slice(0, 4) : STORAGE_MON[+d.slice(5, 7) - 1];
+      return qy >= 20 && +d.slice(0, 4) % 2 ? null : d.slice(0, 4);
+    });
+    qch = new Chart(document.getElementById('usCrudeProdChart').getContext('2d'), {type: 'line',
+      data: {labels: qLabels, datasets: [
+        {label: 'Weekly estimate', data: qAt(pw), borderColor: WC, backgroundColor: WC, borderWidth: 1.25, pointRadius: 0, tension: 0.1, spanGaps: true, order: 1},
+        {label: 'Monthly', data: qAt(pm), borderColor: MC, backgroundColor: MC, borderWidth: 2.5, pointRadius: qy <= 5 ? 2.5 : 0, tension: 0, spanGaps: true, order: 0}]},
+      options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'nearest', axis: 'x', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null, callbacks: {
+          title: it => { const d = it[0].label; return it[0].datasetIndex === 1 ? monthLbl(d) : `Week to ${fmtShort(d)}`; },
+          label: c => ` ${c.dataset.label}: ${mbd(c.parsed.y * 1000)}`}}},
+        scales: {x: {ticks: {maxRotation: 0, autoSkip: false, font: {size: 9}, callback: (v, i) => qTick[i]}, grid: {display: false}},
+                 y: {title: {display: true, text: 'million barrels per day', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+    document.getElementById('usCrudeProdLeg').innerHTML = [['Monthly (Petroleum Supply Monthly)', MC, 3], ['Weekly estimate (Weekly Petroleum Status Report)', WC, 2]]
+      .map(([l, c, h]) => `<div class="legend-item"><div class="legend-dot" style="background:${c};height:${h}px;border-radius:0"></div>${l}</div>`).join('');
+    usCharts.push(qch);
+  }
   pptSpec = c1.spec;
   pptExtra = [...(w1 ? [{id: 'uscrudewow', spec: w1.spec, meta: w1.meta}] : []),
+              ...(qch ? [{id: 'uscrudeprod', spec: pptSpecFromChart(qch), meta: {title: 'US crude oil production', subtitle: `Million barrels per day, weekly and monthly · last ${qy} years`, source: 'Source: U.S. Energy Information Administration (EIA)'}}] : []),
               {id: 'usprod', spec: c2.spec, meta: {title: `US product stocks · ${prod.name}`, subtitle: c2.sub, source: 'Source: U.S. Energy Information Administration (EIA)'}},
               ...(w2 ? [{id: 'usprodwow', spec: w2.spec, meta: w2.meta}] : []),
               {id: 'uslng', spec: pptSpecFromChart(lc), meta: {title: 'US LNG exports', subtitle: `MMcf per month · last ${ly} year${ly > 1 ? 's' : ''}`, source: 'Source: U.S. Energy Information Administration (EIA)'}}];
@@ -4625,8 +4668,8 @@ function drawPriceUs() {
   lastDatasets = ds.filter(d => !d.label.startsWith('_')).map(d => ({label: `${d.label.replace(/^Range/, 'Min')}, million bbl`, data: d.data.map(v => v ?? '')}))
     .concat(prF.ucm === 'seasonal' ? [{label: `Max ${ds[1].label.replace(/^Range /, '')}, million bbl`, data: ds[0].data.map(v => v ?? '')}] : []);
   setChartTitle(`US crude oil stocks · ${crude.name}`, c1.sub);
-  setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA): weekly stocks of crude oil and products (Weekly Petroleum Status Report)
-    and monthly LNG exports, collected daily by the eia solution${us.updated ? `, updated ${fmtShort(us.updated.slice(0, 10))}` : ''}`);
+  setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA): weekly stocks of crude oil and products (Weekly Petroleum Status Report),
+    weekly and monthly crude oil production, and monthly LNG exports, collected daily by the eia solution${us.updated ? `, updated ${fmtShort(us.updated.slice(0, 10))}` : ''}`);
 }
 
 // ── MARKET: FOREX ──

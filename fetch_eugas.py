@@ -13,7 +13,9 @@ og EIA-delen), til disse filene:
   totalt og Spania, Frankrike, Italia og Nederland. Til samme fane.
 - data/us_supply.json: amerikanske lagre av råolje og produkter (EIA, ukentlig,
   tusen fat), LNG-eksport (EIA, månedlig, MMcf) og LNG-eksportprisen (EIA,
-  månedlig, USD/MMBtu). Til US supply-fanen og gassprisgrafen i Market.
+  månedlig, USD/MMBtu) og råoljeproduksjonen (EIA, ukentlig WCRFPUS2 og
+  månedlig MCRFPUS2, tusen fat per dag). Til US supply-fanen og
+  gassprisgrafen i Market.
 
 Feiler en henting, beholdes forrige fil for den. Steget i arbeidsflyten er
 continue-on-error.
@@ -103,6 +105,10 @@ def us_supply():
         'inventory': {k: pairs(v) for k, v in inv['series'].items()},
         'lng': pairs((flows or {}).get('lng')),
         'lngPrice': pairs((prices or {}).get('lng_price')),
+        'crudeProd': {
+            'weekly': pairs(((flows or {}).get('petroleum') or {}).get('WCRFPUS2')),
+            'monthly': pairs(((flows or {}).get('petroleum_monthly') or {}).get('MCRFPUS2')),
+        },
         'source': 'U.S. Energy Information Administration (EIA), via sheffielddivided/eia',
     })
     print(f'eugas: US supply {", ".join(inv["series"])}; LNG {len((flows or {}).get("lng") or [])} mnd')
