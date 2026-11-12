@@ -4745,7 +4745,8 @@ function drawPriceInterest() {
     </div></div>`;
 
   if (chartInstance) chartInstance.destroy();
-  const pctTick = v => `${v} %`;
+  // Avrunder bort flyttallsstøy fra Chart.js-trinnene (4.800000000000001).
+  const pctTick = v => `${(+v.toFixed(2)).toLocaleString('en')} %`;
   const tip = c => c.parsed.y == null ? null : ` ${c.dataset.label.replace(/ \(.*$/, '').replace(/, [−\d.]+ %$/, '')}: ${irPct(c.parsed.y)}`;
   const grid = {color: ctx => ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'};
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
