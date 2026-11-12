@@ -12971,6 +12971,7 @@ const DRILL_TABS = [
   {id:'rigs',  label:'Rigs'},
   {id:'fleet', label:'Map'},
   {id:'perf',  label:'Performance'},
+  {id:'trends', label:'Trends'},
 ];
 const explMode = () => topMode === 'exploration' || topMode === 'drilling';
 let explSubView = 'wells';
@@ -13187,6 +13188,7 @@ function explSet(key, val, rebuildBar) {
 
 function explRenderBar() {
   if (explSubView === 'perf') return drillRenderBar();
+  if (explSubView === 'trends') return setBar('explBar', '');
   const f = explF, wells = explSubView === 'wells', map = explSubView === 'map';
   const opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
   const years = [''].concat(Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i)));
@@ -13392,9 +13394,9 @@ function explReset() {
 // feilverdier på enkeltbrønner. Operatør: Sodirs wlbDrillingOperator, ellers
 // feltets operatørhistorikk. Brønner på noen få dager gir tilfeldige
 // ytterverdier, og kan utelates med «Min days».
-const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm'], ['view', 'dv'], ['minw', 'dn'], ['purpose', 'dp'], ['bore', 'db'], ['rig', 'dr']];
+const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm'], ['view', 'dv'], ['minw', 'dn'], ['purpose', 'dp'], ['bore', 'db'], ['rig', 'dr'], ['tp', 'dq']];
 const DRILL_HL = '#e6007e', DRILL_GREY = '#c3cad3';
-const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5', view: 'well', minw: '5', purpose: 'all', bore: 'all', rig: 'all'});
+const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5', view: 'well', minw: '5', purpose: 'all', bore: 'all', rig: 'all', tp: 'recent'});
 let drillF = drillDefaults();
 let drillRows = null, drillLoading = null, drillLimit = 50;
 
@@ -13653,6 +13655,231 @@ function drillPptFilters() {
   if (f.view !== 'well') out.push(`min ${f.minw} wellbores`);
   return out.length ? ' · ' + out.join(', ') : '';
 }
+// ── DRILLING · TRENDS ────────────────────────────────────────────────────────
+// Studie av boreeffektiviteten over tid og mellom operatører, på de samme
+// brønnbanene som Performance (meter boret ÷ dager, minst 5 dager). Alle tall
+// er medianer, siden et snitt styres av noen få svært lange eller raske
+// brønner. Inneværende år er ufullstendig (bare brønner som allerede er
+// ferdige) og holdes utenfor tidsseriene.
+//
+// Operatørsammenligningen er justert for brønnmiks: hver brønn måles mot
+// medianen for sammenlignbare brønner (samme spuddår, lete- eller
+// utbyggingsbrønn, hovedløp eller sidesteg, plattform- eller flyttbar rigg).
+// Indeksen er operatørens medianforhold; 0 % er på linje med de andre.
+// Operatører slås sammen til konsern (concernKey), så Statoil telles med
+// Equinor og Det norske med Aker BP.
+let drillTrendCharts = [], drillTrendCache = null;
+function drillTrendKill() { drillTrendCharts.forEach(c => c.destroy()); drillTrendCharts = []; }
+const DT_PERIODS = {recent: [currentYear - 10, currentYear - 1], mid: [2006, 2015], early: [1990, 2005]};
+const DT_C = {all: '#1a2332', expl: '#2a6fa8', dev: '#ce0f69', side: '#e3a73a'};
+
+function drillTrendData() {
+  if (drillTrendCache && drillTrendCache.rows === drillRows) return drillTrendCache;
+  const last = currentYear - 1;
+  const rows = drillRows.filter(w => w.days >= 5 && +w.year <= last && +w.year >= 1966);
+  rows.forEach(w => { w.y = +w.year; w.ck = w.op ? concernKey(w.op) : ''; });
+  // Sammenlignbare brønner: år × type × hovedløp/sidesteg × riggtype, med
+  // år × type som reserve når cellen har under fem brønner.
+  const cell = {}, coarse = {};
+  rows.forEach(w => {
+    (cell[`${w.y}|${w.cat}|${w.side}|${w.fixed}`] = cell[`${w.y}|${w.cat}|${w.side}|${w.fixed}`] || []).push(w.mpd);
+    (coarse[`${w.y}|${w.cat}`] = coarse[`${w.y}|${w.cat}`] || []).push(w.mpd);
+  });
+  const medOf = {};
+  rows.forEach(w => {
+    const k = `${w.y}|${w.cat}|${w.side}|${w.fixed}`, c = cell[k].length >= 5 ? k : `${w.y}|${w.cat}`;
+    if (!(c in medOf)) medOf[c] = median(c === k ? cell[k] : coarse[c]);
+    w.rel = w.mpd / medOf[c];
+  });
+  // Visningsnavn per konsern: operatørnavnet på den nyeste brønnen.
+  const label = {};
+  rows.forEach(w => { if (w.ck && (!label[w.ck] || w.entry > label[w.ck][0])) label[w.ck] = [w.entry, w.op]; });
+  const byYear = {};
+  rows.forEach(w => (byYear[w.y] = byYear[w.y] || []).push(w));
+  return drillTrendCache = {rows, last, byYear, label: k => label[k] ? label[k][1] : k};
+}
+
+const dtQ = (a, q) => { const s = [...a].sort((x, y) => x - y); if (!s.length) return null; const i = (s.length - 1) * q, lo = Math.floor(i); return s[lo] + (s[Math.min(lo + 1, s.length - 1)] - s[lo]) * (i - lo); };
+function dtStats(ws) {
+  if (!ws.length) return null;
+  return {n: ws.length, mpd: median(ws.map(w => w.mpd)), m: median(ws.map(w => w.m)), days: median(ws.map(w => w.days))};
+}
+function dtSpan(D, y0, y1, f = () => true) {
+  const out = [];
+  for (let y = y0; y <= y1; y++) (D.byYear[y] || []).forEach(w => { if (f(w)) out.push(w); });
+  return out;
+}
+
+function dtSet(key, val) { drillF[key] = val; syncUrl(); drillRenderTrends(); }
+
+function drillRenderTrends() {
+  const box = document.getElementById('explBody');
+  if (!drillRows) { box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>'; dockBar('explBody'); return; }
+  drillTrendKill();
+  const D = drillTrendData(), last = D.last, Y0 = 1975;
+  const years = []; for (let y = Y0; y <= last; y++) years.push(y);
+  const SER = [['all', 'All wellbores', () => true], ['expl', 'Exploration, main bores', w => w.cat === 'Exploration' && !w.side],
+               ['dev', 'Development, main bores', w => w.cat === 'Development' && !w.side], ['side', 'Sidetracks', w => w.side]];
+  // Treårs glidende median: brønnene i året før, året og året etter samlet.
+  const win = y => [y - 1, y, y + 1].flatMap(x => (x <= last ? D.byYear[x] || [] : []));
+  const yMed = (f, fn = a => median(a.map(w => w.mpd)), min = 8) => years.map(y => { const a = win(y).filter(f); return a.length >= min ? +fn(a).toFixed(1) : null; });
+  const r0 = v => Math.round(v).toLocaleString('en-US');
+  const pct = v => { const r = Math.round(Math.abs(v) * 100); return `${!r ? '±' : v > 0 ? '+' : '−'}${r} %`; };
+
+  // ── Nøkkeltall per epoke ──
+  const ERAS = [['1980s', 1980, 1989], ['2000s', 2000, 2009], ['2015–19', 2015, 2019], [`${last - 2}–${String(last).slice(2)}`, last - 2, last]];
+  const era = ERAS.map(([l, a, b]) => ({l, ...dtStats(dtSpan(D, a, b))}));
+  const e0 = era[0], eN = era[era.length - 1], ePk = era[2];
+  // Hoppet rundt oljeprisfallet 2014.
+  const yr = y => dtStats(D.byYear[y] || []);
+  const y14 = yr(2014), y16 = yr(2016);
+  // Utbygging og leting: beste treårsperiode etter 2010 mot de tre siste årene.
+  const roll = (f, y) => { const s = dtStats(dtSpan(D, y - 2, y, f)); return s && s.n >= 15 ? s.mpd : null; };
+  const peakOf = f => { let best = null; for (let y = 2012; y <= last; y++) { const v = roll(f, y); if (v != null && (!best || v > best.v)) best = {v, y}; } return best; };
+  const devF = SER[2][2], explF = SER[1][2];
+  const devPk = peakOf(devF), devNow = roll(devF, last), explPk = peakOf(explF), explNow = roll(explF, last);
+  const longShare = (a, b) => { const ws = dtSpan(D, a, b, w => w.cat === 'Development'); return ws.length ? ws.filter(w => w.days > 90).length / ws.length : 0; };
+
+  // ── Operatører mot sammenlignbare brønner ──
+  const tp = DT_PERIODS[drillF.tp] ? drillF.tp : 'recent', [p0, p1] = DT_PERIODS[tp], MINW = 20;
+  const agg = {};
+  dtSpan(D, p0, p1, w => w.ck).forEach(w => {
+    const a = agg[w.ck] = agg[w.ck] || {ck: w.ck, ws: []};
+    a.ws.push(w);
+  });
+  const ops = Object.values(agg).filter(a => a.ws.length >= MINW).map(a => ({ck: a.ck, name: D.label(a.ck), n: a.ws.length,
+    idx: median(a.ws.map(w => w.rel)) - 1, mpd: median(a.ws.map(w => w.mpd)), days: median(a.ws.map(w => w.days)),
+    dev: a.ws.filter(w => w.cat === 'Development').length / a.ws.length, side: a.ws.filter(w => w.side).length / a.ws.length}))
+    .sort((a, b) => b.idx - a.idx);
+  const totalP = dtSpan(D, p0, p1).length;
+  const big = ops.slice().sort((a, b) => b.n - a.n)[0];
+  const topOp = ops[0], botOp = ops[ops.length - 1];
+
+  // ── Operatører over tid: femårsperioder, de seks med flest brønner ──
+  const BINS = []; for (let y = 1990; y <= last; y += 5) BINS.push([y, Math.min(y + 4, last)]);
+  // En siste periode på under tre år slås sammen med perioden før.
+  if (BINS.length > 1 && BINS[BINS.length - 1][1] - BINS[BINS.length - 1][0] < 2) BINS[BINS.length - 2][1] = BINS.pop()[1];
+  const binLbl = ([a, b]) => a === b ? String(a) : `${a}–${String(b).slice(2)}`;
+  const binIdx = (ck, [a, b]) => { const ws = dtSpan(D, a, b, w => w.ck === ck); return ws.length >= 10 ? +((median(ws.map(w => w.rel)) - 1) * 100).toFixed(1) : null; };
+  const since = {}; dtSpan(D, 1990, last, w => w.ck).forEach(w => { since[w.ck] = (since[w.ck] || 0) + 1; });
+  const tOps = Object.keys(since).map(ck => ({ck, name: D.label(ck), vals: BINS.map(b => binIdx(ck, b))}))
+    .filter(o => o.vals.filter(v => v != null).length >= 3).sort((a, b) => since[b.ck] - since[a.ck]).slice(0, 6);
+  const OPC = ['#ce0f69', '#2a6fa8', '#e3a73a', '#3fa7a0', '#7d2248', '#8e6bbf'];
+
+  // ── Funn ──
+  const finds = [];
+  if (e0 && eN) finds.push(`<strong>About ${(eN.mpd / e0.mpd).toFixed(1)}× as fast as in the 1980s.</strong> The median wellbore was drilled at ${r0(eN.mpd)} m/day in ${eN.l}, against ${r0(e0.mpd)} m/day in the 1980s. At the peak in 2015–19 it was ${r0(ePk.mpd)} m/day.`);
+  if (e0 && eN) finds.push(`<strong>The gain is time, not distance.</strong> A typical wellbore is about as long as before — ${r0(e0.m)} m in the 1980s, ${r0(eN.m)} m in ${eN.l} — but takes ${r0(eN.days)} days to drill instead of ${r0(e0.days)}.`);
+  if (y14 && y16) finds.push(`<strong>The big step came after the oil price fall in 2014.</strong> The median rose from ${r0(y14.mpd)} m/day for wellbores spudded in 2014 to ${r0(y16.mpd)} m/day in 2016 (${pct(y16.mpd / y14.mpd - 1)}), as operators and rig contractors cut cost and time per well.`);
+  if (devPk && devNow) finds.push(`<strong>Development wells have slowed since the peak.</strong> Development main bores fell from ${r0(devPk.v)} m/day (${devPk.y - 2}–${String(devPk.y).slice(2)}) to ${r0(devNow)} m/day (${last - 2}–${String(last).slice(2)})${explPk && explNow ? `, while exploration main bores are at ${r0(explNow)} m/day, close to their best of ${r0(explPk.v)}` : ''}. Part of the fall is a measurement effect: more development wells are drilled in batches, where the top hole is drilled first and the rig returns months later, and the days then count calendar time. ${Math.round(longShare(last - 2, last) * 100)} % of development wellbores in ${last - 2}–${String(last).slice(2)} took more than 90 days, against ${Math.round(longShare(2015, 2019) * 100)} % in 2015–19.`);
+  if (topOp && botOp && ops.length > 2) finds.push(`<strong>Clear differences between operators.</strong> In ${p0}–${p1}, adjusted for the mix of wellbores, ${esc(topOp.name)} drilled ${Math.round(topOp.idx * 100)} % faster than comparable wellbores, while ${esc(botOp.name)} was ${Math.round(-botOp.idx * 100)} % slower.${big ? ` ${esc(big.name)} drilled ${Math.round(big.n / totalP * 100)} % of all wellbores in the period and is therefore close to the comparison level by construction (${pct(big.idx)}).` : ''}`);
+
+  // ── HTML ──
+  const tile = e => `<div class="pf-fact"><span>${e.l}</span><strong>${r0(e.mpd)} m/day</strong><small style="display:block;font-size:0.68rem;color:var(--muted)">${r0(e.m)} m in ${r0(e.days)} days · ${e.n.toLocaleString('en-US')} wellbores</small></div>`;
+  const pills = Object.entries({recent: `${DT_PERIODS.recent[0]}–${DT_PERIODS.recent[1]}`, mid: '2006–2015', early: '1990–2005'})
+    .map(([k, l]) => `<button class="pill-btn${tp === k ? ' active' : ''}" onclick="dtSet('tp','${k}')">${l}</button>`).join('');
+  box.innerHTML = `
+    <div class="pf-card"><h3>Drilling efficiency on the Norwegian shelf, ${Y0}–${last}</h3>
+      <div class="ex-sum">How fast have wellbores been drilled over time, and do the operators differ? Median metres drilled per day for ${D.rows.length.toLocaleString('en-US')} completed exploration and development wellbores, by spud year.</div>
+      <div class="pf-facts" style="margin-bottom:12px">${era.filter(e => e.n).map(tile).join('')}</div>
+      <ul style="margin:0 0 0 18px;padding:0;font-size:0.78rem;line-height:1.55;color:#1a2332">${finds.map(f => `<li style="margin-bottom:6px">${f}</li>`).join('')}</ul></div>
+    <div class="pf-card" data-ppt-spec="dtSpeed"><h3>Metres drilled per day, median by spud year (three-year moving)</h3>
+      <div class="chart-container" style="height:320px"><canvas id="dtSpeed"></canvas></div><div class="legend-row" id="dtSpeedLeg"></div>
+      <div class="ex-note">Each point is the median of the wellbores spudded in that year and the years either side, which evens out the noise from year to year. The shaded band is the middle half of all wellbores (25th–75th percentile). Points with fewer than eight wellbores in a series are left out.</div></div>
+    <div class="pf-row2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px;margin-bottom:10px">
+      <div class="pf-card" style="margin:0" data-ppt-spec="dtParts"><h3>Distance and time per wellbore</h3>
+        <div class="chart-container" style="height:250px"><canvas id="dtParts"></canvas></div><div class="legend-row" id="dtPartsLeg"></div>
+        <div class="ex-note">Median metres drilled (left axis) and median days (right axis) per wellbore, three-year moving. Speed has risen because the days have fallen, not because wellbores are shorter.</div></div>
+      <div class="pf-card" style="margin:0" data-ppt-spec="dtMix"><h3>The mix of wellbores</h3>
+        <div class="chart-container" style="height:250px"><canvas id="dtMix"></canvas></div><div class="legend-row" id="dtMixLeg"></div>
+        <div class="ex-note">Share of wellbores that are sidetracks, drilled from platform rigs, and development wellbores taking more than 90 days (mostly batch drilling, where days are calendar time). Three-year moving.</div></div>
+    </div>
+    <div class="pf-card" data-ppt-spec="dtOps"><h3>Operators against comparable wellbores</h3>
+      <div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${pills}</div>
+      ${ops.length ? `<div class="chart-container" style="height:${Math.max(160, ops.length * 24 + 40)}px"><canvas id="dtOps"></canvas></div>` : '<div class="ex-sum">No operators with enough wellbores in the period.</div>'}
+      <div class="res-table-wrap ex-wrap" style="margin-top:10px"><table class="res-table ex-table"><thead><tr><th class="ex-l">Operator</th><th>Wellbores</th>
+        <th>Development</th><th>Sidetracks</th><th>Median days</th><th>Median m/day</th><th>Against comparable</th></tr></thead><tbody>
+        ${ops.map(o => `<tr><td class="ex-l">${companyLink(o.name)}</td><td>${o.n}</td><td>${Math.round(o.dev * 100)} %</td><td>${Math.round(o.side * 100)} %</td>
+          <td>${r0(o.days)}</td><td>${r0(o.mpd)}</td><td><strong style="color:${o.idx >= 0 ? '#00895a' : '#c0392b'}">${pct(o.idx)}</strong></td></tr>`).join('')}</tbody></table></div>
+      <div class="ex-note">Operators (grouped as company groups, so Statoil counts with Equinor and Det norske with Aker BP) with at least ${MINW} wellbores spudded in ${p0}–${p1}.
+        Each wellbore is compared with the median of comparable wellbores: same spud year, exploration or development, main bore or sidetrack, platform or mobile rig.
+        The figure is the operator's median ratio: +20 % means its typical wellbore was drilled 20 % faster than comparable wellbores. Median m/day is not adjusted and depends on the operator's mix of wellbores.</div></div>
+    ${tOps.length ? `<div class="pf-card" data-ppt-spec="dtOpsTime"><h3>Operators over time, against comparable wellbores</h3>
+      <div class="chart-container" style="height:280px"><canvas id="dtOpsTime"></canvas></div><div class="legend-row" id="dtOpsTimeLeg"></div>
+      <div class="ex-note">The six operators with the most wellbores since 1990, by five-year period of spud year (${binLbl(BINS[BINS.length - 1])} is the latest). Periods with fewer than ten wellbores are left out. Same adjustment as above.</div></div>` : ''}
+    <div class="pf-card"><h3>Method and caveats</h3>
+      <div class="ex-note" style="margin-top:0;font-size:0.72rem">
+        Same wellbores and definitions as Performance: completed exploration and development wellbores from Sodir, metres drilled = total depth (measured) minus the kick-off point for sidetracks,
+        days = the shorter of Sodir's drilling days and spud to completion, and wellbores with fewer than five days left out. ${currentYear} is left out because only the wellbores already completed are in the data, which skews the year.
+        Metres per day is a rough measure of efficiency: it does not account for water depth, pressure and temperature, geology, well design, completion work, coring and testing, or time waiting on weather.
+        The adjustment for comparable wellbores removes the largest mix effects (year, type, sidetrack, rig type), but not these. Days are calendar days from spud to completion, so batch-drilled wells and wells suspended for a period look slow.
+        Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
+  dockBar('explBody');
+
+  // ── Grafer ──
+  const base = (yTitle, extra = {}) => ({responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+    plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null && !it.dataset.label.startsWith('_')}},
+    scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 14, font: {size: 9}}, grid: {display: false}},
+             y: {beginAtZero: true, title: {display: true, text: yTitle, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}, ...extra});
+  const legend = (id, items) => { document.getElementById(id).innerHTML = items.map(([l, c, dash]) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${dash ? 'none' : c};${dash ? `border-top:2px dashed ${c};` : ''}height:${dash ? 0 : 3}px;border-radius:0;width:14px"></div>${l}</div>`).join(''); };
+  const mk = (id, cfg) => { const c = new Chart(document.getElementById(id).getContext('2d'), cfg); drillTrendCharts.push(c); return c; };
+  const labels = years.map(String);
+
+  const allA = years.map(win);
+  const p25 = allA.map(a => a.length >= 5 ? +dtQ(a.map(w => w.mpd), 0.25).toFixed(1) : null), p75 = allA.map(a => a.length >= 5 ? +dtQ(a.map(w => w.mpd), 0.75).toFixed(1) : null);
+  const sp = mk('dtSpeed', {type: 'line', data: {labels, datasets: [
+      {label: '_p75', data: p75, borderWidth: 0, pointRadius: 0, backgroundColor: 'rgba(26,35,50,0.08)', fill: '+1'},
+      {label: '_p25', data: p25, borderWidth: 0, pointRadius: 0, fill: false},
+      ...SER.map(([k, l, f]) => ({label: l, data: yMed(f), borderColor: DT_C[k], backgroundColor: DT_C[k], borderWidth: k === 'all' ? 2.5 : 1.75,
+        borderDash: k === 'all' ? [] : [], pointRadius: 0, tension: 0.25, spanGaps: true}))]},
+    options: base('metres per day', {plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null && !it.dataset.label.startsWith('_'),
+      callbacks: {label: c => ` ${c.dataset.label}: ${Math.round(c.parsed.y)} m/day`}}}})});
+  legend('dtSpeedLeg', SER.map(([k, l]) => [l, DT_C[k]]).concat([['Middle half of all wellbores', 'rgba(26,35,50,0.25)']]));
+  pptCardSpecs.dtSpeed = {...pptSpecFromChart(sp), subtitle: `Median metres drilled per day by spud year, ${Y0}–${last}`};
+  pptCardSpecs.dtSpeed.series = pptCardSpecs.dtSpeed.series.filter(x => !x.name.startsWith('_'));
+
+  const pa = mk('dtParts', {type: 'line', data: {labels, datasets: [
+      {label: 'Metres drilled', data: yMed(() => true, a => median(a.map(w => w.m))), borderColor: '#2a6fa8', backgroundColor: '#2a6fa8', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y'},
+      {label: 'Days', data: yMed(() => true, a => median(a.map(w => w.days))), borderColor: '#ce0f69', backgroundColor: '#ce0f69', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y1'}]},
+    options: base('metres', {scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 14, font: {size: 9}}, grid: {display: false}},
+      y: {beginAtZero: true, title: {display: true, text: 'metres drilled', color: '#2a6fa8', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
+      y1: {position: 'right', beginAtZero: true, title: {display: true, text: 'days', color: '#ce0f69', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {display: false}}}})});
+  legend('dtPartsLeg', [['Median metres drilled (left)', '#2a6fa8'], ['Median days (right)', '#ce0f69']]);
+  pptCardSpecs.dtParts = {...pptSpecFromChart(pa), subtitle: `Median metres drilled and days per wellbore, ${Y0}–${last}`};
+
+  const share = f => years.map(y => { const a = win(y); return a.length >= 5 ? +(a.filter(f).length / a.length * 100).toFixed(1) : null; });
+  const devLong = years.map(y => { const a = win(y).filter(w => w.cat === 'Development'); return a.length >= 5 ? +(a.filter(w => w.days > 90).length / a.length * 100).toFixed(1) : null; });
+  const MIX = [['Sidetracks', '#e3a73a', share(w => w.side)], ['Platform rigs', '#3fa7a0', share(w => w.fixed)], ['Development > 90 days', '#7d2248', devLong]];
+  const mx = mk('dtMix', {type: 'line', data: {labels, datasets: MIX.map(([l, c, d]) => ({label: l, data: d, borderColor: c, backgroundColor: c, borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true}))},
+    options: base('% of wellbores', {plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${Math.round(c.parsed.y)} %`}}}})});
+  mx.options.scales.y.max = 100; mx.update('none');
+  legend('dtMixLeg', MIX.map(([l, c]) => [l, c]));
+  pptCardSpecs.dtMix = {...pptSpecFromChart(mx), subtitle: `Share of wellbores, ${Y0}–${last}`};
+
+  if (ops.length) {
+    const oc = mk('dtOps', {type: 'bar', data: {labels: ops.map(o => licShort(o.name)), datasets: [{label: 'Against comparable wellbores, %', data: ops.map(o => +(o.idx * 100).toFixed(1)),
+        backgroundColor: ops.map(o => o.idx >= 0 ? 'rgba(0,137,90,0.75)' : 'rgba(206,15,105,0.7)'), borderWidth: 0}]},
+      options: {indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => { const o = ops[c.dataIndex]; return ` ${pct(o.idx)} against comparable · ${o.n} wellbores · median ${r0(o.mpd)} m/day`; }}}},
+        scales: {x: {title: {display: true, text: '% faster (+) or slower (−) than comparable wellbores', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}, callback: v => v + ' %'},
+                     grid: {color: c => c.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'}},
+                 y: {ticks: {font: {size: 10}}, grid: {display: false}}}}});
+    pptCardSpecs.dtOps = {...pptSpecFromChart(oc), dir: 'bar', subtitle: `Median wellbore against comparable wellbores, %, ${p0}–${p1} (min ${MINW} wellbores)`};
+  } else delete pptCardSpecs.dtOps;
+
+  if (tOps.length) {
+    const ot = mk('dtOpsTime', {type: 'line', data: {labels: BINS.map(binLbl), datasets: tOps.map((o, i) => ({label: licShort(o.name), data: o.vals, borderColor: OPC[i], backgroundColor: OPC[i],
+        borderWidth: 2, pointRadius: 3, tension: 0.2, spanGaps: false}))},
+      options: base('% against comparable', {plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null, callbacks: {label: c => ` ${c.dataset.label}: ${pct(c.parsed.y / 100)}`}}}})});
+    ot.options.scales.y.beginAtZero = false;
+    ot.options.scales.y.ticks.callback = v => v + ' %';
+    ot.options.scales.y.grid.color = c => c.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)';
+    ot.update('none');
+    legend('dtOpsTimeLeg', tOps.map((o, i) => [licShort(o.name), OPC[i]]));
+    pptCardSpecs.dtOpsTime = {...pptSpecFromChart(ot), subtitle: 'Median wellbore against comparable wellbores, %, by five-year period'};
+  }
+}
 const drillUrl = w => `https://factpages.sodir.no/wellbore/pageview/${w.dev ? 'development' : 'exploration'}/all/${w.id}`;
 
 // ── Hovedvisning ─────────────────────────────────────────────────────────────
@@ -13661,7 +13888,7 @@ async function refreshExploration() {
   if (!explLoaded) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>'; dockBar('explBody');
   setInfo('');
   await loadExploration();
-  if (explSubView === 'perf') await loadDrill();
+  if (explSubView === 'perf' || explSubView === 'trends') await loadDrill();
   if (explSubView === 'rigs') await Promise.all([loadRigWells(), loadRigContracts(), loadRigFacts()]);
   if (explSubView === 'fleet') await loadRigContracts();
   if (explSubView === 'rigs' || explSubView === 'fleet' || explF.rig) await loadRigAis();
@@ -13677,7 +13904,9 @@ async function refreshExploration() {
 }
 
 function explRenderBody() {
+  drillTrendKill();
   if (explSubView === 'perf') return drillRenderPerf();
+  if (explSubView === 'trends') return drillRenderTrends();
   if (explSubView === 'map') return explRenderMap();
   if (explSubView === 'rigs') return explRenderRigs();
   if (explSubView === 'fleet') return explRenderFleet();
