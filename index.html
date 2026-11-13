@@ -2641,7 +2641,7 @@ function resetView() {
 
 // ── DELBAR LENKE ─────────────────────────────────────────────────────────────
 // Hele visningstilstanden ligger i hash-delen av adressen. Hash fordi
-// GitHub Pages serverer samme fil uansett sti, og fordi den aldri sendes til
+// serveren leverer samme fil uansett sti, og fordi den aldri sendes til
 // serveren. Deling fungerer ved å kopiere fra adressefeltet. Navigasjon legges
 // som nye steg i nettleserhistorikken, justeringer erstatter adressen — se
 // syncUrl og markNav under.
@@ -12990,7 +12990,7 @@ async function saveHubs() {
     bundle.hubs = JSON.parse(text);
     buildHubs();
     hubDirty = false;
-    setHubStatus('Saved. GitHub Pages publishes within a couple of minutes.', 'ok');
+    setHubStatus('Saved. The site updates within a couple of minutes.', 'ok');
     renderHubSettings();
     refresh();
   } catch (e) {
@@ -13116,7 +13116,7 @@ async function probeFeed(url) {
 }
 
 // Lagringen starter update-company-news.yml, som henter de nye feedene og
-// committer data/company_news.json. GitHub Pages bruker et par minutter på å
+// committer data/company_news.json. energy.kbak.no bruker et par minutter på å
 // publisere, så appen leser fila rett fra repoet (Contents API, rå form) til
 // konsernets feeder i fila stemmer med lista, og oppdaterer listen og
 // tidslinjen. Fjernede feeder er ferdige når de er borte fra fila.
@@ -15209,7 +15209,7 @@ async function explEditName(id) {
   w.hay = w.hayBase + (w.nameOv ? '|' + w.nameOv.toLowerCase() : '');
   openWell(id, true);
   explRenderBody();
-  pptToast(w.nameOv ? 'Name saved. GitHub Pages publishes it for others in a couple of minutes.' : 'Manual name removed');
+  pptToast(w.nameOv ? 'Name saved. Others see it within a couple of minutes.' : 'Manual name removed');
 }
 
 function openWell(id, quiet) {

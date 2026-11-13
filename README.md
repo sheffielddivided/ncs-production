@@ -15,7 +15,7 @@ Natural Earth. De danske tallene i DCS kommer fra ENS-løsningen
 ([`sheffielddivided/ens`](https://github.com/sheffielddivided/ens)). Alt lagres
 som statiske JSON-filer i dette repoet.
 
-**Live:** https://energy.kbak.no/ (speil: https://sheffielddivided.github.io/ncs-production/)
+**Live:** https://energy.kbak.no/
 
 ## Innhold
 
@@ -116,14 +116,11 @@ kjøringene blir en no-op. Jobben kan også kjøres manuelt fra Actions-fanen.
 
 ## Publisering
 
-Siden publiseres to steder fra `main`:
-
-- **energy.kbak.no** (Servetheworld, Plesk): Plesks Git-utvidelse henter
-  repoet til `httpdocs` hver gang `main` får en ny commit (webhook i GitHub →
-  Plesk). Det gjelder også de daglige datacommitene fra workflowene.
-  `.htaccess` sperrer skript, workflows og rådata og setter cache og
-  komprimering.
-- **GitHub Pages:** som før.
+Siden publiseres bare på **energy.kbak.no** (Servetheworld, Plesk). Plesks
+Git-utvidelse henter repoet til `httpdocs` hver gang `main` får en ny commit
+(webhook i GitHub → Plesk). Det gjelder også de daglige datacommitene fra
+workflowene. `.htaccess` sperrer skript, workflows og rådata og setter cache og
+komprimering. GitHub Pages er slått av.
 
 Redigering i appen (huber, feeder, brønnavn) skriver fortsatt til GitHub, og
 endringen når energy.kbak.no via samme webhook.
@@ -132,7 +129,7 @@ endringen når energy.kbak.no via samme webhook.
 
 En hub er en gruppe felt som deler prosesseringsanlegg. Åpne **Hubs**-visningen
 og klikk tannhjulet øverst til høyre. Endringer lagres direkte til
-`data/hubs.json` og gjelder for alle når GitHub Pages har publisert.
+`data/hubs.json` og gjelder for alle når energy.kbak.no har hentet commiten.
 
 Første gang du lagrer blir du bedt om et
 [fine-grained token](https://github.com/settings/personal-access-tokens/new)
