@@ -730,6 +730,37 @@
     :focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
     .topbar :focus-visible{outline-color:#fff;}
 
+    /* ── Favourites ── */
+    .fav-btn{flex:0 0 auto;width:36px;height:34px;border:1.5px solid var(--border);border-radius:7px;background:#fff;
+      color:var(--muted);cursor:pointer;display:none;align-items:center;justify-content:center;}
+    body.dd-pick .fav-btn{display:flex;}
+    .fav-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;}
+    .fav-btn[aria-pressed="true"]{color:#e0a100;border-color:#e0a100;}
+    .fav-btn[aria-pressed="true"] svg{fill:currentColor;}
+    .hm-chips{display:flex;flex-wrap:wrap;gap:8px;}
+    .hm-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;background:var(--card);border:1px solid var(--border);
+      border-radius:999px;padding:7px 12px 7px 8px;font:inherit;font-size:0.8rem;font-weight:600;color:#1a2332;cursor:pointer;}
+    .hm-chip:hover{border-color:var(--blue);}
+    .hm-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .hm-chip b{flex:0 0 auto;font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--navy);
+      background:var(--light);border-radius:999px;padding:3px 7px;}
+    .hm-hint{font-size:0.76rem;color:var(--muted);margin:0 2px;}
+    @media (pointer: coarse){ .fav-btn{width:42px;height:40px;} .hm-chip{padding-top:10px;padding-bottom:10px;} }
+
+    /* ── Map zoom ── */
+    .mz-wrap{position:relative;}
+    .mz-ctl{position:absolute;left:8px;bottom:8px;z-index:2;display:flex;flex-direction:column;border:1px solid var(--border);
+      border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,0.12);}
+    .mz-ctl button{width:30px;height:30px;border:none;background:#fff;color:#1a2332;font-size:1.05rem;line-height:1;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;}
+    .mz-ctl button + button{border-top:1px solid var(--border);}
+    @media (hover: hover){ .mz-ctl button:hover{background:var(--light);} }
+    .mz-ctl button:disabled{color:#c3c9d1;cursor:default;background:#fff;}
+    .mz-ctl svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+    svg.mz-zoomed{cursor:grab;touch-action:none;}
+    svg.mz-drag{cursor:grabbing;}
+    @media (pointer: coarse){ .mz-ctl button{width:38px;height:38px;} }
+
     /* ── Global search ── */
     .gs{position:relative;display:flex;align-items:center;margin-left:auto;}
     .gs-toggle{display:none;background:none;border:none;color:#fff;cursor:pointer;width:40px;height:40px;
@@ -825,6 +856,9 @@
   <div class="ctrl-row" id="pickRow">
     <span class="ctrl-label" id="pickLabel">Company</span>
     <div id="pickSlot"></div>
+    <button class="fav-btn" id="favBtn" onclick="favToggle()" aria-pressed="false" aria-label="Add to favourites" title="Add to favourites">
+      <svg viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.6l6.1-.8z"/></svg>
+    </button>
   </div>
   <div class="ctrl-row" id="tabsRow">
     <span class="ctrl-label">Show</span>
@@ -891,7 +925,7 @@
       <path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/>
       <path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/>
     </svg>
-    Copy link
+    <span id="shareLbl">Copy link</span>
   </button>
   <button class="dl-btn" id="downloadBtn" onclick="downloadExcel()" disabled>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2518,6 +2552,7 @@ function renderHome() {
           <span class="hm-ttrack"><span style="width:${(f.v / tMax * 100).toFixed(1)}%"></span></span>
           <span class="hm-tval">${k(f.v)} boe/d</span></div>`).join('')}
       </div></div>` : ''}
+    ${favHomeHtml()}
     <div class="hm-sec-h">Explore</div>
     <div class="hm-secs">${HOME_SECTIONS.map(([m, label, text, icon]) => `
       <button class="hm-sec" onclick="homeGo('${m}')">
@@ -3019,12 +3054,20 @@ function applyHash() {
   return true;
 }
 
+// On phones and tablets the button opens the system share sheet; elsewhere,
+// and if sharing is unavailable or fails, the link is copied.
+const canShare = () => !!navigator.share && window.matchMedia('(pointer: coarse)').matches;
+const shareLabel = () => canShare() ? 'Share' : 'Copy link';
 async function copyViewLink() {
-  const url = location.origin + location.pathname + '#' + stateToHash();
-  const btn = document.getElementById('shareBtn');
+  const url = location.origin + location.pathname + (topMode === 'home' ? '' : '#' + stateToHash());
+  const lbl = document.getElementById('shareLbl');
+  if (canShare()) {
+    try { await navigator.share({title: document.title, url}); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; /* otherwise: copy instead */ }
+  }
   const done = ok => {
-    btn.textContent = ok ? 'Link copied' : url;
-    setTimeout(() => { btn.textContent = 'Copy link'; }, ok ? 1800 : 8000);
+    lbl.textContent = ok ? 'Link copied' : url;
+    setTimeout(() => { lbl.textContent = shareLabel(); }, ok ? 1800 : 8000);
   };
   try {
     await navigator.clipboard.writeText(url);
@@ -3035,6 +3078,7 @@ async function copyViewLink() {
     done(false);
   }
 }
+document.getElementById('shareLbl').textContent = shareLabel();
 
 // ── MAIN REFRESH ─────────────────────────────────────────────────────────────
 // The browser title follows the view, so tabs, bookmarks and history entries
@@ -3071,6 +3115,7 @@ async function refresh() {
   syncUrl();
   syncTitle();
   if (!coreDone && !EARLY_MODES.includes(topMode)) return;
+  favSync();
   if (topMode === 'home') renderHome();
   else if (topMode === 'fields') await refreshFields();
   else if (topMode === 'hubs') await refreshHubs();
@@ -17851,6 +17896,7 @@ function hsUpdate() {
     }
   });
   ganttPin();
+  mzScan();
 }
 function hsQueue() { if (!hsQueued) { hsQueued = true; requestAnimationFrame(hsUpdate); } }
 new MutationObserver(hsQueue).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden']});
@@ -18056,6 +18102,207 @@ document.getElementById('gsIn').addEventListener('blur', () => setTimeout(() => 
   const box = document.getElementById('gs');
   if (!box.contains(document.activeElement)) gsHide();
 }, 0));
+
+// ── FAVOURITES AND RECENTLY VIEWED ───────────────────────────────────────────
+// Fields, hubs, companies and discoveries can be starred from the picker row;
+// the home page lists the starred ones and the last ones opened. Both lists
+// live in this browser only (localStorage). Entries are {k, id, name}: k is
+// the kind, id the field/discovery id or the hub/company name.
+const FAV_KEY = 'ncs.favourites.v1', RECENT_KEY = 'ncs.recent.v1', RECENT_MAX = 8, FAV_MAX = 40;
+const FAV_KIND = {field: 'Field', hub: 'Hub', company: 'Company', discovery: 'Discovery'};
+function favRead(key) {
+  try {
+    const v = JSON.parse(lsGet(key) || '[]');
+    return Array.isArray(v) ? v.filter(e => e && FAV_KIND[e.k] && e.id != null && e.name) : [];
+  } catch (e) { return []; }
+}
+const favSame = (a, b) => a.k === b.k && String(a.id) === String(b.id);
+// What the picker currently shows, or null where there is no single selection.
+function favCurrent() {
+  if (!document.body.classList.contains('dd-pick')) return null;
+  if (topMode === 'fields') { const f = allFields.find(x => selectedFieldIds.has(x.id)); return f ? {k: 'field', id: f.id, name: f.name} : null; }
+  if (topMode === 'hubs') { const n = [...selectedHubNames][0]; return n ? {k: 'hub', id: n, name: n} : null; }
+  if (topMode === 'companies') { const n = [...selectedCompanyNames][0]; return n ? {k: 'company', id: n, name: n} : null; }
+  if (discoveryProfileMode()) { const d = allDiscoveries.find(x => selectedDiscoveryIds.has(x.id)); return d ? {k: 'discovery', id: d.id, name: d.name} : null; }
+  return null;
+}
+// Called on every refresh: keeps the star in step and notes the visit.
+function favSync() {
+  const cur = coreDone ? favCurrent() : null, btn = document.getElementById('favBtn');
+  const on = !!cur && favRead(FAV_KEY).some(e => favSame(e, cur));
+  btn.disabled = !cur;
+  btn.setAttribute('aria-pressed', on);
+  btn.title = on ? 'Remove from favourites' : 'Add to favourites';
+  btn.setAttribute('aria-label', btn.title);
+  if (cur) lsSet(RECENT_KEY, JSON.stringify([cur].concat(favRead(RECENT_KEY).filter(e => !favSame(e, cur))).slice(0, RECENT_MAX)));
+}
+function favToggle() {
+  const cur = favCurrent();
+  if (!cur) return;
+  const list = favRead(FAV_KEY), had = list.some(e => favSame(e, cur));
+  lsSet(FAV_KEY, JSON.stringify(had ? list.filter(e => !favSame(e, cur)) : [cur].concat(list).slice(0, FAV_MAX)));
+  favSync();
+  pptToast(had ? `Removed ${cur.name} from favourites` : `Added ${cur.name} to favourites — listed on the home page`);
+}
+function favOpen(key, i) {
+  const e = favRead(key === 'f' ? FAV_KEY : RECENT_KEY)[i];
+  if (!e) return;
+  Promise.resolve(coreReady).then(() => {
+    if (e.k === 'field') openFieldProfile(+e.id);
+    else if (e.k === 'hub') openHubProfile(e.id);
+    else if (e.k === 'company') openCompanyProfile(e.id);
+    else openDiscoveryProfile(+e.id);
+  });
+}
+function favHomeHtml() {
+  const favs = favRead(FAV_KEY), recent = favRead(RECENT_KEY).filter(e => !favs.some(f => favSame(f, e)));
+  const chips = (list, key, src) => `<div class="hm-chips">${list.map(e => `<button class="hm-chip" onclick="favOpen('${key}', ${src.indexOf(e)})"
+    title="Open the factsheet for ${esc(e.name)}"><b>${FAV_KIND[e.k]}</b><span>${esc(e.name)}</span></button>`).join('')}</div>`;
+  return `<div class="hm-sec-h">Favourites</div>${favs.length ? chips(favs, 'f', favs)
+      : '<p class="hm-hint">Tap the star next to a field, hub, company or discovery to keep it here.</p>'}
+    ${recent.length ? `<div class="hm-sec-h">Recently viewed</div>${chips(recent, 'r', favRead(RECENT_KEY))}` : ''}`;
+}
+
+// ── MAP ZOOM ─────────────────────────────────────────────────────────────────
+// The SVG maps can be zoomed and panned by changing the viewBox, which also
+// enlarges the labels: buttons in the corner, pinch with two fingers, Ctrl/⌘ +
+// wheel (and trackpad pinch), double-click, and drag once zoomed in. A plain
+// wheel or a one-finger swipe on an unzoomed map still scrolls the page. The
+// rig track map has its own view handling and is left alone.
+const MZ_SEL = 'svg.pf-map, svg.ex-map:not(.rg-map)', MZ_MAX = 16;
+const MZ_ICON = {
+  in: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  out: '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>',
+  fit: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+};
+function mzScan() {
+  document.querySelectorAll(MZ_SEL).forEach(svg => {
+    if (svg._mz || !svg.viewBox || !svg.viewBox.baseVal || !svg.viewBox.baseVal.width) return;
+    const b = svg.viewBox.baseVal;
+    svg._mz = {base: {x: b.x, y: b.y, w: b.width, h: b.height}, v: {x: b.x, y: b.y, w: b.width, h: b.height}};
+    const wrap = document.createElement('div');
+    wrap.className = 'mz-wrap';
+    svg.parentNode.insertBefore(wrap, svg);
+    wrap.appendChild(svg);
+    const ctl = document.createElement('div');
+    ctl.className = 'mz-ctl';
+    ctl.innerHTML = `<button type="button" data-mz="in" aria-label="Zoom in" title="Zoom in">${MZ_ICON.in}</button>
+      <button type="button" data-mz="out" aria-label="Zoom out" title="Zoom out">${MZ_ICON.out}</button>
+      <button type="button" data-mz="fit" aria-label="Show the whole map" title="Show the whole map">${MZ_ICON.fit}</button>`;
+    ctl.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      if (btn.dataset.mz === 'fit') mzSet(svg, {...svg._mz.base});
+      else mzZoom(svg, btn.dataset.mz === 'in' ? 1.6 : 1 / 1.6);
+    });
+    wrap.appendChild(ctl);
+    mzSet(svg, svg._mz.v);
+  });
+}
+function mzSet(svg, v) {
+  const z = svg._mz, b = z.base;
+  v.w = Math.min(b.w, Math.max(b.w / MZ_MAX, v.w));
+  v.h = v.w * b.h / b.w;
+  v.x = Math.min(b.x + b.w - v.w, Math.max(b.x, v.x));
+  v.y = Math.min(b.y + b.h - v.h, Math.max(b.y, v.y));
+  z.v = v;
+  svg.setAttribute('viewBox', `${v.x.toFixed(2)} ${v.y.toFixed(2)} ${v.w.toFixed(2)} ${v.h.toFixed(2)}`);
+  const zoomed = v.w < b.w * 0.999;
+  svg.classList.toggle('mz-zoomed', zoomed);
+  const ctl = svg.parentNode.querySelector('.mz-ctl');
+  if (ctl) {
+    ctl.querySelector('[data-mz="in"]').disabled = v.w <= b.w / MZ_MAX * 1.001;
+    ctl.querySelector('[data-mz="out"]').disabled = !zoomed;
+    ctl.querySelector('[data-mz="fit"]').disabled = !zoomed;
+  }
+}
+// Client coordinates to map coordinates, through the SVG's own matrix, so the
+// letterboxing of preserveAspectRatio is accounted for.
+function mzPoint(svg, cx, cy) {
+  const m = svg.getScreenCTM();
+  if (!m) return {x: svg._mz.v.x + svg._mz.v.w / 2, y: svg._mz.v.y + svg._mz.v.h / 2};
+  const p = new DOMPoint(cx, cy).matrixTransform(m.inverse());
+  return {x: p.x, y: p.y};
+}
+// Zoom by a factor around a client point (default: the middle of the map).
+function mzZoom(svg, f, cx, cy) {
+  const v = svg._mz.v, r = svg.getBoundingClientRect();
+  const p = mzPoint(svg, cx == null ? r.left + r.width / 2 : cx, cy == null ? r.top + r.height / 2 : cy);
+  const w = Math.min(svg._mz.base.w, Math.max(svg._mz.base.w / MZ_MAX, v.w / f)), k = w / v.w;
+  mzSet(svg, {x: p.x - (p.x - v.x) * k, y: p.y - (p.y - v.y) * k, w, h: v.h * k});
+}
+const mzOf = e => { const svg = e.target.closest && e.target.closest(MZ_SEL); return svg && svg._mz ? svg : null; };
+document.addEventListener('wheel', e => {
+  const svg = mzOf(e);
+  if (!svg || !(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  mzZoom(svg, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.01)), e.clientX, e.clientY);
+}, {passive: false});
+document.addEventListener('dblclick', e => {
+  const svg = mzOf(e);
+  if (!svg) return;
+  e.preventDefault();
+  mzZoom(svg, e.shiftKey ? 1 / 2 : 2, e.clientX, e.clientY);
+});
+// Mouse: drag to pan when zoomed in. A drag must not count as a click on the
+// field or well under the pointer.
+let mzDrag = null, mzMoved = false;
+document.addEventListener('pointerdown', e => {
+  const svg = mzOf(e);
+  mzMoved = false;
+  if (!svg || e.pointerType === 'touch' || e.button !== 0 || !svg.classList.contains('mz-zoomed')) return;
+  mzDrag = {svg, x: e.clientX, y: e.clientY, p: mzPoint(svg, e.clientX, e.clientY)};
+});
+document.addEventListener('pointermove', e => {
+  if (!mzDrag) return;
+  const dx = e.clientX - mzDrag.x, dy = e.clientY - mzDrag.y;
+  if (!mzMoved && Math.hypot(dx, dy) < 4) return;
+  mzMoved = true;
+  mzDrag.svg.classList.add('mz-drag');
+  // Keep the map point that was grabbed under the pointer.
+  const now = mzPoint(mzDrag.svg, e.clientX, e.clientY), v = mzDrag.svg._mz.v;
+  mzSet(mzDrag.svg, {...v, x: v.x + mzDrag.p.x - now.x, y: v.y + mzDrag.p.y - now.y});
+});
+const mzEnd = () => { if (mzDrag) { mzDrag.svg.classList.remove('mz-drag'); mzDrag = null; } };
+document.addEventListener('pointerup', mzEnd);
+document.addEventListener('pointercancel', mzEnd);
+document.addEventListener('click', e => {
+  if (mzMoved && mzOf(e)) { e.stopPropagation(); e.preventDefault(); }
+  mzMoved = false;
+}, true);
+// Touch: two fingers pinch and pan; one finger pans once zoomed in.
+let mzTouch = null;
+const mzMid = t => ({x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2,
+                     d: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)});
+document.addEventListener('touchstart', e => {
+  const svg = mzOf(e);
+  if (!svg) { mzTouch = null; return; }
+  if (e.touches.length === 2) {
+    const m = mzMid(e.touches);
+    mzTouch = {svg, n: 2, d: m.d || 1, p: mzPoint(svg, m.x, m.y), w: svg._mz.v.w};
+  } else if (e.touches.length === 1 && svg.classList.contains('mz-zoomed')) {
+    mzTouch = {svg, n: 1, p: mzPoint(svg, e.touches[0].clientX, e.touches[0].clientY)};
+  } else mzTouch = null;
+}, {passive: true});
+document.addEventListener('touchmove', e => {
+  const t = mzTouch;
+  if (!t || e.touches.length !== t.n) return;
+  e.preventDefault();
+  mzMoved = true;
+  const svg = t.svg, b = svg._mz.base;
+  if (t.n === 2) {
+    const m = mzMid(e.touches);
+    const w = Math.min(b.w, Math.max(b.w / MZ_MAX, t.w * t.d / (m.d || 1)));
+    mzSet(svg, {...svg._mz.v, w, h: w * b.h / b.w});
+    // Keep the map point that was between the fingers under them.
+    const now = mzPoint(svg, m.x, m.y), v = svg._mz.v;
+    mzSet(svg, {...v, x: v.x + t.p.x - now.x, y: v.y + t.p.y - now.y});
+  } else {
+    const now = mzPoint(svg, e.touches[0].clientX, e.touches[0].clientY), v = svg._mz.v;
+    mzSet(svg, {...v, x: v.x + t.p.x - now.x, y: v.y + t.p.y - now.y});
+  }
+}, {passive: false});
+document.addEventListener('touchend', () => { mzTouch = null; }, {passive: true});
 
 init();
 </script>
