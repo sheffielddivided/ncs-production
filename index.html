@@ -18153,23 +18153,23 @@ function favToggle() {
   favSync();
   pptToast(had ? `Removed ${cur.name} from favourites` : `Added ${cur.name} to favourites — listed on the home page`);
 }
-function favOpen(key, i) {
-  const e = favRead(key === 'f' ? FAV_KEY : RECENT_KEY)[i];
-  if (!e) return;
+// Opens a favourite or recent entry by kind and id (not by list position, which
+// can shift between drawing the home page and the tap).
+function favOpen(k, id) {
   Promise.resolve(coreReady).then(() => {
-    if (e.k === 'field') openFieldProfile(+e.id);
-    else if (e.k === 'hub') openHubProfile(e.id);
-    else if (e.k === 'company') openCompanyProfile(e.id);
-    else openDiscoveryProfile(+e.id);
+    if (k === 'field') openFieldProfile(+id);
+    else if (k === 'hub') openHubProfile(id);
+    else if (k === 'company') openCompanyProfile(id);
+    else if (k === 'discovery') openDiscoveryProfile(+id);
   });
 }
 function favHomeHtml() {
   const favs = favRead(FAV_KEY), recent = favRead(RECENT_KEY).filter(e => !favs.some(f => favSame(f, e)));
-  const chips = (list, key, src) => `<div class="hm-chips">${list.map(e => `<button class="hm-chip" onclick="favOpen('${key}', ${src.indexOf(e)})"
+  const chips = list => `<div class="hm-chips">${list.map(e => `<button class="hm-chip" onclick="favOpen(${esc(jsStr(e.k))}, ${esc(jsStr(e.id))})"
     title="Open the factsheet for ${esc(e.name)}"><b>${FAV_KIND[e.k]}</b><span>${esc(e.name)}</span></button>`).join('')}</div>`;
-  return `<div class="hm-sec-h">Favourites</div>${favs.length ? chips(favs, 'f', favs)
+  return `<div class="hm-sec-h">Favourites</div>${favs.length ? chips(favs)
       : '<p class="hm-hint">Tap the star next to a field, hub, company or discovery to keep it here.</p>'}
-    ${recent.length ? `<div class="hm-sec-h">Recently viewed</div>${chips(recent, 'r', favRead(RECENT_KEY))}` : ''}`;
+    ${recent.length ? `<div class="hm-sec-h">Recently viewed</div>${chips(recent)}` : ''}`;
 }
 
 // ── MAP ZOOM ─────────────────────────────────────────────────────────────────
