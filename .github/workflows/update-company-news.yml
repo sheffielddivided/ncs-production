@@ -5,7 +5,7 @@ name: Oppdater selskapsnyheter
 #  · push: appen skriver data/company_feeds.json via Contents API med
 #    brukerens token når en feed legges til eller fjernes. Da hentes bare de
 #    nye feedene (--new), så jobben er ferdig på sekunder. Appen følger med og
-#    viser resultatet uten å vente på GitHub Pages.
+#    viser resultatet uten å vente på energy.kbak.no.
 #  · schedule: daglig henting av alle feedene.
 #
 # Egen samtidighetsgruppe, så en ny feed ikke blir stående i kø bak den

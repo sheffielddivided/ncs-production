@@ -63,7 +63,7 @@ deployet.
 | Kystlinje | `make_coastline.py` — engangsscript, **ikke** i daglig pipeline |
 | Innsamling | Python 3.12 + `requests` (eneste avhengighet) | `fetch_sodir.py:25`, workflow linje 28, 31 |
 | Lagring | Statiske JSON-filer i git under `data/` | `fetch_sodir.py:44` |
-| Hosting | GitHub Pages fra `main`-branchens rot | repo-innstilling `has_pages: true` |
+| Hosting | energy.kbak.no (Servetheworld, Apache/Plesk) henter `main` via Plesks Git-utvidelse; GitHub Pages er slått av | `.htaccess`, README «Publisering» |
 | CI/scheduler | GitHub Actions | `.github/workflows/update-sodir-data.yml` |
 
 **Ingen database.** Ingen `package.json`, `requirements.txt`, lockfil,
@@ -84,8 +84,10 @@ python3 -m http.server 8000
 
 ### Deploy
 
-Push til `main` publiseres automatisk av GitHub Pages. Datafilene oppdateres av
-workflowen, som committer direkte til `main` (workflow linje 40-46).
+Push til `main` publiseres automatisk på energy.kbak.no: en webhook i GitHub
+får Plesks Git-utvidelse til å hente repoet til `httpdocs`. `.htaccess` sperrer
+skript, workflows og rådata. Datafilene oppdateres av workflowene, som
+committer direkte til `main`, og når siden samme vei.
 
 ---
 
@@ -696,7 +698,7 @@ ikke at nettleseren leser feedene deres (CORS). Derfor:
    før; fjernede feeder tas ut samtidig) og committer `data/company_news.json`,
    vanligvis innen et minutt. Appen leser fila rett fra repoet (Contents API,
    rå form) hvert 5.–10. sekund til konsernets feeder i fila stemmer med
-   lista, og viser status og saker uten å vente på GitHub Pages. Samme
+   lista, og viser status og saker uten å vente på at energy.kbak.no henter commiten. Samme
    workflow henter alle feedene daglig kl. 04:47 UTC. Den har egen
    samtidighetsgruppe, så den ikke venter bak Sodir-jobben; Sodir-jobben kjører
    bare `--sodir`, så de to skriver ulike filer, og begge rebaser før push.
@@ -1329,7 +1331,7 @@ også fra adressefeltet.
 
 Hele visningstilstanden ligger i **hash-delen** av adressen, og adressefeltet
 oppdateres fortløpende av `syncUrl` (kalt fra `refresh` og ved hver
-filterendring). Hash er valgt fordi GitHub Pages serverer samme fil uansett
+filterendring). Hash er valgt fordi en statisk server leverer samme fil uansett
 sti, og fordi hash aldri sendes til serveren.
 
 **Tilbake-knappen.** Navigasjon kaller `markNav()` før endringen, og neste
@@ -2785,7 +2787,7 @@ Målt 2026-09-14 på committet innhold.
 | **Sum `data/`** | **6 538,0 KB** | **1 356,0 KB** |
 | `index.html` | 374,5 KB | 112,3 KB |
 
-GitHub Pages komprimerer tekst automatisk, så reell overføring ved førstegangs
+Apache komprimerer JSON og HTML (`mod_deflate` i `.htaccess`), så reell overføring ved førstegangs
 last er ca. **1,4 MB** for data pluss selve HTML-fila.
 
 Hele tabellen er målt på nytt 2026-10-25, med `gzip -9`. Datasettet vokste
