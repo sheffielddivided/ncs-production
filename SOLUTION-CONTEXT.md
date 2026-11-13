@@ -864,6 +864,21 @@ Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`.
 
 `generated` vises i bunnteksten på siden (`index.html:327`, `index.html:416-418`).
 
+### `data/home.json` — nøkkeltall til startsiden
+
+Avledet fil, skrevet av `build_home.py` sist i den daglige jobben fra filene
+over (ingen nettkall): siste produksjonsmåned (`top` = år × 12 + måned − 1),
+`boed`, `gas`, `yoy`, årssnitt (`annual`), de ti største feltene (`topFields`),
+antall produserende felt, aktive lisenser, selskaper og de tre siste
+produksjonsmeldingene. Tallene regnes som i `homeCompute()` i `index.html`.
+
+Oppstarten i `init()` er delt: startsiden tegnes fra denne fila, og Market og
+DCS, som laster egne data, tegnes med en gang. Kjernedataene (om lag 4 MB)
+lastes deretter i bakgrunnen, og `refresh()` venter med de øvrige seksjonene
+til `coreDone` er satt. ExcelJS hentes først når noen laster ned Excel
+(`loadExcel`). Mangler `home.json`, regnes startsiden ut som før når
+produksjonsbundelen er inne.
+
 ### Entitetsidentifikasjon — kritisk for sammenslåing
 
 | Entitet | Identifiseres ved | Fra kilden? | Kommentar |
