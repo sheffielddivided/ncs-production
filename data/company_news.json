@@ -39,7 +39,7 @@
   "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no": {
    "company": "DNO Norge AS",
    "title": "\"site:dno.no\" - Google Nyheter",
-   "n": 86
+   "n": 87
   },
   "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=": {
    "company": "DNO Norge AS",
@@ -73,6 +73,20 @@
   }
  },
  "items": [
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
+   "t": "Equinor ASA: Ex. utbytte andre kvartal 2026 i dag - OSE",
+   "u": "https://newsweb.oslobors.no/message/686468",
+   "d": "2026-11-13",
+   "s": "Ex date"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
+   "t": "Equinor ASA: Ex. dividend second quarter 2026 today - OSE",
+   "u": "https://newsweb.oslobors.no/message/686467",
+   "d": "2026-11-13",
+   "s": "Ex date"
+  },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
    "t": "Vår Energi ASA: Extraordinary general meeting held",
@@ -1915,20 +1929,6 @@
    "s": "Major shareholdings notification"
   },
   {
-   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
-   "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
-   "u": "https://newsweb.oslobors.no/message/673925",
-   "d": "2026-05-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
-  },
-  {
-   "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
-   "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
-   "u": "https://newsweb.oslobors.no/message/673924",
-   "d": "2026-05-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
-  },
-  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA – Mandatory notification of trade by primary insider",
    "u": "https://news.cision.com/okea/r/okea-asa---mandatory-notification-of-trade-by-primary-insider,c4350660",
@@ -3365,6 +3365,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Utøvelse av opsjoner av ansatte i Det Norske Oljeselskap AS | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxQUElZdGwxMTdoRjNxc3duUUppb0ZqR3N1YkVPcnJVYzdBSkVROEtUUEhWX0dYeFVHYXVZR0JkUDhVcklqLVdWdTBXNEp4TW9pZU5UbjU3RFR4VVJEUDNOdXg4UUdtX2N6Wmdmb1pZZDRwMFN3c0hRUHZnME9ld29uNTRqN2ktcF9Tck1zTGo4aFpKaWVIX29tQmhRM19DSEQ2TGtOamxPak5NTjA?oc=5",
+   "d": "2024-08-28",
+   "s": "Utøvelse av opsjoner av ansatte i Det Norske Oljeselskap AS | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "CREDIT RATING OG ESTIMATER AV PÅVISTE RESERVER - dno.no",
    "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNMUdhYzBHOXN5TnVSMFdyNDhXNXV2Yk9XamE3eEl1elhYVzhQZkxTRmNkX1FZVGloRW1hWndoQjFaVU9NZkp6S3FSZkEtUmlMLUFiRHJfSjhDb3BRX3VlV0xYak1NbUZobGdkYkp3ek9kejFodE5JVWs0Um5CMDBqc3dXd01rNGcyYWVQYk9URWxXZmtBV1J3Q095SjBIS1dkYlYtcw?oc=5",
    "d": "2024-08-28",
@@ -4387,10 +4394,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Les de siste nyhetene fra TOTAL Norge her | TotalEnergies - TotalEnergies Nordic",
+   "t": "Les de siste nyhetene fra TotalEnergies Norge her - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNcmJzQ0tRU29xeS1rUGt1dGNaUUphYVllZFA2T2x6ckFmU21LU2RqanZERDRVMk1lNGFzSHJnajlUd0Jsd0JlQTMtZTM2V0M0V0lGMUEtMUQxTmZzU3o3WHRQbnVtOU01LXh0ODBpQnRjWWFMYnZ0d0hsdE1XelRSdVpTYlNUc3k3?oc=5",
    "d": "2021-06-11",
-   "s": "Les de siste nyhetene fra TOTAL Norge her | TotalEnergies TotalEnergies Nordic"
+   "s": "Les de siste nyhetene fra TotalEnergies Norge her TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
