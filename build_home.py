@@ -88,8 +88,14 @@ def build():
         now = time.time() * 1000
         active = sum(1 for r in lic['rows'] if r[i] and r[i] > now)
 
-    owners = load('licensees')
-    companies = len({r[1] for r in owners['rows'] if r[1]}) if owners else None
+    # Nåværende lisenshavere: selskaper med andel i en aktiv produksjonslisens.
+    # Samme tall som «companies» i Licence → Overview (licCos i index.html).
+    holders = load('licence_licensees')
+    companies = None
+    if lic and holders:
+        names = {r[lic['columns'].index('name')] for r in lic['rows']}
+        o, k, c = (holders['columns'].index(x) for x in ('owner', 'ownerKind', 'company'))
+        companies = len({r[c] for r in holders['rows'] if r[k] == 'PRODUCTION LICENCE' and r[o] in names and r[c]})
 
     news = [{k: n.get(k, '') for k in ('title', 'link', 'date', 'description')}
             for n in ((load('sodir_news') or {}).get('items') or [])[:3]]
