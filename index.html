@@ -2484,8 +2484,17 @@ function homeCompute() {
     .sort((a, b) => b.v - a.v);
   const now = Date.now(), lic = bundle.licences;
   const activeLic = lic ? lic.rows.filter(r => r[lic.columns.indexOf('validTo')] > now).length : null;
+  // Current licensees: companies with a share in an active production licence
+  // (the same count as Licence → Overview).
+  const ll = bundle.licence_licensees;
+  let companies = null;
+  if (lic && ll) {
+    const names = new Set(lic.rows.map(r => r[lic.columns.indexOf('name')]));
+    const o = ll.columns.indexOf('owner'), k = ll.columns.indexOf('ownerKind'), c = ll.columns.indexOf('company');
+    companies = new Set(ll.rows.filter(r => r[k] === 'PRODUCTION LICENCE' && names.has(r[o]) && r[c]).map(r => r[c])).size;
+  }
   return homeStats = {top, boed: boed(top), gas: gasD(top), yoy: boed(top - 12) ? boed(top) / boed(top - 12) - 1 : null,
-    annual, topFields, producing: topFields.length, activeLic};
+    annual, topFields, producing: topFields.length, activeLic, companies};
 }
 
 function homeChart(annual) {
@@ -2528,7 +2537,7 @@ function renderHome() {
     kpi('Gas share', `${Math.round(st.gas / st.boed * 100)} %`, `${k(st.gas)} boe/d of gas`, "homeGo('ncs')"),
     kpi('Producing fields', st.producing, `with production in ${monthName.split(' ')[0]}`, "homeGo('fields')"),
     st.activeLic != null ? kpi('Active licences', st.activeLic.toLocaleString('en'), 'production licences', "homeGo('licences')") : '',
-    kpi('Companies', allCompanies.length || st.companies || '', 'with licence interests', "homeGo('companies')"),
+    st.companies != null ? kpi('Licensees', st.companies, 'companies with active production licences', "homeGo('licences')") : '',
   ].join('') : '';
   const tf = st ? st.topFields.slice(0, 10) : [];
   const tMax = tf.length ? tf[0].v : 1;
