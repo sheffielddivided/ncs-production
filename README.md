@@ -23,6 +23,8 @@ som statiske JSON-filer i dette repoet.
 |---|---|
 | `index.html` | Hele frontenden. Én fil, vanilla JS, ingen byggesteg |
 | `fetch_sodir.py` | Henter data fra Sodir og skriver `data/*.json` |
+| `build_home.py` | Regner ut nøkkeltallene til startsiden fra filene i `data/` og skriver `data/home.json` (noen få kB). Startsiden viser dem med en gang, mens de store datafilene lastes i bakgrunnen. Kjøres sist i `update-sodir-data.yml`; bruker ikke nettet |
+| `og-image.png` | Bildet som vises når en lenke til siden deles (Open Graph) |
 | `data/` | Datasnapshot: felt, produksjon, lisensiærer, reserver |
 | `data/reserves_field.json` | Reserver per felt per år (2004→), fra Sodir lag 7113 |
 | `data/hubs.json` | Hub-tilhørighet per felt — brukerstyrt, ikke fra Sodir |

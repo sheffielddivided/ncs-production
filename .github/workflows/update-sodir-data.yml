@@ -158,6 +158,13 @@ jobs:
         timeout-minutes: 3
         run: python import_fleet_report.py --web
 
+      # Nøkkeltallene til startsiden, regnet ut fra filene over, så startsiden
+      # kan vises før de store datafilene er lastet. Bruker ikke nettet.
+      - name: Bygg nøkkeltall til startsiden
+        continue-on-error: true
+        timeout-minutes: 2
+        run: python build_home.py
+
       - name: Commit hvis dataene er endret
         run: |
           git config user.name  "github-actions[bot]"
