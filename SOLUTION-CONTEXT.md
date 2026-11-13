@@ -1329,6 +1329,12 @@ riggpanelet står i adressen på alle sider (`xw`, `xg`); lukkes det med ×,
 Close, Escape eller klikk utenfor, går appen ett steg tilbake når panelet ble
 åpnet som eget steg, ellers lukkes det på stedet (delt lenke).
 
+Bunnarket (velgeren på smale skjermer) er også et eget steg, med samme adresse
+og `history.state.sheet`. Tilbake lukker da arket og beholder valgene som ble
+gjort i det; ×, Escape, klikk utenfor og FAB-en går samme steg tilbake
+(`dismissSheet`). Velger man ett element i arket (navigasjon), overtar det
+valget arkets steg, så tilbake går til forrige valg uten et tomt mellomsteg.
+
 ```
 #m=companies&v=oe_per_hub&p=quarterly&y=2015-2026&c=Aker+BP+ASA%7EA%2FS+Norske+Shell
 #m=hubs&v=reserves&h=Alvheim+hub&g=company
