@@ -29,7 +29,7 @@
   "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no": {
    "company": "ConocoPhillips Skandinavia AS",
    "title": "\"site:www.conocophillips.no\" - Google Nyheter",
-   "n": 44
+   "n": 45
   },
   "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no": {
    "company": "TotalEnergies EP Norge AS",
@@ -39,7 +39,7 @@
   "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no": {
    "company": "DNO Norge AS",
    "title": "\"site:dno.no\" - Google Nyheter",
-   "n": 87
+   "n": 91
   },
   "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=": {
    "company": "DNO Norge AS",
@@ -3449,6 +3449,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Produksjonsstart på Tasourfeltet i Yemen | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMikgFBVV95cUxONFNRN2FTalgyYmRaaUVTMjB0TzZDTUVsWjFoRkVuU2xZN2J5c3poUWpyT3ZTYnVGU2EtOWZreXpZQ3JPWGNIVEdndWxpWEhGZE0tVnJxWGF3YkV6RXl5ZU1Jak5vOE5WaElqTHE0dVZVVWQydEdTVEM0ZE9zR0VtWEoweXdKWHNUN1lDMGxGZFBkQQ?oc=5",
+   "d": "2024-08-28",
+   "s": "Produksjonsstart på Tasourfeltet i Yemen | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Dom fra tingretten i sak mot Oslo Børs | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNZHpaN0hDWFVvMW1pWlBGV2pvNEpBMXRmNi15MS1oMmFYckdrWGh6OG51WTBLaG1XTEp1dm1pU1ZxYjBlelNyU1JzYU5tVHNERlotYkpqQzFCX2JQSFBQeHVaY0FaOUozOVU2Uk96NW50V0EtckxOemZyMzBvZ180U3lJWkNiY29QRlBGR24zYw?oc=5",
    "d": "2024-08-28",
@@ -3551,6 +3558,13 @@
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/wintershall-dea-acquisition-to-complete-in-early-september-2024/",
    "d": "2024-08-27",
    "s": "Harbour is pleased to announce that the acquisition of Wintershall Dea is expected to be completed in early September 2024."
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "ConocoPhillips på årets ONS - ConocoPhillips Norway",
+   "u": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQMHA1aWRGRGhULWJMcjctNXRfQ1lmTzR1SzhtMXBrZUFpR0dRanJ0M0VwY1JjRVQ1RXN6WGZjeGxFNU1QVzZxMW50ajROX25ZeV96TFo4cmE4bUZ3RlBJNlNWc1V6NlF5Qi02ZWc5UVFER2tsVWJiYXE2cndsWGRLX0dWMGJkdE5BWDZ4Ug?oc=5",
+   "d": "2024-08-20",
+   "s": "ConocoPhillips på årets ONS ConocoPhillips Norway"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -4092,6 +4106,13 @@
    "s": "Presentations | Reports and presentations | Investors dno.no"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Generelle vilkår og betingelser for bruk | TotalEnergies - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTE9QZnBENW1sa2N1NVNaR050NHdlS1NKdGE2ZlFhVENIcGRMR2hQVG1ENDhMVWt6RFc1RmlzOVRNa19BeHBpTS1sVGg2bWJ5TFpYTFNULXJXQm1yWVhvVEhtZ0o4T0x0b3JSem5rUW1vbw?oc=5",
+   "d": "2022-09-02",
+   "s": "Generelle vilkår og betingelser for bruk | TotalEnergies TotalEnergies Nordic"
+  },
+  {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
    "t": "Harbour Energy's half-year results 2022",
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/harbour-energys-half-year-results-2022/",
@@ -4477,13 +4498,6 @@
    "s": "Kontakt oss | TotalEnergies TotalEnergies Nordic"
   },
   {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Turbin- og sirkulasjonsoljer - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxNRDNhYWlHZzI0QmxfQlZkSXpKWlZsdUVMbHNCQzBUVVlfQWZOTFdBOWktbXNLbXNlYnZhcXVNaWcybjJGRWFtYVc0TmdqTVNUdUtvZF9lY25OX0VkWDZZZl9uWTRZb3hKY1VTM0hMUGdUOG5lamJfX2VlRl8wWE91clpSUmNHWEloekE?oc=5",
-   "d": "2021-06-01",
-   "s": "Turbin- og sirkulasjonsoljer TotalEnergies Nordic"
-  },
-  {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
    "t": "Proposed share consolidation 2021",
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/proposed-share-consolidation-2021/",
@@ -4569,6 +4583,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Ny DNO lisens i Yemen | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMid0FVX3lxTE1DaVRsUVpjRjE5V09oTldYbFJMT3lqS1FrbE1Hc09iT242dDZhakRERHNLZ1FDUEZJUUx0cllUbFRwS0RvVnphN2V0aVBnT3hBM1ZwWHNMdFZiYmFuQUE4Y09PbFFVRWZudWZyZU45T3Bobi1WbVRJ?oc=5",
+   "d": "2020-12-03",
+   "s": "Ny DNO lisens i Yemen | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "salg av eiendeler - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMifEFVX3lxTE1EVExoTXRJSHdjYW81YUFhU0NvY1BjQUtFYTRlcjd6OW9Ddk9SZ1FwaWxzaWNGekVTNXpvM3Z5SEdYbkZNWGFGRFFrZHdIUEJTVG1BdnBYZlBxXzJXNUw0UGFzRkFiVFdieHpDSjc0M0pvTnh6cEppdW4wSDU?oc=5",
    "d": "2020-11-30",
@@ -4646,6 +4667,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "DNO - Updated Corporate Presentation | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxORXFiR0QtWnVfb25pRFZxWDNYZ2p2NHdtZ1haeDRWSTQtN0E5N2FmcUJJSkRkcTRreFZlSkFqcFM2aWNacTdoWUwtaVJBWU1PbW85Y1RITmphQWM2eVZpQ0p1T0dOSUh3RXFCa2NWRmZZMkJWMnRhSjZkWEVtVm1Ha1JWMGd3d0VW?oc=5",
+   "d": "2020-11-18",
+   "s": "DNO - Updated Corporate Presentation | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Erklæring av opsjoner i DNO ASA | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxNNGVqN3hRV2ROVE94c3N5VEltWjh6a1Z4Zm9vMERsX1M2TnlFQzE0bTZFVW5zY1RBbzR4M25ENG10cEl2RnBzbmVrNllzUlRuLU9jZW44RV9yZmpzNVlibzd1ZXhjYzJjQjFuTVdnQzhEVmdpWEhOeGVxYU5iNUl5clY2Z2NUQQ?oc=5",
    "d": "2020-11-18",
@@ -4695,6 +4723,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
+   "t": "Organisasjonsendring i DNO ASA | Announcements | Investors - DNO ASA",
+   "u": "https://news.google.com/rss/articles/CBMigwFBVV95cUxNd0M4VGlqWmZGSENfQjd2U3JqYTBJelhrNUdTVTRXRVBFRVF2Q1phTVhTTGx5VGNKdnJBSExvZTc5bzRGRk9Na1dDd3huWnp2Qkoya1dqc0xrcjFyazhYX0hfdnZQMHRxVmZtQkE0SDk3Rk52X09LVEktQU51OEJnWDdsQQ?oc=5",
+   "d": "2020-11-13",
+   "s": "Organisasjonsendring i DNO ASA | Announcements | Investors DNO ASA"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
    "t": "Generalforsamlinger i DNO ASA | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMiggFBVV95cUxOMG9OQi1EUHhzSzk0WEYzeWM0VUxxQWg2OENLb2pIMWNWUndYMkhTU0JqRS1LVjJrb3l4Y0pNZmk4ZEt6eElfdGFlTkw3RkJlZWw5RHdreENBdk14eTB4cnVNVlY0aS1XUFdXY016OG1PWU5Fa3VCdlpuWW01UmZPY05B?oc=5",
    "d": "2020-11-13",
@@ -4723,10 +4758,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Contact us - DNO ASA",
+   "t": "Contact us - dno.no",
    "u": "https://news.google.com/rss/articles/CBMiSEFVX3lxTFA4UnZkWDJHekNsRDFQYk1KbE5va2NDQWx4NDBHXzJiRmhoUl95SXZDMDA4Y01pMjRfWVh4clh1R0I0NUduUEJWbg?oc=5",
    "d": "2020-11-12",
-   "s": "Contact us DNO ASA"
+   "s": "Contact us dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
