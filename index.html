@@ -445,6 +445,34 @@
       .pf-card{break-inside:avoid;margin-bottom:10px;}
     }
 
+    /* Faktaark for funn: kortene i venstre kolonne, kartet i høyre. Kolonnene
+       er et rutenett med lik høyde, så kartkortet strekkes nøyaktig ned til
+       bunnen av det nederste kortet til venstre (Exploration wells). Kartet
+       fyller kortet (flex) og tegnes på nytt med et format som passer boksen
+       (discoveryFitMap), så det ikke blir tomme striper over og under. Det
+       gamle tittelkortet (grafkortet) skjules; tittelen står i det første kortet. */
+    body.disc-sheet .chart-wrap{display:none;}
+    body.disc-sheet .profile-wrap{margin-top:12px;}   /* luften grafkortet ellers gir over kortene */
+    .pf-split{column-span:all;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;}
+    .pf-split > div{min-width:0;}
+    /* Siste kort i venstre kolonne uten bunnmarg, så bunnen flukter med kartet.
+       Plassholderen for letebrønnene (#explLinkSlot) står sist i kolonnen. */
+    .pf-split-l > .pf-card:last-child,.pf-split-l > .pf-card:has(+ #explLinkSlot){margin-bottom:0;}
+    .pf-split-r{display:flex;}
+    .pf-split-r > .pf-card{flex:1;display:flex;flex-direction:column;margin-bottom:0;}
+    .pf-split-r .pf-map-box{flex:1 1 0;min-height:260px;position:relative;}
+    /* Zoomen (mzScan) pakker kartet inn i .mz-wrap; da er det innpakningen som fyller boksen. */
+    .pf-split-r .pf-map-box > svg.pf-map,.pf-split-r .pf-map-box > .mz-wrap{position:absolute;inset:0;}
+    .pf-split-r .pf-map-box svg.pf-map{width:100%;height:100%;max-height:none;aspect-ratio:auto !important;}
+    .pf-split-r .pf-map-box + .pf-map-note{margin-top:6px;}
+    .pf-head{padding:0 0 10px;margin-bottom:10px;border-bottom:1px solid var(--border);}
+    .pf-head .chart-title{padding:0;}
+    .pf-sec{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+    @media (max-width: 899px){
+      .pf-split{grid-template-columns:minmax(0,1fr);}
+      .pf-split-r .pf-map-box{flex:none;height:300px;}
+    }
+
     .res-sum{background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);
       padding:10px 12px;margin:14px 0 10px;font-size:0.74rem;}
     .res-sum div{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);}
@@ -1828,6 +1856,7 @@ function renderViewTabs() {
   document.body.classList.toggle('ukcs', topMode === 'ukcs');
   document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
   document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
+  if (!discoveryProfileMode()) document.body.classList.remove('disc-sheet');   // settes av drawDiscoveryProfile
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -11891,13 +11920,13 @@ function discoveryDescriptions(id) {
 // Funnomriss finnes bare for de funnene som har et ressursanslag, og mangler
 // for de ferskeste — Sodir publiserer polygonet senere enn anslaget. Da
 // utelates kortet.
-function discoveryMap(id) {
+function discoveryMap(id, h) {
   const outlines = bundle.discovery_outlines && bundle.discovery_outlines.discoveries;
   const own = outlines && outlines[id];
   if (!own) return '';
   const fields = (bundle.field_outlines && bundle.field_outlines.fields) || {};
   return outlineMap([{name: discoveryNames()[id] || String(id), rings: own}], {
-    label: 'Map of the discovery',
+    label: 'Map of the discovery', h,
     fill: REMAINING_COLOR, stroke: '#00714a',
     layers: [fieldLayer(), discoveryLayer(id)],
     note: 'Green: this discovery · pale green: other discoveries · grey: fields. '
@@ -12025,6 +12054,7 @@ function openDiscoveryProfile(id) {
 
 function drawDiscoveryProfile() {
   const list = selectedDiscoveries();
+  document.body.classList.toggle('disc-sheet', list.length === 1);
   if (list.length !== 1) {
     // Funnvisningen starter med hele porteføljen valgt, så her er det nesten
     // alltid for mange — meldingen sier derfor hvordan man kommer videre.
@@ -12053,8 +12083,19 @@ function drawDiscoveryProfile() {
   const ownerLabel = d.ownerKind === 'BUSINESS ARRANGEMENT AREA'
     ? 'Business arrangement area' : 'Production licence';
 
+  // Venstre kolonne: tittel, nøkkeltall og Sodirs beskrivelse i ett kort,
+  // så eierskap og letebrønnene (explLinkCard setter dem inn foran
+  // explLinkSlot). Høyre kolonne: kartet, like høyt som venstre kolonne.
+  // Ressurstabellen ligger i full bredde under.
+  const map = discoveryMap(d.id);
+  const own = discoveryOwnership(d);
+  const vols = discoveryVolumes(d);
   setProfile(`
+    <div class="pf-split">
+    <div class="pf-split-l">
     <div class="pf-card">
+      <div class="pf-head"><div class="chart-title">${esc(d.name)}<span class="ct-sub">${
+        esc([d.operator, d.area, d.status].filter(Boolean).join(' · '))}</span></div></div>
       <h3>Key facts</h3>
       <div class="pf-facts">
         ${fact('Discovered', d.year)}
@@ -12068,14 +12109,53 @@ function drawDiscoveryProfile() {
         ${factHtml('Resources booked under', d.inclIn && fieldLink(d.inclIn, d.inclIn))}
       </div>
       <div class="lc-links">${factPageBtn('discovery', d.id)}</div>
+      ${descs.length ? `<div class="pf-sec pf-desc"><h3>Sodir description</h3>${
+        descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
     </div>
-    ${(() => { const m = discoveryMap(d.id); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
-    ${(() => { const t = discoveryVolumes(d); return t ? `<div class="pf-card"><h3>Resources</h3>${t}</div>` : ''; })()}
-    ${(() => { const o = discoveryOwnership(d); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
-    ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
-      descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
+    ${own ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
+    <div id="explLinkSlot"></div>
+    </div>
+    ${map ? `<div class="pf-split-r"><div class="pf-card"><h3>Location</h3><div class="pf-map-box" id="discMapBox">${map}</div></div></div>` : ''}
+    </div>
+    ${vols ? `<div class="pf-card pf-wide"><h3>Resources</h3>${vols}</div>` : ''}
   `);
+  if (!map) document.querySelector('.pf-split').style.gridTemplateColumns = 'minmax(0,1fr)';
+  discoveryFitMap(d.id);
   explLinkCard('discovery', d.id);
+}
+
+// Kartet i funnarket fyller boksen i høyre kolonne, som er like høy som
+// venstre kolonne. outlineMap tegner et fast format (560 × h), så kartet tegnes
+// på nytt med h som gir boksens format — ellers ville det fått tomme hav-striper
+// over og under. Boksen endrer høyde når letebrønnene kommer inn (asynkront)
+// og når vinduet endrer størrelse; en ResizeObserver tar begge.
+let discMapObs = null;
+function discoveryFitMap(id) {
+  if (discMapObs) { discMapObs.disconnect(); discMapObs = null; }
+  const box = document.getElementById('discMapBox');
+  if (!box || !window.ResizeObserver) return;
+  let lastH = 0;
+  const fit = () => {
+    const w = box.clientWidth, h = box.clientHeight;
+    if (!w || !h || !document.body.contains(box)) return;
+    const H = Math.max(160, Math.round(560 * h / w));
+    if (Math.abs(H - lastH) < 4) return;   // under fire piksler: ikke verdt en ny tegning
+    lastH = H;
+    // Kartet og notatet byttes ut; notatet står utenfor boksen.
+    const tmp = document.createElement('div');
+    tmp.innerHTML = discoveryMap(id, H);
+    const svg = tmp.querySelector('svg.pf-map'), note = tmp.querySelector('.pf-map-note');
+    if (!svg) return;
+    box.replaceChildren(svg);
+    const old = box.parentElement.querySelector(':scope > .pf-map-note');
+    if (note) { if (old) old.replaceWith(note); else box.after(note); }
+  };
+  // Første gang: notatet flyttes ut av boksen, så boksen bare har kartet.
+  const n0 = box.querySelector('.pf-map-note');
+  if (n0) box.after(n0);
+  discMapObs = new ResizeObserver(() => fit());
+  discMapObs.observe(box);
+  fit();
 }
 
 // ── COMPANIES: PROFILE ───────────────────────────────────────────────────────
