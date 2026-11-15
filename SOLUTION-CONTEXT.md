@@ -869,7 +869,7 @@ selskap eller per felt for ett selskap), Reserves (per felt og år), Drilling
 og Map.
 Production og Companies følger periodevelgeren; som NCS starter DCS i
 årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
-Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`, `dn`.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`, `dn`, `dt`, `dg`.
 
 DCS → Drilling (`drawDcsDrilling`, `renderDcsWellTable`) viser brønnene til
 havs per startår, stablet etter `DCS_WELL_CAT` (leting/avgrensning grønn,
@@ -878,6 +878,13 @@ fargeblindhet mot hvit bakgrunn). Grafen bruker samme `explYearChart` som
 NCS → Exploration, uten funnratelinjen (`rate: null`). Klikk på et år lister
 brønnene under grafen; året står i adressen som `dy`, og et år uten brønner
 rettes til siste år med brønner. Feltnavn i tabellen åpner feltfaktaarket.
+Over grafen velges brønntype (`DCS_WELL_TYPES`, `dcsF.wt`, lenkeparameter
+`dt`): alle, leting/avgrensning, produksjon eller injeksjon; valget filtrerer
+grafen og tabellen, mens x-aksen beholder hele brønnperioden. En bryter
+(`dcsF.pl`, `dg=1`) legger inn total dansk olje- og gassproduksjon
+(`dcsAnnualProduction`, tusen boe/dag, alle felt, inneværende år utelatt) som
+en linje mot egen akse til høyre — `explYearChart` tar `right` for det, og
+bruker den bare når funnraten ikke står på høyre akse.
 
 Brønner utenfor felt har ikke noe feltark. I Drilling-tabellen er navnet
 deres en lenke til en brønnside i samme panel (`dcsOpenWell`, navnet i
@@ -1494,7 +1501,7 @@ slik at den kan merkes manuelt.
 | Discoveries | Resources | `drawDiscoveriesPerDiscovery` (`:3990`) | Betingede ressurser per funn, stablet Liquids/Gas. Tabell under: per funn og partner |
 | Discoveries | Per company | `drawDiscoveriesPerCompany` (`:4032`) | Samme volumer fordelt på lisensandel, én søyle per selskap. Tabell under: per selskap og funn |
 | Discoveries | Maturity | `drawDiscoveriesMaturity` (`:4089`) | Per selskap, stablet på ressursklasse 4F/5F/7F |
-| Discoveries | Profile | `drawDiscoveryProfile` (`:3735-3787`) | Faktaark for **ett** funn: nøkkeltall, kart, volumer per ressursklasse, eierskap og Sodirs beskrivelse. Eneste visning **uten graf** |
+| Discoveries | Profile | `drawDiscoveryProfile` | Faktaark for **ett** funn: tittel, nøkkeltall og Sodirs beskrivelse i ett kort, eierskap og letebrønner i venstre kolonne, kart i høyre (like høyt), volumer per ressursklasse under. Eneste visning **uten graf** |
 | Fields | Profile | `drawFieldProfile` (`:2916-2977`) | Faktaark for **ett** felt: årlig produksjon i grafen, og under den nøkkeltall, kart, volumer, eierskap og Sodirs beskrivelse |
 | Companies | Prod per hub | `drawCompaniesOePerHub` (`:3940`) | Som Prod per field, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
 | Companies | Prod per field | `drawCompaniesOePerField` (`:3535`) | Én serie per felt, equity-justert |
@@ -2174,8 +2181,17 @@ etter at `updateFab` allerede har kjørt én gang, og uten kallet sto knappen p�
 
 #### Fanen Profile
 
-`drawDiscoveryProfile` (`:3735-3787`) er funnets faktaark, bygget som
-feltprofilen og med samme kortoppsett og tospaltede flyt. Den krever
+`drawDiscoveryProfile` er funnets faktaark. **Oppsett:** to kolonner i et
+rutenett (`.pf-split`). Venstre kolonne har ett samlet kort øverst (tittel med
+operatør, havområde og status, nøkkeltall, Sodir-knappen og Sodirs
+beskrivelse), så Ownership og til slutt Exploration wells (`explLinkCard`
+setter kortet inn foran `#explLinkSlot`, asynkront). Høyre kolonne har kartet,
+som strekkes til nøyaktig samme høyde som venstre kolonne; `discoveryFitMap`
+tegner kartet på nytt med et format (560 × h) som passer boksen, og en
+ResizeObserver gjør det igjen når letebrønnene kommer inn eller vinduet endrer
+størrelse. Resources ligger i full bredde under. Under 900 px blir det én
+kolonne med kartet (300 px høyt) etter Exploration wells. Grafkortet med den
+gamle tittelen skjules mens arket vises (`body.disc-sheet`). Den krever
 **nøyaktig ett** valgt funn, og `syncDiscoverySelection` sørger for at det
 alltid er det — se utvalgsreglene over. Meldingen om for mange valgte er
 derfor en sikring som i praksis ikke vises.
@@ -2185,8 +2201,9 @@ søyle per ressursklasse ga ingen innsikt volumtabellen ikke gir bedre — 7 av
 de 89 funnene har mer enn én klasse, resten bare én. `setChartNone`
 (`:2082-2088`) tømmer grafområdet uten å røre tittelen, rydder bort tabellen
 fra forrige fane og slår av Excel-knappen, siden det ikke finnes noe datasett
-å eksportere. Kortet øverst blir dermed en ren overskrift med funnets navn,
-operatør, havområde og status. Ressursklassene står i infoboksen nederst.
+å eksportere. Tittelen settes fortsatt med `setChartTitle`, men grafkortet er
+skjult; den synlige tittelen står i det samlede kortet. Ressursklassene står i
+infoboksen nederst.
 
 | Del | Kilde | Funksjon |
 |---|---|---|

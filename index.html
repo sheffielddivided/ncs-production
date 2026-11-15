@@ -445,6 +445,34 @@
       .pf-card{break-inside:avoid;margin-bottom:10px;}
     }
 
+    /* Faktaark for funn: kortene i venstre kolonne, kartet i høyre. Kolonnene
+       er et rutenett med lik høyde, så kartkortet strekkes nøyaktig ned til
+       bunnen av det nederste kortet til venstre (Exploration wells). Kartet
+       fyller kortet (flex) og tegnes på nytt med et format som passer boksen
+       (discoveryFitMap), så det ikke blir tomme striper over og under. Det
+       gamle tittelkortet (grafkortet) skjules; tittelen står i det første kortet. */
+    body.disc-sheet .chart-wrap{display:none;}
+    body.disc-sheet .profile-wrap{margin-top:12px;}   /* luften grafkortet ellers gir over kortene */
+    .pf-split{column-span:all;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;}
+    .pf-split > div{min-width:0;}
+    /* Siste kort i venstre kolonne uten bunnmarg, så bunnen flukter med kartet.
+       Plassholderen for letebrønnene (#explLinkSlot) står sist i kolonnen. */
+    .pf-split-l > .pf-card:last-child,.pf-split-l > .pf-card:has(+ #explLinkSlot){margin-bottom:0;}
+    .pf-split-r{display:flex;}
+    .pf-split-r > .pf-card{flex:1;display:flex;flex-direction:column;margin-bottom:0;}
+    .pf-split-r .pf-map-box{flex:1 1 0;min-height:260px;position:relative;}
+    /* Zoomen (mzScan) pakker kartet inn i .mz-wrap; da er det innpakningen som fyller boksen. */
+    .pf-split-r .pf-map-box > svg.pf-map,.pf-split-r .pf-map-box > .mz-wrap{position:absolute;inset:0;}
+    .pf-split-r .pf-map-box svg.pf-map{width:100%;height:100%;max-height:none;aspect-ratio:auto !important;}
+    .pf-split-r .pf-map-box + .pf-map-note{margin-top:6px;}
+    .pf-head{padding:0 0 10px;margin-bottom:10px;border-bottom:1px solid var(--border);}
+    .pf-head .chart-title{padding:0;}
+    .pf-sec{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+    @media (max-width: 899px){
+      .pf-split{grid-template-columns:minmax(0,1fr);}
+      .pf-split-r .pf-map-box{flex:none;height:300px;}
+    }
+
     .res-sum{background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);
       padding:10px 12px;margin:14px 0 10px;font-size:0.74rem;}
     .res-sum div{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);}
@@ -1828,6 +1856,7 @@ function renderViewTabs() {
   document.body.classList.toggle('ukcs', topMode === 'ukcs');
   document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
   document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
+  if (!discoveryProfileMode()) document.body.classList.remove('disc-sheet');   // settes av drawDiscoveryProfile
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -3033,6 +3062,8 @@ function applyHash() {
     if (/^[a-z0-9_]+$/.test(q.get('ds') || '')) dcsF.fs = q.get('ds');
     if (/^\d{4}$/.test(q.get('dy') || '')) dcsF.yr = q.get('dy');   // et år uten brønner rettes i drawDcsDrilling
     if (['expl', 'dev', 'all'].includes(q.get('dw'))) dcsF.mw = q.get('dw');
+    if (['exploration', 'production', 'injection'].includes(q.get('dt'))) dcsF.wt = q.get('dt');
+    if (q.get('dg') === '1') dcsF.pl = '1';
     if ((q.get('dn') || '').length && q.get('dn').length <= 40) dcsF.wl = q.get('dn');   // valideres i loadDcs
   }
   if (topMode === 'ukcs') {
@@ -3448,9 +3479,11 @@ let dcsSubView = 'production';
 // · fs: feltet i faktaarket (popup) · yr: valgt år i Drilling ('' = siste år med brønner)
 // · mw: brønner i kartet: '' (ingen) | 'expl' | 'dev' (produksjon + injeksjon) | 'all'
 // · wl: brønnen i brønnsiden (popup), etter navn — bare brønner utenfor felt
-const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: '', wl: ''});
+// · wt: brønntype i Drilling ('' = alle) · pl: '1' = linje med total olje- og gassproduksjon i Drilling
+const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: '', wl: '', wt: '', pl: ''});
 let dcsF = dcsDefaults();
-const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw'], ['wl', 'dn']];
+const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw'], ['wl', 'dn'],
+  ['wt', 'dt'], ['pl', 'dg']];
 let dcsData = null, dcsOutlines = null, dcsLoading = null;
 
 function loadDcs() {
@@ -3843,11 +3876,36 @@ function dcsPickYear(y) {
   renderDcsWellTable(dcsWells());
   if (chartInstance) chartInstance.update('none');
 }
+// Brønntypevalget i Drilling. «Other» (fire observasjonsbrønner) er bare med i «All types».
+const DCS_WELL_TYPES = [['', 'All types'], ['exploration', 'Exploration & appraisal'], ['production', 'Production'], ['injection', 'Injection']];
+// Samme mørke farge som «Produced»-linjen i NCS → Exploration (NCS_PROD_LINE, som
+// defineres lenger ned og ikke kan leses her); skiller seg fra søylefargene.
+const DCS_PROD_LINE = 'rgba(26,35,50,0.75)';
+const DCS_PROD_UNIT = 'thousand boe/day';
+// Total olje- og gassproduksjon på dansk sokkel per år, tusen boe/dag (alle
+// felt; årsfilen og, etter den, summen av de foreløpige månedsrapportene).
+// Inneværende år er ufullstendig og utelates.
+function dcsAnnualProduction() {
+  const out = {};
+  Object.values(dcsData.production.yearly).forEach(rows => rows.forEach(([t, oil, gas]) => {
+    out[t] = (out[t] || 0) + (oil || 0) + (gas || 0);
+  }));
+  return Object.fromEntries(Object.entries(out).filter(([t]) => +t < currentYear)
+    .map(([t, v]) => [t, dcsBoe(v, daysInYear(+t)) / 1000]));
+}
 function drawDcsDrilling() {
-  const wells = dcsWells();
-  setChartTitle('Danish Continental Shelf · Drilling', 'Offshore wells per year · by type');
-  if (!wells.length) { setChartEmpty('No well data available.'); setInfo(''); return; }
-  const ys = wells.map(w => +w.year);
+  const all = dcsWells();
+  const wells = dcsF.wt ? all.filter(w => w.category === dcsF.wt) : all;
+  const typeLabel = (DCS_WELL_TYPES.find(t => t[0] === dcsF.wt) || DCS_WELL_TYPES[0])[1];
+  setChartTitle('Danish Continental Shelf · Drilling', `Offshore wells per year · ${dcsF.wt ? typeLabel.toLowerCase() : 'by type'}`
+    + (dcsF.pl ? ' · total oil and gas production' : ''));
+  const toggle = dcsBar(dcsPills('wt', DCS_WELL_TYPES)
+    + `<div class="water-row"><label class="toggle-switch"><input type="checkbox"${dcsF.pl ? ' checked' : ''}
+        onchange="dcsSet('pl', this.checked ? '1' : '')" aria-label="Show total oil and gas production"/>
+        <span class="toggle-slider"></span></label><span class="water-label">Show total oil &amp; gas production</span></div>`);
+  if (!all.length) { setChartEmpty('No well data available.'); setInfo(''); return; }
+  // X-aksen dekker alle brønnene, uansett typevalg, så grafen ikke hopper.
+  const ys = all.map(w => +w.year);
   const y0 = Math.min(...ys), y1 = Math.max(...ys);
   const labels = [];
   for (let y = y0; y <= y1; y++) labels.push(String(y));
@@ -3855,21 +3913,26 @@ function drawDcsDrilling() {
   wells.forEach(w => { per[w.year][DCS_WELL_CAT.some(c => c.key === w.category) ? w.category : 'other']++; });
   const total = y => DCS_WELL_CAT.reduce((t, c) => t + per[y][c.key], 0);
   if (!dcsF.yr || !per[dcsF.yr] || !total(dcsF.yr)) {
-    dcsF.yr = [...labels].reverse().find(y => total(y) > 0);
+    dcsF.yr = [...labels].reverse().find(y => total(y) > 0) || '';
     syncUrl();   // året i adressen skal følge det som vises
   }
   const cats = DCS_WELL_CAT.filter(c => labels.some(y => per[y][c.key]));
+  const prod = dcsF.pl ? dcsAnnualProduction() : null;
   explYearChart({
-    toggle: '', labels, rate: null, per: {}, selected: () => dcsF.yr, onPick: dcsPickYear,
+    toggle, labels, rate: null, per: {}, selected: () => dcsF.yr, onPick: dcsPickYear,
     stacks: cats.map(c => ({label: c.label, color: c.color, data: labels.map(y => per[y][c.key])})),
+    right: prod && {label: 'Total oil & gas production', color: DCS_PROD_LINE, unit: DCS_PROD_UNIT,
+      data: labels.map(y => prod[y] != null ? +prod[y].toFixed(1) : null)},
   });
-  const n = k => wells.filter(w => w.category === k).length;
-  const inField = wells.filter(w => w.field).length;
-  setInfo(`<strong>Wells:</strong> ${wells.length.toLocaleString('en')} offshore wells spudded ${y0}–${y1}: `
+  const n = k => all.filter(w => w.category === k).length;
+  const inField = all.filter(w => w.field).length;
+  setInfo((dcsF.wt ? `<strong>Showing:</strong> ${wells.length.toLocaleString('en')} ${esc(typeLabel.toLowerCase())} wells &nbsp;|&nbsp; ` : '')
+    + (prod ? `<strong>Line:</strong> total Danish oil and gas production, ${DCS_PROD_UNIT} on the right axis (all fields; ENS annual file, later years the sum of the preliminary monthly reports; the current year is left out). ${DCS_GAS_NOTE} &nbsp;|&nbsp; ` : '')
+    + `<strong>Wells:</strong> ${all.length.toLocaleString('en')} offshore wells spudded ${y0}–${y1}: `
     + `${n('exploration')} exploration &amp; appraisal, ${n('production')} production, ${n('injection')} injection`
     + `${n('other') ? `, ${n('other')} other (observation)` : ''} &nbsp;|&nbsp; `
     + `<strong>Type:</strong> ENS' classification at spud; a well first drilled to explore or appraise that became a producer or injector counts as production or injection &nbsp;|&nbsp; `
-    + `<strong>Field:</strong> the field whose ENS delineation contains the well's surface location (${inField} of ${wells.length} wells); a deviated well counts under the field it was drilled from &nbsp;|&nbsp; `
+    + `<strong>Field:</strong> the field whose ENS delineation contains the well's surface location (${inField} of ${all.length} wells); a deviated well counts under the field it was drilled from &nbsp;|&nbsp; `
     + `<strong>Source:</strong> <a href="${esc(dcsData.wellsUrl || 'https://ens.dk')}" target="_blank" rel="noopener">ENS «All oil and gas wells»</a> via the ENS solution; onshore wells are left out; ENS updates the list with a delay, so the latest year may be incomplete`);
   renderDcsWellTable(wells);
 }
@@ -8521,18 +8584,23 @@ function discoveryVolume(id) {
 // klikk kaller onPick med året.
 // rate: funnrate per år (prosent) til linjen på høyre akse; null = ingen linje (DCS → Drilling).
 // note: teksten under grafen (standard: klikk på et år for å liste brønnene).
-function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells', yTitle, lines = [], note}) {
+// right: {label, color, unit, data} — en linje mot egen akse til høyre (DCS →
+// Drilling: total produksjon). Bare når funnraten ikke bruker høyre akse.
+function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells', yTitle, lines = [], note, right}) {
   const vol = unit !== 'wells', f1 = v => v.toLocaleString('en', {maximumFractionDigits: 1});
   const showRate = !vol && Array.isArray(rate);
+  if (showRate) right = null;
   setChartTable(''); setProfile('');
   lastLabels = labels;
   lastXTitle = 'Year';
   lastDatasets = stacks.map(st => ({label: st.label, data: st.data}))
     .concat(showRate ? [{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}] : [])
-    .concat(lines.map(l => ({label: `${l.label}, ${unit}`, data: l.data.map(v => v ?? '')})));
+    .concat(lines.map(l => ({label: `${l.label}, ${unit}`, data: l.data.map(v => v ?? '')})))
+    .concat(right ? [{label: `${right.label}, ${right.unit}`, data: right.data.map(v => v ?? '')}] : []);
   const legend = stacks.map(st => ({label: st.label, color: st.color}))
     .concat(showRate ? [{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}] : [])
-    .concat(lines.map(l => ({label: l.label + ' (dashed)', color: l.color})));
+    .concat(lines.map(l => ({label: l.label + ' (dashed)', color: l.color})))
+    .concat(right ? [{label: `${right.label} (line, right axis)`, color: right.color}] : []);
   document.getElementById('chartArea').innerHTML = `${toggle}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l => `
@@ -8549,6 +8617,9 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
        backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0, _rate: true}]),
       ...lines.map(l => ({type: 'line', label: l.label, data: l.data, borderColor: l.color, backgroundColor: l.color,
         borderWidth: 1.25, borderDash: [4, 3], pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false, order: 0})),
+      ...(!right ? [] : [{type: 'line', label: right.label, data: right.data, yAxisID: 'y1', borderColor: right.color,
+        backgroundColor: right.color, borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.2, spanGaps: false,
+        order: 0, _unit: right.unit}]),
       // _noEst: nedtoningen markerer valgt år, ikke estimater; PowerPoint-eksporten skal ikke lage «(estimate)»-serier av den.
       ...stacks.map(st => ({type: 'bar', label: st.label, data: st.data, stack: 's', order: 1, _noEst: true,
         backgroundColor: ctx => dim(st.color, ctx.dataIndex), borderWidth: 0})),
@@ -8565,7 +8636,7 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
         legend: {display: false},
         tooltip: {callbacks: {
           label: ctx => ctx.dataset.type === 'line' && !ctx.dataset._rate
-            ? (ctx.parsed.y == null ? null : ` ${ctx.dataset.label}: ${f1(ctx.parsed.y)} ${unit}`)
+            ? (ctx.parsed.y == null ? null : ` ${ctx.dataset.label}: ${f1(ctx.parsed.y)} ${ctx.dataset._unit || unit}`)
             : ctx.dataset.type === 'line'
             ? (ctx.parsed.y == null ? null : ` Discovery rate: ${ctx.parsed.y.toFixed(0)} % (${per[labels[ctx.dataIndex]].disc} of ${per[labels[ctx.dataIndex]].done} completed)`)
             : ` ${ctx.dataset.label}: ${vol ? f1(ctx.parsed.y) : ctx.parsed.y}`,
@@ -8576,7 +8647,10 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
         x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
         y: {stacked: true, beginAtZero: true, title: {display: true, text: yTitle || unit, color: '#4a5568', font: {size: 10}},
             ticks: vol ? {font: {size: 9}} : {precision: 0, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
-        y1: {display: showRate, position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
+        y1: right
+          ? {display: true, position: 'right', beginAtZero: true, title: {display: true, text: right.unit, color: right.color, font: {size: 10}},
+             ticks: {font: {size: 9}, color: right.color}, grid: {display: false}}
+          : {display: showRate, position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
              ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
       },
     },
@@ -11891,13 +11965,13 @@ function discoveryDescriptions(id) {
 // Funnomriss finnes bare for de funnene som har et ressursanslag, og mangler
 // for de ferskeste — Sodir publiserer polygonet senere enn anslaget. Da
 // utelates kortet.
-function discoveryMap(id) {
+function discoveryMap(id, h) {
   const outlines = bundle.discovery_outlines && bundle.discovery_outlines.discoveries;
   const own = outlines && outlines[id];
   if (!own) return '';
   const fields = (bundle.field_outlines && bundle.field_outlines.fields) || {};
   return outlineMap([{name: discoveryNames()[id] || String(id), rings: own}], {
-    label: 'Map of the discovery',
+    label: 'Map of the discovery', h,
     fill: REMAINING_COLOR, stroke: '#00714a',
     layers: [fieldLayer(), discoveryLayer(id)],
     note: 'Green: this discovery · pale green: other discoveries · grey: fields. '
@@ -12025,6 +12099,7 @@ function openDiscoveryProfile(id) {
 
 function drawDiscoveryProfile() {
   const list = selectedDiscoveries();
+  document.body.classList.toggle('disc-sheet', list.length === 1);
   if (list.length !== 1) {
     // Funnvisningen starter med hele porteføljen valgt, så her er det nesten
     // alltid for mange — meldingen sier derfor hvordan man kommer videre.
@@ -12053,8 +12128,19 @@ function drawDiscoveryProfile() {
   const ownerLabel = d.ownerKind === 'BUSINESS ARRANGEMENT AREA'
     ? 'Business arrangement area' : 'Production licence';
 
+  // Venstre kolonne: tittel, nøkkeltall og Sodirs beskrivelse i ett kort,
+  // så eierskap og letebrønnene (explLinkCard setter dem inn foran
+  // explLinkSlot). Høyre kolonne: kartet, like høyt som venstre kolonne.
+  // Ressurstabellen ligger i full bredde under.
+  const map = discoveryMap(d.id);
+  const own = discoveryOwnership(d);
+  const vols = discoveryVolumes(d);
   setProfile(`
+    <div class="pf-split">
+    <div class="pf-split-l">
     <div class="pf-card">
+      <div class="pf-head"><div class="chart-title">${esc(d.name)}<span class="ct-sub">${
+        esc([d.operator, d.area, d.status].filter(Boolean).join(' · '))}</span></div></div>
       <h3>Key facts</h3>
       <div class="pf-facts">
         ${fact('Discovered', d.year)}
@@ -12068,14 +12154,53 @@ function drawDiscoveryProfile() {
         ${factHtml('Resources booked under', d.inclIn && fieldLink(d.inclIn, d.inclIn))}
       </div>
       <div class="lc-links">${factPageBtn('discovery', d.id)}</div>
+      ${descs.length ? `<div class="pf-sec pf-desc"><h3>Sodir description</h3>${
+        descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
     </div>
-    ${(() => { const m = discoveryMap(d.id); return m ? `<div class="pf-card"><h3>Location</h3>${m}</div>` : ''; })()}
-    ${(() => { const t = discoveryVolumes(d); return t ? `<div class="pf-card"><h3>Resources</h3>${t}</div>` : ''; })()}
-    ${(() => { const o = discoveryOwnership(d); return o ? `<div class="pf-card"><h3>Ownership</h3>${o}</div>` : ''; })()}
-    ${descs.length ? `<div class="pf-card pf-desc"><h3>Sodir description</h3>${
-      descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
+    ${own ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
+    <div id="explLinkSlot"></div>
+    </div>
+    ${map ? `<div class="pf-split-r"><div class="pf-card"><h3>Location</h3><div class="pf-map-box" id="discMapBox">${map}</div></div></div>` : ''}
+    </div>
+    ${vols ? `<div class="pf-card pf-wide"><h3>Resources</h3>${vols}</div>` : ''}
   `);
+  if (!map) document.querySelector('.pf-split').style.gridTemplateColumns = 'minmax(0,1fr)';
+  discoveryFitMap(d.id);
   explLinkCard('discovery', d.id);
+}
+
+// Kartet i funnarket fyller boksen i høyre kolonne, som er like høy som
+// venstre kolonne. outlineMap tegner et fast format (560 × h), så kartet tegnes
+// på nytt med h som gir boksens format — ellers ville det fått tomme hav-striper
+// over og under. Boksen endrer høyde når letebrønnene kommer inn (asynkront)
+// og når vinduet endrer størrelse; en ResizeObserver tar begge.
+let discMapObs = null;
+function discoveryFitMap(id) {
+  if (discMapObs) { discMapObs.disconnect(); discMapObs = null; }
+  const box = document.getElementById('discMapBox');
+  if (!box || !window.ResizeObserver) return;
+  let lastH = 0;
+  const fit = () => {
+    const w = box.clientWidth, h = box.clientHeight;
+    if (!w || !h || !document.body.contains(box)) return;
+    const H = Math.max(160, Math.round(560 * h / w));
+    if (Math.abs(H - lastH) < 4) return;   // under fire piksler: ikke verdt en ny tegning
+    lastH = H;
+    // Kartet og notatet byttes ut; notatet står utenfor boksen.
+    const tmp = document.createElement('div');
+    tmp.innerHTML = discoveryMap(id, H);
+    const svg = tmp.querySelector('svg.pf-map'), note = tmp.querySelector('.pf-map-note');
+    if (!svg) return;
+    box.replaceChildren(svg);
+    const old = box.parentElement.querySelector(':scope > .pf-map-note');
+    if (note) { if (old) old.replaceWith(note); else box.after(note); }
+  };
+  // Første gang: notatet flyttes ut av boksen, så boksen bare har kartet.
+  const n0 = box.querySelector('.pf-map-note');
+  if (n0) box.after(n0);
+  discMapObs = new ResizeObserver(() => fit());
+  discMapObs.observe(box);
+  fit();
 }
 
 // ── COMPANIES: PROFILE ───────────────────────────────────────────────────────
