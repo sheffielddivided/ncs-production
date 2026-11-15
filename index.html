@@ -181,7 +181,7 @@
     .ppt-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a2332;color:#fff;padding:8px 14px;
       border-radius:8px;font-size:0.78rem;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:400;}
     .ppt-toast.show{opacity:0.92;}
-    body.ncs .select-fab, body.prices .select-fab, body.dcs .select-fab{display:none !important;}
+    body.ncs .select-fab, body.prices .select-fab, body.dcs .select-fab, body.ukcs .select-fab{display:none !important;}
     .lc-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;}
     .lc-two > .pf-card{margin-bottom:10px;min-width:0;}
     @media (max-width:800px){.lc-two{grid-template-columns:1fr;}}
@@ -849,6 +849,7 @@
       <button class="mode-btn" id="modeBtnDrilling" onclick="switchMode('drilling')">Drilling</button>
       <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Market</button>
       <button class="mode-btn" id="modeBtnDcs" onclick="switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS</button>
+      <button class="mode-btn" id="modeBtnUkcs" onclick="switchMode('ukcs')" title="UK Continental Shelf (data from the North Sea Transition Authority)">UKCS</button>
     </div>
 </nav>
 
@@ -1814,7 +1815,7 @@ function renderViewTabs() {
              : topMode === 'licences' ? LIC_TABS
              : topMode === 'ncs' ? NCS_TABS
              : topMode === 'prices' ? PRICE_TABS
-             : topMode === 'dcs' ? DCS_TABS : COMPANY_TABS;
+             : topMode === 'dcs' ? DCS_TABS : topMode === 'ukcs' ? UKCS_TABS : COMPANY_TABS;
   const cur  = currentSubView();
   document.body.classList.toggle('home', topMode === 'home');
   document.body.classList.toggle('expl', explMode());
@@ -1822,6 +1823,7 @@ function renderViewTabs() {
   document.body.classList.toggle('ncs', topMode === 'ncs');
   document.body.classList.toggle('prices', topMode === 'prices');
   document.body.classList.toggle('dcs', topMode === 'dcs');
+  document.body.classList.toggle('ukcs', topMode === 'ukcs');
   document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
   document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
@@ -1830,7 +1832,8 @@ function renderViewTabs() {
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
   const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas'
     : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product'
-    : topMode === 'dcs' ? cur === 'production' && dcsF.prod === 'product' : false;
+    : topMode === 'dcs' ? cur === 'production' && dcsF.prod === 'product'
+    : topMode === 'ukcs' ? cur === 'production' && ukF.prod === 'product' : false;
   document.getElementById('settingsBtn').style.display =
     topMode === 'hubs' || (topMode === 'companies' && cur === 'news') ? '' : 'none';
   document.getElementById('settingsBtn').title = topMode === 'hubs' ? 'Edit hubs' : 'Company news feeds';
@@ -1851,6 +1854,7 @@ function setSubView(v) {
   else if (topMode === 'ncs') ncsSubView = v;
   else if (topMode === 'prices') priceSubView = v;
   else if (topMode === 'dcs') dcsSubView = v;
+  else if (topMode === 'ukcs') ukSubView = v;
   else { companySubView = v; syncCompanySelection(); }
   renderViewTabs();
   updateFab();
@@ -1860,6 +1864,7 @@ function setSubView(v) {
 function setWater(val) { showWater = val; syncUrl(); drawChart(); }
 function firstYearInCache() {
   if (topMode === 'dcs') return dcsReady() ? dcsFirstYear() : null;
+  if (topMode === 'ukcs') return ukReady() ? ukFirstYear() : null;
   const ids = topMode === 'fields'
     ? [...selectedFieldIds]
     : topMode === 'ncs' ? ncsFieldIds()
@@ -1884,7 +1889,7 @@ function firstYearInCache() {
 
 function setPeriod(p) {
   if (period === p) return;
-  if (topMode === 'ncs' || topMode === 'dcs') ncsPrevPeriod = null;   // valgt i NCS/DCS: beholdes
+  if (SHELF_MODES.includes(topMode)) ncsPrevPeriod = null;   // valgt i NCS/DCS: beholdes
   period = p;
   document.getElementById('btnMonthly').classList.toggle('active',   p === 'monthly');
   document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
@@ -1938,9 +1943,9 @@ function ncsLeavePeriod() {
 function switchMode(m) {
   if (topMode === m) return;
   markNav();
-  // DCS viser, som NCS, hele historikken som standard.
-  if (topMode === 'ncs' || topMode === 'dcs') ncsLeavePeriod();
-  if (m === 'ncs' || m === 'dcs') ncsEnterPeriod();
+  // DCS og UKCS viser, som NCS, hele historikken som standard.
+  if (SHELF_MODES.includes(topMode)) ncsLeavePeriod();
+  if (SHELF_MODES.includes(m)) ncsEnterPeriod();
   topMode = m;
   explFixSubView();
   syncModeButtons();
@@ -1956,7 +1961,7 @@ function switchMode(m) {
 
 // ── FAB + SHEET ───────────────────────────────────────────────────────────────
 function updateFab() {
-  if (['home', 'exploration', 'drilling', 'licences', 'ncs', 'prices', 'dcs'].includes(topMode)) return;   // filtrene ligger i selve visningen
+  if (['home', 'exploration', 'drilling', 'licences', 'ncs', 'prices', 'dcs', 'ukcs'].includes(topMode)) return;   // filtrene ligger i selve visningen
   const count = topMode === 'fields' ? selectedFieldIds.size
               : topMode === 'hubs'   ? selectedHubNames.size
               : topMode === 'discoveries' ? selectedDiscoveryIds.size
@@ -2448,6 +2453,8 @@ const HOME_SECTIONS = [
     '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'],
   ['dcs', 'DCS', 'Production, fields, companies and reserves on the Danish Continental Shelf.',
     '<path d="M4 21V4"/><path d="M4 4h13l-3 4 3 4H4"/>'],
+  ['ukcs', 'UKCS', 'Production, companies, fields and licences on the UK Continental Shelf.',
+    '<path d="M4 21V4"/><path d="M4 4h13v8H4"/><path d="M4 8h13M10.5 4v8"/>'],
 ];
 
 // homeQuick: the same figures precomputed in data/home.json (build_home.py),
@@ -2598,6 +2605,8 @@ function resetView() {
   ncsF = ncsDefaults();
   dcsSubView = 'production';
   dcsF = dcsDefaults();
+  ukSubView = 'production';
+  ukF = ukDefaults();
   priceSubView = 'brent';
   prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
   if (priceData && priceData.diff) {
@@ -2662,6 +2671,7 @@ function currentSubView() {
        : topMode === 'ncs' ? ncsSubView
        : topMode === 'prices' ? priceSubView
        : topMode === 'dcs' ? dcsSubView
+       : topMode === 'ukcs' ? ukSubView
        : companySubView;
 }
 
@@ -2726,10 +2736,15 @@ function stateToHash() {
     const dflt = dcsDefaults();
     DCS_PARAMS.forEach(([k, p]) => { if (dcsF[k] !== dflt[k]) q.set(p, dcsF[k]); });
   }
+  else if (topMode === 'ukcs') {
+    const dflt = ukDefaults();
+    UK_PARAMS.forEach(([k, p]) => { if (ukF[k] !== dflt[k]) q.set(p, ukF[k]); });
+  }
   else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
                     || (topMode === 'ncs' && ncsSubView === 'production' && ncsF.prod === 'product')
-                    || (topMode === 'dcs' && dcsSubView === 'production' && dcsF.prod === 'product'))) q.set('w', '1');
+                    || (topMode === 'dcs' && dcsSubView === 'production' && dcsF.prod === 'product')
+                    || (topMode === 'ukcs' && ukSubView === 'production' && ukF.prod === 'product'))) q.set('w', '1');
   if (topMode === 'hubs' && hubSubView === 'reserves' && hubReserveGrouping !== 'field') {
     q.set('g', hubReserveGrouping);
   }
@@ -2767,8 +2782,9 @@ function syncUrl() {
   try {
     // Navigasjon fra bunnarket (valg av ett selskap, felt …) overtar arkets steg,
     // ellers ville tilbake stoppet på et tomt mellomsteg.
-    if (navPending && sheetStep()) history.replaceState({ov: !!(explF.open || explF.rig)}, '', h);
-    else if (navPending && h !== location.hash) history.pushState({ov: !!(explF.open || explF.rig)}, '', h);
+    const ov = !!(explF.open || explF.rig || shelfSheetOpen());
+    if (navPending && sheetStep()) history.replaceState({ov}, '', h);
+    else if (navPending && h !== location.hash) history.pushState({ov}, '', h);
     else history.replaceState(history.state, '', h);
   } catch (e) { /* ikke kritisk */ }
   navPending = false;
@@ -2791,13 +2807,13 @@ window.addEventListener('popstate', async () => {
   navRestoring = true;
   navPending = false;
   try {
-    const wasNcs = topMode === 'ncs' || topMode === 'dcs';
+    const wasNcs = SHELF_MODES.includes(topMode);
     applyHash();
-    if (wasNcs && topMode !== 'ncs' && topMode !== 'dcs') ncsPrevPeriod = null;   // perioden står i adressen
+    if (wasNcs && !SHELF_MODES.includes(topMode)) ncsPrevPeriod = null;   // perioden står i adressen
     syncModeButtons();
     renderViewTabs();
     updateFab();
-    if (!explF.open && !explF.rig && overlayOpen()) closeWell(true);
+    if (!explF.open && !explF.rig && !shelfSheetOpen() && overlayOpen()) closeWell(true);
     const p = refresh();
     openOverlayFromState();
     await p;
@@ -2831,6 +2847,7 @@ const SOURCES = {
   ustreas:  ['U.S. Department of the Treasury', 'https://home.treasury.gov', ''],
   ne:       ['Natural Earth (coastline)', 'https://www.naturalearthdata.com', 'public domain'],
   ens:      ['Danish Energy Agency (Energistyrelsen, ENS)', 'https://ens.dk/en/energy-sources/monthly-and-yearly-production', ''],
+  nsta:     ['North Sea Transition Authority (NSTA)', 'https://www.nstauthority.co.uk/data-and-insights/data/themes/fields/', ''],
   eex:      ['EEX, TTF Neutral Gas Price', 'https://www.eex.com', ''],
   gie:      ['AGSI+, Gas Infrastructure Europe', 'https://agsi.gie.eu', ''],
   gie_lng:  ['ALSI+, Gas Infrastructure Europe', 'https://alsi.gie.eu', ''],
@@ -2854,6 +2871,7 @@ function pageSources() {
   }
   if (m === 'ncs' && v === 'economy') return ['ssb'];
   if (m === 'dcs') return v === 'map' ? ['ens', 'ne', 'sodir'] : ['ens'];
+  if (m === 'ukcs') return v === 'map' ? ['nsta', 'ne', 'sodir'] : v === 'companies' ? ['nsta', 'ne'] : ['nsta'];
   add('sodir');
   if (v === 'profile') {
     if (m === 'hubs') add('havtil');
@@ -2884,6 +2902,7 @@ function renderSourceNote() {
     const [name, url, lic] = SOURCES[k];
     return `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>${lic ? ' – ' + lic : ''}`;
   }).join(' · ') + (keys.includes('ens') && dcsReady() && dcsData.updated ? ` · Danish data per ${esc(dcsData.updated.slice(0, 10))}`
+                   : keys.includes('nsta') && ukReady() ? ` · UK production to ${esc(ukMonthTxt(ukLastMonth()))}, fetched ${esc(ukData.updated.slice(0, 10))}`
                    : keys.includes('sodir') && gen ? ` · data per ${esc(gen)}` : '');
 }
 
@@ -2895,7 +2914,7 @@ function applyHash() {
   const q = new URLSearchParams(raw);
 
   const m = q.get('m');
-  if (['ncs','fields','hubs','discoveries','companies','exploration','drilling','licences','prices','dcs'].includes(m)) {
+  if (['ncs','fields','hubs','discoveries','companies','exploration','drilling','licences','prices','dcs','ukcs'].includes(m)) {
     topMode = m;
     // Gamle lenker til Exploration → Rigs/Fleet bor nå under Drilling.
     if (m === 'exploration' && ['rigs', 'fleet'].includes(q.get('v'))) topMode = 'drilling';
@@ -2910,7 +2929,7 @@ function applyHash() {
              : topMode === 'licences' ? LIC_TABS
              : topMode === 'ncs' ? NCS_TABS
              : topMode === 'prices' ? PRICE_TABS
-             : topMode === 'dcs' ? DCS_TABS : COMPANY_TABS;
+             : topMode === 'dcs' ? DCS_TABS : topMode === 'ukcs' ? UKCS_TABS : COMPANY_TABS;
   // Prices / Heatmap er erstattet av Oil vs gas; gamle lenker sendes dit.
   // Differentials er flyttet nederst på Brent-siden; gamle lenker sendes dit.
   const v = topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas'
@@ -2924,6 +2943,7 @@ function applyHash() {
     else if (topMode === 'ncs') ncsSubView = v;
     else if (topMode === 'prices') priceSubView = v;
     else if (topMode === 'dcs') dcsSubView = v;
+    else if (topMode === 'ukcs') ukSubView = v;
     else companySubView = v;
   }
 
@@ -3008,6 +3028,16 @@ function applyHash() {
     if (q.get('dc')) dcsF.cmp = q.get('dc');
     if (['liq', 'gas'].includes(q.get('dr'))) dcsF.res = q.get('dr');
     if (q.get('dl') === 'rem') dcsF.fl = 'rem';
+    if (/^[a-z0-9_]+$/.test(q.get('ds') || '')) dcsF.fs = q.get('ds');
+  }
+  if (topMode === 'ukcs') {
+    // Felt og selskap valideres når dataene er lastet (loadUk).
+    ukF = ukDefaults();
+    if (q.get('up') === 'field') ukF.prod = 'field';
+    if (/^[a-z0-9_]+$/.test(q.get('uf') || '')) ukF.field = q.get('uf');
+    if (q.get('uc')) ukF.cmp = q.get('uc');
+    if (q.get('ul') === 'cum') ukF.fl = 'cum';
+    if (/^[a-z0-9_]+$/.test(q.get('us') || '')) ukF.fs = q.get('us');
   }
   if (topMode === 'companies') {
     if (/^\d{4}$/.test(q.get('cy') || '')) cmpExplYear = q.get('cy');
@@ -3022,7 +3052,7 @@ function applyHash() {
     document.getElementById('btnAnnual').classList.toggle('active',    pr === 'annual');
   }
 
-  if ((topMode === 'ncs' || topMode === 'dcs') && !pr) ncsEnterPeriod();
+  if ((SHELF_MODES.includes(topMode)) && !pr) ncsEnterPeriod();
 
   const yr = (q.get('y') || '').match(/^(\d{4})-(\d{4})$/);
   if (yr) {
@@ -3094,13 +3124,13 @@ document.getElementById('shareLbl').textContent = shareLabel();
 // The browser title follows the view, so tabs, bookmarks and history entries
 // can be told apart: "<selection> · <tab> · <section> – NCS Insight".
 const MODE_LABEL = {ncs: 'NCS', companies: 'Company', licences: 'Licence', hubs: 'Hub', fields: 'Field',
-  discoveries: 'Discoveries', exploration: 'Exploration', drilling: 'Drilling', prices: 'Market', dcs: 'DCS'};
+  discoveries: 'Discoveries', exploration: 'Exploration', drilling: 'Drilling', prices: 'Market', dcs: 'DCS', ukcs: 'UKCS'};
 function modeTabs() {
   return topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
        : topMode === 'discoveries' ? DISCOVERY_TABS : topMode === 'exploration' ? EXPL_TABS
        : topMode === 'drilling' ? DRILL_TABS : topMode === 'licences' ? LIC_TABS
        : topMode === 'ncs' ? NCS_TABS : topMode === 'prices' ? PRICE_TABS
-       : topMode === 'dcs' ? DCS_TABS : topMode === 'companies' ? COMPANY_TABS : [];
+       : topMode === 'dcs' ? DCS_TABS : topMode === 'ukcs' ? UKCS_TABS : topMode === 'companies' ? COMPANY_TABS : [];
 }
 function syncTitle() {
   let t = 'NCS Insight – the Norwegian Continental Shelf in numbers';
@@ -3116,9 +3146,11 @@ function syncTitle() {
   if (document.title !== t) document.title = t;
 }
 
-// Home, Market and DCS can be drawn before the core data is in (see init).
+// Home, Market, DCS and UKCS can be drawn before the core data is in (see init).
 // Other sections wait: init draws the current one as soon as it has loaded.
-const EARLY_MODES = ['home', 'prices', 'dcs'];
+const EARLY_MODES = ['home', 'prices', 'dcs', 'ukcs'];
+// Sokkelsidene (Norge, Danmark, Storbritannia) viser hele historikken som standard.
+const SHELF_MODES = ['ncs', 'dcs', 'ukcs'];
 let coreDone = false, coreResolve;
 const coreReady = new Promise(res => { coreResolve = res; });
 async function refresh() {
@@ -3135,6 +3167,7 @@ async function refresh() {
   else if (topMode === 'ncs') await refreshNcs();
   else if (topMode === 'prices') await refreshPrices();
   else if (topMode === 'dcs') await refreshDcs();
+  else if (topMode === 'ukcs') await refreshUk();
   else await refreshCompanies();
 }
 
@@ -3361,6 +3394,8 @@ function drawChart() {
     drawPrices();
   } else if (topMode === 'dcs') {
     drawDcs();
+  } else if (topMode === 'ukcs') {
+    drawUk();
   } else if (topMode === 'discoveries') {
     const sv = discoverySubView;
     if (sv === 'per_company')    drawDiscoveriesPerCompany();
@@ -3404,9 +3439,10 @@ const DCS_TABS = [
 let dcsSubView = 'production';
 // prod: 'product' | 'field' · field: ett felt (slug) i Oil & Gas, '' = alle · cmp: ett selskap i Companies
 // · res: 'oe' | 'liq' | 'gas' · fl: 'rank' | 'rem'
-const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank'});
+// · fs: feltet i faktaarket (popup)
+const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: ''});
 let dcsF = dcsDefaults();
-const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl']];
+const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds']];
 let dcsData = null, dcsOutlines = null, dcsLoading = null;
 
 function loadDcs() {
@@ -3419,6 +3455,7 @@ function loadDcs() {
     // Lenker kan peke på felt eller selskaper som ikke finnes lenger.
     if (dcsF.field && !dcsData.bySlug[dcsF.field]) dcsF.field = '';
     if (dcsF.cmp && !dcsCompanies().includes(dcsF.cmp)) dcsF.cmp = '';
+    if (dcsF.fs && !dcsData.bySlug[dcsF.fs]) dcsF.fs = '';
   });
   return dcsLoading;
 }
@@ -3507,12 +3544,14 @@ function dcsSelect(key, first, opts, label) {
 }
 const dcsBar = html => `<div class="np-bar">${html}</div>`;
 function dcsOpenField(slug) {
+  if (overlayOpen()) closeWell(true);
   markNav();
   dcsSubView = 'production'; dcsF.prod = 'product'; dcsF.field = slug;
   renderViewTabs();
   refresh();
 }
 function dcsOpenCompany(cmp) {
+  if (overlayOpen()) closeWell(true);
   markNav();
   dcsSubView = 'companies'; dcsF.cmp = cmp;
   renderViewTabs();
@@ -3533,6 +3572,7 @@ async function refreshDcs() {
   if (!dcsReady()) { setChartTitle('', ''); setChartEmpty('Could not load the Danish data.'); setInfo(''); return; }
   renderSourceNote();   // datoen for de danske dataene står i kildelinjen
   drawChart();
+  if (dcsF.fs && !overlayOpen()) dcsOpenSheet(dcsF.fs, true);
 }
 
 function drawDcs() {
@@ -3628,8 +3668,8 @@ function drawDcsFields() {
   const max = list.length ? list[0].total : 1;
   const facts = [[rank ? 'Producing fields' : 'Fields with reserves', list.length], ['Top 3 share', `${(top3 / grand * 100).toFixed(0)} %`],
                  ['Largest', list.length ? list[0].name : '—'], [rank ? 'DCS average' : 'DCS total', `${n0(grand)} ${unit}`]];
-  const bars = list.map((f, i) => `<div class="lc-row" onclick="dcsOpenField(${esc(jsStr(f.slug))})" role="link" tabindex="0"
-      onkeydown="if(event.key==='Enter')dcsOpenField(${esc(jsStr(f.slug))})">
+  const bars = list.map((f, i) => `<div class="lc-row" onclick="dcsOpenSheet(${esc(jsStr(f.slug))})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')dcsOpenSheet(${esc(jsStr(f.slug))})">
       <div class="lc-name" title="${esc(f.name)}">${i + 1}. <span class="lc-u">${esc(f.name)}</span></div>
       <div class="lc-track" style="width:${(f.total / max * 70).toFixed(1)}%">
         ${f.liq > 0 ? `<span style="flex:${f.liq};background:${OIL_COLOR}" title="${esc(f.name)} · Oil: ${n0(f.liq)} ${unit}"></span>` : ''}
@@ -3642,7 +3682,7 @@ function drawDcsFields() {
     ${bars || '<div class="status">No fields to show.</div>'}
     <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${OIL_COLOR}"></span>Oil</span>
       <span class="ex-leg"><span class="ex-dot" style="background:${GAS_COLOR}"></span>Gas</span></div>
-    <div class="pf-map-note">${rank ? `Average production ${L.span}, boe/day` : `Remaining reserves 1 January ${ry}, million boe`}, with share of the DCS total. Click a field for its production.</div>`;
+    <div class="pf-map-note">${rank ? `Average production ${L.span}, boe/day` : `Remaining reserves 1 January ${ry}, million boe`}, with share of the DCS total. Click a field for its factsheet.</div>`;
   setChartTitle('Danish Continental Shelf · Fields',
     rank ? `Ranked by production, last 12 months (${L.span})` : `Ranked by remaining reserves, 1 January ${ry} · million boe`);
   setInfo(rank
@@ -3658,7 +3698,7 @@ function drawDcsFields() {
     <table class="res-table">
       <caption>All fields · current licensees from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))})</caption>
       <thead><tr><th>Field</th><th style="text-align:left">Operator</th><th style="text-align:left">Licensees</th><th>boe/day, ${esc(L.span)}</th><th>Remaining, mill boe (1 Jan ${ry})</th></tr></thead>
-      <tbody>${rows.map(x => `<tr><td>${rowLink(x.name, `dcsOpenField(${esc(jsStr(x.slug))})`, `Show ${x.name} in Production`)}</td>
+      <tbody>${rows.map(x => `<tr><td>${rowLink(x.name, `dcsOpenSheet(${esc(jsStr(x.slug))})`)}</td>
         <td style="text-align:left">${esc(x.f.operator || '—')}</td><td style="text-align:left;white-space:normal">${owners(x.f) || '—'}</td>
         <td>${fmtP(x.prod)}</td><td>${inTyra(x.slug) || fmtR(x.res)}</td></tr>`).join('')}</tbody>
     </table>`);
@@ -3790,6 +3830,714 @@ function drawDcsMap() {
     note: 'Danish fields with production data in colour, other Danish fields (under development or shut down) in light grey, Norwegian fields in grey. Coastline: Natural Earth · outlines: ENS',
   });
   setProfile(`<div class="pf-card pf-wide"><h3>Danish fields</h3>${m}</div>`);
+}
+
+// ── FELTFAKTAARK FOR DCS OG UKCS ─────────────────────────────────────────────
+// Klikk på et felt i DCS → Fields eller UKCS → Fields åpner et faktaark i
+// brønnpanelet (wdOverlay): nøkkeltall, produksjonsprofil (årlig, boe/day),
+// reserver (bare DCS — NSTA publiserer ikke reserver per felt), eierskap og
+// kart. Feltet står i adressen (ds / us), så arket kan deles og tilbake-knappen
+// lukker det.
+let shelfSheetCharts = [];
+const shelfSheetOpen = () => !!(dcsF.fs || ukF.fs);
+function shelfSheetDestroy() { shelfSheetCharts.forEach(c => c.destroy()); shelfSheetCharts = []; }
+
+function shelfBarChart(id, labels, datasets, yTitle, digits = 0) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const fmt = v => v.toLocaleString('en', {maximumFractionDigits: digits});
+  shelfSheetCharts.push(new Chart(el.getContext('2d'), {type: 'bar', data: {labels, datasets},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)} ${yTitle}`,
+        footer: items => items.length > 1 ? `Total: ${fmt(items.reduce((t, i) => t + i.parsed.y, 0))} ${yTitle}` : ''}}},
+      scales: {x: {stacked: true, ticks: {maxRotation: 0, autoSkipPadding: 8, font: {size: 9}}, grid: {display: false}},
+               y: {stacked: true, beginAtZero: true, title: {display: true, text: yTitle, color: '#4a5568', font: {size: 10}},
+                   ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}}));
+}
+
+// Årsserien til faktaarket fra månedsrader [måned, olje, gass, …] (mill Sm³ /
+// mrd Sm³): {år: {oil, gas, days}}. Dagene er hele året, bortsett fra første
+// år (fra første måned med produksjon) og siste år med tall i kilden (til og
+// med siste rapporterte måned).
+function shelfAnnualFromMonthly(rows, lastYm) {
+  const by = {};
+  if (!rows.length) return by;
+  const fy = +rows[0][0].slice(0, 4), fm = +rows[0][0].slice(5), ly = +lastYm.slice(0, 4), lm = +lastYm.slice(5);
+  rows.forEach(r => {
+    const y = +r[0].slice(0, 4), o = by[y] = by[y] || {oil: 0, gas: 0, days: 0};
+    o.oil += r[1]; o.gas += r[2];
+  });
+  Object.keys(by).forEach(y => {
+    y = +y;
+    for (let m = y === fy ? fm : 1; m <= (y === ly ? lm : 12); m++) by[y].days += daysInMonth(y, m);
+  });
+  return by;
+}
+
+// o: {title, sub, facts: [[label, html]], prod: {labels, oil, gas, light}, prodNote,
+//     res: {labels, oil, gas, note} | null, owners: [{name, share}], operator, ownNote, ownExtra,
+//     link: navn → html, map, links}
+function shelfFieldSheet(o) {
+  shelfSheetDestroy();
+  const leg = (a, b) => `<div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:${OIL_COLOR}"></div>${a}</div>
+    <div class="legend-item"><div class="legend-dot" style="background:${GAS_COLOR}"></div>${b}</div></div>`;
+  const own = o.owners.length ? ownershipPie(o.owners, o.operator, `Ownership split between ${o.owners.length} licensees`, o.link)
+    : '<div class="pf-map-note">No current licensees in the source.</div>';
+  document.getElementById('wdBody').innerHTML = `
+    <div class="wd-head">
+      <div><h2>${esc(o.title)}</h2><div class="wd-sub">${o.sub}</div></div>
+      <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">${o.facts.map(([k, v]) => factHtml(k, v)).join('')}</div>
+      ${o.links ? `<div class="ex-btns" style="margin-top:10px">${o.links}</div>` : ''}</div>
+    <div class="pf-card"><h3>Production profile</h3>
+      ${o.prod.labels.length ? `<div class="chart-container" style="height:230px"><canvas id="fsProd"></canvas></div>${leg('Oil', 'Gas')}`
+        : '<div class="pf-map-note">No production reported.</div>'}
+      <div class="pf-map-note">${o.prodNote}</div></div>
+    ${o.res ? `<div class="pf-card"><h3>Reserves</h3>
+      ${o.res.facts ? `<div class="pf-facts" style="margin-bottom:8px">${o.res.facts.map(([k, v]) => factHtml(k, v)).join('')}</div>` : ''}
+      ${o.res.labels.length ? `<div class="chart-container" style="height:190px"><canvas id="fsRes"></canvas></div>${leg('Oil', 'Gas')}` : ''}
+      <div class="pf-map-note">${o.res.note}</div></div>` : ''}
+    <div class="pf-card"><h3>Ownership</h3>${own}<div class="pf-map-note">${o.ownNote}</div>${o.ownExtra || ''}</div>
+    ${o.map ? `<div class="pf-card"><h3>Location</h3>${o.map}</div>` : ''}
+    <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
+  const ov = document.getElementById('wdOverlay');
+  ov.classList.add('open');
+  ov.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+  const ds = (oil, gas, light) => [
+    {label: 'Oil', data: oil, backgroundColor: light ? light.map(l => l ? dcsLighter(OIL_COLOR) : OIL_COLOR) : OIL_COLOR, borderWidth: 0, stack: 's'},
+    {label: 'Gas', data: gas, backgroundColor: light ? light.map(l => l ? dcsLighter(GAS_COLOR) : GAS_COLOR) : GAS_COLOR, borderWidth: 0, stack: 's'}];
+  if (o.prod.labels.length) shelfBarChart('fsProd', o.prod.labels, ds(o.prod.oil, o.prod.gas, o.prod.light), 'boe/day');
+  if (o.res && o.res.labels.length) shelfBarChart('fsRes', o.res.labels, ds(o.res.oil, o.res.gas), 'million boe', 1);
+}
+
+// Feltet i kartet med naboene i grått. Eget kart uten oversiktsinnfelt, som
+// er laget for norsk sokkel.
+function shelfFieldMap(own, others, note) {
+  if (!own || !own.rings || !own.rings.length) return '';
+  return outlineMap([own], {label: `Map of ${own.name}`, h: 300, pad: 4, inset: false, labelMax: 8,
+    fill: 'rgba(206,15,105,0.55)', stroke: '#8e0a48',
+    layers: [{items: others, fill: '#e2e8f0', stroke: '#9aa5b1'}], note});
+}
+
+const shelfMboe = v => v.toLocaleString('en', {maximumFractionDigits: v < 10 ? 1 : 0});
+
+// ── DCS: FELTFAKTAARK ──
+function dcsLastMonth() {
+  let m = '';
+  Object.values(dcsData.production.monthly).forEach(rows => { if (rows.length && rows[rows.length - 1][0] > m) m = rows[rows.length - 1][0]; });
+  return m;
+}
+function dcsOpenSheet(slug, quiet) {
+  const f = dcsData.bySlug[slug];
+  if (!f) return;
+  if (!quiet) markNav();
+  dcsF.fs = slug;
+  if (!quiet) syncUrl();
+  // Årlig produksjon: ENS' årsfil, og for årene etter den summen av de
+  // foreløpige månedsrapportene (lysere). Inneværende år er snittet av
+  // månedene som er rapportert.
+  const rows = dcsData.production.yearly[slug] || [];
+  const a = rows.findIndex(r => r[1] > 0 || r[2] > 0);
+  let b = rows.length - 1;
+  while (b >= 0 && !(rows[b][1] > 0 || rows[b][2] > 0)) b--;
+  const yrs = a < 0 ? [] : rows.slice(a, b + 1);
+  const lastM = dcsLastMonth(), ly = +lastM.slice(0, 4), lm = +lastM.slice(5);
+  const days = y => y === ly && lm < 12 ? [...Array(lm)].reduce((t, _, i) => t + daysInMonth(y, i + 1), 0) : daysInYear(y);
+  const label = y => y === ly && lm < 12 ? `${y} (Jan–${MONTH_ABBR[lm - 1]})` : String(y);
+  const prod = {labels: yrs.map(r => label(+r[0])), light: yrs.map(r => !!r[4]),
+    oil: yrs.map(r => Math.round(dcsBoe(r[1], days(+r[0])))), gas: yrs.map(r => Math.round(dcsBoe(r[2], days(+r[0]))))};
+  const cum = yrs.reduce((t, r) => t + (r[1] + r[2]) * BBL_PER_SM3, 0);
+  let peak = null;
+  yrs.forEach((r, i) => { if (!peak || prod.oil[i] + prod.gas[i] > peak.v) peak = {y: +r[0], v: prod.oil[i] + prod.gas[i]}; });
+  const L = dcsLast12(), p12 = dcsFieldProd12(slug, L);
+  // Reserver per 1. januar.
+  const R = dcsData.reserves, rr = (R.fields[slug] || []).filter(r => r[1] != null || r[2] != null);
+  const inc = (R.includedIn || {})[slug];
+  const ry = dcsResYear(), cur = dcsFieldRes(slug, ry);
+  const res = {labels: rr.map(r => String(r[0])), oil: rr.map(r => +((r[1] || 0) * BBL_PER_SM3).toFixed(1)),
+    gas: rr.map(r => +((r[2] || 0) * BBL_PER_SM3).toFixed(1)),
+    facts: inc ? null : [[`Remaining 1 Jan ${ry}`, esc(`${shelfMboe(cur.liq + cur.gas)} million boe`)],
+                         ['of which oil', esc(`${shelfMboe(cur.liq)} million boe`)], ['of which gas', esc(`${shelfMboe(cur.gas)} million boe`)]],
+    note: inc ? `ENS reports the reserves of ${esc(f.name)} together with ${esc(dcsName(inc))}.`
+      : `Remaining reserves per 1 January, fields in production and approved developments (ENS «Resources and forecasts», table 1), million boe. ENS rounds each field to whole million m³ / bn Nm³, so small fields show as zero. ${DCS_GAS_NOTE}.`};
+  if (inc) { res.labels = []; }
+  const others = Object.entries(dcsOutlines || {}).filter(([s]) => s !== slug).map(([, it]) => it);
+  const own = (dcsOutlines || {})[slug];
+  shelfFieldSheet({
+    title: f.name,
+    sub: `Danish Continental Shelf · operator ${esc(f.operator || '—')}`,
+    facts: [['Operator', f.operator ? dcsCmpLink(f.operator) : ''], ['Licensees', String(f.owners.length || '—')],
+      ['First production', yrs.length ? yrs[0][0] : '—'], ['Last production', yrs.length ? yrs[yrs.length - 1][0] : '—'],
+      ['Peak year', peak ? esc(`${peak.y} · ${peak.v.toLocaleString('en')} boe/day`) : ''],
+      [`Average ${L.span}`, esc(`${Math.round(p12.liq + p12.gas).toLocaleString('en')} boe/day`)],
+      ['Produced to date', esc(`${shelfMboe(cum)} million boe`)]],
+    links: `<button class="ex-btn ex-btn-main" onclick="dcsOpenField(${esc(jsStr(slug))})">Production in detail →</button>`,
+    prod, prodNote: `Annual average, boe/day. ${esc(dcsBasis().replace(/<[^>]+>/g, ''))}. ${DCS_GAS_NOTE}.`,
+    res,
+    owners: f.owners.map(([name, share]) => ({name, share})), operator: f.operator, link: dcsCmpLink,
+    ownNote: `Current licensee shares from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))}). Click a company for its net production.`,
+    map: shelfFieldMap(own && {name: f.name, rings: own.rings}, others, 'Other Danish fields in grey. Outlines: ENS · coastline: Natural Earth'),
+  });
+}
+const dcsCmpLink = c => rowLink(c, `dcsOpenCompany(${esc(jsStr(c))})`, `Show ${c} in Companies`);
+
+// ── UKCS (BRITISK SOKKEL) ────────────────────────────────────────────────────
+// Britiske felt fra North Sea Transition Authority (NSTA), hentet av
+// fetch_nsta.py til data/ukcs.json, data/ukcs_outlines.json og
+// data/ukcs_licences.json. Som DCS helt adskilt fra de norske dataene.
+//
+// Produksjonen er PPRS, månedlig fra juni 1975, bare offshorefelt; olje er
+// olje + kondensat, gass er assosiert gass + tørrgass. Enhetene er de samme
+// som ellers i appen (Sm³, 1000 Sm³ gass = 1 Sm³ o.e.). NSTA publiserer ikke
+// reserver per felt, så UKCS har ingen reservevisning.
+//
+// Eierandelene (Field Partners) er daterte, så selskapenes netto produksjon
+// bruker andelen som gjaldt hver måned — men arbeidsboken dekker historikken
+// godt først fra equityFrom (2009); selskapsgrafene starter der.
+// Selskapene er konsern (equity group) slik NSTA grupperer dem i lisensdataene.
+const UKCS_TABS = [
+  {id: 'production', label: 'Production'},
+  {id: 'companies',  label: 'Company'},
+  {id: 'fields',     label: 'Fields'},
+  {id: 'map',        label: 'Map'},
+];
+let ukSubView = 'production';
+// prod: 'product' | 'field' · field: ett felt (slug), '' = alle · cmp: konsern, '' = største, '*' = alle
+// · fl: 'rank' | 'cum' · fs: felt i faktaarket
+const ukDefaults = () => ({prod: 'product', field: '', cmp: '', fl: 'rank', fs: ''});
+let ukF = ukDefaults();
+const UK_PARAMS = [['prod', 'up'], ['field', 'uf'], ['cmp', 'uc'], ['fl', 'ul'], ['fs', 'us']];
+let ukData = null, ukLoading = null;
+const UK_TOP = 15;
+const UK_OTHER_COLOR = 'rgba(148,163,184,0.75)';
+const UK_AREA = {NNS: 'Northern North Sea', CNS: 'Central North Sea', SNS: 'Southern North Sea', WoS: 'West of Shetland', IS: 'Irish Sea'};
+
+function loadUk() {
+  if (ukData) return Promise.resolve();
+  if (!ukLoading) ukLoading = Promise.all([fetchBundle('ukcs'), fetchBundle('ukcs_outlines'), fetchBundle('ukcs_licences')]).then(([d, o, l]) => {
+    if (!d || !d.production || !Array.isArray(d.fields)) { ukData = {}; ukLoading = null; return; }
+    // Kompakt form [første måned, [olje…], [gass…], [vann…]] i 1000 Sm³ /
+    // mill Sm³ / 1000 m³ → månedsrader [måned, mill Sm³, mrd Sm³, mill m³] som i DCS.
+    const monthly = {}, months = new Set();
+    Object.entries(d.production).forEach(([slug, [m0, oil, gas, wat]]) => {
+      let y = +m0.slice(0, 4), m = +m0.slice(5);
+      const rows = monthly[slug] = [];
+      oil.forEach((v, i) => {
+        const k = `${y}-${String(m).padStart(2, '0')}`;
+        if (v || gas[i] || wat[i]) { rows.push([k, v / 1000, gas[i] / 1000, wat[i] / 1000]); months.add(k); }
+        if (++m > 12) { m = 1; y++; }
+      });
+    });
+    ukData = {...d, monthly, months: [...months].sort(), outlines: (o && o.fields) || {},
+              licences: (l && l.licences) || {}, subareas: (l && l.subareas) || {}};
+    ukData.bySlug = Object.fromEntries(d.fields.map(f => [f.slug, f]));
+    ukData.shareCache = {};
+    // Lenker kan peke på felt eller selskaper som ikke finnes lenger.
+    if (ukF.field && !ukData.bySlug[ukF.field]) ukF.field = '';
+    if (ukF.fs && !ukData.bySlug[ukF.fs]) ukF.fs = '';
+    if (ukF.cmp && ukF.cmp !== '*' && !ukCompanies().includes(ukF.cmp)) ukF.cmp = '';
+  });
+  return ukLoading;
+}
+const ukReady = () => !!(ukData && ukData.production);
+const ukName = slug => (ukData.bySlug[slug] || {}).name || slug;
+const ukSlugs = () => Object.keys(ukData.monthly).sort((a, b) => ukName(a).localeCompare(ukName(b)));
+function ukFirstYear() { return ukData.months.length ? +ukData.months[0].slice(0, 4) : null; }
+const ukLastMonth = () => ukData.months[ukData.months.length - 1] || '';
+const ukMonthTxt = k => `${MONTH_ABBR[+k.slice(5) - 1]} ${k.slice(0, 4)}`;
+
+// Konsernene som i dag har andel i et felt eller en lisens — selskapsvelgeren.
+function ukCompanies() {
+  if (ukData._cmps) return ukData._cmps;
+  const s = new Set();
+  ukData.fields.forEach(f => f.owners.forEach(([c]) => s.add(c)));
+  Object.values(ukData.subareas).forEach(a => a.holders.forEach(([c]) => s.add(c)));
+  return (ukData._cmps = [...s].sort((a, b) => a.localeCompare(b, 'en')));
+}
+
+// Andelene per konsern i ett felt i én måned: intervallene som gjelder midt i
+// måneden. Summerer de seg til mer enn 100 % (overlapp i kilden), skaleres de
+// ned; summerer de seg til mindre, er resten ikke fordelt.
+function ukSharesAt(slug, ym) {
+  const c = ukData.shareCache[slug] = ukData.shareCache[slug] || {};
+  if (c[ym]) return c[ym];
+  const mid = ym + '-15', out = {};
+  let tot = 0;
+  (ukData.bySlug[slug] || {equity: []}).equity.forEach(([g, pct, a, b]) => {
+    if (a <= mid && (!b || b > mid)) { out[g] = (out[g] || 0) + pct; tot += pct; }
+  });
+  if (tot > 100.5) Object.keys(out).forEach(g => { out[g] *= 100 / tot; });
+  return (c[ym] = out);
+}
+
+const ukYearRange = () => [+document.getElementById('yearFrom').value, +document.getElementById('yearTo').value];
+const ukKey = ym => period === 'annual' ? ym.slice(0, 4) : period === 'quarterly' ? getQuarterKey(+ym.slice(0, 4), +ym.slice(5)) : ym;
+// Månedsradene innenfor årene som er valgt.
+function ukRowsInRange(slug, fromYear) {
+  const [fy, ty] = ukYearRange(), f0 = Math.max(fy, fromYear || 0);
+  return (ukData.monthly[slug] || []).filter(r => { const y = +r[0].slice(0, 4); return y >= f0 && y <= ty; });
+}
+// Periodene på aksen: komplette år og kvartaler (alle månedene har tall for
+// minst ett felt), uten inneværende periode.
+function ukLabels(fromYear) {
+  const [fy, ty] = ukYearRange(), f0 = Math.max(fy, fromYear || 0);
+  const ms = new Set(ukData.months), keys = new Set();
+  ukData.months.forEach(k => { const y = +k.slice(0, 4); if (y >= f0 && y <= ty) keys.add(ukKey(k)); });
+  return [...keys].filter(k => {
+    if (!isCompletePeriod(k)) return false;
+    if (period === 'monthly') return true;
+    const y = k.slice(0, 4), list = period === 'annual' ? [...Array(12)].map((_, i) => i + 1)
+      : [1, 2, 3].map(i => (+k.slice(6) - 1) * 3 + i);
+    return list.every(m => ms.has(`${y}-${String(m).padStart(2, '0')}`));
+  }).sort();
+}
+// Volum per periode for ett felt: {nøkkel: {oil, gas, water}}; med cmp
+// ganget med konsernets andel hver måned.
+function ukPeriodRows(slug, cmp, fromYear) {
+  const out = {};
+  ukRowsInRange(slug, fromYear).forEach(([ym, oil, gas, wat]) => {
+    const sh = cmp ? (ukSharesAt(slug, ym)[cmp] || 0) / 100 : 1;
+    if (!sh) return;
+    const o = out[ukKey(ym)] = out[ukKey(ym)] || {oil: 0, gas: 0, water: 0};
+    o.oil += oil * sh; o.gas += gas * sh; o.water += wat * sh;
+  });
+  return out;
+}
+const ukDays = dcsDays;
+// Største serier hver for seg, resten samlet i «Other …» i grått.
+function ukTopSeries(list, labels, otherLabel) {
+  list = list.filter(s => s.total > 0).sort((a, b) => b.total - a.total);
+  const top = list.slice(0, UK_TOP).map((s, i) => ({...s, color: dcsColor(i)}));
+  const rest = list.slice(UK_TOP);
+  if (rest.length) top.push({label: `${otherLabel} (${rest.length})`, color: UK_OTHER_COLOR,
+    data: labels.map((_, i) => rest.reduce((t, s) => t + s.data[i], 0)), total: rest.reduce((t, s) => t + s.total, 0)});
+  return top;
+}
+
+async function ukSet(key, val) {
+  ukF[key] = val;
+  syncUrl();
+  if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
+  drawChart();
+}
+function ukPills(key, opts) {
+  return `<div class="pill-group" style="width:max-content;max-width:100%">${opts.map(([v, l]) =>
+    `<button class="pill-btn${ukF[key] === v ? ' active' : ''}" onclick="ukSet('${key}', ${jsStr(v)})">${l}</button>`).join('')}</div>`;
+}
+function ukSelect(key, first, opts, label, cur) {
+  const v0 = cur ?? ukF[key];
+  return `<select class="year-select" onchange="ukSet('${key}', this.value)" aria-label="${esc(label)}">
+    ${first ? `<option value="">${esc(first)}</option>` : ''}${opts.map(([v, l]) =>
+      `<option value="${esc(v)}"${v0 === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+}
+function ukOpenField(slug) {
+  if (overlayOpen()) closeWell(true);
+  markNav();
+  ukSubView = 'production'; ukF.prod = 'product'; ukF.field = slug;
+  renderViewTabs();
+  refresh();
+}
+function ukOpenCompany(cmp) {
+  if (overlayOpen()) closeWell(true);
+  markNav();
+  ukSubView = 'companies'; ukF.cmp = cmp;
+  renderViewTabs();
+  refresh();
+}
+const ukCmpLink = c => ukCompanies().includes(c) ? rowLink(c, `ukOpenCompany(${esc(jsStr(c))})`, `Show ${c} in Company`) : esc(c);
+const ukFieldLink = (slug, label) => rowLink(label || ukName(slug), `ukOpenSheet(${esc(jsStr(slug))})`, `Open the factsheet for ${label || ukName(slug)}`);
+const UK_BASIS = 'Oil includes condensate; gas is associated plus dry gas as reported in the NSTA production reports (PPRS), offshore fields only, gas storage excluded';
+
+async function refreshUk() {
+  showSpinner();
+  await loadUk();
+  if (!ukReady()) { setChartTitle('', ''); setChartEmpty('Could not load the UK data.'); setInfo(''); return; }
+  renderSourceNote();   // datoen for de britiske dataene står i kildelinjen
+  drawChart();
+  if (ukF.fs && !document.getElementById('wdOverlay').classList.contains('open')) ukOpenSheet(ukF.fs, true);
+}
+
+function drawUk() {
+  if (!ukReady()) return;
+  setProfile(''); setChartTable('');
+  const v = ukSubView;
+  if (v === 'fields') drawUkFields();
+  else if (v === 'companies') drawUkCompanies();
+  else if (v === 'map') drawUkMap();
+  else drawUkProduction();
+}
+
+// ── UKCS: PRODUCTION ──
+// Som DCS: Oil & Gas for alle felt eller ett felt, eller By field med de
+// største feltene hver for seg og resten samlet.
+function drawUkProduction() {
+  const byField = ukF.prod === 'field';
+  const slugs = !byField && ukF.field ? [ukF.field] : ukSlugs();
+  const per = Object.fromEntries(slugs.map(s => [s, ukPeriodRows(s)]));
+  const labels = ukLabels();
+  const get = (s, k, m) => (per[s][k] || {})[m] || 0;
+  let series;
+  if (byField) {
+    const list = slugs.map(s => {
+      const data = labels.map(k => Math.round(dcsBoe(get(s, k, 'oil') + get(s, k, 'gas'), ukDays(k))));
+      return {label: ukName(s), data, total: data.reduce((t, v) => t + v, 0)};
+    });
+    series = ukTopSeries(list, labels, 'Other fields');
+  } else {
+    const sum = (k, m) => dcsBoe(slugs.reduce((t, s) => t + get(s, k, m), 0), ukDays(k));
+    series = [{label: 'Oil', color: OIL_COLOR, m: 'oil'}, {label: 'Gas', color: GAS_COLOR, m: 'gas'}]
+      .concat(showWater ? [{label: 'Water', color: WATER_COLOR, m: 'water'}] : [])
+      .map(s => ({...s, data: labels.map(k => Math.round(sum(k, s.m)))}));
+  }
+  const t = dcsTrim(labels, series.map(s => ({label: s.label, data: s.data, backgroundColor: s.color, borderWidth: 0, stack: 's'}))
+    .filter(d => hasAnyValue(d.data)));
+  const scope = byField ? 'All fields by field' : ukF.field ? ukName(ukF.field) : 'All fields';
+  setChartTitle(`UK Continental Shelf · ${ukF.field && !byField ? esc(ukName(ukF.field)) : 'Production'}`,
+    byField ? 'Oil equivalents by field · boe/day' : `Oil${showWater ? ', gas & water' : ' & gas'} · boe/day`);
+  setInfo(`<strong>Scope:</strong> ${esc(scope)}${!ukF.field || byField ? ` (${slugs.length} offshore fields)` : ''}${byField ? ` · the ${UK_TOP} largest in the period shown, the rest as «Other fields»` : ''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> ${UK_BASIS}; monthly from ${ukMonthTxt(ukData.months[0])} to ${ukMonthTxt(ukLastMonth())}. NSTA revises earlier months when operators resubmit`);
+  const bar = dcsBar(ukPills('prod', [['product', 'Oil & Gas'], ['field', 'By field']]) +
+    (byField ? '' : ukSelect('field', 'All fields', ukSlugs().map(s => [s, ukName(s)]), 'Field')) +
+    (ukF.field && !byField ? `<button class="grp-btn" onclick="ukOpenSheet(${esc(jsStr(ukF.field))})">Factsheet →</button>` : ''));
+  if (!t.labels.length || !t.datasets.length) setChartEmpty('No data for the selected period.');
+  else renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
+  ncsToggleAbove(bar);
+}
+
+// ── UKCS: COMPANY ──
+// Ett konsern: netto produksjon per felt (feltets olje og gass × konsernets
+// andel den måneden), kart over dagens felt- og lisensportefølje og tabell
+// over lisensene. «All companies»: netto produksjon per konsern.
+function ukNet12(cmp) {
+  const win = ukData.months.slice(-12), days = win.reduce((t, m) => t + daysInMonth(+m.slice(0, 4), +m.slice(5)), 0);
+  const set = new Set(win), per = {};
+  ukData.fields.forEach(f => (ukData.monthly[f.slug] || []).forEach(([ym, oil, gas]) => {
+    if (!set.has(ym)) return;
+    const sh = ukSharesAt(f.slug, ym);
+    Object.entries(sh).forEach(([g, p]) => {
+      if (cmp && g !== cmp) return;
+      const o = (per[g] = per[g] || {total: 0, fields: {}});
+      const v = (oil + gas) * p / 100;
+      o.total += v; o.fields[f.slug] = (o.fields[f.slug] || 0) + v;
+    });
+  }));
+  const boe = v => dcsBoe(v, days);
+  return {per, boe, span: win.length ? `${ukMonthTxt(win[0])}–${ukMonthTxt(win[win.length - 1])}` : ''};
+}
+function ukDefaultCompany() {
+  if (ukData._big) return ukData._big;
+  const {per} = ukNet12();
+  return (ukData._big = Object.entries(per).sort((a, b) => b[1].total - a[1].total).map(([g]) => g)
+    .find(g => ukCompanies().includes(g)) || ukCompanies()[0]);
+}
+
+function drawUkCompanies() {
+  const all = ukF.cmp === '*';
+  const one = all ? '' : (ukF.cmp || ukDefaultCompany());
+  const from = ukData.equityFrom || 2009;
+  const labels = ukLabels(from);
+  let series;
+  if (one) {
+    const slugs = ukData.fields.filter(f => f.equity.some(r => r[0] === one)).map(f => f.slug);
+    const list = slugs.map(s => {
+      const per = ukPeriodRows(s, one, from);
+      const data = labels.map(k => Math.round(per[k] ? dcsBoe(per[k].oil + per[k].gas, ukDays(k)) : 0));
+      return {label: ukName(s), data, total: data.reduce((t, v) => t + v, 0)};
+    });
+    series = ukTopSeries(list, labels, 'Other fields');
+  } else {
+    const net = {};
+    ukSlugs().forEach(s => ukRowsInRange(s, from).forEach(([ym, oil, gas]) => {
+      const k = ukKey(ym);
+      Object.entries(ukSharesAt(s, ym)).forEach(([g, p]) => {
+        const o = net[g] = net[g] || {};
+        o[k] = (o[k] || 0) + (oil + gas) * p / 100;
+      });
+    }));
+    const list = Object.entries(net).map(([g, o]) => {
+      const data = labels.map(k => Math.round(dcsBoe(o[k] || 0, ukDays(k))));
+      return {label: g, data, total: data.reduce((t, v) => t + v, 0)};
+    });
+    series = ukTopSeries(list, labels, 'Other companies');
+  }
+  const t = dcsTrim(labels, series.map(s => ({label: s.label, data: s.data, backgroundColor: s.color, borderWidth: 0, stack: 's'})));
+  setChartTitle(`UK Continental Shelf · ${one ? esc(one) : 'Companies'}`,
+    one ? 'Net production by field · boe/day' : 'Net production by company · boe/day');
+  setInfo(`<strong>Net production:</strong> field oil + gas × the company's equity share that month (NSTA Field Partners, dated shares) &nbsp;|&nbsp; <strong>Companies:</strong> equity groups as NSTA groups the licensees; companies that no longer hold licences keep their own name &nbsp;|&nbsp; <strong>From ${from}:</strong> Field Partners covers less than 95 % of production before that &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${UK_BASIS}`);
+  const bar = dcsBar(ukSelect('cmp', '', [['*', 'All companies']].concat(ukCompanies().map(c => [c, c])), 'Company', all ? '*' : one));
+  if (!t.labels.length || !t.datasets.length) setChartEmpty(`No company data for the selected period. Ownership data starts in ${from}.`);
+  else renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
+  ncsToggleAbove(bar);
+  if (!one) {
+    setProfile(`<div class="pf-card pf-wide"><div class="pf-map-note">Select a company above for its net production per field, a map of its field and licence portfolio and all its licences.</div></div>`);
+    return;
+  }
+  setProfile(ukCompanyCards(one));
+}
+
+// Lisensene til et konsern: én rad per lisens, med konsernets andel i
+// underområdene (spenn når andelen varierer), operatør og feltene som ligger
+// i underområdene.
+let ukLicRows = null, ukLicSort = {key: 'name', dir: 1};
+function ukLicenceRows(cmp) {
+  const by = {};
+  const fieldByName = {};
+  ukData.fields.forEach(f => { fieldByName[f.name.toUpperCase().replace(/\s*\(.*$/, '')] = f.slug; });
+  Object.entries(ukData.subareas).forEach(([id, a]) => {
+    const h = a.holders.find(x => x[0] === cmp);
+    if (!h) return;
+    const L = ukData.licences[a.lic] || {};
+    const r = by[a.lic] = by[a.lic] || {name: a.lic, ...L, blocks: new Set(), subs: [], shares: [], fields: new Set(), ids: []};
+    r.blocks.add(a.block); r.shares.push(h[1]); r.ids.push(id);
+    r.subs.push(a.name);
+    const base = a.name.toUpperCase().replace(/\s+(FIELD|AREA|DEVELOPMENT AREA)$/, '');
+    if (fieldByName[base]) r.fields.add(fieldByName[base]);
+  });
+  return Object.values(by).map(r => ({...r, blocks: [...r.blocks].sort(), fields: [...r.fields],
+    min: Math.min(...r.shares), max: Math.max(...r.shares), isOp: (r.operators || []).includes(cmp)}));
+}
+function ukSetLicSort(key) {
+  ukLicSort = {key, dir: ukLicSort.key === key ? -ukLicSort.dir : 1};
+  const host = document.getElementById('ukLicBox');
+  if (host && ukLicRows) host.innerHTML = ukLicenceTable(ukLicRows);
+}
+function ukLicenceTable(rows) {
+  const {key, dir} = ukLicSort;
+  const num = s => +String(s).replace(/\D/g, '') || 0;
+  const val = (r, k) => k === 'name' ? num(r.name) : k === 'share' ? r.max : k === 'start' || k === 'end' ? (r[k] || '9999')
+    : k === 'operator' ? (r.operators || []).join(', ') : k === 'blocks' ? r.blocks.join(' ')
+    : k === 'fields' ? (r.fields.length ? ukName(r.fields[0]) : '￿') : String(r[k] || '');
+  const sorted = rows.slice().sort((a, b) => {
+    const x = val(a, key), y = val(b, key);
+    const c = typeof x === 'number' ? x - y : x.localeCompare(y, 'en');
+    return (c || num(a.name) - num(b.name)) * dir;
+  });
+  const COLS = [['name', 'Licence'], ['blocks', 'Blocks'], ['type', 'Type'], ['operator', 'Operator'],
+                ['share', 'Share'], ['start', 'Awarded'], ['end', 'Valid to'], ['fields', 'Field / sub-areas']];
+  const head = COLS.map(([k, label]) => `<th class="lic-th${key === k ? ' sorted' : ''}" onclick="ukSetLicSort('${k}')"` +
+    ` title="Sort by ${label.toLowerCase()}">${label}<span class="lic-arrow">${key === k ? (dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
+  const pct = v => v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+  const share = r => r.min === r.max ? `${pct(r.max)} %` : `${pct(r.min)}–${pct(r.max)} %`;
+  const day = s => s ? new Date(s + 'T00:00:00Z').toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'}) : '—';
+  const blocks = r => r.blocks.length > 3 ? `${esc(r.blocks.slice(0, 3).join(', '))} <span title="${esc(r.blocks.join(', '))}">+${r.blocks.length - 3}</span>` : esc(r.blocks.join(', '));
+  const info = r => {
+    const subs = [...new Set(r.subs)].filter(s => !/^rest of block$/i.test(s));
+    const f = r.fields.map(s => ukFieldLink(s));
+    const rest = subs.filter(s => !r.fields.some(x => s.toUpperCase().startsWith(ukName(x).toUpperCase())));
+    return [...f, ...rest.slice(0, 2).map(esc)].join(', ') + (rest.length > 2 ? ` <span title="${esc(rest.join(', '))}">+${rest.length - 2}</span>` : '');
+  };
+  return `<div class="pf-scroll"><table class="res-table lic-table">
+    <caption>${rows.length} ${rows.length === 1 ? 'licence' : 'licences'} · click a heading to sort</caption>
+    <thead><tr>${head}</tr></thead>
+    <tbody>${sorted.map(r => `<tr><td>${esc(r.name)}</td><td style="text-align:left">${blocks(r)}</td><td>${esc(r.type || '—')}</td>
+      <td>${(r.operators || []).map(ukCmpLink).join(', ') || '—'}</td><td>${share(r)}</td><td>${day(r.start)}</td><td>${day(r.end)}</td>
+      <td class="lic-info">${info(r)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function ukCompanyCards(cmp) {
+  const N = ukNet12(cmp), mine = N.per[cmp] || {total: 0, fields: {}};
+  const today = new Date().toISOString().slice(0, 10);
+  const held = ukData.fields.filter(f => f.owners.some(o => o[0] === cmp));
+  const share = f => (f.owners.find(o => o[0] === cmp) || [0, 0])[1];
+  const opF = held.filter(f => f.operator === cmp);
+  ukLicRows = ukLicenceRows(cmp);
+  ukLicSort = {key: 'name', dir: 1};
+  const opL = ukLicRows.filter(r => r.isOp).length;
+  const facts = [['Net production', `${Math.round(N.boe(mine.total)).toLocaleString('en')} boe/day`], ['Period', N.span],
+    ['Fields with equity', held.length], ['Operated fields', opF.length], ['Licences', ukLicRows.length], ['Operated licences', opL]];
+  // Kart: felt med andel i dag (operert sterkere), lisensunderområdene i blått
+  // under, og de andre britiske feltene i grått.
+  const outl = ukData.outlines;
+  const fieldItems = [];
+  const seen = new Set();
+  held.forEach(f => {
+    if (!f.outline || !outl[f.outline] || seen.has(f.outline)) return;
+    seen.add(f.outline);
+    fieldItems.push({name: outl[f.outline].name, rings: outl[f.outline].rings,
+      fill: held.some(x => x.outline === f.outline && x.operator === cmp) ? 'rgba(206,15,105,0.85)' : 'rgba(206,15,105,0.40)'});
+  });
+  const licItems = ukLicRows.flatMap(r => r.ids.map(id => ({name: '', rings: ukData.subareas[id].rings,
+    fill: r.isOp ? 'rgba(73,147,180,0.55)' : 'rgba(73,147,180,0.28)'})));
+  const others = Object.entries(outl).filter(([k]) => !seen.has(k)).map(([, o]) => ({name: o.name, rings: o.rings}));
+  const own = fieldItems.length ? fieldItems : licItems;
+  const map = own.length ? outlineMap(own, {
+    label: `Field and licence portfolio of ${cmp}`, h: 440, pad: 1.15, inset: false, labelMax: 14, stroke: '#8e0a48',
+    fill: 'rgba(206,15,105,0.40)', extra: licItems.flatMap(it => it.rings.flat()),
+    layers: [{items: others, fill: '#e2e8f0', stroke: '#c3ccd5', label: false},
+             ...(fieldItems.length ? [{items: licItems, fill: 'rgba(73,147,180,0.30)', stroke: '#4993b4', label: false}] : [])],
+    note: '<span class="ex-dot" style="background:rgba(206,15,105,0.85)"></span>Operated field · ' +
+          '<span class="ex-dot" style="background:rgba(206,15,105,0.40)"></span>Partner field · ' +
+          '<span class="ex-dot" style="background:rgba(73,147,180,0.45)"></span>Licence sub-areas · other UK fields in grey. ' +
+          'Outlines: NSTA, simplified · coastline: Natural Earth'}) : '<div class="pf-map-note">No outlines available.</div>';
+  const fRows = held.map(f => ({f, sh: share(f), net: N.boe(mine.fields[f.slug] || 0)}))
+    .sort((a, b) => b.net - a.net || b.sh - a.sh || a.f.name.localeCompare(b.f.name));
+  const pct = v => `${v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')} %`;
+  return `
+    <div class="pf-card pf-wide"><h3>${esc(cmp)} on the UKCS</h3>
+      <div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>`).join('')}</div>
+      <div class="pf-map-note">Net production is the average over the last 12 months with data. Fields and licences are today's holdings (${esc(today)}).</div></div>
+    <div class="pf-card pf-wide"><h3>Field and licence portfolio</h3>${map}</div>
+    ${fRows.length ? `<div class="pf-card pf-wide"><h3>Fields</h3><div class="pf-scroll"><table class="res-table">
+      <caption>${fRows.length} fields with equity today · click a field for its factsheet</caption>
+      <thead><tr><th>Field</th><th style="text-align:left">Operator</th><th>Status</th><th>Share</th><th>Net boe/day, ${esc(N.span)}</th></tr></thead>
+      <tbody>${fRows.map(({f, sh, net}) => `<tr><td>${ukFieldLink(f.slug)}</td><td style="text-align:left">${ukCmpLink(f.operator)}</td>
+        <td>${esc(f.status || '—')}</td><td>${pct(sh)}</td><td>${net >= 1 ? Math.round(net).toLocaleString('en') : '—'}</td></tr>`).join('')}</tbody>
+    </table></div></div>` : ''}
+    <div class="pf-card pf-wide"><h3>All licences</h3>
+      ${ukLicRows.length ? `<div id="ukLicBox">${ukLicenceTable(ukLicRows)}</div>` : '<div class="pf-map-note">The company holds no licences.</div>'}
+      <div class="pf-map-note">Extant production licences on the UKCS where the company's group holds equity in at least one sub-area.
+        Share is the group's equity in the licence's sub-areas, as a range where it differs between them. The last column names the
+        fields whose sub-area carries their name, then the other sub-areas. Source: NSTA, licence sub-areas by equity group holder.</div></div>`;
+}
+
+// ── UKCS: FIELDS ──
+// Rangering som DCS → Fields: produksjon siste tolv måneder, eller produsert
+// til nå (NSTA har ikke reserver per felt). Klikk åpner faktaarket.
+function ukLast12() {
+  const win = ukData.months.slice(-12);
+  return {win: new Set(win), days: win.reduce((t, m) => t + daysInMonth(+m.slice(0, 4), +m.slice(5)), 0),
+          span: win.length ? `${ukMonthTxt(win[0])}–${ukMonthTxt(win[win.length - 1])}` : ''};
+}
+function ukFieldProd12(slug, L) {
+  let oil = 0, gas = 0;
+  (ukData.monthly[slug] || []).forEach(r => { if (L.win.has(r[0])) { oil += r[1]; gas += r[2]; } });
+  return {liq: dcsBoe(oil, L.days), gas: dcsBoe(gas, L.days)};
+}
+function ukFieldCum(slug) {
+  let oil = 0, gas = 0;
+  (ukData.monthly[slug] || []).forEach(r => { oil += r[1]; gas += r[2]; });
+  return {liq: oil * BBL_PER_SM3, gas: gas * BBL_PER_SM3};
+}
+
+function drawUkFields() {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const rank = ukF.fl !== 'cum';
+  const L = ukLast12();
+  const unit = rank ? 'boe/day' : 'million boe';
+  const n0 = rank ? v => Math.round(v).toLocaleString('en') : shelfMboe;
+  const all = ukData.fields.map(f => {
+    const p = ukFieldProd12(f.slug, L), c = ukFieldCum(f.slug);
+    return {slug: f.slug, name: f.name, f, prod: p.liq + p.gas, cum: c.liq + c.gas, ...(rank ? p : c)};
+  });
+  const list = all.map(x => ({...x, total: x.liq + x.gas}))
+    .filter(x => x.total >= (rank ? 1 : 0.05)).sort((a, b) => b.total - a.total);
+  const grand = list.reduce((t, f) => t + f.total, 0) || 1;
+  const top3 = list.slice(0, 3).reduce((t, f) => t + f.total, 0);
+  const max = list.length ? list[0].total : 1;
+  const shown = rank ? list : list.slice(0, 60);
+  const facts = [[rank ? 'Producing fields' : 'Fields', list.length], ['Top 3 share', `${(top3 / grand * 100).toFixed(0)} %`],
+                 ['Largest', list.length ? list[0].name : '—'], [rank ? 'UKCS average' : 'UKCS total', `${n0(grand)} ${unit}`]];
+  const bars = shown.map((f, i) => `<div class="lc-row" onclick="ukOpenSheet(${esc(jsStr(f.slug))})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')ukOpenSheet(${esc(jsStr(f.slug))})">
+      <div class="lc-name" title="${esc(f.name)}">${i + 1}. <span class="lc-u">${esc(f.name)}</span></div>
+      <div class="lc-track" style="width:${(f.total / max * 70).toFixed(1)}%">
+        ${f.liq > 0 ? `<span style="flex:${f.liq};background:${OIL_COLOR}" title="${esc(f.name)} · Oil: ${n0(f.liq)} ${unit}"></span>` : ''}
+        ${f.gas > 0 ? `<span style="flex:${f.gas};background:${GAS_COLOR}" title="${esc(f.name)} · Gas: ${n0(f.gas)} ${unit}"></span>` : ''}</div>
+      <div class="lc-val">${n0(f.total)} · ${(f.total / grand * 100).toFixed(1)} %</div></div>`).join('');
+  document.getElementById('chartArea').innerHTML = `${dcsBar(ukPills('fl', [['rank', 'Production'], ['cum', 'Produced to date']]))}
+    <div class="pf-facts" style="margin-bottom:10px">
+      ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${esc(v)}</strong></div>`).join('')}
+    </div>
+    ${bars || '<div class="status">No fields to show.</div>'}
+    <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${OIL_COLOR}"></span>Oil</span>
+      <span class="ex-leg"><span class="ex-dot" style="background:${GAS_COLOR}"></span>Gas</span></div>
+    <div class="pf-map-note">${rank ? `Average production ${L.span}, boe/day` : `Cumulative production since 1975, million boe${list.length > shown.length ? `, the ${shown.length} largest of ${list.length}` : ''}`}, with share of the UKCS total. Click a field for its factsheet.</div>`;
+  setChartTitle('UK Continental Shelf · Fields',
+    rank ? `Ranked by production, last 12 months (${L.span})` : 'Ranked by cumulative production · million boe');
+  setInfo(`<strong>Ranking:</strong> ${rank ? 'average production over the last 12 months in the NSTA production reports' : 'cumulative production in the NSTA production reports since June 1975'} &nbsp;|&nbsp; <strong>Unit:</strong> ${unit} &nbsp;|&nbsp; NSTA publishes no reserves per field, so the UKCS pages have no reserves view &nbsp;|&nbsp; ${UK_BASIS}`);
+  const owners = f => f.owners.map(([c, s]) => `${ukCmpLink(c)} ${s.toLocaleString('en', {maximumFractionDigits: 2})} %`).join(', ');
+  const fmtP = v => v >= 1 ? Math.round(v).toLocaleString('en') : '—';
+  const fmtC = v => v >= 0.05 ? shelfMboe(v) : '—';
+  const rows = [...all].sort((a, b) => (b.prod - a.prod) || (b.cum - a.cum) || a.name.localeCompare(b.name));
+  setChartTable(`
+    <table class="res-table">
+      <caption>All ${rows.length} offshore fields in the production reports · current equity from NSTA Field Partners · click a field for its factsheet</caption>
+      <thead><tr><th>Field</th><th style="text-align:left">Area</th><th style="text-align:left">Status</th><th style="text-align:left">Operator</th><th style="text-align:left">Licensees</th><th>boe/day, ${esc(L.span)}</th><th>Produced, mill boe</th></tr></thead>
+      <tbody>${rows.map(x => `<tr><td>${ukFieldLink(x.slug, x.name)}</td><td style="text-align:left">${esc(UK_AREA[x.f.area] || x.f.area || '—')}</td>
+        <td style="text-align:left">${esc(x.f.status || '—')}</td>
+        <td style="text-align:left">${x.f.operator ? ukCmpLink(x.f.operator) : '—'}</td><td style="text-align:left;white-space:normal">${owners(x.f) || '—'}</td>
+        <td>${fmtP(x.prod)}</td><td>${fmtC(x.cum)}</td></tr>`).join('')}</tbody>
+    </table>`);
+  const r = v => rank ? Math.round(v) : +v.toFixed(1);
+  lastLabels = list.map(f => f.name); lastXTitle = 'Field';
+  lastDatasets = [{label: `Oil, ${unit}`, data: list.map(f => r(f.liq))}, {label: `Gas, ${unit}`, data: list.map(f => r(f.gas))}];
+  pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(f => f.name), yTitle: unit,
+    series: [{name: 'Oil', type: 'bar', color: pptHex(OIL_COLOR), values: shown.map(f => r(f.liq))},
+             {name: 'Gas', type: 'bar', color: pptHex(GAS_COLOR), values: shown.map(f => r(f.gas))}]};
+  document.getElementById('downloadBtn').disabled = !list.length;
+}
+
+// ── UKCS: FELTFAKTAARK ──
+function ukOpenSheet(slug, quiet) {
+  const f = ukData.bySlug[slug];
+  if (!f) return;
+  if (!quiet) markNav();
+  ukF.fs = slug;
+  if (!quiet) syncUrl();
+  const rows = ukData.monthly[slug] || [];
+  const last = ukLastMonth(), ly = +last.slice(0, 4), lm = +last.slice(5);
+  const by = shelfAnnualFromMonthly(rows, last);
+  const yrs = Object.keys(by).sort();
+  // Første år kan starte midt i året; snittet regnes over månedene med tall.
+  const label = y => (+y === ly && lm < 12) ? `${y} (Jan–${MONTH_ABBR[lm - 1]})` : String(y);
+  const prod = {labels: yrs.map(label), oil: yrs.map(y => Math.round(dcsBoe(by[y].oil, by[y].days))),
+                gas: yrs.map(y => Math.round(dcsBoe(by[y].gas, by[y].days)))};
+  let peak = null;
+  yrs.forEach((y, i) => { if (!peak || prod.oil[i] + prod.gas[i] > peak.v) peak = {y, v: prod.oil[i] + prod.gas[i]}; });
+  const L = ukLast12(), p12 = ukFieldProd12(slug, L), cum = ukFieldCum(slug);
+  // Eierskapet: dagens andel per konsern, og hele historikken per juridisk
+  // enhet i en sammenslått liste.
+  const today = new Date().toISOString().slice(0, 10);
+  const hist = f.equity.slice().sort((a, b) => (b[2].localeCompare(a[2])) || b[1] - a[1]);
+  const day = s => s ? new Date(s + 'T00:00:00Z').toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'}) : 'today';
+  const histHtml = hist.length ? `<details class="hv-more" style="margin-top:8px"><summary>Ownership history (${hist.length} entries)</summary>
+    <div class="pf-scroll"><table class="res-table"><thead><tr><th style="text-align:left">Company</th><th style="text-align:left">Licensee</th><th>Share</th><th>From</th><th>To</th></tr></thead>
+    <tbody>${hist.map(([g, p, a, b, op, legal]) => `<tr${b && b <= today ? ' class="rc-past"' : ''}><td style="text-align:left">${ukCmpLink(g)}${op ? ' <span class="pf-op-tag">Operator</span>' : ''}</td>
+      <td style="text-align:left">${esc(legal)}</td><td>${p.toLocaleString('en', {maximumFractionDigits: 4})} %</td><td>${day(a)}</td><td>${day(b)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
+  const own = f.outline && ukData.outlines[f.outline];
+  const others = Object.entries(ukData.outlines).filter(([k]) => k !== f.outline).map(([, o]) => ({name: o.name, rings: o.rings}));
+  const area = UK_AREA[f.area] || f.area;
+  shelfFieldSheet({
+    title: f.name,
+    sub: `UK Continental Shelf${area ? ' · ' + esc(area) : ''}${f.status ? ' · ' + esc(f.status) : ''}`,
+    facts: [['Operator', f.operator ? ukCmpLink(f.operator) : ''], ['Status', esc(f.status || '—')], ['Area', esc(area || '—')],
+      ['First production', esc(ukMonthTxt(f.first))], ['Last production', esc(ukMonthTxt(f.last))],
+      ['Peak year', peak ? esc(`${peak.y} · ${peak.v.toLocaleString('en')} boe/day`) : ''],
+      [`Average ${L.span}`, esc(`${Math.round(p12.liq + p12.gas).toLocaleString('en')} boe/day`)],
+      ['Produced to date', esc(`${shelfMboe(cum.liq + cum.gas)} million boe`)]],
+    links: `<button class="ex-btn ex-btn-main" onclick="ukOpenField(${esc(jsStr(slug))})">Production in detail →</button>`,
+    prod, prodNote: `Annual average, boe/day; the first year counts from first production, and the latest year up to the last month NSTA has reported. ${UK_BASIS}.`,
+    res: null,
+    owners: f.owners.map(([name, share]) => ({name, share})), operator: f.operator, link: ukCmpLink,
+    ownNote: `Current equity per company group, NSTA Field Partners. NSTA publishes no reserves per field.`,
+    ownExtra: histHtml,
+    map: shelfFieldMap(own && {name: f.name, rings: own.rings}, others, 'Other UK fields in grey. Outlines: NSTA field determinations, simplified · coastline: Natural Earth'),
+  });
+}
+
+// ── UKCS: MAP ──
+// Feltomrissene fra NSTA. Felt med produksjon siste tolv måneder i farge,
+// de andre (avsluttede, under utbygging) i lys grå. Norske felt i grått.
+function drawUkMap() {
+  setChartNone();
+  setChartTitle('UK Continental Shelf · Map', 'Field outlines');
+  setInfo(`<strong>Source:</strong> NSTA field determinations, Natural Earth (coastline); Norwegian fields from Sodir for orientation`);
+  const items = Object.entries(ukData.outlines || {});
+  if (!items.length) { setProfile('<div class="pf-card pf-wide"><div class="pf-map-note">No outlines available.</div></div>'); return; }
+  const L = ukLast12();
+  const live = new Set(ukData.fields.filter(f => f.outline && (ukData.monthly[f.slug] || []).some(r => L.win.has(r[0]))).map(f => f.outline));
+  const own = items.filter(([k]) => live.has(k)).map(([, o]) => ({name: o.name, rings: o.rings}));
+  const rest = items.filter(([k]) => !live.has(k)).map(([, o]) => ({name: o.name, rings: o.rings}));
+  const m = outlineMap(own.length ? own : rest, {
+    label: 'Map of the UK fields', h: 560, pad: 1.08, labelMax: 30, inset: false,
+    extra: rest.flatMap(it => it.rings.flat()),
+    fill: 'rgba(206,15,105,0.45)', stroke: '#8e0a48',
+    layers: [{...fieldLayer(), label: false}, {items: rest, fill: '#e2e8f0', stroke: '#9aa5b1', label: false}],
+    note: `UK fields producing in ${L.span} in colour (${own.length}), other UK fields (ceased or not yet producing) in light grey, Norwegian fields in grey. Coastline: Natural Earth · outlines: NSTA, simplified`,
+  });
+  setProfile(`<div class="pf-card pf-wide"><h3>UK fields</h3>${m}</div>`);
 }
 
 // ── PRICES ───────────────────────────────────────────────────────────────────
@@ -7666,6 +8414,7 @@ function isReservesView() {
       || (topMode === 'ncs' && ncsSubView !== 'production')
       || topMode === 'prices'
       || (topMode === 'dcs' && !['production', 'companies'].includes(dcsSubView))
+      || (topMode === 'ukcs' && !['production', 'companies'].includes(ukSubView))
       || (topMode === 'fields'    && fieldSubView   === 'profile')
       || (topMode === 'fields'    && fieldSubView   === 'reserves')
       || (topMode === 'fields'    && fieldSubView   === 'map')
@@ -8420,7 +9169,7 @@ function profileVolumes(id) {
 // Eierskapet som kakediagram med forklaring. parts er [{name, share}], og en
 // part kan bære en egen color — det brukes til den uallokerte restandelen,
 // som ikke er et selskap og derfor ikke skal ta en palettfarge.
-function ownershipPie(parts, operator, label) {
+function ownershipPie(parts, operator, label, link = companyLink) {
   if (!parts.length) return '';
 
   // Operatøren beholder den grønne fargen den hadde på stolpene, slik at
@@ -8455,7 +9204,7 @@ function ownershipPie(parts, operator, label) {
     const isOp = operator && p.name === operator;
     return `<div class="pf-own-row">
       <span class="pf-own-dot" style="background:${colorOf(p, i)}"></span>
-      <span class="pf-own-name">${p.color ? esc(p.name) : companyLink(p.name)}${isOp ? '<span class="pf-op-tag">Operator</span>' : ''}</span>
+      <span class="pf-own-name">${p.color ? esc(p.name) : link(p.name)}${isOp ? '<span class="pf-op-tag">Operator</span>' : ''}</span>
       <span class="pf-own-pct">${p.share.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')} %</span>
     </div>`;
   }).join('');
@@ -10904,7 +11653,7 @@ function openProfileIn(mode, setup) {
   if (overlayOpen()) closeWell(true);
   markNav();
   if (topMode !== mode) {
-    if (topMode === 'ncs' || topMode === 'dcs') ncsLeavePeriod();
+    if (SHELF_MODES.includes(topMode)) ncsLeavePeriod();
     topMode = mode;
   }
   setup();
@@ -15370,9 +16119,11 @@ python import_fleet_report.py report.pdf</pre>
 }
 
 function closeWell(fromNav) {
-  if (!fromNav && history.state && history.state.ov && (explF.open || explF.rig)) { history.back(); return; }
+  if (!fromNav && history.state && history.state.ov && (explF.open || explF.rig || shelfSheetOpen())) { history.back(); return; }
   explF.open = null;
   explF.rig = null;
+  dcsF.fs = ''; ukF.fs = '';
+  shelfSheetDestroy();
   rigStop();
   document.getElementById('wdOverlay').classList.remove('open');
   if (!sheetOpen) document.body.style.overflow = '';
@@ -16176,7 +16927,7 @@ function rigZoomRig() {
 
 // ── Hopp til/fra andre moduser ───────────────────────────────────────────────
 function syncModeButtons() {
-  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'drilling', 'licences', 'prices', 'dcs'].forEach(m =>
+  ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'drilling', 'licences', 'prices', 'dcs', 'ukcs'].forEach(m =>
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
 }
 
@@ -17750,13 +18501,13 @@ async function init() {
   setInfo('');
 
   // ── Fast start: the home page needs only a small file of key figures, and
-  //    Market and DCS load their own data. Draw those right away; the core
+  //    Market, DCS and UKCS load their own data. Draw those right away; the core
   //    data below (about 4 MB) then loads in the background. ──
   const startMode = (/(?:^|[#&])m=([a-z]+)/.exec(location.hash) || [])[1] || 'home';
   let early = null;
   if (startMode === 'home') {
     fetchBundle('home').then(h => { if (h && !coreDone && topMode === 'home') { homeQuick = h; renderHome(); } });
-  } else if (startMode === 'prices' || startMode === 'dcs') {
+  } else if (startMode === 'prices' || startMode === 'dcs' || startMode === 'ukcs') {
     applyHash();
     renderViewTabs();
     early = topMode;

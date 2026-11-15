@@ -136,6 +136,14 @@ jobs:
         timeout-minutes: 5
         run: python fetch_ens.py
 
+      # Britiske felt til UKCS-seksjonen: produksjon (PPRS), eierandeler
+      # (Field Partners), feltomriss og lisensunderområder fra NSTA. Feiler
+      # steget, beholdes forrige data/ukcs*.json og resten committes likevel.
+      - name: Hent britiske data (NSTA)
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python fetch_nsta.py
+
       # Nøkkeltall fra SSB (sysselsetting og investeringer) til Economy-fanen.
       # Feiler SSB, beholdes forrige fil og Sodir-dataene committes likevel.
       - name: Hent nøkkeltall fra SSB
