@@ -2,7 +2,8 @@
 Henter de danske produksjons-, reserve- og eierdataene fra ENS-løsningen
 (sheffielddivided/ens) og lagrer dem i NCS-appens format under data/:
 
-    data/dcs.json           felt, eiere, årlig og månedlig produksjon, reserver
+    data/dcs.json           felt, eiere, årlig og månedlig produksjon, reserver,
+                            brønner til havs (DCS → Drilling)
     data/dcs_outlines.json  feltomriss til DCS → Map
 
 ENS-repoet er og forblir kilden for de danske tallene: det henter
@@ -46,7 +47,12 @@ FILES = {
     'ownership': 'data/ownership.json',
     'reserves':  'data/reserves.json',
     'outlines':  'docs/data/gis/fields.geojson',
+    'wells':     'docs/data/gis/wells.geojson',
 }
+# Brønnkategoriene ENS-løsningen setter (build_gis.py, well_category()).
+WELL_CATEGORIES = ('exploration', 'production', 'injection', 'other')
+WELL_COLUMNS = ['name', 'number', 'spud', 'completed', 'category', 'field', 'fieldName',
+                'operator', 'classification']
 SCHEMA_VERSION = 1
 EXPECTED_UNITS = {'oil': '1000 m3', 'gas': 'mio. Nm3', 'water': '1000 m3'}
 EXPECTED_RES_UNITS = {'oil_mill_m3': 'mill. m³', 'gas_bn_nm3': 'mrd. Nm³'}
@@ -225,6 +231,33 @@ def build_outlines(geo, slugs):
     return {'fields': out}
 
 
+def build_wells(geo):
+    """Brønnene til havs, én rad per brønn (kolonner: WELL_COLUMNS).
+
+    ENS-løsningen leverer bare brønner til havs, med kategori og felt (feltet
+    som har brønnens startposisjon innenfor sin avgrensning, eller ingen).
+    Datoer er ISO 'YYYY-MM-DD' eller null. Sortert på startdato og navn.
+    """
+    import re
+    need(isinstance(geo, dict) and geo.get('type') == 'FeatureCollection', 'wells.geojson: ikke en FeatureCollection')
+    iso = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+    rows = []
+    for feat in geo.get('features') or []:
+        p = feat.get('properties') or {}
+        name = p.get('name')
+        need(isinstance(name, str) and name, 'wells.geojson: brønn uten navn')
+        need(p.get('location') == 'OFFSHORE', f'wells.geojson: {name}: location {p.get("location")!r}, forventet OFFSHORE')
+        need(p.get('category') in WELL_CATEGORIES, f'wells.geojson: {name}: ukjent kategori {p.get("category")!r}')
+        for k in ('spud_date', 'comp_date'):
+            v = p.get(k)
+            need(v is None or (isinstance(v, str) and iso.match(v)), f'wells.geojson: {name}: {k} {v!r} er ikke en ISO-dato')
+        rows.append([name, p.get('number'), p.get('spud_date'), p.get('comp_date'), p['category'],
+                     p.get('field'), p.get('field_name'), p.get('operator'), p.get('classification')])
+    need(rows, 'wells.geojson: ingen brønner')
+    rows.sort(key=lambda r: (r[2] or '9999', r[0]))
+    return {'columns': WELL_COLUMNS, 'rows': rows}
+
+
 # ── SKRIVING ─────────────────────────────────────────────────────────────────
 def write_if_changed(name, payload):
     path = os.path.join(OUT_DIR, name)
@@ -269,6 +302,8 @@ def main(argv=None):
             'fields': fields,
             'production': {'columns': ['period', 'oil', 'gas', 'water', 'prelim'], **prod},
             'reserves': build_reserves(docs['reserves'], slugs),
+            'wells': build_wells(docs['wells']),
+            'wellsUrl': 'https://ens.dk/en/energy-sources/oil-and-gas-related-data/drilling-activities',
         }
         outlines = build_outlines(docs['outlines'], slugs)
     except (SourceFormatError, RuntimeError, OSError, ValueError) as e:
