@@ -2503,14 +2503,32 @@ Eksporten hadde en forskyvningsfeil som er rettet — se §11.0.
 
 Femte hovedkategori, `topMode === 'exploration'`. Skiller seg fra de andre
 modusene: ingen diagram, ingen utvalgsark, og filtrene ligger i selve
-visningen (`#explBar`). Tre faner: **Wells** (liste), **Map** (oversiktskart
-som zoomer til filtrert utvalg) og **Rigs** (tidslinje og tabell per rigg).
+visningen (`#explBar`). Faner: **Wells** (liste), **Map** (oversiktskart
+som zoomer til filtrert utvalg), **Performance** (letesuksess per selskap) og **News**.
+Rigs ligger nå under Drilling.
 Et klikk på en brønn åpner en detaljvisning (`#wdOverlay`) med kart, eierskap,
 nøkkeldata og lenke til pressemelding.
 
 **Data:** `data/exploration_wells.json`, bygget av `build_exploration_wells()`
 i `fetch_sodir.py` fra brønnlaget (5000). Bare formål WILDCAT og APPRAISAL;
 'WILL NEVER BE DRILLED' droppes. Filen lastes lazily (`loadExploration`).
+
+**Performance (`v=success`, `epRender`):** letesuksess per konsern. Grunnlaget er
+avsluttede undersøkelsesbrønner (WILDCAT, grupperte brønner) per spuddår;
+avgrensningsbrønner er holdt utenfor. Hver brønn telles med konsernets andel på
+spuddatoen (netto brønner, `concernKey` slår sammen Statoil/Equinor, Det norske/Aker
+BP osv.). Fire brønner uten eierdata gis operatøren. Mål per konsern (`epAgg`):
+netto brønner (og andel operert), netto funnbrønner (`found`), funnrate, netto funnet
+volum (`explFoundVolume` × andel), volum per netto brønn, de samme to målene delt på
+operert/partner (vises fra én netto brønn i rollen), median brutto funnstørrelse
+(funn uten volum utelatt) og væskeandel. Konsernet navngis etter siste juridiske
+navn i dataene. Kortene: nøkkeltall for sokkelen, spredningsplott (SVG) med netto
+brønner (logaritmisk) mot volum per brønn og sokkelsnittet stiplet, tidsgraf med
+glidende vindu for de seks største konsernene i perioden pluss uthevet konsern og
+sokkelen (volummålene på logaritmisk akse), og en sorterbar rangeringstabell.
+Parametre (`EP_PARAMS`): `pe` siste år (standard i fjor), `pl` vinduslengde (5),
+`pm` min netto brønner (3), `pk` mål i tidsgrafen (`vpw`/`rate`/`vol`/`wells`),
+`ph` uthevet konsern, `po` sortering.
 
 **Status utledes av datoer, ikke av `wlbStatus`:** planlagte brønner har
 `wlbStatus = NULL`, ingen `wlbEntryDate` og kun `wlbEntryDatePlanned`.
