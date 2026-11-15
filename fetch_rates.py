@@ -22,6 +22,11 @@ månedssnittet av effektiv Fed funds:
   · Hele Treasury-kurven (home.treasury.gov, Daily Treasury Par Yield Curve).
 Feiler en av disse, brukes convert-tallene.
 
+BLS publiserte ikke KPI for oktober 2025 (nedstengningen), så 12-månedersveksten
+fra FRED mangler for 2025-10 og 2026-10. Måneder som mangler i amerikansk
+inflasjon regnes ut fra indeksnivåene i data/cpi.json (fetch_cpi.py), der
+oktober 2025 er interpolert, og merkes i 'inflationInterpolated'.
+
 Styringsrentene lagres som endringspunkter pluss siste observasjon.
 Feiler hovedkilden, beholdes forrige fil. Steget i arbeidsflyten er
 continue-on-error.
@@ -39,6 +44,7 @@ from datetime import date, datetime, timezone
 import requests
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'rates.json')
+CPI = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'cpi.json')
 CONVERT = 'https://raw.githubusercontent.com/sheffielddivided/convert/main/data/nb/'
 FRED = 'https://fred.stlouisfed.org/graph/fredgraph.csv'
 TREASURY = ('https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml'
@@ -135,6 +141,32 @@ def monthly(series):
     return [[d[:7], round(v, 2)] for d, v in series if v is not None]
 
 
+def fill_us_inflation(inflation):
+    """Fyll hull i amerikansk 12-månedersvekst fra KPI-nivåene i data/cpi.json.
+    Returnerer (serie, måneder som bygger på et interpolert KPI-nivå)."""
+    try:
+        with open(CPI, encoding='utf-8') as fh:
+            cpi = json.load(fh)
+        lvl = cpi['series']['USD']
+        interp = set((cpi.get('interpolated') or {}).get('USD') or [])
+    except (OSError, ValueError, KeyError) as exc:
+        print(f'  ! fant ikke amerikansk KPI i cpi.json ({exc}) - hull i inflasjonen fylles ikke', file=sys.stderr)
+        return inflation, []
+    have = {m for m, _ in inflation}
+    first = inflation[0][0] if inflation else min(lvl)
+    added, flagged = [], []
+    for m in sorted(lvl):
+        prev = f'{int(m[:4]) - 1:04d}{m[4:]}'
+        if m < first or m in have or prev not in lvl:
+            continue
+        added.append([m, round((lvl[m] / lvl[prev] - 1) * 100, 2)])
+        if m in interp or prev in interp:
+            flagged.append(m)
+    if added:
+        print(f'  + amerikansk inflasjon fylt fra cpi.json: {", ".join(m for m, _ in added)}')
+    return sorted(inflation + added), flagged
+
+
 def main():
     try:
         ir = req(CONVERT + 'interest.json').json()
@@ -162,6 +194,7 @@ def main():
         'SE': {'policy': change_points(ir.get('riksbank') or []), 'inflation': monthly(inf.get('seHicp') or []),
                'curve': curve((ir.get('seYields') or {}).get('rates'), (ir.get('seYields') or {}).get('date'))},
     }
+    c['US']['inflation'], c['US']['inflationInterpolated'] = fill_us_inflation(c['US']['inflation'])
     c['US']['policyKind'] = 'fedfunds'
     try:
         c['US']['policy'], c['US']['range'] = us_policy()
