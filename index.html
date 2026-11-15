@@ -3084,6 +3084,7 @@ function applyHash() {
     if (q.get('dp') === 'field') dcsF.prod = 'field';
     if (/^[a-z0-9_]+$/.test(q.get('df') || '')) dcsF.field = q.get('df');
     if (q.get('dc')) dcsF.cmp = q.get('dc');
+    if (q.get('do') === 'now') dcsF.own = 'now';
     if (['liq', 'gas'].includes(q.get('dr'))) dcsF.res = q.get('dr');
     if (q.get('dl') === 'rem') dcsF.fl = 'rem';
     if (/^[a-z0-9_]+$/.test(q.get('ds') || '')) dcsF.fs = q.get('ds');
@@ -3507,10 +3508,11 @@ let dcsSubView = 'production';
 // · mw: brønner i kartet: '' (ingen) | 'expl' | 'dev' (produksjon + injeksjon) | 'all'
 // · wl: brønnen i brønnsiden (popup), etter navn — bare brønner utenfor felt
 // · wt: brønntype i Drilling ('' = alle) · pl: '1' = linje med total olje- og gassproduksjon i Drilling
-const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: '', wl: '', wt: '', pl: ''});
+// · own: eierandeler i Companies: 'hist' (eierne da, fra eierhistorikken) | 'now' (dagens eiere for hele perioden)
+const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: '', wl: '', wt: '', pl: '', own: 'hist'});
 let dcsF = dcsDefaults();
 const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw'], ['wl', 'dn'],
-  ['wt', 'dt'], ['pl', 'dg']];
+  ['wt', 'dt'], ['pl', 'dg'], ['own', 'do']];
 let dcsData = null, dcsOutlines = null, dcsLoading = null;
 
 function loadDcs() {
@@ -3522,7 +3524,7 @@ function loadDcs() {
     dcsData.bySlug = Object.fromEntries(d.fields.map(f => [f.slug, f]));
     // Lenker kan peke på felt eller selskaper som ikke finnes lenger.
     if (dcsF.field && !dcsData.bySlug[dcsF.field]) dcsF.field = '';
-    if (dcsF.cmp && !dcsCompanies().includes(dcsF.cmp)) dcsF.cmp = '';
+    if (dcsF.cmp && !dcsCompanies().includes(dcsF.cmp) && !dcsHistCompanies().includes(dcsF.cmp)) dcsF.cmp = '';
     if (dcsF.fs && !dcsData.bySlug[dcsF.fs]) dcsF.fs = '';
     if (dcsF.wl && !dcsWellByName(dcsF.wl)) dcsF.wl = '';
   });
@@ -3532,6 +3534,52 @@ const dcsReady = () => !!(dcsData && dcsData.production);
 const dcsName = slug => (dcsData.bySlug[slug] || {}).name || slug;
 const dcsSlugs = () => Object.keys(dcsData.production.yearly).sort((a, b) => dcsName(a).localeCompare(dcsName(b)));
 const dcsCompanies = () => [...new Set(dcsData.fields.flatMap(f => f.owners.map(o => o[0])))].sort((a, b) => a.localeCompare(b));
+
+// ── DCS: EIERHISTORIKK ──
+// Eierskap over tid per lisens fra ENS-løsningens ownership_history.json
+// (kuratert fra ENS' endringslister, 1999 →). Andelen i en periode er snittet
+// av andelene midt i hver måned (et år = tolv måneder), så et eierskifte midt
+// i året fordeles riktig. Perioder uten kjente andeler — før historikken
+// starter (DUC før 1999) eller der ENS bare nevner eierne — gir null, og
+// produksjonen vises da som «Ownership not known».
+// Rene navnebytter i konsernet vises under dagens navn, så ett selskap ikke
+// blir to serier: Total → TotalEnergies, Noreco → BlueNord, og Texaco, som
+// gikk inn i ChevronTexaco i 2001, under Chevron.
+const DCS_GROUP_ALIAS = {Total: 'TotalEnergies', Noreco: 'BlueNord', Texaco: 'Chevron'};
+const dcsGroup = g => DCS_GROUP_ALIAS[g] || g;
+const DCS_UNKNOWN = 'Ownership not known', DCS_OTHER = 'Other companies';
+const DCS_UNKNOWN_COLOR = 'rgba(203,213,225,0.95)', DCS_OTHER_COLOR = 'rgba(154,165,177,0.85)';
+const DCS_HIST_TOP = 9;   // egne farger; resten samles i «Other companies»
+const dcsHasHistory = () => !!(dcsData.ownershipHistory && dcsData.ownershipHistory.fields);
+function dcsHistPeriod(slug, day) {
+  const H = dcsData.ownershipHistory, lid = H && H.fields[slug];
+  const lic = lid && H.licences[lid];
+  if (!lic) return null;
+  return lic.periods.find(p => p.from <= day && (p.to == null || day < p.to)) || null;
+}
+// Månedene (1–12) en periodenøkkel dekker: 'YYYY', 'YYYY-Qn' eller 'YYYY-MM'.
+function dcsKeyMonths(k) {
+  const y = k.slice(0, 4);
+  if (/^\d{4}$/.test(k)) return [...Array(12)].map((_, i) => `${y}-${String(i + 1).padStart(2, '0')}`);
+  if (/-Q\d$/.test(k)) { const m0 = (+k.slice(6) - 1) * 3; return [1, 2, 3].map(i => `${y}-${String(m0 + i).padStart(2, '0')}`); }
+  return [k];
+}
+const dcsHistCache = new Map();
+// {groups: {konsern: andel 0–1}, unknown: andel 0–1} for et felt i en periode.
+function dcsHistSplit(slug, k) {
+  const key = slug + '|' + k;
+  if (dcsHistCache.has(key)) return dcsHistCache.get(key);
+  const months = dcsKeyMonths(k), out = {groups: {}, unknown: 0};
+  months.forEach(m => {
+    const p = dcsHistPeriod(slug, m + '-15');
+    if (!p || !p.groups) { out.unknown += 1 / months.length; return; }
+    p.groups.forEach(([g, v]) => { const n = dcsGroup(g); out.groups[n] = (out.groups[n] || 0) + v / 100 / months.length; });
+  });
+  dcsHistCache.set(key, out);
+  return out;
+}
+const dcsHistCompanies = () => !dcsHasHistory() ? [] : [...new Set(Object.values(dcsData.ownershipHistory.licences)
+  .flatMap(l => l.periods.flatMap(p => (p.groups || []).map(([g]) => dcsGroup(g)))))].sort((a, b) => a.localeCompare(b));
 const dcsShare = (slug, cmp) => ((dcsData.bySlug[slug] || {owners: []}).owners.find(o => o[0] === cmp) || [0, 0])[1] / 100;
 const dcsBoe = (vol, d) => vol * 1e6 * BBL_PER_SM3 / d;   // mill Sm³ olje / mrd Sm³ gass → boe/day
 const dcsLighter = c => c.replace(/[\d.]+\)$/, '0.35)');
@@ -3789,30 +3837,54 @@ function drawDcsFields() {
 // faktisk eide da (Maersk Oil, Hess, Wintershall Dea og andre er ikke med).
 // Med ett selskap valgt: selskapets netto produksjon per felt.
 function drawDcsCompanies() {
-  const cmps = dcsCompanies();
-  const one = dcsF.cmp;
+  // Eierne da (eierhistorikken) eller dagens eiere for hele perioden.
+  const hist = dcsF.own !== 'now' && dcsHasHistory();
+  const cmps = hist ? dcsHistCompanies() : dcsCompanies();
+  const one = dcsF.cmp && cmps.includes(dcsF.cmp) ? dcsF.cmp : '';
   const labels = dcsLabels();
   const per = Object.fromEntries(dcsSlugs().map(s => [s, dcsPeriodRows(s)]));
   const oe = (s, k) => { const o = per[s][k]; return o ? dcsBoe(o.oil + o.gas, dcsDays(k)) : 0; };
   const pre = k => period === 'annual' && dcsSlugs().some(s => (per[s][k] || {}).prelim);
+  const share = (s, k, c) => hist ? (dcsHistSplit(s, k).groups[c] || 0) : dcsShare(s, c);
   let series;
   if (one) {
-    const slugs = dcsSlugs().filter(s => dcsShare(s, one) > 0);
-    const tot = Object.fromEntries(slugs.map(s => [s, labels.reduce((t, k) => t + oe(s, k) * dcsShare(s, one), 0)]));
+    const slugs = dcsSlugs().filter(s => labels.some(k => share(s, k, one) > 0));
+    const tot = Object.fromEntries(slugs.map(s => [s, labels.reduce((t, k) => t + oe(s, k) * share(s, k, one), 0)]));
     series = slugs.filter(s => tot[s] > 0).sort((a, b) => tot[b] - tot[a])
-      .map((s, i) => ({label: dcsName(s), color: dcsColor(i), data: labels.map(k => Math.round(oe(s, k) * dcsShare(s, one)))}));
+      .map((s, i) => ({label: dcsName(s), color: dcsColor(i), data: labels.map(k => Math.round(oe(s, k) * share(s, k, one)))}));
   } else {
-    const net = c => labels.map(k => Math.round(dcsSlugs().reduce((t, s) => t + oe(s, k) * dcsShare(s, c), 0)));
+    const net = c => labels.map(k => Math.round(dcsSlugs().reduce((t, s) => t + oe(s, k) * share(s, k, c), 0)));
     series = cmps.map(c => ({label: c, data: net(c)}))
       .map(s => ({...s, total: s.data.reduce((t, v) => t + v, 0)})).filter(s => s.total > 0)
-      .sort((a, b) => b.total - a.total).map((s, i) => ({...s, color: dcsColor(i)}));
+      .sort((a, b) => b.total - a.total);
+    if (hist) {
+      // De største får egne farger; resten samles, så ingen farge gjentas.
+      const rest = series.slice(DCS_HIST_TOP);
+      series = series.slice(0, DCS_HIST_TOP).map((s, i) => ({...s, color: dcsColor(i)}));
+      if (rest.length) series.push({label: DCS_OTHER, color: DCS_OTHER_COLOR, members: rest.map(s => s.label),
+        data: labels.map((_, i) => rest.reduce((t, s) => t + s.data[i], 0))});
+      const unk = labels.map(k => Math.round(dcsSlugs().reduce((t, s) => t + oe(s, k) * dcsHistSplit(s, k).unknown, 0)));
+      if (unk.some(v => v > 0)) series.push({label: DCS_UNKNOWN, color: DCS_UNKNOWN_COLOR, data: unk});
+    } else {
+      series = series.map((s, i) => ({...s, color: dcsColor(i)}));
+    }
   }
   const t = dcsTrim(labels, series.map(s => ({label: s.label, data: s.data, borderWidth: 0, stack: 's',
     backgroundColor: labels.map(k => pre(k) ? dcsLighter(s.color) : s.color)})));
   setChartTitle(`Danish Continental Shelf · ${one ? esc(one) : 'Companies'}`,
-    one ? 'Net production by field · boe/day' : 'Net production by company · boe/day');
-  setInfo(`<strong>Net production:</strong> field oil + gas × the company's share &nbsp;|&nbsp; <strong>Shares:</strong> current licensees from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))}), applied to the whole history. ENS publishes no ownership history, so earlier years show what today's owners would have had, not what they owned then &nbsp;|&nbsp; Nordsøfonden is the Danish state's participant &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${dcsBasis()} &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
-  const bar = dcsBar(dcsSelect('cmp', 'All companies', cmps.map(c => [c, c]), 'Company'));
+    (one ? 'Net production by field' : 'Net production by company') + (hist ? ' · owners at the time' : " · today's owners") + ' · boe/day');
+  const H = dcsData.ownershipHistory;
+  const other = series.find(s => s.label === DCS_OTHER);
+  setInfo(`<strong>Net production:</strong> field oil + gas × the company's share &nbsp;|&nbsp; `
+    + (hist
+      ? `<strong>Shares:</strong> ownership over time, curated by the ENS solution from ENS' lists of licence amendments (1999 onwards) and checked against them; each month uses the shares that applied in it, and a year is the average of its twelve months &nbsp;|&nbsp; `
+        + `<strong>${DCS_UNKNOWN}:</strong> production before 1999, and in the few periods where ENS names the owners but not their shares &nbsp;|&nbsp; `
+        + `<strong>DUC before 9 July 2012</strong> (A.P. Møller 39 %, Shell 46 %, Chevron 15 %) is derived pro rata — ENS gives no shares until Nordsøfonden joined &nbsp;|&nbsp; `
+        + `Total/TotalEnergies, Noreco/BlueNord and Texaco/Chevron are shown under one name${other ? ` &nbsp;|&nbsp; <strong>${DCS_OTHER}:</strong> ${esc(other.members.join(', '))}` : ''} &nbsp;|&nbsp; `
+      : `<strong>Shares:</strong> current licensees from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))}), applied to the whole history: earlier years show what today's owners would have had, not what they owned then &nbsp;|&nbsp; `)
+    + `Nordsøfonden is the Danish state's participant &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${dcsBasis()} &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
+  const bar = dcsBar((dcsHasHistory() ? dcsPills('own', [['hist', 'Owners at the time'], ['now', "Today's owners"]]) : '')
+    + dcsSelect('cmp', 'All companies', cmps.map(c => [c, c]), 'Company'));
   if (!t.labels.length || !t.datasets.length) {
     setChartEmpty(period === 'annual' ? 'No data for the selected period.'
       : `No monthly data for the selected period. ENS monthly reports start in ${dcsFirstMonth().slice(0, 4)}; use Annual for earlier years.`);
@@ -3820,10 +3892,47 @@ function drawDcsCompanies() {
     renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
   }
   ncsToggleAbove(bar);
-  // Eiertabellen: andel per felt og selskap.
+  const pct = v => v > 0 ? `${(v * 100).toLocaleString('en', {maximumFractionDigits: 3})} %` : '';
+  if (hist && one) {
+    // Eierperiodene til det valgte selskapet, per lisens (feltene på samme
+    // lisens har samme eiere, så DUC-feltene samles i én rad per periode).
+    const fmt = d => d ? d.split('-').reverse().join('.') : 'today';
+    const fieldsOf = {};
+    Object.entries(H.fields).forEach(([slug, lid]) => (fieldsOf[lid] = fieldsOf[lid] || []).push(slug));
+    const rows = [];
+    Object.entries(fieldsOf).forEach(([lid, slugs]) => H.licences[lid].periods.forEach(p => {
+      const mine = (p.owners || []).filter(o => dcsGroup(o[1]) === one);
+      if (!mine.length) return;
+      const v = p.groups ? mine.reduce((t, o) => t + (o[3] || 0), 0) : null;
+      rows.push({lid, slugs, from: p.from, to: p.to, v, basis: p.basis, names: [...new Set(mine.map(o => o[0]))]});
+    }));
+    // Etterfølgende perioder med samme andel og navn slås sammen (perioder som
+    // bare deles fordi en annen eier skifter navn).
+    const merged = [];
+    rows.sort((a, b) => a.lid.localeCompare(b.lid) || a.from.localeCompare(b.from)).forEach(r => {
+      const last = merged[merged.length - 1];
+      if (last && last.lid === r.lid && last.to === r.from && last.v === r.v && last.basis === r.basis
+          && last.names.join() === r.names.join()) last.to = r.to;
+      else merged.push({...r});
+    });
+    merged.sort((a, b) => a.from.localeCompare(b.from) || dcsName(a.slugs[0]).localeCompare(dcsName(b.slugs[0])));
+    const fieldLinks = slugs => slugs.slice().sort((a, b) => dcsName(a).localeCompare(dcsName(b)))
+      .map(s => rowLink(dcsName(s), `dcsOpenField(${esc(jsStr(s))})`, `Show ${dcsName(s)} in Production`)).join(', ');
+    setChartTable(`
+      <div class="pf-scroll"><table class="res-table ex-table">
+        <caption>${esc(one)} · ownership periods, from ENS' amendment lists · stated = given by ENS; derived = computed from stated shares and transfers; unknown = owner known, share not</caption>
+        <thead><tr><th class="ex-l">Licence</th><th class="ex-l">Fields</th><th>From</th><th>To</th><th>Share</th><th class="ex-l">Basis</th><th class="ex-l">Legal name</th></tr></thead>
+        <tbody>${merged.map(r => `<tr><td class="ex-l">${esc(H.licences[r.lid].name)}</td><td class="ex-l">${fieldLinks(r.slugs)}</td>
+          <td>${fmt(r.from)}</td><td>${fmt(r.to)}</td>
+          <td>${r.v == null ? '—' : esc(r.v.toLocaleString('en', {maximumFractionDigits: 4})) + ' %'}</td>
+          <td class="ex-l">${esc(r.basis)}</td><td class="ex-l">${esc(r.names.join('; '))}</td></tr>`).join('')}</tbody>
+      </table></div>`);
+    return;
+  }
+  // Eiertabellen: dagens andel per felt og selskap.
+  const now = dcsCompanies();
   const fields = dcsData.fields.filter(f => f.owners.length && (!one || dcsShare(f.slug, one) > 0));
-  const cols = one ? [one] : cmps;
-  const pct = v => v > 0 ? `${(v * 100).toLocaleString('en', {maximumFractionDigits: 2})} %` : '';
+  const cols = one ? [one] : now;
   setChartTable(`
     <table class="res-table">
       <caption>Current licensee shares per field · ENS</caption>

@@ -2,7 +2,8 @@
 Henter de danske produksjons-, reserve- og eierdataene fra ENS-løsningen
 (sheffielddivided/ens) og lagrer dem i NCS-appens format under data/:
 
-    data/dcs.json           felt, eiere, årlig og månedlig produksjon, reserver,
+    data/dcs.json           felt, eiere (i dag og over tid), årlig og månedlig
+                            produksjon, reserver,
                             brønner til havs (DCS → Drilling)
     data/dcs_outlines.json  feltomriss til DCS → Map
 
@@ -46,6 +47,7 @@ FILES = {
     'fields':    'data/fields.json',
     'ownership': 'data/ownership.json',
     'reserves':  'data/reserves.json',
+    'history':   'data/ownership_history.json',
     'outlines':  'docs/data/gis/fields.geojson',
     'wells':     'docs/data/gis/wells.geojson',
 }
@@ -238,6 +240,53 @@ def build_outlines(geo, slugs):
     return {'fields': out}
 
 
+HISTORY_BASES = ('stated', 'derived', 'unknown')
+
+
+def build_ownership_history(history, slugs):
+    """Eierskap over tid per lisens, og hvilken lisens hvert felt hører til.
+
+    Fra ENS-løsningens data/ownership_history.json (kuratert fra ENS'
+    endringslister og kontrollert mot dem der). Kompakt format:
+    {"licences": {id: {"name", "relinquished", "periods": [{"from", "to",
+    "basis", "groups": [[konsern, %], ...] | null, "owners": [[navn, konsern,
+    konsern i dag, % | null], ...], "note"}]}}, "fields": {slug: id}}.
+    "groups" er null når andelene er ukjente (basis "unknown").
+    """
+    check_schema('ownership_history.json', history)
+    licences = history.get('licences')
+    need(isinstance(licences, dict) and licences, 'ownership_history.json: mangler licences')
+    out_lic = {}
+    for lid, lic in licences.items():
+        periods = lic.get('periods') or []
+        need(periods, f'ownership_history.json: {lid}: ingen perioder')
+        rows = []
+        for p in periods:
+            basis = p.get('basis')
+            need(basis in HISTORY_BASES, f'ownership_history.json: {lid} {p.get("from")}: ukjent basis {basis!r}')
+            groups = p.get('groups')
+            if basis == 'unknown':
+                need(not groups, f'ownership_history.json: {lid} {p["from"]}: ukjent periode med andeler')
+            else:
+                need(isinstance(groups, dict) and abs(sum(groups.values()) - 100) < 0.01,
+                     f'ownership_history.json: {lid} {p["from"]}: andelene summerer ikke til 100')
+            rows.append({
+                'from': p['from'], 'to': p.get('to'), 'basis': basis,
+                'groups': [[g, r6(v)] for g, v in groups.items()] if groups else None,
+                'owners': [[o['name'], o['group'], o['current_group'], None if o['share'] is None else r6(o['share'])]
+                           for o in p.get('owners') or []],
+                'note': p.get('note'),
+            })
+        out_lic[lid] = {'name': lic.get('name'), 'relinquished': lic.get('relinquished'), 'periods': rows}
+    fields = {}
+    for slug, refs in (history.get('fields') or {}).items():
+        need(len(refs) == 1 and refs[0].get('licence') in out_lic,
+             f'ownership_history.json: feltet {slug!r} må peke på nøyaktig én kjent lisens')
+        need(slug in slugs, f'ownership_history.json: feltet {slug!r} finnes ikke i fields.json')
+        fields[slug] = refs[0]['licence']
+    return {'licences': out_lic, 'fields': fields, 'asOf': history.get('as_of')}
+
+
 def build_wells(geo):
     """Brønnene til havs, én rad per brønn (kolonner: WELL_COLUMNS).
 
@@ -324,6 +373,7 @@ def main(argv=None):
             'production': {'columns': ['period', 'oil', 'gas', 'water', 'prelim'], **prod},
             'reserves': build_reserves(docs['reserves'], slugs),
             'wells': build_wells(docs['wells']),
+            'ownershipHistory': build_ownership_history(docs['history'], slugs),
             'wellsUrl': 'https://ens.dk/en/energy-sources/oil-and-gas-related-data/drilling-activities',
         }
         outlines = build_outlines(docs['outlines'], slugs)
