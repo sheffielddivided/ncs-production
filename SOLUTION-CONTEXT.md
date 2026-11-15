@@ -845,12 +845,13 @@ videre uendret.
   ENS-løsningen har rekonstruert eller ikke kunnet avklare; de merkes med * i
   tabellen.
 - **Brønner:** `wells` = `{"columns": ["name","number","spud","completed",
-  "category","field","fieldName","operator","classification"], "rows": [...]}`,
+  "category","field","fieldName","operator","classification","lon","lat"], "rows": [...]}`,
   én rad per brønn til havs (ENS-løsningen tar ut landbrønnene), sortert på
   startdato. `category` er `exploration`, `production`, `injection` eller
   `other` (observasjon); blandingsklasser som «APPRAISAL AND PRODUCTION» følger
   det brønnen ble. `field` er feltet som har brønnens startposisjon innenfor
-  sin avgrensning, ellers `null`. Datoer er ISO eller `null`.
+  sin avgrensning, ellers `null`. Datoer er ISO eller `null`. `lon`/`lat` er
+  startposisjonen i WGS84 (5 desimaler) og må ligge innenfor dansk sokkel.
 - **Formatkontroll:** `schema_version` må være 1, enhetene må være de kjente,
   og felt-slugs må stemme mellom filene. Brønnene må være til havs, ha kjent
   kategori og ISO-datoer. Ellers `SourceFormatError`, exit 1, og ingenting
@@ -865,7 +866,7 @@ selskap eller per felt for ett selskap), Reserves (per felt og år), Drilling
 og Map.
 Production og Companies følger periodevelgeren; som NCS starter DCS i
 årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
-Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`.
 
 DCS → Drilling (`drawDcsDrilling`, `renderDcsWellTable`) viser brønnene til
 havs per startår, stablet etter `DCS_WELL_CAT` (leting/avgrensning grønn,
@@ -874,6 +875,16 @@ fargeblindhet mot hvit bakgrunn). Grafen bruker samme `explYearChart` som
 NCS → Exploration, uten funnratelinjen (`rate: null`). Klikk på et år lister
 brønnene under grafen; året står i adressen som `dy`, og et år uten brønner
 rettes til siste år med brønner. Feltnavn i tabellen åpner feltfaktaarket.
+
+DCS → Map har et brønnvalg over kartet (`dcsF.mw`, lenkeparameter `dw`):
+ingen (standard), leting/avgrensning, produksjon og injeksjon, eller alle.
+Brønnene tegnes som prikker i Drilling-fargene via `outlineMap`s `overlay`.
+Utbyggingsbrønner bores fra plattformen og deler startposisjon, så brønner av
+samme type på samme sted (3 desimaler, ~100 m) slås sammen til én prikk som
+vokser med antallet; tooltipen lister brønnene. Klikk åpner Drilling for
+startåret (det siste, for en gruppe) via `dcsShowWellYear`. Utsnittet er
+uendret, så de 8 brønnene i Skagerrak, Kattegat og Østersjøen faller utenfor
+og telles i notatet under kartet.
 
 Klikk på et felt i DCS → Fields (stolpene og tabellen) åpner et feltfaktaark
 i brønnpanelet (`wdOverlay`): nøkkeltall, årlig produksjonsprofil, reserver per

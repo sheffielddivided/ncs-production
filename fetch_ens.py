@@ -52,7 +52,10 @@ FILES = {
 # Brønnkategoriene ENS-løsningen setter (build_gis.py, well_category()).
 WELL_CATEGORIES = ('exploration', 'production', 'injection', 'other')
 WELL_COLUMNS = ['name', 'number', 'spud', 'completed', 'category', 'field', 'fieldName',
-                'operator', 'classification']
+                'operator', 'classification', 'lon', 'lat']
+WELL_DECIMALS = 5   # ~1 m; brønnposisjonen i ENS-regnearket er oppgitt på sekundet
+# Grovt område for dansk sokkel; en posisjon utenfor er en feil i kilden.
+WELL_LON, WELL_LAT = (2.5, 15.5), (54.0, 58.5)
 SCHEMA_VERSION = 1
 EXPECTED_UNITS = {'oil': '1000 m3', 'gas': 'mio. Nm3', 'water': '1000 m3'}
 EXPECTED_RES_UNITS = {'oil_mill_m3': 'mill. m³', 'gas_bn_nm3': 'mrd. Nm³'}
@@ -236,7 +239,8 @@ def build_wells(geo):
 
     ENS-løsningen leverer bare brønner til havs, med kategori og felt (feltet
     som har brønnens startposisjon innenfor sin avgrensning, eller ingen).
-    Datoer er ISO 'YYYY-MM-DD' eller null. Sortert på startdato og navn.
+    Datoer er ISO 'YYYY-MM-DD' eller null. lon/lat er WGS84 (til DCS → Map).
+    Sortert på startdato og navn.
     """
     import re
     need(isinstance(geo, dict) and geo.get('type') == 'FeatureCollection', 'wells.geojson: ikke en FeatureCollection')
@@ -251,8 +255,16 @@ def build_wells(geo):
         for k in ('spud_date', 'comp_date'):
             v = p.get(k)
             need(v is None or (isinstance(v, str) and iso.match(v)), f'wells.geojson: {name}: {k} {v!r} er ikke en ISO-dato')
+        geom = feat.get('geometry') or {}
+        coords = geom.get('coordinates') or []
+        need(geom.get('type') == 'Point' and len(coords) >= 2, f'wells.geojson: {name}: ikke et punkt')
+        lon, lat = coords[0], coords[1]
+        need(isinstance(lon, (int, float)) and isinstance(lat, (int, float))
+             and WELL_LON[0] <= lon <= WELL_LON[1] and WELL_LAT[0] <= lat <= WELL_LAT[1],
+             f'wells.geojson: {name}: posisjon {lon}, {lat} utenfor dansk sokkel')
         rows.append([name, p.get('number'), p.get('spud_date'), p.get('comp_date'), p['category'],
-                     p.get('field'), p.get('field_name'), p.get('operator'), p.get('classification')])
+                     p.get('field'), p.get('field_name'), p.get('operator'), p.get('classification'),
+                     round(lon, WELL_DECIMALS), round(lat, WELL_DECIMALS)])
     need(rows, 'wells.geojson: ingen brønner')
     rows.sort(key=lambda r: (r[2] or '9999', r[0]))
     return {'columns': WELL_COLUMNS, 'rows': rows}
