@@ -1501,8 +1501,8 @@ slik at den kan merkes manuelt.
 | Discoveries | Resources | `drawDiscoveriesPerDiscovery` (`:3990`) | Betingede ressurser per funn, stablet Liquids/Gas. Tabell under: per funn og partner |
 | Discoveries | Per company | `drawDiscoveriesPerCompany` (`:4032`) | Samme volumer fordelt på lisensandel, én søyle per selskap. Tabell under: per selskap og funn |
 | Discoveries | Maturity | `drawDiscoveriesMaturity` (`:4089`) | Per selskap, stablet på ressursklasse 4F/5F/7F |
-| Discoveries | Profile | `drawDiscoveryProfile` | Faktaark for **ett** funn: tittel, nøkkeltall og Sodirs beskrivelse i ett kort, eierskap og letebrønner i venstre kolonne, kart i høyre (like høyt), volumer per ressursklasse under. Eneste visning **uten graf** |
-| Fields | Profile | `drawFieldProfile` (`:2916-2977`) | Faktaark for **ett** felt: årlig produksjon i grafen, og under den nøkkeltall, kart, volumer, eierskap og Sodirs beskrivelse |
+| Discoveries | Profile | `drawDiscoveryProfile` | Faktaark for **ett** funn: tittel, nøkkeltall og Sodirs beskrivelse i ett kort, ressurstabellen i det samme kortet og letebrønner i venstre kolonne; eierskap og kart i høyre, med kartet ned til bunnen av venstre kolonne. Eneste visning **uten graf** |
+| Fields | Profile | `drawFieldProfile` | Faktaark for **ett** felt: årlig produksjon i grafen (halv bredde) med kartet til høyre i samme høyde (`setSideMap`, `#sideMapCard`, `body.side-map`; `fitMapBox` tegner kartet i boksens format), og under dem nøkkeltall, eierskap, bilde, volumer, Sodirs beskrivelse og investeringer. Felt uten omriss får grafen i full bredde; under 900 px står kartet under grafen |
 | Companies | Prod per hub | `drawCompaniesOePerHub` (`:3940`) | Som Prod per field, men feltene summert opp i huben de tilhører. Seriene sorteres synkende etter total produksjon |
 | Companies | Prod per field | `drawCompaniesOePerField` (`:3535`) | Én serie per felt, equity-justert |
 | Companies | Oil & Gas | `drawCompaniesOilGas` (`:3402`) | Stablet Oil/Gas, equity-justert, **summert over valgte selskaper** |
@@ -2183,13 +2183,15 @@ etter at `updateFab` allerede har kjørt én gang, og uten kallet sto knappen p�
 
 `drawDiscoveryProfile` er funnets faktaark. **Oppsett:** to kolonner i et
 rutenett (`.pf-split`). Venstre kolonne har ett samlet kort øverst (tittel med
-operatør, havområde og status, nøkkeltall, Sodir-knappen og Sodirs
-beskrivelse), så Ownership og til slutt Exploration wells (`explLinkCard`
-setter kortet inn foran `#explLinkSlot`, asynkront). Høyre kolonne har kartet,
-som strekkes til nøyaktig samme høyde som venstre kolonne; `discoveryFitMap`
+operatør, havområde og status, nøkkeltall, Sodir-knappen, ressurstabellen og
+Sodirs beskrivelse), så Exploration wells (`explLinkCard` setter kortet inn
+foran `#explLinkSlot`, asynkront). Høyre kolonne har Ownership øverst og kartet
+under (`.pf-fill`), som fyller resten ned til nøyaktig samme høyde som venstre
+kolonne — blir høyre kolonne likevel høyest, strekkes det siste kortet til
+venstre. Uten kart står Ownership til venstre; `discoveryFitMap`
 tegner kartet på nytt med et format (560 × h) som passer boksen, og en
 ResizeObserver gjør det igjen når letebrønnene kommer inn eller vinduet endrer
-størrelse. Resources ligger i full bredde under. Under 900 px blir det én
+størrelse. Under 900 px blir det én
 kolonne med kartet (300 px høyt) etter Exploration wells. Grafkortet med den
 gamle tittelen skjules mens arket vises (`body.disc-sheet`). Den krever
 **nøyaktig ett** valgt funn, og `syncDiscoverySelection` sørger for at det

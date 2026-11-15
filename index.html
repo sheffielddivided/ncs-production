@@ -452,15 +452,37 @@
        (discoveryFitMap), så det ikke blir tomme striper over og under. Det
        gamle tittelkortet (grafkortet) skjules; tittelen står i det første kortet. */
     body.disc-sheet .chart-wrap{display:none;}
+    /* Feltfaktaark: produksjonsgrafen i halv bredde og kartet til høyre, like
+       høyt. Grafkortet og kartkortet står i et rutenett med to like spalter og
+       strekkes til samme høyde; kartet fyller kortet (.pf-map-box) og tegnes på
+       nytt i boksens format (fitMapBox). */
+    .side-map-card{display:none;}
+    body.side-map .chart-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch;}
+    body.side-map .chart-wrap > .chart-card{min-width:0;}
+    body.side-map .side-map-card{display:flex;flex-direction:column;margin:0;min-width:0;}
+    .side-map-card .pf-map-box{flex:1 1 0;min-height:240px;position:relative;}
+    .side-map-card .pf-map-box > svg.pf-map,.side-map-card .pf-map-box > .mz-wrap{position:absolute;inset:0;}
+    .side-map-card .pf-map-box svg.pf-map{width:100%;height:100%;max-height:none;aspect-ratio:auto !important;}
+    @media (max-width: 899px){
+      body.side-map .chart-wrap{grid-template-columns:minmax(0,1fr);}
+      .side-map-card .pf-map-box{flex:none;height:300px;}
+    }
     body.disc-sheet .profile-wrap{margin-top:12px;}   /* luften grafkortet ellers gir over kortene */
     .pf-split{column-span:all;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;}
     .pf-split > div{min-width:0;}
     /* Siste kort i venstre kolonne uten bunnmarg, så bunnen flukter med kartet.
        Plassholderen for letebrønnene (#explLinkSlot) står sist i kolonnen. */
     .pf-split-l > .pf-card:last-child,.pf-split-l > .pf-card:has(+ #explLinkSlot){margin-bottom:0;}
-    .pf-split-r{display:flex;}
-    .pf-split-r > .pf-card{flex:1;display:flex;flex-direction:column;margin-bottom:0;}
-    .pf-split-r .pf-map-box{flex:1 1 0;min-height:260px;position:relative;}
+    /* Høyre kolonne er en stabel: kort med naturlig høyde øverst (Ownership),
+       kartkortet (.pf-fill) fyller resten ned til bunnen av venstre kolonne. */
+    .pf-split-r{display:flex;flex-direction:column;}
+    .pf-split-r > .pf-card{margin-bottom:10px;}
+    .pf-split-r > .pf-card.pf-fill{flex:1;display:flex;flex-direction:column;margin-bottom:0;}
+    .pf-split-r .pf-map-box{flex:1 1 0;min-height:180px;position:relative;}
+    /* Blir høyre kolonne likevel høyest (kort venstre kolonne, f.eks. uten
+       letebrønner), strekkes det siste kortet til venstre ned, så bunnene flukter. */
+    .pf-split-l{display:flex;flex-direction:column;}
+    .pf-split-l > .pf-card:last-of-type{flex:1 0 auto;}
     /* Zoomen (mzScan) pakker kartet inn i .mz-wrap; da er det innpakningen som fyller boksen. */
     .pf-split-r .pf-map-box > svg.pf-map,.pf-split-r .pf-map-box > .mz-wrap{position:absolute;inset:0;}
     .pf-split-r .pf-map-box svg.pf-map{width:100%;height:100%;max-height:none;aspect-ratio:auto !important;}
@@ -942,6 +964,8 @@
       <div class="status"><div class="spinner"></div><div>Loading…</div></div>
     </div>
   </div>
+  <!-- Kart ved siden av grafen (Fields → Factsheet); vises bare med body.side-map. -->
+  <div class="pf-card side-map-card" id="sideMapCard"></div>
 </div>
 
 <div class="res-table-wrap" id="chartTable"></div>
@@ -1857,6 +1881,7 @@ function renderViewTabs() {
   document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
   document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
   if (!discoveryProfileMode()) document.body.classList.remove('disc-sheet');   // settes av drawDiscoveryProfile
+  if (!(topMode === 'fields' && fieldSubView === 'profile')) setSideMap('');   // settes av drawFieldProfile
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -9473,14 +9498,14 @@ function fieldLayer(skip) {
 
 // Feltkartet: kvadratisk, med feltets installasjoner og koblingen videre til
 // vertsinnretningen, regnet ut i hubnettet (hubNetwork) og filtrert til feltet.
-function profileMap(id) {
+function profileMap(id, h = 560) {
   const outlines = bundle.field_outlines && bundle.field_outlines.fields;
   const own = outlines && outlines[id];
   if (!own) return '';
   const ids = hubFieldIds([hubOfField[id] || fieldNameOf(id)]);
   const net = hubNetwork(ids.includes(id) ? ids : [id], hubFacilities(ids.includes(id) ? ids : [id]), outlines, id);
   return outlineMap([{name: fieldNameOf(id), rings: own}], {
-    label: 'Map of the field', h: 560, pad: 2.2,
+    label: 'Map of the field', h, pad: 2.2,
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(new Set([id])), discoveryLayer()],
     overlay: net.svg, overlayLabels: net.labels, extra: net.extent,
@@ -9671,8 +9696,18 @@ function fieldPhoto(id, name) {
     onerror="this.closest('.pf-photo').remove()"><div class="pf-map-note">Photo: Sodir FactPages</div></div>`;
 }
 
+// Kartkortet ved siden av grafen. html = '' skjuler det og gir grafen full bredde.
+function setSideMap(html) {
+  const card = document.getElementById('sideMapCard');
+  if (!card) return;
+  if (!html && fitMapObs.sideMapBox) { fitMapObs.sideMapBox.disconnect(); delete fitMapObs.sideMapBox; }
+  card.innerHTML = html;
+  document.body.classList.toggle('side-map', !!html);
+}
+
 function drawFieldProfile() {
   const ids = [...selectedFieldIds];
+  setSideMap('');
   if (ids.length !== 1) {
     setChartEmpty(ids.length
       ? 'Select a single field to see its factsheet.'
@@ -9704,6 +9739,12 @@ function drawFieldProfile() {
       'boe/day', {xTitle:'Year'});
   } else {
     setChartEmpty('No production reported for this field.');
+  }
+  // Kartet til høyre for grafen, like høyt som grafkortet (rutenett, se
+  // .side-map i CSS). Felt uten omriss beholder grafen i full bredde.
+  if (profileMap(id)) {
+    setSideMap(`<h3>Location</h3><div class="pf-map-box" id="sideMapBox">${profileMap(id)}</div>`);
+    fitMapBox('sideMapBox', h => profileMap(id, h));
   }
 
   const hub = hubOfField[id];
@@ -12128,10 +12169,10 @@ function drawDiscoveryProfile() {
   const ownerLabel = d.ownerKind === 'BUSINESS ARRANGEMENT AREA'
     ? 'Business arrangement area' : 'Production licence';
 
-  // Venstre kolonne: tittel, nøkkeltall og Sodirs beskrivelse i ett kort,
-  // så eierskap og letebrønnene (explLinkCard setter dem inn foran
-  // explLinkSlot). Høyre kolonne: kartet, like høyt som venstre kolonne.
-  // Ressurstabellen ligger i full bredde under.
+  // Venstre kolonne: tittel, nøkkeltall, ressurstabellen og Sodirs
+  // beskrivelse i ett kort, så letebrønnene (explLinkCard setter dem inn foran
+  // explLinkSlot). Høyre kolonne: eierskap øverst, så kartet, som fyller resten
+  // ned til bunnen av venstre kolonne. Uten kart står eierskapet til venstre.
   const map = discoveryMap(d.id);
   const own = discoveryOwnership(d);
   const vols = discoveryVolumes(d);
@@ -12154,15 +12195,17 @@ function drawDiscoveryProfile() {
         ${factHtml('Resources booked under', d.inclIn && fieldLink(d.inclIn, d.inclIn))}
       </div>
       <div class="lc-links">${factPageBtn('discovery', d.id)}</div>
+      ${vols ? `<div class="pf-sec"><h3>Resources</h3>${vols}</div>` : ''}
       ${descs.length ? `<div class="pf-sec pf-desc"><h3>Sodir description</h3>${
         descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
     </div>
-    ${own ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
+    ${own && !map ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
     <div id="explLinkSlot"></div>
     </div>
-    ${map ? `<div class="pf-split-r"><div class="pf-card"><h3>Location</h3><div class="pf-map-box" id="discMapBox">${map}</div></div></div>` : ''}
+    ${map ? `<div class="pf-split-r">
+      ${own ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
+      <div class="pf-card pf-fill"><h3>Location</h3><div class="pf-map-box" id="discMapBox">${map}</div></div></div>` : ''}
     </div>
-    ${vols ? `<div class="pf-card pf-wide"><h3>Resources</h3>${vols}</div>` : ''}
   `);
   if (!map) document.querySelector('.pf-split').style.gridTemplateColumns = 'minmax(0,1fr)';
   discoveryFitMap(d.id);
@@ -12174,10 +12217,15 @@ function drawDiscoveryProfile() {
 // på nytt med h som gir boksens format — ellers ville det fått tomme hav-striper
 // over og under. Boksen endrer høyde når letebrønnene kommer inn (asynkront)
 // og når vinduet endrer størrelse; en ResizeObserver tar begge.
-let discMapObs = null;
-function discoveryFitMap(id) {
-  if (discMapObs) { discMapObs.disconnect(); discMapObs = null; }
-  const box = document.getElementById('discMapBox');
+// Et kart som skal fylle en boks med høyde bestemt av noe annet (funnarket:
+// venstre kolonne; feltarket: grafkortet). outlineMap tegner et fast format
+// (560 × h), så draw(h) kalles på nytt med h som gir boksens format, og en
+// ResizeObserver gjør det igjen når boksen endrer størrelse. Notatet under
+// kartet flyttes ut av boksen, så boksen bare har kartet.
+const fitMapObs = {};
+function fitMapBox(boxId, draw) {
+  if (fitMapObs[boxId]) { fitMapObs[boxId].disconnect(); delete fitMapObs[boxId]; }
+  const box = document.getElementById(boxId);
   if (!box || !window.ResizeObserver) return;
   let lastH = 0;
   const fit = () => {
@@ -12186,22 +12234,21 @@ function discoveryFitMap(id) {
     const H = Math.max(160, Math.round(560 * h / w));
     if (Math.abs(H - lastH) < 4) return;   // under fire piksler: ikke verdt en ny tegning
     lastH = H;
-    // Kartet og notatet byttes ut; notatet står utenfor boksen.
     const tmp = document.createElement('div');
-    tmp.innerHTML = discoveryMap(id, H);
+    tmp.innerHTML = draw(H);
     const svg = tmp.querySelector('svg.pf-map'), note = tmp.querySelector('.pf-map-note');
     if (!svg) return;
     box.replaceChildren(svg);
     const old = box.parentElement.querySelector(':scope > .pf-map-note');
     if (note) { if (old) old.replaceWith(note); else box.after(note); }
   };
-  // Første gang: notatet flyttes ut av boksen, så boksen bare har kartet.
   const n0 = box.querySelector('.pf-map-note');
   if (n0) box.after(n0);
-  discMapObs = new ResizeObserver(() => fit());
-  discMapObs.observe(box);
+  fitMapObs[boxId] = new ResizeObserver(() => fit());
+  fitMapObs[boxId].observe(box);
   fit();
 }
+const discoveryFitMap = id => fitMapBox('discMapBox', h => discoveryMap(id, h));
 
 // ── COMPANIES: PROFILE ───────────────────────────────────────────────────────
 // Faktaark for ett selskap. Visningen handler om dagens portefølje —
