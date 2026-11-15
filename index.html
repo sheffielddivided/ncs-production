@@ -18390,11 +18390,17 @@ function licRenderTxBar() {
 
 // Søylediagram per år. series: [{label, color, vals: {år: n}, neg}] der neg-serier
 // tegnes nedover. Brukes både for kjøp/salg og for avtaler per type.
+// Hver verdi stables etter fortegn: positive oppover og negative nedover fra
+// nullinjen, som i Chart.js. En serie merket neg (lisenstransaksjonene) har
+// positive tall som tegnes nedover. Investeringskortet sender serier med
+// fortegn — Sodir har noen negative årsbeløp (korreksjoner) — og de havner
+// da under nullinjen i stedet for å gi en ugyldig negativ høyde.
 function licYearChart(y0, y1, series, unit) {
   const W = 900, H = 230, L = 34, R = 8, T = 10, B = 22;
   const years = Array.from({length: y1 - y0 + 1}, (_, i) => y0 + i);
-  const pos = years.map(y => series.filter(s => !s.neg).reduce((t, s) => t + (s.vals[y] || 0), 0));
-  const neg = years.map(y => series.filter(s => s.neg).reduce((t, s) => t + (s.vals[y] || 0), 0));
+  const sv = (s, y) => (s.neg ? -1 : 1) * (s.vals[y] || 0);   // verdien med fortegn
+  const pos = years.map(y => series.reduce((t, s) => t + Math.max(0, sv(s, y)), 0));
+  const neg = years.map(y => series.reduce((t, s) => t + Math.max(0, -sv(s, y)), 0));
   const up = Math.max(1, ...pos), dn = Math.max(0, ...neg);
   const nice = v => { const p = Math.pow(10, Math.floor(Math.log10(v))); return Math.ceil(v / p) * p; };
   const U = nice(up), D = dn ? nice(dn) : 0;
@@ -18404,19 +18410,21 @@ function licYearChart(y0, y1, series, unit) {
   years.forEach((y, i) => {
     let a = y0px, b = y0px;
     series.forEach(s => {
-      const v = s.vals[y] || 0;
-      if (!v) return;
-      const h = v * sc, x = L + i * bw + bw * 0.12;
-      const yy = s.neg ? b : a - h;
+      const v = s.vals[y] || 0, w = sv(s, y);
+      if (!w) return;
+      const down = w < 0, h = Math.abs(w) * sc, x = L + i * bw + bw * 0.12;
+      const yy = down ? b : a - h;
       bars += `<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${(bw * 0.76).toFixed(1)}" height="${h.toFixed(1)}" fill="${s.color}">` +
               `<title>${y} · ${s.label}: ${typeof unit === 'function' ? unit(v) : v + ' ' + unit}</title></rect>`;
-      if (s.neg) b += h; else a -= h;
+      if (down) b += h; else a -= h;
     });
   });
   const step = years.length > 40 ? 10 : years.length > 20 ? 5 : years.length > 10 ? 2 : 1;
   const xt = years.filter(y => y % step === 0).map(y =>
     `<text class="lc-ax" x="${(L + (y - y0) * bw + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${y}</text>`).join('');
-  const grid = [U, U / 2, ...(D ? [-D, -D / 2] : [])].map(v =>
+  // Negative hjelpelinjer bare med plass til tallet (minst 14 px fra nullinjen);
+  // ellers kolliderer de med hverandre når den negative delen er liten.
+  const grid = [U, U / 2, ...[-D, -D / 2].filter(v => v && -v * sc >= 14)].map(v =>
     `<line x1="${L}" x2="${W - R}" y1="${(y0px - v * sc).toFixed(1)}" y2="${(y0px - v * sc).toFixed(1)}" stroke="#e3e8ee" stroke-width="0.6"/>` +
     `<text class="lc-ax" x="${L - 4}" y="${(y0px - v * sc + 3).toFixed(1)}" text-anchor="end">${Math.abs(v)}</text>`).join('');
   return `<svg class="lc-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">
