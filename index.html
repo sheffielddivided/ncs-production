@@ -2503,7 +2503,7 @@ const HOME_SECTIONS = [
     '<path d="M12 2s6 7 6 12a6 6 0 01-12 0c0-5 6-12 6-12z"/>'],
   ['discoveries', 'Discoveries', 'Undeveloped discoveries, contingent resources and how far each has matured.',
     '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>'],
-  ['exploration', 'Exploration', 'Exploration wells on a map and in a list, with results, prospects and news.',
+  ['exploration', 'Exploration', 'Exploration wells on a map and in a list, with results, prospects, success by company and news.',
     '<path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><path d="M5 22h14M8 22l4-6 4 6"/>'],
   ['drilling', 'Drilling', 'Where the drilling rigs are, what they are doing and how they perform.',
     '<path d="M12 2l4 9H8z"/><path d="M10 11l-3 11M14 11l3 11M8.5 17h7"/>'],
@@ -2756,6 +2756,10 @@ function stateToHash() {
     if (explF.fixed) q.set('xf', '1');
     if (!explF.modu) q.set('xm', '0');
     if (!explF.contracts) q.set('xk', '0');
+    if (topMode === 'exploration' && explSubView === 'success') {
+      const ed = epDefaults();
+      EP_PARAMS.forEach(([k, p]) => { if (epF[k] !== ed[k]) q.set(p, epF[k]); });
+    }
     if (topMode === 'drilling') {
       const dd = drillDefaults();
       DRILL_PARAMS.forEach(([k, p]) => { if (drillF[k] !== dd[k]) q.set(p, drillF[k]); });
@@ -3030,6 +3034,8 @@ function applyHash() {
     else if (/^\d{4}$/.test(g('xy') || '')) explF.from = g('xy');
     drillF = {...drillDefaults()};
     DRILL_PARAMS.forEach(([k, p]) => { if (q.has(p)) drillF[k] = q.get(p); });
+    epF = {...epDefaults()};
+    EP_PARAMS.forEach(([k, p]) => { if (q.has(p)) epF[k] = q.get(p); });
     if (g('xq')) explF.q = g('xq');
     if (g('xl')) explF.lic = g('xl');
     if (g('xd') === '0') explF.dev = false;
@@ -14680,6 +14686,7 @@ async function saveFeeds() {
 const EXPL_TABS = [
   {id:'wells', label:'Wells'},
   {id:'map',   label:'Map'},
+  {id:'success', label:'Performance'},
   {id:'news',  label:'News'},
 ];
 // Drilling: boreytelse per brønn, og riggene (flyttet fra Exploration).
@@ -14905,6 +14912,7 @@ function explSet(key, val, rebuildBar) {
 function explRenderBar() {
   if (explSubView === 'perf') return drillRenderBar();
   if (explSubView === 'trends') return setBar('explBar', '');
+  if (explSubView === 'success') return epRenderBar();
   const f = explF, wells = explSubView === 'wells', map = explSubView === 'map';
   const opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
   const years = [''].concat(Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i)));
@@ -15605,6 +15613,7 @@ async function refreshExploration() {
   setInfo('');
   await loadExploration();
   if (explSubView === 'perf' || explSubView === 'trends') await loadDrill();
+  if (explSubView === 'success') await Promise.all([loadDiscoveries(), loadFieldReserves()]);
   if (explSubView === 'rigs') await Promise.all([loadRigWells(), loadRigContracts(), loadRigFacts()]);
   if (explSubView === 'fleet') await loadRigContracts();
   if (explSubView === 'rigs' || explSubView === 'fleet' || explF.rig) await loadRigAis();
@@ -15623,6 +15632,7 @@ function explRenderBody() {
   drillTrendKill();
   if (explSubView === 'perf') return drillRenderPerf();
   if (explSubView === 'trends') return drillRenderTrends();
+  if (explSubView === 'success') return epRender();
   if (explSubView === 'map') return explRenderMap();
   if (explSubView === 'rigs') return explRenderRigs();
   if (explSubView === 'fleet') return explRenderFleet();
@@ -15693,6 +15703,303 @@ function explRenderList() {
     <div class="ex-note">Planned start dates are Sodir's estimates and may slip (⚠ = date already passed). Where a well made a discovery, the
       discovery name is shown with the wellbore name below. Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
   dockBar('explBody');
+}
+
+// ── Performance: letesuksess per selskap ─────────────────────────────────────
+// Undersøkelsesbrønner (wildcats) per konsern, målt over et glidende vindu på
+// spuddår. Hver brønn telles med selskapets eierandel på spuddatoen (netto
+// brønner), og selskapene slås sammen til konsern med concernKey, så Statoil
+// telles med Equinor og Det norske med Aker BP. Avgrensningsbrønner er holdt
+// utenfor: de borer på kjente funn og ville blåst opp funnraten.
+//
+// Målene:
+//  - funnrate: netto funnbrønner (Sodirs wlbDiscoveryWell) ÷ netto brønner
+//  - netto funnet volum: funnenes volum i dag (explFoundVolume) × andelen
+//  - volum per brønn: netto volum ÷ netto brønner, det viktigste enkeltmålet
+//  - operert mot partner: de samme målene delt på brønnene konsernet selv
+//    opererte og brønnene der det var partner
+//  - median funnstørrelse: brutto volum for funnene konsernet var med på
+//  - væskeandel: olje, NGL og kondensat i netto volum
+const EP_PARAMS = [['end', 'pe'], ['len', 'pl'], ['min', 'pm'], ['metric', 'pk'], ['hl', 'ph'], ['sort', 'po']];
+const EP_METRICS = {vpw: 'Volume per wildcat', rate: 'Success rate', vol: 'Net volume', wells: 'Net wildcats'};
+const EP_HL = '#e6007e', EP_GREY = '#9aa5b1', EP_NCS = '#1a2332';
+const EP_LINE_C = ['#2a6fa8', '#ce0f69', '#e3a73a', '#3fa7a0', '#7d2248', '#8e6bbf'];
+const epDefaults = () => ({end: String(currentYear - 1), len: '5', min: '3', metric: 'vpw', hl: '', sort: 'vpw'});
+let epF = epDefaults();
+let epCache = null;
+
+function epSet(key, val) {
+  const keep = barFocus();
+  epF[key] = val;
+  syncUrl();
+  epRenderBar();
+  epRender();
+  restoreBarFocus(keep);
+}
+
+// Én rad per avsluttet undersøkelsesbrønn: år, funn, brutto volum og
+// eierandel per konsern. Bygges på nytt når volumkartet blir klart.
+function epData() {
+  const volReady = !!discVolMap || (discoveriesLoaded && fieldReservesLoaded);
+  if (epCache && epCache.src === explWells && epCache.volReady === volReady) return epCache;
+  const rows = [], label = {};
+  explWells.forEach(w => {
+    if (w.purpose !== 'WILDCAT' || w.state !== 'completed' || !w.entry) return;
+    const y = +w.entry.slice(0, 4);
+    const opK = w.operator ? concernKey(w.operator) : '';
+    // Fire brønner mangler eierandeler hos Sodir; der får operatøren hele brønnen.
+    const owners = w.partners.length ? w.partners : (w.operator ? [{name: w.operator, share: 100}] : []);
+    const sh = new Map();
+    owners.forEach(p => {
+      const k = concernKey(p.name);
+      sh.set(k, (sh.get(k) || 0) + p.share / 100);
+      if (!label[k] || w.entry > label[k][0]) label[k] = [w.entry, p.name];
+    });
+    const v = explFoundVolume(w, 1);
+    rows.push({w, y, opK, sh, found: w.found, oil: v.oil, gas: v.gas});
+  });
+  const years = rows.map(r => r.y);
+  return epCache = {src: explWells, volReady, rows, label: k => label[k] ? label[k][1] : tc(k),
+    y0: Math.min(...years), y1: Math.max(...years)};
+}
+
+// Tall for alle konsern (og hele sokkelen) i årene a–b.
+function epAgg(D, a, b) {
+  const agg = new Map();
+  const tot = {n: 0, found: 0, oil: 0, gas: 0};
+  D.rows.forEach(r => {
+    if (r.y < a || r.y > b) return;
+    tot.n++; if (r.found) tot.found++; tot.oil += r.oil; tot.gas += r.gas;
+    const size = r.oil + r.gas;
+    r.sh.forEach((s, k) => {
+      let g = agg.get(k);
+      if (!g) agg.set(k, g = {k, nw: 0, nf: 0, oil: 0, gas: 0, op: {nw: 0, nf: 0, vol: 0}, part: {nw: 0, nf: 0, vol: 0}, gross: 0, sizes: []});
+      const side = r.opK === k ? g.op : g.part;
+      g.nw += s; side.nw += s; g.gross++;
+      if (r.found) {
+        g.nf += s; side.nf += s;
+        g.oil += r.oil * s; g.gas += r.gas * s; side.vol += size * s;
+        if (size > 0) g.sizes.push(size);
+      }
+    });
+  });
+  agg.forEach(g => {
+    g.vol = g.oil + g.gas;
+    g.rate = g.nw ? g.nf / g.nw : null;
+    g.vpw = g.nw ? g.vol / g.nw : null;
+    g.liq = g.vol ? g.oil / g.vol : null;
+    g.med = g.sizes.length ? median(g.sizes) : null;
+    [g.op, g.part].forEach(s => { s.rate = s.nw >= 1 ? s.nf / s.nw : null; s.vpw = s.nw >= 1 ? s.vol / s.nw : null; });
+  });
+  tot.vol = tot.oil + tot.gas;
+  tot.rate = tot.n ? tot.found / tot.n : null;
+  tot.vpw = tot.n ? tot.vol / tot.n : null;
+  return {agg, tot};
+}
+
+const epVal = (g, m) => m === 'rate' ? g.rate : m === 'vol' ? g.vol : m === 'wells' ? g.nw : g.vpw;
+const epFmtVol = v => v == null ? '—' : v >= 100 ? Math.round(v).toLocaleString('en-US') : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+const epFmtN = v => v == null ? '—' : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+// «OMV (Norge) AS» -> «OMV», ikke «OMV ()».
+const epShort = n => licShort(n).replace(/\(\s*\)/g, '').replace(/\s+/g, ' ').trim();
+const epFmtPct = v => v == null ? '—' : Math.round(v * 100) + ' %';
+const epFmt = (m, v) => m === 'rate' ? epFmtPct(v) : m === 'wells' ? epFmtN(v) : epFmtVol(v);
+
+function epSpan() {
+  const end = Math.min(+epF.end || currentYear - 1, currentYear), len = Math.max(1, +epF.len || 5);
+  return [end - len + 1, end];
+}
+
+function epRenderBar() {
+  const f = epF, D = epData(), [a, b] = epSpan();
+  const opt = (v, cur, l) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`;
+  const years = []; for (let y = currentYear; y >= Math.max(D.y0, 1970); y--) years.push(String(y));
+  const {agg} = epAgg(D, a, b);
+  const items = [...agg.values()].filter(g => g.nw >= 0.5).sort((x, y) => y.nw - x.nw)
+    .map(g => ({v: D.label(g.k), sub: `${epFmtN(g.nw)} net wildcats`}));
+  setBar('explBar', `
+    <div class="ex-bar">
+      ${pickerHtml({id: 'epHl', value: f.hl, placeholder: 'Highlight company…', label: 'Highlight company', allowEmpty: true,
+        items, pick: v => epSet('hl', v)})}
+      <select class="year-select" onchange="epSet('end', this.value)" aria-label="Period ends">
+        ${years.map(y => opt(y, f.end, `Up to ${y}`)).join('')}
+      </select>
+      <select class="year-select" onchange="epSet('len', this.value)" aria-label="Window length">
+        ${['3', '5', '10', '15'].map(v => opt(v, f.len, `${v}-year window`)).join('')}
+      </select>
+      <select class="year-select" onchange="epSet('min', this.value)" aria-label="Minimum net wildcats">
+        ${['2', '3', '5', '10'].map(v => opt(v, f.min, `Min ${v} net wildcats`)).join('')}
+      </select>
+      <button class="grp-btn" onclick="epF = epDefaults(); syncUrl(); epRenderBar(); epRender()">Reset</button>
+    </div>`);
+}
+
+function epSortBy(key) { epF.sort = key; syncUrl(); epRender(); }
+
+function epRender() {
+  const box = document.getElementById('explBody');
+  drillTrendKill();
+  const D = epData(), [a, b] = epSpan(), min = +epF.min || 5;
+  const span = a === b ? String(a) : `${a}–${b}`;
+  const {agg, tot} = epAgg(D, a, b);
+  const list = [...agg.values()].filter(g => g.nw >= min).map(g => ({...g, name: D.label(g.k)}));
+  const hlK = epF.hl ? [...agg.keys()].find(k => D.label(k) === epF.hl) || null : null;
+  const hlG = hlK ? agg.get(hlK) : null;
+  const isHl = g => !!hlK && g.k === hlK;
+  const partial = b >= currentYear;
+
+  // ── Spredningsplott: netto brønner (log) mot volum per brønn ──
+  const W = 1000, H = 420, L = 54, R = 16, T = 16, B = 40, pw = W - L - R, ph = H - T - B;
+  const pts = list.filter(g => g.vpw != null);
+  let svg = '<div class="ex-sum">No companies with enough wildcats in the period.</div>';
+  if (pts.length) {
+    const xs = pts.map(g => g.nw), x0 = Math.max(0.5, Math.min(...xs) * 0.8), x1 = Math.max(...xs) * 1.25;
+    const lx = v => L + (Math.log(v) - Math.log(x0)) / (Math.log(x1) - Math.log(x0)) * pw;
+    const maxY = Math.max(...pts.map(g => g.vpw), tot.vpw || 0) * 1.08 || 1;
+    const step = [1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500].find(s => maxY / s <= 6) || 1000;
+    const top = Math.ceil(maxY / step) * step, ly = v => T + ph - v / top * ph;
+    let grid = '';
+    for (let v = 0; v <= top + 1e-9; v += step) grid += `<line x1="${L}" x2="${W - R}" y1="${ly(v).toFixed(1)}" y2="${ly(v).toFixed(1)}" stroke="#e4e8ee"/>
+      <text x="${L - 6}" y="${(ly(v) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7785">${v}</text>`;
+    [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000].filter(v => v >= x0 && v <= x1).forEach(v => {
+      grid += `<line x1="${lx(v).toFixed(1)}" x2="${lx(v).toFixed(1)}" y1="${T}" y2="${T + ph}" stroke="#eef1f5"/>
+        <text x="${lx(v).toFixed(1)}" y="${T + ph + 14}" text-anchor="middle" font-size="10" fill="#6b7785">${v}</text>`;
+    });
+    const avg = tot.vpw != null ? `<line x1="${L}" x2="${W - R}" y1="${ly(tot.vpw).toFixed(1)}" y2="${ly(tot.vpw).toFixed(1)}" stroke="${EP_NCS}" stroke-dasharray="4 3"><title>Shelf average ${epFmtVol(tot.vpw)} million boe per wildcat</title></line>` : '';
+    // Navnelapper: de største først, og en lapp som overlapper en tidligere utelates.
+    const placed = [];
+    const labelOf = g => {
+      const x = lx(g.nw), y = ly(g.vpw), txt = epShort(g.name), w = txt.length * 5.6 + 4;
+      // Til høyre, til venstre, over eller under punktet: den første plassen som er ledig.
+      const cands = [[x + 7, y + 3.5, 'start'], [x - 7, y + 3.5, 'end'], [x - w / 2, y - 9, 'start'], [x - w / 2, y + 16, 'start']]
+        .map(([tx, ty, anc]) => ({tx, ty, anc, x0: anc === 'end' ? tx - w : tx, x1: anc === 'end' ? tx : tx + w, y0: ty - 10, y1: ty + 2}))
+        .filter(c => c.x0 >= L && c.x1 <= W - R && c.y0 >= 0 && c.y1 <= T + ph);
+      const hit = c => placed.some(p => c.x0 < p.x1 && c.x1 > p.x0 && c.y0 < p.y1 && c.y1 > p.y0);
+      const box = cands.find(c => !hit(c)) || (isHl(g) ? cands[0] : null);
+      if (!box) return '';
+      placed.push(box);
+      return `<text x="${box.tx.toFixed(1)}" y="${box.ty.toFixed(1)}" text-anchor="${box.anc}" font-size="10"
+        fill="${isHl(g) ? EP_HL : '#4a5568'}"${isHl(g) ? ' font-weight="600"' : ''}>${esc(txt)}</text>`;
+    };
+    pts.forEach(g => { const x = lx(g.nw), y = ly(g.vpw); placed.push({x0: x - 5, x1: x + 5, y0: y - 5, y1: y + 5}); });
+    const order = [...pts].sort((p, q) => (isHl(q) - isHl(p)) || q.nw - p.nw);
+    const labels = order.map(labelOf).join('');
+    const dots = [...pts].sort((p, q) => isHl(p) - isHl(q)).map(g => `<circle cx="${lx(g.nw).toFixed(1)}" cy="${ly(g.vpw).toFixed(1)}" r="${isHl(g) ? 6 : 4.5}"
+      fill="${isHl(g) ? EP_HL : EP_GREY}" fill-opacity="${isHl(g) ? 1 : 0.8}" stroke="#fff" stroke-width="1" style="cursor:pointer"
+      onclick="epSet('hl', ${esc(JSON.stringify(isHl(g) ? '' : g.name))})"><title>${esc(g.name)} · ${epFmtN(g.nw)} net wildcats · ${epFmtVol(g.vpw)} million boe per wildcat · success rate ${epFmtPct(g.rate)} · net volume ${epFmtVol(g.vol)} million boe</title></circle>`).join('');
+    svg = `<div class="dr-scroll"><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Net wildcats against net discovered volume per wildcat, by company">
+      ${grid}${avg}${dots}${labels}
+      <text x="${L + pw / 2}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#6b7785">Net wildcats (log scale) — how much the company explored</text>
+      <text x="13" y="${T + ph / 2}" font-size="10" fill="#6b7785" transform="rotate(-90 13 ${T + ph / 2})" text-anchor="middle">million boe per net wildcat</text>
+    </svg></div>`;
+    pptCardSpecs.epScatter = {kind: 'scatter', markers: true, xTitle: 'Net wildcats', yTitle: 'million boe per net wildcat',
+      subtitle: `Exploration performance by company group, wildcats spudded ${span} · min ${min} net wildcats`,
+      series: [{name: 'Companies', points: pts.filter(g => !isHl(g)).map(g => ({x: +g.nw.toFixed(2), y: +g.vpw.toFixed(2)})), color: pptHex(EP_GREY)},
+        ...(hlG && pts.some(isHl) ? [{name: epF.hl, points: pts.filter(isHl).map(g => ({x: +g.nw.toFixed(2), y: +g.vpw.toFixed(2)})), color: pptHex(EP_HL)}] : [])]};
+  }
+
+  // ── Tabell ──
+  const SORT = {name: g => g.name.toLowerCase(), nw: g => g.nw, nf: g => g.nf, rate: g => g.rate, vol: g => g.vol, vpw: g => g.vpw,
+    oprate: g => g.op.rate, opvpw: g => g.op.vpw, prate: g => g.part.rate, pvpw: g => g.part.vpw, med: g => g.med, liq: g => g.liq};
+  const sk = SORT[epF.sort] ? epF.sort : 'vpw', sf = SORT[sk];
+  const sorted = [...list].sort((p, q) => {
+    const x = sf(p), y = sf(q);
+    if (sk === 'name') return x < y ? -1 : 1;
+    return (y ?? -1) - (x ?? -1) || q.nw - p.nw;
+  });
+  const th = (k, l, cls = '') => `<th class="${cls}${sk === k ? ' sorted' : ''}" onclick="epSortBy('${k}')" style="cursor:pointer">${l}${sk === k ? (k === 'name' ? ' ▲' : ' ▼') : ''}</th>`;
+  const rows = sorted.map(g => `<tr${isHl(g) ? ' style="background:rgba(230,0,126,0.08)"' : ''}>
+      <td class="ex-l">${companyLink(g.name)}</td><td>${epFmtN(g.nw)}</td><td>${epFmtN(g.op.nw)}</td><td>${epFmtN(g.nf)}</td>
+      <td><strong>${epFmtPct(g.rate)}</strong></td><td>${epFmtVol(g.vol)}</td><td><strong>${epFmtVol(g.vpw)}</strong></td>
+      <td>${epFmtPct(g.op.rate)}</td><td>${epFmtVol(g.op.vpw)}</td><td>${epFmtPct(g.part.rate)}</td><td>${epFmtVol(g.part.vpw)}</td>
+      <td>${epFmtVol(g.med)}</td><td>${epFmtPct(g.liq)}</td></tr>`).join('');
+  const totRow = `<tr style="font-weight:600;border-top:1.5px solid var(--border)"><td class="ex-l">Norwegian shelf</td><td>${tot.n}</td><td>${tot.n}</td><td>${tot.found}</td>
+      <td>${epFmtPct(tot.rate)}</td><td>${epFmtVol(tot.vol)}</td><td>${epFmtVol(tot.vpw)}</td><td colspan="6"></td></tr>`;
+
+  // ── Nøkkeltall ──
+  const best = [...list].filter(g => g.vpw != null).sort((p, q) => q.vpw - p.vpw)[0];
+  const tile = (l, v, s) => `<div class="pf-fact"><span>${l}</span><strong>${v}</strong>${s ? `<small style="display:block;font-size:0.68rem;color:var(--muted)">${s}</small>` : ''}</div>`;
+  const tiles = [
+    tile('Wildcats', tot.n.toLocaleString('en-US'), `spudded ${span}`),
+    tile('Success rate', epFmtPct(tot.rate), `${tot.found} discovery wells`),
+    tile('Discovered', `${epFmtVol(tot.vol)} mill. boe`, `${epFmtVol(tot.vpw)} per wildcat`),
+    best ? tile('Most per wildcat', esc(epShort(best.name)), `${epFmtVol(best.vpw)} mill. boe per net wildcat`) : '',
+    hlG ? tile(esc(epShort(epF.hl)), `${epFmtVol(hlG.vpw)} per wildcat`, `${epFmtN(hlG.nw)} net wildcats · ${epFmtPct(hlG.rate)} success`) : '',
+  ].join('');
+
+  // ── Over tid ──
+  const m = EP_METRICS[epF.metric] ? epF.metric : 'vpw';
+  const pills = Object.entries(EP_METRICS).map(([k, l]) => `<button class="pill-btn${m === k ? ' active' : ''}" onclick="epSet('metric','${k}')">${l}</button>`).join('');
+  const len = b - a + 1;
+  const tEnd = Math.min(currentYear - 1, D.y1), tStart = Math.max(1970 + len - 1, D.y0 + len - 1);
+  const tYears = []; for (let y = tStart; y <= tEnd; y++) tYears.push(y);
+  const winAgg = tYears.map(y => epAgg(D, y - len + 1, y));
+  const lineKs = [...list].sort((p, q) => q.nw - p.nw).slice(0, 6).map(g => g.k);
+  if (hlK && !lineKs.includes(hlK)) lineKs.push(hlK);
+  const series = lineKs.map((k, i) => ({k, name: D.label(k), color: k === hlK ? EP_HL : EP_LINE_C[i % EP_LINE_C.length],
+    data: winAgg.map(({agg: A}) => { const g = A.get(k); const v = g && g.nw >= min ? epVal(g, m) : null; return v == null ? null : +(m === 'rate' ? v * 100 : v).toFixed(2); })}));
+  const ncs = winAgg.map(({tot: t}) => { const v = m === 'rate' ? t.rate : m === 'vpw' ? t.vpw : null; return v == null ? null : +(m === 'rate' ? v * 100 : v).toFixed(2); });
+  const yTitle = {vpw: 'million boe per net wildcat', rate: '% of net wildcats', vol: 'million boe, net', wells: 'net wildcats'}[m];
+  // Volumene spenner fra hundrevis av millioner fat per brønn på 1970-tallet til
+  // noen få i dag; på lineær akse blir de siste tiårene en flat strek.
+  const logY = m === 'vpw' || m === 'vol';
+  if (logY) { series.forEach(s => { s.data = s.data.map(v => v > 0 ? v : null); }); ncs.forEach((v, i) => { if (!(v > 0)) ncs[i] = null; }); }
+
+  box.innerHTML = `
+    <div class="pf-card"><h3>Exploration performance · wildcats spudded ${span}</h3>
+      <div class="ex-sum">How successful is each company's exploration? Wildcats are counted with the company's licence share at spud (net wildcats), company groups
+        are combined across name changes and mergers, and discovered volumes are today's estimates. Companies with at least ${min} net wildcats in the period.${partial ? ` <strong>${currentYear} is incomplete.</strong>` : ''}</div>
+      <div class="pf-facts">${tiles}</div></div>
+    <div class="pf-card" data-ppt-spec="epScatter"><h3>Activity against results · ${span}</h3>
+      ${svg}
+      <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${EP_HL}"></span>${hlK ? esc(epF.hl) : 'Highlighted company (pick one above or click a dot)'}</span>
+        <span class="ex-leg"><span class="ex-dot" style="background:${EP_GREY}"></span>Other companies (${pts.length - (hlG && pts.some(isHl) ? 1 : 0)})</span>
+        <span class="ex-leg"><span style="display:inline-block;width:14px;border-top:2px dashed ${EP_NCS};margin-right:5px;vertical-align:middle"></span>Shelf average: ${epFmtVol(tot.vpw)} million boe per wildcat</span></div>
+      <div class="ex-note">Each dot is a company group. Right = explored more, up = found more per well. Above the dashed line the company found more per wildcat than the shelf as a whole.
+        One large discovery can lift a company far up, especially with few wells.</div></div>
+    <div class="pf-card" data-ppt-spec="epTime"><h3>Over time · ${len}-year moving window</h3>
+      <div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%;overflow-x:auto">${pills}</div>
+      ${tYears.length ? `<div class="chart-container" style="height:300px"><canvas id="epTime"></canvas></div><div class="legend-row" id="epTimeLeg"></div>` : '<div class="ex-sum">Not enough years for a moving window.</div>'}
+      <div class="ex-note">Each point covers the wildcats spudded in the ${len} years up to and including that year. The six companies with the most net wildcats in ${span}${hlK ? ', plus the highlighted company' : ''}.
+        Windows with fewer than ${min} net wildcats for a company are left out. ${m === 'rate' || m === 'vpw' ? 'The dashed line is the shelf as a whole.' : ''}
+        ${logY ? 'Log scale: the 1970s discoveries were a hundred times larger per well than today\'s. ' : ''}The last years fall because recent discoveries often have no volume estimate yet.</div></div>
+    <div class="pf-card"><h3>Ranking · ${span}</h3>
+      <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead>
+        <tr><th></th><th colspan="6" style="text-align:center">All wildcats</th><th colspan="2" style="text-align:center">As operator</th><th colspan="2" style="text-align:center">As partner</th><th colspan="2"></th></tr>
+        <tr>${th('name', 'Company group', 'ex-l')}${th('nw', 'Net wildcats')}<th>of which operated</th>${th('nf', 'Net discoveries')}${th('rate', 'Success rate')}${th('vol', 'Net volume')}${th('vpw', 'Per wildcat')}
+        ${th('oprate', 'Success')}${th('opvpw', 'Per wildcat')}${th('prate', 'Success')}${th('pvpw', 'Per wildcat')}${th('med', 'Median discovery')}${th('liq', 'Liquids')}</tr></thead>
+        <tbody>${rows}${totRow}</tbody></table></div>
+      <div class="ex-note">Volumes in million boe. Net = multiplied by the company's licence share at spud. Per wildcat = net discovered volume ÷ net wildcats. Operated and partner
+        figures are shown when the company has at least one net wildcat in that role. Median discovery = the gross size of the middle discovery the company took part in
+        (discoveries without a volume estimate left out). Liquids = oil, NGL and condensate as a share of the net volume. The company is named after its most recent licensee in the data. Click a column to sort.</div></div>
+    <div class="pf-card"><h3>Method and caveats</h3>
+      <div class="ex-note" style="margin-top:0;font-size:0.72rem">
+        Completed wildcats from Sodir by spud year; appraisal wells are left out, since they are drilled on known discoveries. Sidetracks and re-entries count with their main well.
+        A wildcat is a success when Sodir marks it as the discovery well of a discovery (technical success: it says nothing about whether the discovery is commercial).
+        Licence shares are those on the spud date, from Sodir; the four wildcats without licensee data are given to the operator in full. Companies are grouped by Sodir's company group,
+        with known successors combined (Statoil → Equinor, Det norske → Aker BP, DEA → Wintershall, Elf → Total and others); a group that was bought (Lundin, Revus, Marathon) stays separate for the years before the purchase.
+        Discovered volume = the discovery's resources today, and for the discovery that became a field, the field's recoverable volume including what has been produced.
+        Estimates change over time in both directions, and recent discoveries often have no estimate yet, which pulls the last years down.
+        A few very large discoveries (Johan Sverdrup, Johan Castberg) dominate the volumes for the companies and years they fall in.
+        Source: Sodir wellbore, discovery and field data (NLOD 2.0).</div></div>`;
+  dockBar('explBody');
+
+  if (tYears.length) {
+    const ds = series.map(s => ({label: s.name, data: s.data, borderColor: s.color, backgroundColor: s.color, borderWidth: s.k === hlK ? 2.75 : 1.75,
+      pointRadius: 0, tension: 0.2, spanGaps: false}));
+    if (m === 'rate' || m === 'vpw') ds.push({label: 'Norwegian shelf', data: ncs, borderColor: EP_NCS, backgroundColor: EP_NCS, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, tension: 0.2});
+    const ch = new Chart(document.getElementById('epTime').getContext('2d'), {type: 'line', data: {labels: tYears.map(String), datasets: ds},
+      options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null,
+          callbacks: {title: it => `${+it[0].label - len + 1}–${it[0].label}`, label: c => ` ${epShort(c.dataset.label)}: ${epFmt(m, m === 'rate' ? c.parsed.y / 100 : c.parsed.y)}`}}},
+        scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 14, font: {size: 9}}, grid: {display: false}},
+                 y: logY ? {type: 'logarithmic', title: {display: true, text: yTitle + ' (log scale)', color: '#4a5568', font: {size: 10}},
+                      ticks: {font: {size: 9}, callback: v => [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].includes(+v) ? v : ''}, grid: {color: 'rgba(0,0,0,0.05)'}}
+                   : {beginAtZero: true, title: {display: true, text: yTitle, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+    drillTrendCharts.push(ch);
+    document.getElementById('epTimeLeg').innerHTML = ds.map(d => `<div class="legend-item"><div class="legend-dot" style="background:${d.borderDash ? 'none' : d.borderColor};${d.borderDash ? `border-top:2px dashed ${d.borderColor};` : ''}height:${d.borderDash ? 0 : 3}px;border-radius:0;width:14px"></div>${esc(epShort(d.label))}</div>`).join('');
+    pptCardSpecs.epTime = {...pptSpecFromChart(ch), subtitle: `${EP_METRICS[m]}, ${len}-year moving window of wildcats by spud year · company groups`};
+  }
 }
 
 // ── Kart ─────────────────────────────────────────────────────────────────────
