@@ -473,9 +473,16 @@
     /* Siste kort i venstre kolonne uten bunnmarg, så bunnen flukter med kartet.
        Plassholderen for letebrønnene (#explLinkSlot) står sist i kolonnen. */
     .pf-split-l > .pf-card:last-child,.pf-split-l > .pf-card:has(+ #explLinkSlot){margin-bottom:0;}
-    .pf-split-r{display:flex;}
-    .pf-split-r > .pf-card{flex:1;display:flex;flex-direction:column;margin-bottom:0;}
-    .pf-split-r .pf-map-box{flex:1 1 0;min-height:260px;position:relative;}
+    /* Høyre kolonne er en stabel: kort med naturlig høyde øverst (Ownership),
+       kartkortet (.pf-fill) fyller resten ned til bunnen av venstre kolonne. */
+    .pf-split-r{display:flex;flex-direction:column;}
+    .pf-split-r > .pf-card{margin-bottom:10px;}
+    .pf-split-r > .pf-card.pf-fill{flex:1;display:flex;flex-direction:column;margin-bottom:0;}
+    .pf-split-r .pf-map-box{flex:1 1 0;min-height:180px;position:relative;}
+    /* Blir høyre kolonne likevel høyest (kort venstre kolonne, f.eks. uten
+       letebrønner), strekkes det siste kortet til venstre ned, så bunnene flukter. */
+    .pf-split-l{display:flex;flex-direction:column;}
+    .pf-split-l > .pf-card:last-of-type{flex:1 0 auto;}
     /* Zoomen (mzScan) pakker kartet inn i .mz-wrap; da er det innpakningen som fyller boksen. */
     .pf-split-r .pf-map-box > svg.pf-map,.pf-split-r .pf-map-box > .mz-wrap{position:absolute;inset:0;}
     .pf-split-r .pf-map-box svg.pf-map{width:100%;height:100%;max-height:none;aspect-ratio:auto !important;}
@@ -12163,8 +12170,9 @@ function drawDiscoveryProfile() {
     ? 'Business arrangement area' : 'Production licence';
 
   // Venstre kolonne: tittel, nøkkeltall, ressurstabellen og Sodirs
-  // beskrivelse i ett kort, så eierskap og letebrønnene (explLinkCard setter
-  // dem inn foran explLinkSlot). Høyre kolonne: kartet, like høyt som venstre kolonne.
+  // beskrivelse i ett kort, så letebrønnene (explLinkCard setter dem inn foran
+  // explLinkSlot). Høyre kolonne: eierskap øverst, så kartet, som fyller resten
+  // ned til bunnen av venstre kolonne. Uten kart står eierskapet til venstre.
   const map = discoveryMap(d.id);
   const own = discoveryOwnership(d);
   const vols = discoveryVolumes(d);
@@ -12191,10 +12199,12 @@ function drawDiscoveryProfile() {
       ${descs.length ? `<div class="pf-sec pf-desc"><h3>Sodir description</h3>${
         descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
     </div>
-    ${own ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
+    ${own && !map ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
     <div id="explLinkSlot"></div>
     </div>
-    ${map ? `<div class="pf-split-r"><div class="pf-card"><h3>Location</h3><div class="pf-map-box" id="discMapBox">${map}</div></div></div>` : ''}
+    ${map ? `<div class="pf-split-r">
+      ${own ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
+      <div class="pf-card pf-fill"><h3>Location</h3><div class="pf-map-box" id="discMapBox">${map}</div></div></div>` : ''}
     </div>
   `);
   if (!map) document.querySelector('.pf-split').style.gridTemplateColumns = 'minmax(0,1fr)';
