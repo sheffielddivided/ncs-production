@@ -1881,7 +1881,9 @@ function renderViewTabs() {
   document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
   document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
   if (!discoveryProfileMode()) document.body.classList.remove('disc-sheet');   // settes av drawDiscoveryProfile
-  if (!(topMode === 'fields' && fieldSubView === 'profile')) setSideMap('');   // settes av drawFieldProfile
+  if (!((topMode === 'fields' && fieldSubView === 'profile') || (topMode === 'hubs' && hubSubView === 'profile'))) {
+    setSideMap('');   // settes av drawFieldProfile og drawHubProfile
+  }
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -3068,7 +3070,7 @@ function applyHash() {
     ncsF.vol = q.get('nv') === '1';
     if (/^\d{4}$/.test(q.get('n0') || '')) ncsF.from = q.get('n0');
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
-    if (['all', 'prod'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
+    if (['all', 'prod', 'rp'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     ncsF.crArea = q.get('na') === '1';
     if (['rem', 'orig', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
@@ -6587,7 +6589,7 @@ const NCS_TABS = [
 ];
 let ncsSubView = 'production';
 // prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · vol: påvist volum i letegrafen · from: startår i volumgrafen
-// · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod'
+// · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life)
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline'
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
@@ -7817,8 +7819,9 @@ function drawSsbShare(toggle) {
 // ressurser i funn med (samme andelsberegning som i selskapsvisningene).
 // Andeler som ikke er fordelt på noe selskap — britisk del av felt som deles
 // over grensen — faller utenfor.
-function drawNcsCompanies() {
-  if (ncsF.rank === 'prod') return drawNcsCompaniesProd();
+// Gjenstående reserver per selskap (mill boe): siste reserveårgang per felt
+// × dagens lisensandel. {navn: {name, liq, gas, cr}}; cr fylles av kalleren.
+function ncsCompanyReserves() {
   const now = new Date();
   const res = {};
   const get = n => res[n] = res[n] || {name: n, liq: 0, gas: 0, cr: 0};
@@ -7830,6 +7833,13 @@ function drawNcsCompanies() {
       const o = get(p.name); o.liq += v.liq; o.gas += v.gas;
     });
   });
+  return {res, get};
+}
+
+function drawNcsCompanies() {
+  if (ncsF.rank === 'prod') return drawNcsCompaniesProd();
+  if (ncsF.rank === 'rp') return drawNcsCompaniesRp();
+  const {res, get} = ncsCompanyReserves();
   const withRes = ncsF.rank === 'all';
   if (withRes) allDiscoveries.forEach(d => {
     const v = discoveryRes[d.id];
@@ -7875,12 +7885,14 @@ function drawNcsCompanies() {
 }
 
 const ncsCompanyPills = () => ncsPills('rank', [['res', 'Reserves'], ['all', 'Reserves + contingent resources'],
-                                                  ['prod', 'Production, last 12 months']]);
+                                                  ['prod', 'Production, last 12 months'], ['rp', 'Reserve life (R/P)']]);
 
 // Rangering etter egenandelsjustert produksjon de siste tolv månedene med
 // data. Andelen slås opp midt i hver måned, som i selskapsvisningene, så et
 // eierskifte i perioden fordeles på begge selskapene.
-function drawNcsCompaniesProd() {
+// Netto produksjon per selskap siste 12 måneder med data, boe/dag (snitt).
+// {res: {navn: {name, liq, gas}}, span, dayCount}.
+function ncsCompanyProd12() {
   const ids = ncsFieldIds();
   const {first, last, dayCount, span} = ncsLast12(ids);
   const res = {};
@@ -7895,6 +7907,11 @@ function drawNcsCompaniesProd() {
       o.liq += Math.max(0, oe - gas) * f; o.gas += gas * f;
     });
   }));
+  return {res, span, dayCount};
+}
+
+function drawNcsCompaniesProd() {
+  const {res, span} = ncsCompanyProd12();
   const list = Object.values(res).map(o => ({...o, total: o.liq + o.gas}))
     .filter(o => o.total >= 1).sort((a, b) => b.total - a.total);
   const grand = list.reduce((t, o) => t + o.total, 0);
@@ -7927,6 +7944,69 @@ function drawNcsCompaniesProd() {
   lastDatasets = SEG.map(([k, l]) => ({label: l + ', boe/day', data: list.map(o => Math.round(o[k]))}));
   pptSpec = {kind: 'cat', dir: 'bar', stacked: true, labels: shown.map(o => o.name), yTitle: 'boe/day',
     series: SEG.map(([k, l, c]) => ({name: l, type: 'bar', color: pptHex(c), values: shown.map(o => Math.round(o[k]))}))};
+  document.getElementById('downloadBtn').disabled = false;
+  setChartTable('');
+}
+
+// Reserve life (R/P): gjenstående reserver (som i «Reserves») delt på
+// årsproduksjonen, regnet som snittet siste 12 måneder (som i «Production») ×
+// 365,25. Gir hvor mange år reservene varer med dagens produksjonstakt.
+// Selskaper uten nevneverdig produksjon (under RP_MIN_PROD boe/dag) får ikke
+// et meningsfylt tall og holdes utenfor; antallet står i notatet.
+const RP_MIN_PROD = 1000;
+const RP_COLOR = 'rgba(0,48,87,0.75)';
+function drawNcsCompaniesRp() {
+  const R = ncsCompanyReserves().res, P = ncsCompanyProd12();
+  const yr = v => v * 365.25 / 1e6;   // boe/dag → mill boe per år
+  const names = new Set([...Object.keys(R), ...Object.keys(P.res)]);
+  const all = [...names].map(name => {
+    const r = R[name] ? R[name].liq + R[name].gas : 0;
+    const pd = P.res[name] ? P.res[name].liq + P.res[name].gas : 0;
+    return {name, res: r, prod: pd, rp: pd > 0 ? r / yr(pd) : null};
+  });
+  const list = all.filter(o => o.prod >= RP_MIN_PROD && o.res > 0).sort((a, b) => b.rp - a.rp || a.name.localeCompare(b.name));
+  const noProd = all.filter(o => o.res >= 1 && o.prod < RP_MIN_PROD);
+  const totR = all.reduce((t, o) => t + o.res, 0), totP = all.reduce((t, o) => t + o.prod, 0);
+  const ncsRp = totP > 0 ? totR / yr(totP) : null;
+  const shown = ncsF.all ? list : list.slice(0, 20);
+  const max = Math.max(...shown.map(o => o.rp), ncsRp || 0, 1);
+  const f1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const n0 = v => Math.round(v).toLocaleString('en');
+  const row = (label, o, i, ref) => {
+    const link = !ref && allCompanies.includes(o.name);
+    const open = link ? ` onclick="openCompanyProfile(${esc(jsStr(o.name))})" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')openCompanyProfile(${esc(jsStr(o.name))})"` : ' style="cursor:default"';
+    const tip = `${o.name}: ${f1(o.rp)} years · reserves ${n0(o.res)} million boe · production ${n0(o.prod)} boe/day`;
+    return `<div class="lc-row"${open}>
+      <div class="lc-name" title="${esc(o.name)}">${ref ? '' : `${i + 1}. `}<span class="${ref ? '' : 'lc-u'}"${ref ? ' style="font-weight:700"' : ''}>${esc(label)}</span></div>
+      <div class="lc-track" style="width:${(o.rp / max * 70).toFixed(1)}%"><span style="flex:1;background:${ref ? 'rgba(154,165,177,0.85)' : RP_COLOR}" title="${esc(tip)}"></span></div>
+      <div class="lc-val">${f1(o.rp)} yrs · ${n0(o.res)} mboe</div></div>`;
+  };
+  const bars = (ncsRp != null ? row('NCS total', {name: 'NCS total', res: totR, prod: totP, rp: ncsRp}, 0, true) : '')
+    + shown.map((o, i) => row(o.name, o, i, false)).join('');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  setProfile('');
+  const vintage = Math.max(...Object.values(fieldReserves || {}).filter(r => r.length).map(r => r[r.length - 1].year));
+  document.getElementById('chartArea').innerHTML = `
+    ${ncsCompanyPills()}
+    ${bars}
+    <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${RP_COLOR}"></span>Reserve life, years</span>
+      <span class="ex-leg"><span class="ex-dot" style="background:rgba(154,165,177,0.85)"></span>NCS total (reference)</span>
+      <span class="ex-leg">Showing ${shown.length} of ${list.length}
+      ${list.length > 20 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 20' : 'show all'}</a>` : ''}</span></div>
+    <div class="pf-map-note">Years the remaining reserves last at the production rate of the last 12 months (${P.span}), with the reserves in million boe.
+      ${noProd.length ? `${noProd.length} ${noProd.length === 1 ? 'company' : 'companies'} with reserves but under ${n0(RP_MIN_PROD)} boe/day of production ${noProd.length === 1 ? 'is' : 'are'} left out.` : ''}
+      Click a company for its factsheet.</div>`;
+  setChartTitle('Norwegian Continental Shelf · Companies', `Ranked by reserve life (R/P), equity-adjusted · years`);
+  setInfo(`<strong>Reserve life (R/P):</strong> remaining reserves ÷ annual production &nbsp;|&nbsp; <strong>Reserves:</strong> Sodir field reserves, vintage ${vintage}, × each company's licence share today (as in «Reserves»; contingent resources not included) &nbsp;|&nbsp; <strong>Production:</strong> average net production ${P.span} × each month's licence share (as in «Production, last 12 months»), × 365.25 days &nbsp;|&nbsp; <strong>NCS total:</strong> ${ncsRp != null ? f1(ncsRp) : '—'} years &nbsp;|&nbsp; A high R/P can mean large undeveloped or ramping-up reserves; a low R/P, a mature portfolio. Cross-border shares held outside Norway are not included`);
+  lastLabels = list.map(o => o.name); lastXTitle = 'Company';
+  lastDatasets = [
+    {label: 'Reserve life (R/P), years', data: list.map(o => +o.rp.toFixed(1))},
+    {label: 'Remaining reserves, million boe', data: list.map(o => +o.res.toFixed(1))},
+    {label: `Net production ${P.span}, boe/day`, data: list.map(o => Math.round(o.prod))},
+  ];
+  pptSpec = {kind: 'cat', dir: 'bar', stacked: false, labels: shown.map(o => o.name), yTitle: 'years',
+    series: [{name: 'Reserve life (R/P), years', type: 'bar', color: pptHex(RP_COLOR), values: shown.map(o => +o.rp.toFixed(1))}]};
   document.getElementById('downloadBtn').disabled = false;
   setChartTable('');
 }
@@ -11019,8 +11099,9 @@ function hubMap(ids, facs, opts = {}) {
     }).join('');
   };
   return outlineMap(ownItems, {
-    // En håndlaget modell har flere navn å få plass til, så kartet blir høyere.
-    label: 'Map of the hub', h: net.model ? Math.max(opts.h || 0, 560) : opts.h || 560, pad: 1.8,
+    // En håndlaget modell har flere navn å få plass til, så kartet blir høyere —
+    // unntatt når kalleren trenger nøyaktig høyde (opts.exactH: kartet ved grafen).
+    label: 'Map of the hub', h: net.model && !opts.exactH ? Math.max(opts.h || 0, 560) : opts.h || 560, pad: 1.8,
     labelMax: net.model ? Math.max(7, ids.length) : undefined,
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(member), discoveryLayer()],
@@ -11488,6 +11569,7 @@ function drawHubProdChart(ids, withFc) {
 
 function drawHubProfile() {
   const names = [...selectedHubNames];
+  setSideMap('');
   if (names.length !== 1) {
     setChartEmpty(names.length
       ? 'Select a single hub to see its factsheet.'
@@ -11503,6 +11585,14 @@ function drawHubProfile() {
   const profiles = ids.map(id => profileRow(id) || {});
 
   const {partialSrc, lastYear} = drawHubProdChart(ids, false);
+  // Kartet til høyre for produksjonsgrafen, like høyt som grafkortet (som i
+  // feltarket, se .side-map i CSS). Huber uten omriss beholder grafen i full bredde.
+  const hubMapAt = h => hubMap(ids, facs, {h, exactH: true});
+  const m0 = hubMapAt(560);
+  if (m0) {
+    setSideMap(`<h3>Location</h3><div class="pf-map-box" id="sideMapBox">${m0}</div>`);
+    fitMapBox('sideMapBox', hubMapAt);
+  }
 
   const area = profiles.map(p => p.area).find(Boolean) || '';
   // Hubens operatør er den som driver prosessanlegget. Tolv huber har ikke
