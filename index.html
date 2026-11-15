@@ -12162,10 +12162,9 @@ function drawDiscoveryProfile() {
   const ownerLabel = d.ownerKind === 'BUSINESS ARRANGEMENT AREA'
     ? 'Business arrangement area' : 'Production licence';
 
-  // Venstre kolonne: tittel, nøkkeltall og Sodirs beskrivelse i ett kort,
-  // så eierskap og letebrønnene (explLinkCard setter dem inn foran
-  // explLinkSlot). Høyre kolonne: kartet, like høyt som venstre kolonne.
-  // Ressurstabellen ligger i full bredde under.
+  // Venstre kolonne: tittel, nøkkeltall, ressurstabellen og Sodirs
+  // beskrivelse i ett kort, så eierskap og letebrønnene (explLinkCard setter
+  // dem inn foran explLinkSlot). Høyre kolonne: kartet, like høyt som venstre kolonne.
   const map = discoveryMap(d.id);
   const own = discoveryOwnership(d);
   const vols = discoveryVolumes(d);
@@ -12188,6 +12187,7 @@ function drawDiscoveryProfile() {
         ${factHtml('Resources booked under', d.inclIn && fieldLink(d.inclIn, d.inclIn))}
       </div>
       <div class="lc-links">${factPageBtn('discovery', d.id)}</div>
+      ${vols ? `<div class="pf-sec"><h3>Resources</h3>${vols}</div>` : ''}
       ${descs.length ? `<div class="pf-sec pf-desc"><h3>Sodir description</h3>${
         descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
     </div>
@@ -12196,7 +12196,6 @@ function drawDiscoveryProfile() {
     </div>
     ${map ? `<div class="pf-split-r"><div class="pf-card"><h3>Location</h3><div class="pf-map-box" id="discMapBox">${map}</div></div></div>` : ''}
     </div>
-    ${vols ? `<div class="pf-card pf-wide"><h3>Resources</h3>${vols}</div>` : ''}
   `);
   if (!map) document.querySelector('.pf-split').style.gridTemplateColumns = 'minmax(0,1fr)';
   discoveryFitMap(d.id);
