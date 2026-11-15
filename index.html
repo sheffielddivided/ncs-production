@@ -5262,7 +5262,8 @@ function drawPriceInterest() {
   setInfo(`<strong>${esc(sel.name)}:</strong> policy rate ${C.range ? `${C.range[0].toFixed(2)}–${C.range[1].toFixed(2)} %` : irPct(L.p)} (${esc(sel.cb)}) &nbsp;|&nbsp;
     inflation ${irPct(L.i, 1)} in ${L.im ? irMonth(L.im) : '—'} (${esc(sel.inf)}) &nbsp;|&nbsp; real rate ${irPct(L.real)}
     &nbsp;|&nbsp; <strong>Sources:</strong> Norges Bank, Federal Reserve (via FRED), ECB, Bank of England, Riksbank; SSB, BLS (via FRED), Eurostat, ONS;
-    U.S. Treasury, Bundesbank. Collected daily by the convert solution${upd ? `, updated ${upd}` : ''}. The policy rate in the history chart is the rate at the end of each month`);
+    U.S. Treasury, Bundesbank. Collected daily by the convert solution${upd ? `, updated ${upd}` : ''}. The policy rate in the history chart is the rate at the end of each month${
+    (C.inflationInterpolated || []).length ? `. Inflation ${C.inflationInterpolated.map(irMonth).join(' and ')} is computed from an interpolated October 2025 CPI-U (BLS did not publish that month)` : ''}`);
 }
 
 // ── PRICES: OIL VS GAS ──
