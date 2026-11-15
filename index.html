@@ -3890,7 +3890,7 @@ function renderDcsWellTable(wells) {
       <tbody>${list.map(w => {
         const c = lab[w.category] || lab.other;
         return `<tr><td class="ex-name"><strong>${esc(w.name)}</strong>${w.number ? `<small>${esc(w.number)}</small>` : ''}</td>
-          <td class="ex-l" title="ENS classification: ${esc(w.classification || '—')}">${dot(c)}${esc(c.label)}</td>
+          <td class="ex-l" style="white-space:nowrap" title="ENS classification: ${esc(w.classification || '—')}">${dot(c)}${esc(c.label)}</td>
           <td class="ex-l">${field(w)}</td><td class="ex-l">${esc(w.operator || '—')}</td>
           <td>${fmtD(w.spud)}</td><td>${fmtD(w.completed, true)}</td></tr>`;
       }).join('')}</tbody>
@@ -4051,6 +4051,7 @@ function shelfFieldSheet(o) {
       ${o.res.labels.length ? `<div class="chart-container" style="height:190px"><canvas id="fsRes"></canvas></div>${leg('Oil', 'Gas')}` : ''}
       <div class="pf-map-note">${o.res.note}</div></div>` : ''}
     <div class="pf-card"><h3>Ownership</h3>${own}<div class="pf-map-note">${o.ownNote}</div>${o.ownExtra || ''}</div>
+    ${o.wells ? `<div class="pf-card"><h3>Wells</h3>${o.wells}</div>` : ''}
     ${o.map ? `<div class="pf-card"><h3>Location</h3>${o.map}</div>` : ''}
     <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
   const ov = document.getElementById('wdOverlay');
@@ -4132,8 +4133,38 @@ function dcsOpenSheet(slug, quiet) {
     res,
     owners: f.owners.map(([name, share]) => ({name, share})), operator: f.operator, link: dcsCmpLink,
     ownNote: `Current licensee shares from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))}). Click a company for its net production.`,
+    wells: dcsFieldWellsHtml(slug),
     map: shelfFieldMap(own && {name: f.name, rings: own.rings}, others, 'Other Danish fields in grey; click one for its factsheet. Outlines: ENS · coastline: Natural Earth'),
   });
+}
+// Brønnlisten i faktaarket: brønnene ENS-løsningen har koblet til feltet
+// (startposisjon innenfor feltavgrensningen; Ravn via navnet), nyeste først.
+// Store felt har over hundre brønner, så tabellen ruller i sin egen boks.
+function dcsFieldWellsHtml(slug) {
+  if (!dcsData.wells) return '';
+  const list = dcsWells().filter(w => w.field === slug)
+    .sort((a, b) => (b.spud || '').localeCompare(a.spud || '') || a.name.localeCompare(b.name, 'en', {numeric: true}));
+  if (!list.length) return '<div class="pf-map-note">No well in the ENS well list has its surface location within the field outline. '
+    + 'Wells are placed by where they were spudded, so a field produced through wells drilled from a neighbouring platform has none here; '
+    + 'they count under the field they were drilled from.</div>';
+  const lab = Object.fromEntries(DCS_WELL_CAT.map(c => [c.key, c]));
+  const dot = c => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${c.color}"></span>`;
+  const fmtD = d => d ? `${+d.slice(8)} ${MONTH_ABBR[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : '—';
+  const years = list.map(w => w.year).sort();
+  const summary = DCS_WELL_CAT.map(c => [c, list.filter(w => w.category === c.key).length]).filter(([, n]) => n)
+    .map(([c, n]) => `<div class="legend-item">${dot(c)}${esc(c.label)}: ${n}</div>`).join('');
+  return `<div class="legend-row" style="margin:0 0 8px">${summary}</div>
+    <div class="pf-scroll" style="max-height:320px;overflow:auto"><table class="res-table ex-table">
+      <caption>${list.length} ${list.length === 1 ? 'well' : 'wells'} spudded ${years[0]}${years[0] !== years[list.length - 1] ? '–' + years[list.length - 1] : ''} · newest first</caption>
+      <thead><tr><th class="ex-l">Well</th><th class="ex-l">Type</th><th>Spudded</th><th>Completed</th><th class="ex-l">Operator</th></tr></thead>
+      <tbody>${list.map(w => {
+        const c = lab[w.category] || lab.other;
+        return `<tr><td class="ex-name"><strong>${esc(w.name)}</strong>${w.number ? `<small>${esc(w.number)}</small>` : ''}</td>
+          <td class="ex-l" style="white-space:nowrap" title="ENS classification: ${esc(w.classification || '—')}">${dot(c)}${esc(c.label)}</td>
+          <td>${fmtD(w.spud)}</td><td>${fmtD(w.completed)}</td><td class="ex-l">${esc(w.operator || '—')}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div class="pf-map-note">Wells whose surface location at spud lies within the field outline (ENS «All oil and gas wells»), so a deviated well counts under the field it was drilled from. Type as in <a href="#" onclick="dcsShowWellYear('${years[list.length - 1]}'); return false">Drilling</a>.</div>`;
 }
 const dcsCmpLink = c => rowLink(c, `dcsOpenCompany(${esc(jsStr(c))})`, `Show ${c} in Companies`);
 

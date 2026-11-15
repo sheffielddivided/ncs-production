@@ -888,7 +888,12 @@ og telles i notatet under kartet.
 
 Klikk på et felt i DCS → Fields (stolpene og tabellen) åpner et feltfaktaark
 i brønnpanelet (`wdOverlay`): nøkkeltall, årlig produksjonsprofil, reserver per
-1. januar, eierkake og kart (`dcsOpenSheet`, felles `shelfFieldSheet`). Feltet
+1. januar, eierkake, brønnliste og kart (`dcsOpenSheet`, felles
+`shelfFieldSheet`). Brønnlisten (`dcsFieldWellsHtml`, kortet `o.wells`) har
+antall per type og en rullbar tabell over brønnene ENS-løsningen har koblet
+til feltet, nyeste først. Et felt uten brønner der (Lulita, som bores fra
+Harald) får en forklaring i stedet. UKCS sender ingen `wells`, så kortet
+vises bare i DCS. Feltet
 står i adressen som `ds`, så tilbake lukker arket og lenken kan deles.
 
 ### `data/ukcs.json`, `data/ukcs_outlines.json`, `data/ukcs_licences.json` — britisk sokkel (UKCS)
