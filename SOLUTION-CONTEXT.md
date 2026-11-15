@@ -838,8 +838,14 @@ videre uendret.
   (`prelim` 0). Senere år er summen av de foreløpige månedsrapportene og vises
   lysere i årsvisningen. Månedstall finnes fra januar 2018 og er alltid
   foreløpige. Felt uten rad en måned produserte ingenting.
-- **Eierskap:** ENS publiserer bare gjeldende andeler, uten historikk. DCS →
-  Companies bruker dem for hele perioden og sier det i infoboksen.
+- **Eierskap:** gjeldende andeler per felt (`fields[].owners`), og eierskap
+  over tid i `ownershipHistory` fra ENS-løsningens `data/ownership_history.json`
+  (kuratert fra ENS' endringslister 1999 → og kontrollert mot dem der):
+  `{"licences": {id: {"name", "relinquished", "periods": [{"from", "to",
+  "basis", "groups": [[konsern, %]] | null, "owners": [[navn, konsern,
+  konsern i dag, % | null]], "note"}]}}, "fields": {slug: id}}`. `basis` er
+  `stated` / `derived` / `unknown` (eiere kjent, andeler ikke → `groups` null).
+  DUC før 9. juli 2012 er utledet forholdsmessig (39/46/15).
 - **Reserver:** gjenværende per 1. januar (felt i drift og besluttet
   utbygging), avrundet av ENS til hele mill m³ / mrd Nm³. `flags` er verdier
   ENS-løsningen har rekonstruert eller ikke kunnet avklare; de merkes med * i
@@ -869,7 +875,19 @@ selskap eller per felt for ett selskap), Reserves (per felt og år), Drilling
 og Map.
 Production og Companies følger periodevelgeren; som NCS starter DCS i
 årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
-Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`, `dn`, `dt`, `dg`.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`, `dn`, `dt`, `dg`, `do`.
+
+DCS → Companies regner som standard med **eierne da** (`dcsF.own = 'hist'`;
+`do=now` gir dagens eiere for hele perioden, som før). `dcsHistSplit(slug,
+periode)` gir andelen per konsern som snittet av andelene midt i hver måned i
+perioden (et år = tolv måneder); måneder uten kjente andeler — før 1999, eller
+`unknown` — går i serien «Ownership not known», så ingenting fordeles på
+gjetning og totalen er den samme i begge modusene. Rene navnebytter i
+konsernet vises under dagens navn (`DCS_GROUP_ALIAS`: Total → TotalEnergies,
+Noreco → BlueNord, Texaco → Chevron). De ni største konsernene får egne
+farger, resten «Other companies». Med ett selskap valgt viser tabellen dets
+eierperioder per lisens (felt på samme lisens samlet), med andel, `basis` og
+juridisk navn.
 
 DCS → Drilling (`drawDcsDrilling`, `renderDcsWellTable`) viser brønnene til
 havs per startår, stablet etter `DCS_WELL_CAT` (leting/avgrensning grønn,
