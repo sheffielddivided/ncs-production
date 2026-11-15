@@ -2536,7 +2536,11 @@ Beløp skrives «NOK 45.8 bn» (`nokBn`).
 Felt- og hubprofilen viser dem i kortet «Investments» (`investmentCard`):
 søyler per år (for huber stablet per medlemsfelt, med tabell per felt) og det
 framtidige anslaget som eget nøkkeltall, ikke i grafen, siden prisgrunnlaget er
-et annet.
+et annet. Sodir har 52 negative årsbeløp (korreksjoner, f.eks. Fram 2013:
+−0,17 mrd kr). `licYearChart` stabler derfor hver verdi etter fortegn —
+positive oppover, negative nedover fra nullinjen — og viser negative
+hjelpelinjer bare når det er minst 14 px plass til tallet. Serier merket `neg`
+(lisenstransaksjonene) har positive tall som tegnes nedover, som før.
 
 **Riggfakta:** `data/rig_facts.json` (bygget av `build_rig_facts()`) har
 Sodirs innretningsdata for alle flyttbare innretninger og de faste som borer
