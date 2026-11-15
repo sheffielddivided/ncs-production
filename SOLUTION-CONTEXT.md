@@ -1493,7 +1493,7 @@ slik at den kan merkes manuelt.
 | Hubs | Oil & Gas | `drawFieldsOilGas({ids, scope})` | Stablet Oil/Gas summert over hubens medlemsfelt, brutto |
 
 | Hubs | Reserves | `drawFieldsReserves({ids, scope})` (`:2137`) | Reserver over tid, summert over hubens medlemsfelt. Tabell under: per felt og partner |
-| Hubs | Profile | `drawHubProfile` | Faktaark for **én** hub: årlig produksjon per medlemsfelt i grafen, og under den nøkkeltall, kart, feltliste, volumer, selskapsandeler, innretningstabell og transportbeskrivelsene |
+| Hubs | Profile | `drawHubProfile` | Faktaark for **én** hub: årlig produksjon per medlemsfelt i grafen (halv bredde) med hubkartet til høyre i samme høyde (`setSideMap` + `fitMapBox`, som i feltarket; `hubMap` med `exactH`, så en håndlaget modell ikke tvinger kartet høyere), og under dem nøkkeltall, selskapsandeler, feltliste, volumer og investeringer |
 | Fields | Prod per field | `drawFieldsOePerField` (`:1989`) | Én serie per felt, brutto o.e. |
 | Fields | Prod per company | `drawFieldsOePerCompany({ids, scope})` | Én serie per selskap, **equity-justert** |
 | Fields | Oil & Gas | `drawFieldsOilGas` (`:1953`) | Stablet Oil/Gas (+Water). Ett felt: 1 desimal. Flere felt: **summert**, 0 desimaler |

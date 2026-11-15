@@ -1881,7 +1881,9 @@ function renderViewTabs() {
   document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
   document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
   if (!discoveryProfileMode()) document.body.classList.remove('disc-sheet');   // settes av drawDiscoveryProfile
-  if (!(topMode === 'fields' && fieldSubView === 'profile')) setSideMap('');   // settes av drawFieldProfile
+  if (!((topMode === 'fields' && fieldSubView === 'profile') || (topMode === 'hubs' && hubSubView === 'profile'))) {
+    setSideMap('');   // settes av drawFieldProfile og drawHubProfile
+  }
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
     `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
@@ -11097,8 +11099,9 @@ function hubMap(ids, facs, opts = {}) {
     }).join('');
   };
   return outlineMap(ownItems, {
-    // En håndlaget modell har flere navn å få plass til, så kartet blir høyere.
-    label: 'Map of the hub', h: net.model ? Math.max(opts.h || 0, 560) : opts.h || 560, pad: 1.8,
+    // En håndlaget modell har flere navn å få plass til, så kartet blir høyere —
+    // unntatt når kalleren trenger nøyaktig høyde (opts.exactH: kartet ved grafen).
+    label: 'Map of the hub', h: net.model && !opts.exactH ? Math.max(opts.h || 0, 560) : opts.h || 560, pad: 1.8,
     labelMax: net.model ? Math.max(7, ids.length) : undefined,
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [fieldLayer(member), discoveryLayer()],
@@ -11566,6 +11569,7 @@ function drawHubProdChart(ids, withFc) {
 
 function drawHubProfile() {
   const names = [...selectedHubNames];
+  setSideMap('');
   if (names.length !== 1) {
     setChartEmpty(names.length
       ? 'Select a single hub to see its factsheet.'
@@ -11581,6 +11585,14 @@ function drawHubProfile() {
   const profiles = ids.map(id => profileRow(id) || {});
 
   const {partialSrc, lastYear} = drawHubProdChart(ids, false);
+  // Kartet til høyre for produksjonsgrafen, like høyt som grafkortet (som i
+  // feltarket, se .side-map i CSS). Huber uten omriss beholder grafen i full bredde.
+  const hubMapAt = h => hubMap(ids, facs, {h, exactH: true});
+  const m0 = hubMapAt(560);
+  if (m0) {
+    setSideMap(`<h3>Location</h3><div class="pf-map-box" id="sideMapBox">${m0}</div>`);
+    fitMapBox('sideMapBox', hubMapAt);
+  }
 
   const area = profiles.map(p => p.area).find(Boolean) || '';
   // Hubens operatør er den som driver prosessanlegget. Tolv huber har ikke
