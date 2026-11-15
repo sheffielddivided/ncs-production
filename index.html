@@ -407,7 +407,9 @@
     .pf-map-note{font-size:0.64rem;color:var(--muted);margin-top:6px;}
     /* Kartetiketter. Hvit kontur rundt teksten, slik at navnet er lesbart
        uansett hva det ligger oppå. */
-    .pf-lbl{font-size:9px;text-anchor:middle;fill:#44505f;paint-order:stroke;
+    .pf-click{cursor:pointer;}
+    .pf-click:hover{filter:brightness(0.82);}
+    .pf-lbl{pointer-events:none;font-size:9px;text-anchor:middle;fill:#44505f;paint-order:stroke;
       stroke:#fff;stroke-width:2.5px;stroke-linejoin:round;pointer-events:none;}
     .pf-lbl-own{fill:#1a2332;font-weight:700;}
     .pf-own{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
@@ -3572,7 +3574,7 @@ async function refreshDcs() {
   if (!dcsReady()) { setChartTitle('', ''); setChartEmpty('Could not load the Danish data.'); setInfo(''); return; }
   renderSourceNote();   // datoen for de danske dataene står i kildelinjen
   drawChart();
-  if (dcsF.fs && !overlayOpen()) dcsOpenSheet(dcsF.fs, true);
+  if (dcsF.fs && shelfSheetStale('dcs:' + dcsF.fs)) dcsOpenSheet(dcsF.fs, true);
 }
 
 function drawDcs() {
@@ -3817,8 +3819,10 @@ function drawDcsMap() {
   const items = Object.entries(dcsOutlines || {});
   if (!items.length) { setProfile('<div class="pf-card pf-wide"><div class="pf-map-note">No outlines available.</div></div>'); return; }
   const prod = new Set(dcsSlugs());
-  const own = items.filter(([s]) => prod.has(s)).map(([, it]) => it);
-  const rest = items.filter(([s]) => !prod.has(s)).map(([, it]) => it);
+  // Felt med data i dcs.json åpner faktaarket ved klikk.
+  const item = ([s, it]) => dcsData.bySlug[s] ? {...it, click: `dcsOpenSheet(${jsStr(s)})`} : it;
+  const own = items.filter(([s]) => prod.has(s)).map(item);
+  const rest = items.filter(([s]) => !prod.has(s)).map(item);
   const nor = fieldLayer();
   const m = outlineMap(own.length ? own : rest, {
     // Utsnittet tar med alle danske felt og vestkysten av Jylland, så kartet
@@ -3827,7 +3831,7 @@ function drawDcsMap() {
     extra: rest.flatMap(it => it.rings.flat()).concat([[8.3, 55.9]]),
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [{...nor, label: false}, {items: rest, fill: '#e2e8f0', stroke: '#9aa5b1'}],
-    note: 'Danish fields with production data in colour, other Danish fields (under development or shut down) in light grey, Norwegian fields in grey. Coastline: Natural Earth · outlines: ENS',
+    note: 'Danish fields with production data in colour, other Danish fields (under development or shut down) in light grey, Norwegian fields in grey. Click a Danish field for its factsheet. Coastline: Natural Earth · outlines: ENS',
   });
   setProfile(`<div class="pf-card pf-wide"><h3>Danish fields</h3>${m}</div>`);
 }
@@ -3839,8 +3843,12 @@ function drawDcsMap() {
 // kart. Feltet står i adressen (ds / us), så arket kan deles og tilbake-knappen
 // lukker det.
 let shelfSheetCharts = [];
+// Arket som vises nå ('dcs:slug' / 'ukcs:slug'). Et nabofelt i kartet åpner
+// et nytt ark over det gamle; tilbake skal da vise det forrige igjen.
+let shelfSheetShown = '';
 const shelfSheetOpen = () => !!(dcsF.fs || ukF.fs);
-function shelfSheetDestroy() { shelfSheetCharts.forEach(c => c.destroy()); shelfSheetCharts = []; }
+function shelfSheetDestroy() { shelfSheetCharts.forEach(c => c.destroy()); shelfSheetCharts = []; shelfSheetShown = ''; }
+const shelfSheetStale = key => !overlayOpen() || shelfSheetShown !== key;
 
 function shelfBarChart(id, labels, datasets, yTitle, digits = 0) {
   const el = document.getElementById(id);
@@ -3879,7 +3887,9 @@ function shelfAnnualFromMonthly(rows, lastYm) {
 //     res: {labels, oil, gas, note} | null, owners: [{name, share}], operator, ownNote, ownExtra,
 //     link: navn → html, map, links}
 function shelfFieldSheet(o) {
+  const shown = shelfSheetShown;
   shelfSheetDestroy();
+  shelfSheetShown = shown;
   const leg = (a, b) => `<div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:${OIL_COLOR}"></div>${a}</div>
     <div class="legend-item"><div class="legend-dot" style="background:${GAS_COLOR}"></div>${b}</div></div>`;
   const own = o.owners.length ? ownershipPie(o.owners, o.operator, `Ownership split between ${o.owners.length} licensees`, o.link)
@@ -3936,6 +3946,7 @@ function dcsOpenSheet(slug, quiet) {
   if (!quiet) markNav();
   dcsF.fs = slug;
   if (!quiet) syncUrl();
+  shelfSheetShown = 'dcs:' + slug;
   // Årlig produksjon: ENS' årsfil, og for årene etter den summen av de
   // foreløpige månedsrapportene (lysere). Inneværende år er snittet av
   // månedene som er rapportert.
@@ -3964,7 +3975,8 @@ function dcsOpenSheet(slug, quiet) {
     note: inc ? `ENS reports the reserves of ${esc(f.name)} together with ${esc(dcsName(inc))}.`
       : `Remaining reserves per 1 January, fields in production and approved developments (ENS «Resources and forecasts», table 1), million boe. ENS rounds each field to whole million m³ / bn Nm³, so small fields show as zero. ${DCS_GAS_NOTE}.`};
   if (inc) { res.labels = []; }
-  const others = Object.entries(dcsOutlines || {}).filter(([s]) => s !== slug).map(([, it]) => it);
+  const others = Object.entries(dcsOutlines || {}).filter(([s]) => s !== slug)
+    .map(([s, it]) => dcsData.bySlug[s] ? {...it, click: `dcsOpenSheet(${jsStr(s)})`} : it);
   const own = (dcsOutlines || {})[slug];
   shelfFieldSheet({
     title: f.name,
@@ -3979,7 +3991,7 @@ function dcsOpenSheet(slug, quiet) {
     res,
     owners: f.owners.map(([name, share]) => ({name, share})), operator: f.operator, link: dcsCmpLink,
     ownNote: `Current licensee shares from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))}). Click a company for its net production.`,
-    map: shelfFieldMap(own && {name: f.name, rings: own.rings}, others, 'Other Danish fields in grey. Outlines: ENS · coastline: Natural Earth'),
+    map: shelfFieldMap(own && {name: f.name, rings: own.rings}, others, 'Other Danish fields in grey; click one for its factsheet. Outlines: ENS · coastline: Natural Earth'),
   });
 }
 const dcsCmpLink = c => rowLink(c, `dcsOpenCompany(${esc(jsStr(c))})`, `Show ${c} in Companies`);
@@ -4048,6 +4060,24 @@ const ukSlugs = () => Object.keys(ukData.monthly).sort((a, b) => ukName(a).local
 function ukFirstYear() { return ukData.months.length ? +ukData.months[0].slice(0, 4) : null; }
 const ukLastMonth = () => ukData.months[ukData.months.length - 1] || '';
 const ukMonthTxt = k => `${MONTH_ABBR[+k.slice(5) - 1]} ${k.slice(0, 4)}`;
+// Feltet et omriss åpner faktaarket for. Delfelt deler hovedfeltets omriss
+// (Clair Ridge og Clair Phase 1); da åpnes det som har produsert mest.
+function ukOutlineField(key) {
+  if (!ukData._byOutline) {
+    const m = ukData._byOutline = {}, cum = {};
+    ukData.fields.forEach(f => {
+      if (!f.outline) return;
+      cum[f.slug] = (ukData.monthly[f.slug] || []).reduce((t, r) => t + r[1] + r[2], 0);
+      if (!m[f.outline] || cum[f.slug] > cum[m[f.outline]]) m[f.outline] = f.slug;
+    });
+  }
+  return ukData._byOutline[key] || null;
+}
+// Et omriss som kartelement; klikkbart når det hører til et felt med produksjon.
+function ukOutlineItem(key, o, extra = {}) {
+  const slug = ukOutlineField(key);
+  return {name: o.name, rings: o.rings, ...(slug ? {click: `ukOpenSheet(${jsStr(slug)})`} : {}), ...extra};
+}
 
 // Konsernene som i dag har andel i et felt eller en lisens — selskapsvelgeren.
 function ukCompanies() {
@@ -4157,7 +4187,7 @@ async function refreshUk() {
   if (!ukReady()) { setChartTitle('', ''); setChartEmpty('Could not load the UK data.'); setInfo(''); return; }
   renderSourceNote();   // datoen for de britiske dataene står i kildelinjen
   drawChart();
-  if (ukF.fs && !document.getElementById('wdOverlay').classList.contains('open')) ukOpenSheet(ukF.fs, true);
+  if (ukF.fs && shelfSheetStale('ukcs:' + ukF.fs)) ukOpenSheet(ukF.fs, true);
 }
 
 function drawUk() {
@@ -4355,12 +4385,12 @@ function ukCompanyCards(cmp) {
   held.forEach(f => {
     if (!f.outline || !outl[f.outline] || seen.has(f.outline)) return;
     seen.add(f.outline);
-    fieldItems.push({name: outl[f.outline].name, rings: outl[f.outline].rings,
+    fieldItems.push({...ukOutlineItem(f.outline, outl[f.outline]),
       fill: held.some(x => x.outline === f.outline && x.operator === cmp) ? 'rgba(206,15,105,0.85)' : 'rgba(206,15,105,0.40)'});
   });
   const licItems = ukLicRows.flatMap(r => r.ids.map(id => ({name: '', rings: ukData.subareas[id].rings,
     fill: r.isOp ? 'rgba(73,147,180,0.55)' : 'rgba(73,147,180,0.28)'})));
-  const others = Object.entries(outl).filter(([k]) => !seen.has(k)).map(([, o]) => ({name: o.name, rings: o.rings}));
+  const others = Object.entries(outl).filter(([k]) => !seen.has(k)).map(([k, o]) => ukOutlineItem(k, o));
   const own = fieldItems.length ? fieldItems : licItems;
   const map = own.length ? outlineMap(own, {
     label: `Field and licence portfolio of ${cmp}`, h: 440, pad: 1.15, inset: false, labelMax: 14, stroke: '#8e0a48',
@@ -4369,7 +4399,7 @@ function ukCompanyCards(cmp) {
              ...(fieldItems.length ? [{items: licItems, fill: 'rgba(73,147,180,0.30)', stroke: '#4993b4', label: false}] : [])],
     note: '<span class="ex-dot" style="background:rgba(206,15,105,0.85)"></span>Operated field · ' +
           '<span class="ex-dot" style="background:rgba(206,15,105,0.40)"></span>Partner field · ' +
-          '<span class="ex-dot" style="background:rgba(73,147,180,0.45)"></span>Licence sub-areas · other UK fields in grey. ' +
+          '<span class="ex-dot" style="background:rgba(73,147,180,0.45)"></span>Licence sub-areas · other UK fields in grey. Click a field for its factsheet. ' +
           'Outlines: NSTA, simplified · coastline: Natural Earth'}) : '<div class="pf-map-note">No outlines available.</div>';
   const fRows = held.map(f => ({f, sh: share(f), net: N.boe(mine.fields[f.slug] || 0)}))
     .sort((a, b) => b.net - a.net || b.sh - a.sh || a.f.name.localeCompare(b.f.name));
@@ -4476,6 +4506,7 @@ function ukOpenSheet(slug, quiet) {
   if (!quiet) markNav();
   ukF.fs = slug;
   if (!quiet) syncUrl();
+  shelfSheetShown = 'ukcs:' + slug;
   const rows = ukData.monthly[slug] || [];
   const last = ukLastMonth(), ly = +last.slice(0, 4), lm = +last.slice(5);
   const by = shelfAnnualFromMonthly(rows, last);
@@ -4497,7 +4528,7 @@ function ukOpenSheet(slug, quiet) {
     <tbody>${hist.map(([g, p, a, b, op, legal]) => `<tr${b && b <= today ? ' class="rc-past"' : ''}><td style="text-align:left">${ukCmpLink(g)}${op ? ' <span class="pf-op-tag">Operator</span>' : ''}</td>
       <td style="text-align:left">${esc(legal)}</td><td>${p.toLocaleString('en', {maximumFractionDigits: 4})} %</td><td>${day(a)}</td><td>${day(b)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
   const own = f.outline && ukData.outlines[f.outline];
-  const others = Object.entries(ukData.outlines).filter(([k]) => k !== f.outline).map(([, o]) => ({name: o.name, rings: o.rings}));
+  const others = Object.entries(ukData.outlines).filter(([k]) => k !== f.outline).map(([k, o]) => ukOutlineItem(k, o));
   const area = UK_AREA[f.area] || f.area;
   shelfFieldSheet({
     title: f.name,
@@ -4513,7 +4544,7 @@ function ukOpenSheet(slug, quiet) {
     owners: f.owners.map(([name, share]) => ({name, share})), operator: f.operator, link: ukCmpLink,
     ownNote: `Current equity per company group, NSTA Field Partners. NSTA publishes no reserves per field.`,
     ownExtra: histHtml,
-    map: shelfFieldMap(own && {name: f.name, rings: own.rings}, others, 'Other UK fields in grey. Outlines: NSTA field determinations, simplified · coastline: Natural Earth'),
+    map: shelfFieldMap(own && {name: f.name, rings: own.rings}, others, 'Other UK fields in grey; click one for its factsheet. Outlines: NSTA field determinations, simplified · coastline: Natural Earth'),
   });
 }
 
@@ -4528,14 +4559,14 @@ function drawUkMap() {
   if (!items.length) { setProfile('<div class="pf-card pf-wide"><div class="pf-map-note">No outlines available.</div></div>'); return; }
   const L = ukLast12();
   const live = new Set(ukData.fields.filter(f => f.outline && (ukData.monthly[f.slug] || []).some(r => L.win.has(r[0]))).map(f => f.outline));
-  const own = items.filter(([k]) => live.has(k)).map(([, o]) => ({name: o.name, rings: o.rings}));
-  const rest = items.filter(([k]) => !live.has(k)).map(([, o]) => ({name: o.name, rings: o.rings}));
+  const own = items.filter(([k]) => live.has(k)).map(([k, o]) => ukOutlineItem(k, o));
+  const rest = items.filter(([k]) => !live.has(k)).map(([k, o]) => ukOutlineItem(k, o));
   const m = outlineMap(own.length ? own : rest, {
-    label: 'Map of the UK fields', h: 560, pad: 1.08, labelMax: 30, inset: false,
+    label: 'Map of the UK fields', h: 640, pad: 1.1, labelMax: 30, inset: false,
     extra: rest.flatMap(it => it.rings.flat()),
     fill: 'rgba(206,15,105,0.45)', stroke: '#8e0a48',
     layers: [{...fieldLayer(), label: false}, {items: rest, fill: '#e2e8f0', stroke: '#9aa5b1', label: false}],
-    note: `UK fields producing in ${L.span} in colour (${own.length}), other UK fields (ceased or not yet producing) in light grey, Norwegian fields in grey. Coastline: Natural Earth · outlines: NSTA, simplified`,
+    note: `UK fields producing in ${L.span} in colour (${own.length}), other UK fields (ceased or not yet producing) in light grey, Norwegian fields in grey. Click a UK field for its factsheet; zoom with the buttons, pinch or Ctrl + scroll. Coastline: Natural Earth · outlines: NSTA, simplified`,
   });
   setProfile(`<div class="pf-card pf-wide"><h3>UK fields</h3>${m}</div>`);
 }
@@ -8811,7 +8842,9 @@ function outlineMap(ownItems, opts = {}) {
   const kx = Math.cos(cy * Math.PI / 180);          // enkel ekvirektangulær korreksjon
   let spanX = Math.max((x1 - x0) * PAD, MIN_SPAN);
   let spanY = spanX * kx * H / W;
-  const padY0 = PAD * 0.8;
+  // Loddrett litt mindre luft enn vannrett, men aldri så lite at omrissene
+  // nord og sør i utsnittet kuttes (kart over en hel sokkel har pad ~1,1).
+  const padY0 = Math.max(PAD * 0.8, 1.1);
   if ((y1 - y0) * padY0 > spanY) { spanY = (y1 - y0) * padY0; spanX = spanY / kx * W / H; }
   const west = cx - spanX/2, south = cy - spanY/2;
   const px = x => ((x - west) / spanX) * W;
@@ -8849,10 +8882,16 @@ function outlineMap(ownItems, opts = {}) {
                                           y > south - padY && y < south + spanY + padY);
   const land = ((bundle.coastline && bundle.coastline.rings) || []).filter(visible);
 
+  // Elementer med click (et JS-kall) tegnes hver for seg, klikkbare og med
+  // navnet som verktøytips; resten samles i én sti per lag eller farge.
+  const clickPath = (it, d, fill, stroke, sw) => d ? `<path class="pf-click" d="${d}" fill="${fill}" stroke="${stroke}"` +
+    ` stroke-width="${sw}" onclick="${esc(it.click)}"><title>${esc(it.name || '')}</title></path>` : '';
   const back = (opts.layers || []).map(L => {
-    const rings = (L.items || []).flatMap(it => it.rings).filter(visible);
-    if (!rings.length) return '';
-    return `<path d="${path(rings, L.minPx || 2)}" fill="${L.fill}" stroke="${L.stroke}" stroke-width="0.6"/>`;
+    const items = L.items || [];
+    const plain = items.filter(it => !it.click), clicks = items.filter(it => it.click);
+    const rings = plain.flatMap(it => it.rings).filter(visible);
+    return (rings.length ? `<path d="${path(rings, L.minPx || 2)}" fill="${L.fill}" stroke="${L.stroke}" stroke-width="0.6"/>` : '') +
+      clicks.map(it => clickPath(it, path(it.rings.filter(visible), L.minPx || 2), it.fill || L.fill, L.stroke, 0.6)).join('');
   }).join('');
 
   // ── Etiketter ─────────────────────────────────────────────────────────────
@@ -8885,12 +8924,13 @@ function outlineMap(ownItems, opts = {}) {
   // Forekomstene tegnes gruppert på fyllfarge. Et element kan ha egen fill
   // (operatørlisenser mot partnerlisenser); uten den brukes opts.fill.
   const fillGroups = new Map();
-  ownItems.forEach(it => {
+  ownItems.filter(it => !it.click).forEach(it => {
     const k = it.fill || opts.fill;
     fillGroups.set(k, (fillGroups.get(k) || []).concat(it.rings));
   });
   const ownPaths = [...fillGroups].map(([fill, rings]) =>
-    `<path d="${path(rings, 1, true)}" fill="${fill}" stroke="${opts.stroke}" stroke-width="1.2"/>`).join('');
+    `<path d="${path(rings, 1, true)}" fill="${fill}" stroke="${opts.stroke}" stroke-width="1.2"/>`).join('') +
+    ownItems.filter(it => it.click).map(it => clickPath(it, path(it.rings, 1, true), it.fill || opts.fill, opts.stroke, 1.2)).join('');
 
   // Brønnmarkører (Exploration-detaljen): de andre brønnene som små prikker,
   // og brønnen selv som en stor markør oppå.
@@ -18538,7 +18578,13 @@ async function init() {
 
   coreDone = true;
   coreResolve();
-  if (early && topMode === early) {
+  if (early && topMode === early && (early === 'dcs' || early === 'ukcs')) {
+    // DCS og UKCS ble tegnet før kystlinjen og de norske feltomrissene var
+    // lastet; kartene (også i et åpent faktaark) tegnes på nytt med dem.
+    updateFab();
+    shelfSheetShown = '';
+    refresh();
+  } else if (early && topMode === early) {
     // Already drawn above, and still the section on screen.
     updateFab();
     renderSourceNote();
