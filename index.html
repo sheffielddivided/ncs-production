@@ -3056,6 +3056,7 @@ function applyHash() {
   }
 
   showWater = q.get('w') === '1';
+  document.getElementById('waterToggle').checked = showWater;
   if (q.get('g') === 'company') hubReserveGrouping = 'company';
   resFrom = /^\d{4}$/.test(q.get('ry') || '') ? q.get('ry') : '';
   explF.open = +q.get('xw') > 0 ? +q.get('xw') : null;
