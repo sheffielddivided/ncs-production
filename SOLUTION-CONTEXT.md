@@ -869,7 +869,7 @@ selskap eller per felt for ett selskap), Reserves (per felt og år), Drilling
 og Map.
 Production og Companies følger periodevelgeren; som NCS starter DCS i
 årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
-Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`, `dn`.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`, `dn`, `dt`, `dg`.
 
 DCS → Drilling (`drawDcsDrilling`, `renderDcsWellTable`) viser brønnene til
 havs per startår, stablet etter `DCS_WELL_CAT` (leting/avgrensning grønn,
@@ -878,6 +878,13 @@ fargeblindhet mot hvit bakgrunn). Grafen bruker samme `explYearChart` som
 NCS → Exploration, uten funnratelinjen (`rate: null`). Klikk på et år lister
 brønnene under grafen; året står i adressen som `dy`, og et år uten brønner
 rettes til siste år med brønner. Feltnavn i tabellen åpner feltfaktaarket.
+Over grafen velges brønntype (`DCS_WELL_TYPES`, `dcsF.wt`, lenkeparameter
+`dt`): alle, leting/avgrensning, produksjon eller injeksjon; valget filtrerer
+grafen og tabellen, mens x-aksen beholder hele brønnperioden. En bryter
+(`dcsF.pl`, `dg=1`) legger inn total dansk olje- og gassproduksjon
+(`dcsAnnualProduction`, tusen boe/dag, alle felt, inneværende år utelatt) som
+en linje mot egen akse til høyre — `explYearChart` tar `right` for det, og
+bruker den bare når funnraten ikke står på høyre akse.
 
 Brønner utenfor felt har ikke noe feltark. I Drilling-tabellen er navnet
 deres en lenke til en brønnside i samme panel (`dcsOpenWell`, navnet i
