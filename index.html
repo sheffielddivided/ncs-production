@@ -3032,6 +3032,7 @@ function applyHash() {
     if (q.get('dl') === 'rem') dcsF.fl = 'rem';
     if (/^[a-z0-9_]+$/.test(q.get('ds') || '')) dcsF.fs = q.get('ds');
     if (/^\d{4}$/.test(q.get('dy') || '')) dcsF.yr = q.get('dy');   // et år uten brønner rettes i drawDcsDrilling
+    if (['expl', 'dev', 'all'].includes(q.get('dw'))) dcsF.mw = q.get('dw');
   }
   if (topMode === 'ukcs') {
     // Felt og selskap valideres når dataene er lastet (loadUk).
@@ -3444,9 +3445,10 @@ let dcsSubView = 'production';
 // prod: 'product' | 'field' · field: ett felt (slug) i Oil & Gas, '' = alle · cmp: ett selskap i Companies
 // · res: 'oe' | 'liq' | 'gas' · fl: 'rank' | 'rem'
 // · fs: feltet i faktaarket (popup) · yr: valgt år i Drilling ('' = siste år med brønner)
-const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: ''});
+// · mw: brønner i kartet: '' (ingen) | 'expl' | 'dev' (produksjon + injeksjon) | 'all'
+const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: ''});
 let dcsF = dcsDefaults();
-const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy']];
+const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw']];
 let dcsData = null, dcsOutlines = null, dcsLoading = null;
 
 function loadDcs() {
@@ -3898,10 +3900,25 @@ function renderDcsWellTable(wells) {
 // ── DCS: MAP ──
 // Feltomrissene fra ENS. Felt med produksjonstall i farge, de andre (funn
 // under utbygging, nedstengte) i lys grå. Norske felt i grått for orientering.
+// Brønnvalget over kartet. 'dev' = produksjon og injeksjon (utbyggingsbrønner).
+const DCS_MAP_WELLS = [['', 'No wells'], ['expl', 'Exploration & appraisal'], ['dev', 'Production & injection'], ['all', 'All wells']];
+const DCS_MAP_WELL_CATS = {expl: ['exploration'], dev: ['production', 'injection'], all: ['exploration', 'production', 'injection', 'other']};
+// Klikk på en brønn i kartet: Drilling for brønnens startår, der den står i tabellen.
+function dcsShowWellYear(y) {
+  if (overlayOpen()) closeWell(true);
+  markNav();
+  dcsSubView = 'drilling'; dcsF.yr = y;
+  renderViewTabs();
+  refresh();
+}
 function drawDcsMap() {
   setChartNone();
-  setChartTitle('Danish Continental Shelf · Map', 'Field outlines');
-  setInfo(`<strong>Source:</strong> ENS field delineations (via the ENS solution), Natural Earth (coastline); Norwegian fields from Sodir for orientation`);
+  const cats = DCS_MAP_WELL_CATS[dcsF.mw] || [];
+  const wells = cats.length ? dcsWells().filter(w => cats.includes(w.category) && w.lon != null && w.lat != null) : [];
+  const hasWellData = dcsWells().some(w => w.lon != null);
+  setChartTitle('Danish Continental Shelf · Map', wells.length ? 'Field outlines and offshore wells' : 'Field outlines');
+  setInfo(`<strong>Source:</strong> ENS field delineations (via the ENS solution), Natural Earth (coastline); Norwegian fields from Sodir for orientation`
+    + (wells.length ? ` &nbsp;|&nbsp; <strong>Wells:</strong> ENS «All oil and gas wells», surface location at spud; type as in Drilling` : ''));
   const items = Object.entries(dcsOutlines || {});
   if (!items.length) { setProfile('<div class="pf-card pf-wide"><div class="pf-map-note">No outlines available.</div></div>'); return; }
   const prod = new Set(dcsSlugs());
@@ -3910,16 +3927,54 @@ function drawDcsMap() {
   const own = items.filter(([s]) => prod.has(s)).map(item);
   const rest = items.filter(([s]) => !prod.has(s)).map(item);
   const nor = fieldLayer();
+  // Brønnene tegnes som prikker over omrissene, leting først og produksjon/
+  // injeksjon oppå, i samme farger som Drilling. Utbyggingsbrønner bores fra
+  // plattformen og har samme startposisjon — opptil tretti-førti brønner på ett
+  // sted. Brønner av samme type på samme sted (~100 m) slås derfor sammen til
+  // én prikk som vokser med antallet; de største tegnes først, så små grupper
+  // ligger synlig oppå. Utsnittet er det samme med og uten brønner; de få
+  // brønnene utenfor (Skagerrak, Kattegat, Østersjøen) telles i notatet.
+  const H = 420, W = 560;
+  const catOf = Object.fromEntries(DCS_WELL_CAT.map(c => [c.key, c]));
+  const fieldLabel = w => !w.field ? '' : dcsData.bySlug[w.field] ? dcsName(w.field) : (w.fieldName || w.field);
+  let shown = 0;
+  const overlay = !wells.length ? null : (px, py) => cats.map(k => {
+    const groups = new Map();
+    wells.filter(w => w.category === k).forEach(w => {
+      const key = w.lon.toFixed(3) + ',' + w.lat.toFixed(3);
+      (groups.get(key) || groups.set(key, []).get(key)).push(w);
+    });
+    const c = catOf[k] || catOf.other;
+    return [...groups.values()].sort((a, b) => b.length - a.length).map(g => {
+      const w = g[0], x = px(w.lon), y = py(w.lat), n = g.length;
+      if (x < 0 || x > W || y < 0 || y > H) return '';
+      shown += n;
+      const years = g.map(v => v.year).sort(), last = years[n - 1];
+      const fl = fieldLabel(w);
+      const tip = n === 1
+        ? `${w.name} · ${c.label}${fl ? ' · ' + fl : ''} · spudded ${w.year}`
+        : `${n} ${c.label.toLowerCase()} wells at one location${fl ? ' · ' + fl : ''} · spudded ${years[0]}${years[0] !== last ? '–' + last : ''}\n`
+          + g.map(v => v.name).sort((a, b) => a.localeCompare(b, 'en', {numeric: true})).slice(0, 12).join(', ') + (n > 12 ? ', …' : '');
+      const r = Math.min((k === 'exploration' ? 2.6 : 2.2) + 1.3 * Math.sqrt(n - 1), 9);
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${c.color}"`
+        + ` stroke="#fff" stroke-width="0.6" style="cursor:pointer" onclick="dcsShowWellYear('${last}')"><title>${esc(tip)}</title></circle>`;
+    }).join('');
+  }).join('');
   const m = outlineMap(own.length ? own : rest, {
     // Utsnittet tar med alle danske felt og vestkysten av Jylland, så kartet
     // viser hvor feltene ligger mot land. Norske felt nær grensen kommer med i kanten.
-    label: 'Map of the Danish fields', h: 420, pad: 1.1, labelMax: 24,
+    label: 'Map of the Danish fields', h: H, pad: 1.1, labelMax: 24,
     extra: rest.flatMap(it => it.rings.flat()).concat([[8.3, 55.9]]),
     fill: 'rgba(206,15,105,0.35)', stroke: '#8e0a48',
     layers: [{...nor, label: false}, {items: rest, fill: '#e2e8f0', stroke: '#9aa5b1'}],
+    overlay,
     note: 'Danish fields with production data in colour, other Danish fields (under development or shut down) in light grey, Norwegian fields in grey. Click a Danish field for its factsheet. Coastline: Natural Earth · outlines: ENS',
   });
-  setProfile(`<div class="pf-card pf-wide"><h3>Danish fields</h3>${m}</div>`);
+  const legend = !wells.length ? '' : `<div class="legend-row">${cats.map(k => catOf[k]).filter(c => wells.some(w => w.category === c.key))
+    .map(c => `<div class="legend-item"><div class="legend-dot" style="background:${c.color}"></div>${esc(c.label)} (${wells.filter(w => w.category === c.key).length})</div>`).join('')}</div>
+    <div class="pf-map-note">${shown} of ${wells.length} wells in view${wells.length > shown ? ' (the rest lie outside the map, in the Skagerrak, the Kattegat and the Baltic)' : ''}. Wells of the same type drilled from the same spot (typically a platform) are drawn as one dot that grows with their number. Hover a dot for the wells; click it to see the wells spudded that year (the latest, for a group) in Drilling.</div>`;
+  setProfile(`<div class="pf-card pf-wide"><h3>Danish fields${wells.length ? ' and wells' : ''}</h3>${m}${legend}</div>`);
+  if (hasWellData) ncsToggleAbove(dcsBar(dcsPills('mw', DCS_MAP_WELLS)));
 }
 
 // ── FELTFAKTAARK FOR DCS OG UKCS ─────────────────────────────────────────────
