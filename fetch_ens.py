@@ -52,7 +52,11 @@ FILES = {
 # Brønnkategoriene ENS-løsningen setter (build_gis.py, well_category()).
 WELL_CATEGORIES = ('exploration', 'production', 'injection', 'other')
 WELL_COLUMNS = ['name', 'number', 'spud', 'completed', 'category', 'field', 'fieldName',
-                'operator', 'classification', 'lon', 'lat']
+                'operator', 'classification', 'lon', 'lat',
+                'wellType', 'licence', 'rig', 'released', 'source']
+# Hvor ENS-løsningen har brønnen fra: det vedlikeholdte regnearket eller den
+# eldre shapefilen (2019), for brønner regnearket ikke har.
+WELL_SOURCES = ('xlsx', 'shapefile')
 WELL_DECIMALS = 5   # ~1 m; brønnposisjonen i ENS-regnearket er oppgitt på sekundet
 # Grovt område for dansk sokkel; en posisjon utenfor er en feil i kilden.
 WELL_LON, WELL_LAT = (2.5, 15.5), (54.0, 58.5)
@@ -240,6 +244,8 @@ def build_wells(geo):
     ENS-løsningen leverer bare brønner til havs, med kategori og felt (feltet
     som har brønnens startposisjon innenfor sin avgrensning, eller ingen).
     Datoer er ISO 'YYYY-MM-DD' eller null. lon/lat er WGS84 (til DCS → Map).
+    De siste kolonnene (brønntype, lisens, rigg, frigitt, kilde) brukes i
+    brønnsiden i DCS → Drilling.
     Sortert på startdato og navn.
     """
     import re
@@ -262,9 +268,12 @@ def build_wells(geo):
         need(isinstance(lon, (int, float)) and isinstance(lat, (int, float))
              and WELL_LON[0] <= lon <= WELL_LON[1] and WELL_LAT[0] <= lat <= WELL_LAT[1],
              f'wells.geojson: {name}: posisjon {lon}, {lat} utenfor dansk sokkel')
+        need(p.get('released') in (True, False, None), f'wells.geojson: {name}: released {p.get("released")!r}')
+        need(p.get('source') in WELL_SOURCES, f'wells.geojson: {name}: ukjent kilde {p.get("source")!r}')
         rows.append([name, p.get('number'), p.get('spud_date'), p.get('comp_date'), p['category'],
                      p.get('field'), p.get('field_name'), p.get('operator'), p.get('classification'),
-                     round(lon, WELL_DECIMALS), round(lat, WELL_DECIMALS)])
+                     round(lon, WELL_DECIMALS), round(lat, WELL_DECIMALS),
+                     p.get('well_type'), p.get('licence'), p.get('rig'), p.get('released'), p['source']])
     need(rows, 'wells.geojson: ingen brønner')
     rows.sort(key=lambda r: (r[2] or '9999', r[0]))
     return {'columns': WELL_COLUMNS, 'rows': rows}
