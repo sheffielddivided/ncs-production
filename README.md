@@ -5,14 +5,15 @@ Repo: `ncs-production`.
 Webapp for norsk sokkel (Norwegian Continental Shelf): produksjon, reserver og
 ressurser per felt, hub, funn og selskap, med profiler for felt, huber, funn,
 selskaper, lisenser, brønner og rigger. I tillegg leting, rigger, lisenser og
-overdragelser, normpriser og gasspriser. Seksjonen **DCS** (lengst til høyre i
-menyen) viser dansk sokkel med data fra Energistyrelsen, helt adskilt fra de
-norske dataene.
+overdragelser, normpriser og gasspriser. Seksjonene **DCS** og **UKCS** (lengst
+til høyre i menyen) viser dansk og britisk sokkel med data fra Energistyrelsen
+og North Sea Transition Authority, helt adskilt fra de norske dataene.
 
 Hovedkilden er Sokkeldirektoratets (Sodir) åpne FactMaps-API. I tillegg brukes
 Havtil, Kystverkets AIS, SSB, Petroleumsprisrådet, EIA, FRED/IMF, Norges Bank og
 Natural Earth. De danske tallene i DCS kommer fra ENS-løsningen
-([`sheffielddivided/ens`](https://github.com/sheffielddivided/ens)). Alt lagres
+([`sheffielddivided/ens`](https://github.com/sheffielddivided/ens)); de britiske i
+UKCS hentes direkte fra NSTA. Alt lagres
 som statiske JSON-filer i dette repoet.
 
 **Live:** https://energy.kbak.no/
@@ -62,6 +63,10 @@ som statiske JSON-filer i dette repoet.
 | `fetch_ens.py` | Leser de publiserte JSON-filene fra ENS-løsningen (`sheffielddivided/ens`) og bygger `data/dcs.json` og `data/dcs_outlines.json` til DCS-seksjonen. Regner gass om fra Nm³ til Sm³. Ukjent format gir feil og exit 1 uten at noe skrives. `--local ../ens` leser fra en lokal kopi |
 | `data/dcs.json` | Danske felt: operatør og gjeldende eierandeler, årlig (1972–) og månedlig (2018–) produksjon med foreløpig-flagg, og reserver per 1. januar |
 | `data/dcs_outlines.json` | Omriss av de danske feltene, til DCS → Map |
+| `fetch_nsta.py` | Henter britiske data fra North Sea Transition Authority (NSTA): produksjon per felt og måned (PPRS), daterte eierandeler (Field Partners-arbeidsboken), feltomriss og gjeldende lisensunderområder med eiergrupper. Bygger `data/ukcs*.json` til UKCS-seksjonen. Bare offshorefelt; gasslagre utelates. For få rader eller ukjente kolonner gir exit 1 uten at noe skrives. Krever `requests` og `openpyxl` |
+| `data/ukcs.json` | Britiske felt: område, status, operatør, gjeldende og historiske eierandeler per konsern, og månedlig produksjon (olje inkl. kondensat, gass, vann) fra juni 1975 i kompakt form |
+| `data/ukcs_outlines.json` | Omriss av de britiske feltene (NSTA field determinations, forenklet) |
+| `data/ukcs_licences.json` | Gjeldende britiske lisenser og underområder med eiergruppe, andel og omriss, til UKCS → Company |
 | `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
 | `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |
 | `data/rig_health.json` | Driftsrapport fra AIS-steget: rigger uten kobling, rigger som bores uten signal, mistenkelige MMSI og om kilden feiler |
@@ -153,6 +158,9 @@ Sodir gir ingen garanti for at dataene er korrekte eller komplette.
 
 Danske data (DCS): [Energistyrelsen (ENS)](https://ens.dk/en/energy-sources/monthly-and-yearly-production),
 via ENS-løsningen [`sheffielddivided/ens`](https://github.com/sheffielddivided/ens).
+
+Britiske data (UKCS): [North Sea Transition Authority (NSTA)](https://www.nstauthority.co.uk/data-and-insights/data/themes/fields/) —
+PPRS-produksjonsrapporter, Field Partners, field determinations og lisensunderområder.
 
 Tilsynssaker: [Havindustritilsynet (Havtil)](https://www.havtil.no). Havtils
 materiale kan gjenbrukes fritt i alle formater og medier når Havtil krediteres.

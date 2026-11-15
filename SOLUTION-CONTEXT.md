@@ -856,7 +856,51 @@ gjenværende reserver, med operatør og eiere), Companies (netto produksjon per
 selskap eller per felt for ett selskap), Reserves (per felt og år) og Map.
 Production og Companies følger periodevelgeren; som NCS starter DCS i
 årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
-Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`.
+
+Klikk på et felt i DCS → Fields (stolpene og tabellen) åpner et feltfaktaark
+i brønnpanelet (`wdOverlay`): nøkkeltall, årlig produksjonsprofil, reserver per
+1. januar, eierkake og kart (`dcsOpenSheet`, felles `shelfFieldSheet`). Feltet
+står i adressen som `ds`, så tilbake lukker arket og lenken kan deles.
+
+### `data/ukcs.json`, `data/ukcs_outlines.json`, `data/ukcs_licences.json` — britisk sokkel (UKCS)
+
+Bygges av `fetch_nsta.py` i den daglige workflowen (`continue-on-error`). Ny
+løsning, uavhengig av det tidligere `sheffielddivided/ukcs`-repoet, men mot de
+samme åpne NSTA-kildene. Tjeneste-URL-ene slås opp fra ArcGIS-element-ID-ene
+hver gang:
+
+| Kilde | Element-ID / URL | Brukes til |
+|---|---|---|
+| PPRS (punkt) | `dd38204275a04618ab7ddd00f87224e3` | Månedlig produksjon per felt |
+| Field Partners | `datanstauthority.blob.core.windows.net/external/Documents/field_partners.xlsx` | Daterte eierandeler per juridisk enhet |
+| Field determinations | `bef8788b07464a7f8a18a18eb638b9f5` | Feltomriss |
+| Licence subareas by equity group | `40c65d96a1a14da8b066f2abbb345fed` | Lisenser, underområder, eiergrupper, og juridisk enhet → konsern |
+
+- **Produksjon:** bare `LOCATION = Offshore`. Enheter med STORAGE/INJECTION i
+  navnet (Rough Storage) utelates. Olje = `OILPRODM3` + `GCONDVOL` (m³), gass =
+  `AGASPROKSM` + `DGASPROKSM` (1000 Sm³, britiske standardbetingelser = norske
+  Sm³), vann = `WATPRODVOL`. Lagres per felt som `[første måned, [olje…],
+  [gass…], [vann…]]` i 1000 Sm³ / mill Sm³ / 1000 m³ uten hull.
+- **Eierskap:** `equity` per felt er `[konsern, andel %, fra, til|null,
+  operatør 0/1, juridisk enhet]`. Konsernet kommer fra parene EQORG/EQORGGRP i
+  lisensdataene; enheter som ikke finnes der får konsernet til andre enheter med
+  samme første ord når det er entydig, ellers eget navn. Frontend bruker andelen
+  midt i hver måned og skalerer ned hvis summen er over 100 %. `equityFrom`
+  (2009) er første år der andelene dekker minst 95 % av produksjonen hvert år
+  etter — selskapsgrafene starter der.
+- **Feltomriss:** delfelt («CLAIR-RIDGE [PART OF CLAIR]») bruker hovedfeltets
+  omriss (`outline` per felt).
+- **Reserver:** NSTA publiserer ikke reserver per felt, så UKCS har ingen
+  reservevisning.
+
+Frontend: `UKCS_TABS`, `loadUk`, `drawUk*`, `ukOpenSheet` i `index.html`.
+Fanene er Production (som DCS; per felt viser de 15 største og resten samlet),
+Company (netto produksjon per felt for ett konsern med kart over felt- og
+lisensportefølje, felttabell og sorterbar lisenstabell; «All companies» gir
+netto produksjon per konsern), Fields (rangering etter produksjon siste 12
+måneder eller produsert til nå; klikk åpner faktaarket) og Map.
+Lenkeparametre: `up`, `uf`, `uc`, `ul`, `us`.
 
 ### `data/meta.json`
 
