@@ -167,6 +167,7 @@ def build_production():
         'prfPrdGasNetBillSm3,prfPrdOeNetMillSm3,prfPrdProducedWaterInFieldMillS',
     )
     fields = {}
+    water_seen = False
     for r in rows:
         fid  = as_int(r.get('prfNpdidInformationCarrier'))
         year = as_int(r.get('prfYear'))
@@ -180,12 +181,37 @@ def build_production():
             num(r.get('prfPrdOeNetMillSm3')),
             num(r.get('prfPrdProducedWaterInFieldMillS')),
         ])
+        if r.get('prfPrdProducedWaterInFieldMillS') is not None:
+            water_seen = True
     for series in fields.values():
         series.sort(key=lambda x: (x[0], x[1]))
+    if fields and not water_seen:
+        keep_previous_water(fields)
     return {
         'columns': ['year', 'month', 'oil', 'gas', 'oe', 'water'],
         'fields': fields,
     }
+
+
+def keep_previous_water(fields):
+    """Sodir har i perioder levert null for produsert vann på alle rader. Da ville
+    num() gjort alt om til 0 og overskrevet gode tall. Når ingen rad har en
+    vannverdi, beholdes vannkolonnen fra forrige production.json."""
+    path = os.path.join(OUT_DIR, 'production.json')
+    print("  ! Sodir leverte ingen verdier for produsert vann; beholder forrige vannkolonne",
+          file=sys.stderr)
+    try:
+        with open(path, encoding='utf-8') as fh:
+            prev = json.load(fh)
+        idx = prev['columns'].index('water')
+        old = {(fid, row[0], row[1]): row[idx]
+               for fid, series in prev['fields'].items() for row in series}
+    except (OSError, ValueError, KeyError) as exc:
+        print(f"  ! fant ikke forrige vannkolonne ({exc}); vann blir 0", file=sys.stderr)
+        return
+    for fid, series in fields.items():
+        for row in series:
+            row[5] = old.get((fid, row[0], row[1]), 0)
 
 
 # Investeringer per felt: årlige historiske tall fra produksjonsprofilene
