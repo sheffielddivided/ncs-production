@@ -816,8 +816,8 @@ Bygges av `fetch_ens.py`, som kjøres i den daglige workflowen etter Sodir
 (`continue-on-error`, så en feil her stopper ikke resten). Skriptet henter
 ingenting fra ens.dk selv: det leser de publiserte filene i ENS-løsningen
 (`sheffielddivided/ens`, `main`) — `data/combined.json`, `data/fields.json`,
-`data/ownership.json`, `data/reserves.json` og `docs/data/gis/fields.geojson`
-— og gjør dem om til appens format. ENS-løsningen eier innsamlingen og lever
+`data/ownership.json`, `data/reserves.json`, `docs/data/gis/fields.geojson` og
+`docs/data/gis/wells.geojson` — og gjør dem om til appens format. ENS-løsningen eier innsamlingen og lever
 videre uendret.
 
 ```json
@@ -844,19 +844,36 @@ videre uendret.
   utbygging), avrundet av ENS til hele mill m³ / mrd Nm³. `flags` er verdier
   ENS-løsningen har rekonstruert eller ikke kunnet avklare; de merkes med * i
   tabellen.
+- **Brønner:** `wells` = `{"columns": ["name","number","spud","completed",
+  "category","field","fieldName","operator","classification"], "rows": [...]}`,
+  én rad per brønn til havs (ENS-løsningen tar ut landbrønnene), sortert på
+  startdato. `category` er `exploration`, `production`, `injection` eller
+  `other` (observasjon); blandingsklasser som «APPRAISAL AND PRODUCTION» følger
+  det brønnen ble. `field` er feltet som har brønnens startposisjon innenfor
+  sin avgrensning, ellers `null`. Datoer er ISO eller `null`.
 - **Formatkontroll:** `schema_version` må være 1, enhetene må være de kjente,
-  og felt-slugs må stemme mellom filene. Ellers `SourceFormatError`, exit 1, og
-  ingenting skrives.
+  og felt-slugs må stemme mellom filene. Brønnene må være til havs, ha kjent
+  kategori og ISO-datoer. Ellers `SourceFormatError`, exit 1, og ingenting
+  skrives.
 
 DCS er helt adskilt fra de norske dataene: ingen kobling mellom norske og
 danske selskaper eller felt. Frontend: `DCS_TABS`, `loadDcs`, `drawDcs*` i
 `index.html`. Fanene er Production (olje/gass/vann eller per felt, for alle
 felt eller ett), Fields (rangering etter produksjon siste 12 måneder eller
 gjenværende reserver, med operatør og eiere), Companies (netto produksjon per
-selskap eller per felt for ett selskap), Reserves (per felt og år) og Map.
+selskap eller per felt for ett selskap), Reserves (per felt og år), Drilling
+og Map.
 Production og Companies følger periodevelgeren; som NCS starter DCS i
 årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
-Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`.
+
+DCS → Drilling (`drawDcsDrilling`, `renderDcsWellTable`) viser brønnene til
+havs per startår, stablet etter `DCS_WELL_CAT` (leting/avgrensning grønn,
+produksjon magenta, injeksjon oransje, observasjon grå; validert for
+fargeblindhet mot hvit bakgrunn). Grafen bruker samme `explYearChart` som
+NCS → Exploration, uten funnratelinjen (`rate: null`). Klikk på et år lister
+brønnene under grafen; året står i adressen som `dy`, og et år uten brønner
+rettes til siste år med brønner. Feltnavn i tabellen åpner feltfaktaarket.
 
 Klikk på et felt i DCS → Fields (stolpene og tabellen) åpner et feltfaktaark
 i brønnpanelet (`wdOverlay`): nøkkeltall, årlig produksjonsprofil, reserver per

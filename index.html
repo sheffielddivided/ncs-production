@@ -2453,7 +2453,7 @@ const HOME_SECTIONS = [
     '<path d="M12 2l4 9H8z"/><path d="M10 11l-3 11M14 11l3 11M8.5 17h7"/>'],
   ['prices', 'Market', 'Brent and gas prices, EU storage, US supply, exchange and interest rates.',
     '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'],
-  ['dcs', 'DCS', 'Production, fields, companies and reserves on the Danish Continental Shelf.',
+  ['dcs', 'DCS', 'Production, fields, companies, reserves and drilling on the Danish Continental Shelf.',
     '<path d="M4 21V4"/><path d="M4 4h13l-3 4 3 4H4"/>'],
   ['ukcs', 'UKCS', 'Production, companies, fields and licences on the UK Continental Shelf.',
     '<path d="M4 21V4"/><path d="M4 4h13v8H4"/><path d="M4 8h13M10.5 4v8"/>'],
@@ -3031,6 +3031,7 @@ function applyHash() {
     if (['liq', 'gas'].includes(q.get('dr'))) dcsF.res = q.get('dr');
     if (q.get('dl') === 'rem') dcsF.fl = 'rem';
     if (/^[a-z0-9_]+$/.test(q.get('ds') || '')) dcsF.fs = q.get('ds');
+    if (/^\d{4}$/.test(q.get('dy') || '')) dcsF.yr = q.get('dy');   // et år uten brønner rettes i drawDcsDrilling
   }
   if (topMode === 'ukcs') {
     // Felt og selskap valideres når dataene er lastet (loadUk).
@@ -3436,15 +3437,16 @@ const DCS_TABS = [
   {id: 'fields',     label: 'Fields'},
   {id: 'companies',  label: 'Companies'},
   {id: 'reserves',   label: 'Reserves'},
+  {id: 'drilling',   label: 'Drilling'},
   {id: 'map',        label: 'Map'},
 ];
 let dcsSubView = 'production';
 // prod: 'product' | 'field' · field: ett felt (slug) i Oil & Gas, '' = alle · cmp: ett selskap i Companies
 // · res: 'oe' | 'liq' | 'gas' · fl: 'rank' | 'rem'
-// · fs: feltet i faktaarket (popup)
-const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: ''});
+// · fs: feltet i faktaarket (popup) · yr: valgt år i Drilling ('' = siste år med brønner)
+const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: ''});
 let dcsF = dcsDefaults();
-const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds']];
+const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy']];
 let dcsData = null, dcsOutlines = null, dcsLoading = null;
 
 function loadDcs() {
@@ -3584,6 +3586,7 @@ function drawDcs() {
   if (v === 'fields') drawDcsFields();
   else if (v === 'companies') drawDcsCompanies();
   else if (v === 'reserves') drawDcsReserves();
+  else if (v === 'drilling') drawDcsDrilling();
   else if (v === 'map') drawDcsMap();
   else drawDcsProduction();
 }
@@ -3807,6 +3810,89 @@ function drawDcsReserves() {
         <tr class="hub-row"><td>Sum of fields</td>${years.map(y => `<td>${fmt(sumY(y))}</td>`).join('')}</tr>
         <tr><td>Reported total (ENS)</td>${years.map(y => `<td>${fmt(repY(y))}</td>`).join('')}</tr></tbody>
     </table>`);
+}
+
+// ── DCS: DRILLING ──
+// Brønner til havs per år de ble påbegynt (spud), stablet etter ENS'
+// klassifisering ved boringsstart. Blandingsklasser følger det brønnen ble
+// («APPRAISAL AND PRODUCTION» = produksjon), som i ENS-løsningen. Klikk på et
+// år lister brønnene under grafen. Fargene er validert for fargeblindhet mot
+// hvit bakgrunn; tabellen og forklaringen gir lesbarhet for de lyse fargene.
+const DCS_WELL_CAT = [
+  {key: 'exploration', label: 'Exploration & appraisal', color: 'rgba(0,179,115,0.85)'},
+  {key: 'production',  label: 'Production',              color: 'rgba(206,15,105,0.85)'},
+  {key: 'injection',   label: 'Injection',               color: 'rgba(246,141,46,0.85)'},
+  {key: 'other',       label: 'Other (observation)',     color: 'rgba(154,165,177,0.85)'},
+];
+function dcsWells() {
+  const W = dcsData.wells;
+  if (!W || !Array.isArray(W.rows)) return [];
+  const ix = Object.fromEntries(W.columns.map((c, i) => [c, i]));
+  return W.rows.map(r => Object.fromEntries(Object.keys(ix).map(c => [c, r[ix[c]]])))
+    .filter(w => w.spud).map(w => ({...w, year: w.spud.slice(0, 4)}));
+}
+function dcsPickYear(y) {
+  dcsF.yr = y;
+  syncUrl();
+  renderDcsWellTable(dcsWells());
+  if (chartInstance) chartInstance.update('none');
+}
+function drawDcsDrilling() {
+  const wells = dcsWells();
+  setChartTitle('Danish Continental Shelf · Drilling', 'Offshore wells per year · by type');
+  if (!wells.length) { setChartEmpty('No well data available.'); setInfo(''); return; }
+  const ys = wells.map(w => +w.year);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const labels = [];
+  for (let y = y0; y <= y1; y++) labels.push(String(y));
+  const per = Object.fromEntries(labels.map(y => [y, Object.fromEntries(DCS_WELL_CAT.map(c => [c.key, 0]))]));
+  wells.forEach(w => { per[w.year][DCS_WELL_CAT.some(c => c.key === w.category) ? w.category : 'other']++; });
+  const total = y => DCS_WELL_CAT.reduce((t, c) => t + per[y][c.key], 0);
+  if (!dcsF.yr || !per[dcsF.yr] || !total(dcsF.yr)) {
+    dcsF.yr = [...labels].reverse().find(y => total(y) > 0);
+    syncUrl();   // året i adressen skal følge det som vises
+  }
+  const cats = DCS_WELL_CAT.filter(c => labels.some(y => per[y][c.key]));
+  explYearChart({
+    toggle: '', labels, rate: null, per: {}, selected: () => dcsF.yr, onPick: dcsPickYear,
+    stacks: cats.map(c => ({label: c.label, color: c.color, data: labels.map(y => per[y][c.key])})),
+  });
+  const n = k => wells.filter(w => w.category === k).length;
+  const inField = wells.filter(w => w.field).length;
+  setInfo(`<strong>Wells:</strong> ${wells.length.toLocaleString('en')} offshore wells spudded ${y0}–${y1}: `
+    + `${n('exploration')} exploration &amp; appraisal, ${n('production')} production, ${n('injection')} injection`
+    + `${n('other') ? `, ${n('other')} other (observation)` : ''} &nbsp;|&nbsp; `
+    + `<strong>Type:</strong> ENS' classification at spud; a well first drilled to explore or appraise that became a producer or injector counts as production or injection &nbsp;|&nbsp; `
+    + `<strong>Field:</strong> the field whose ENS delineation contains the well's surface location (${inField} of ${wells.length} wells); a deviated well counts under the field it was drilled from &nbsp;|&nbsp; `
+    + `<strong>Source:</strong> <a href="${esc(dcsData.wellsUrl || 'https://ens.dk')}" target="_blank" rel="noopener">ENS «All oil and gas wells»</a> via the ENS solution; onshore wells are left out; ENS updates the list with a delay, so the latest year may be incomplete`);
+  renderDcsWellTable(wells);
+}
+function renderDcsWellTable(wells) {
+  const list = wells.filter(w => w.year === dcsF.yr);
+  if (!list.length) { setChartTable(''); return; }
+  const lab = Object.fromEntries(DCS_WELL_CAT.map(c => [c.key, c]));
+  const counts = DCS_WELL_CAT.map(c => [c, list.filter(w => w.category === c.key).length]).filter(([, k]) => k)
+    .map(([c, k]) => `${k} ${c.label.toLowerCase()}`).join(' · ');
+  // Startdatoen står i det valgte året; avslutningen kan falle året etter.
+  const fmtD = (d, yr) => d ? `${+d.slice(8)} ${MONTH_ABBR[+d.slice(5, 7) - 1]}${yr ? ' ' + d.slice(0, 4) : ''}` : '—';
+  const field = w => !w.field ? '<span style="color:#94a3b8">Outside fields</span>'
+    : dcsData.bySlug[w.field] ? rowLink(dcsName(w.field), `dcsOpenSheet(${esc(jsStr(w.field))})`, `Open the ${dcsName(w.field)} fact sheet`)
+    : esc(w.fieldName || w.field);
+  const dot = c => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${c.color}"></span>`;
+  // Samme tabelloppsett som brønnlisten i NCS → Exploration (ex-table).
+  setChartTable(`
+    <div class="pf-scroll"><table class="res-table ex-table">
+      <caption>${esc(dcsF.yr)} · ${list.length} ${list.length === 1 ? 'well' : 'wells'} · ${esc(counts)}</caption>
+      <thead><tr><th class="ex-l">Well</th><th class="ex-l">Type</th><th class="ex-l">Field</th>
+        <th class="ex-l">Operator</th><th>Spudded</th><th>Completed</th></tr></thead>
+      <tbody>${list.map(w => {
+        const c = lab[w.category] || lab.other;
+        return `<tr><td class="ex-name"><strong>${esc(w.name)}</strong>${w.number ? `<small>${esc(w.number)}</small>` : ''}</td>
+          <td class="ex-l" title="ENS classification: ${esc(w.classification || '—')}">${dot(c)}${esc(c.label)}</td>
+          <td class="ex-l">${field(w)}</td><td class="ex-l">${esc(w.operator || '—')}</td>
+          <td>${fmtD(w.spud)}</td><td>${fmtD(w.completed, true)}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div>`);
 }
 
 // ── DCS: MAP ──
@@ -8235,30 +8321,33 @@ function discoveryVolume(id) {
 // som linje på høyre akse. per[år] må ha done og disc til verktøytipset.
 // Valgt år (selected()) markeres ved at de andre stolpene tones ned; et
 // klikk kaller onPick med året.
-function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells', yTitle, lines = []}) {
+// rate: funnrate per år (prosent) til linjen på høyre akse; null = ingen linje (DCS → Drilling).
+// note: teksten under grafen (standard: klikk på et år for å liste brønnene).
+function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, unit = 'wells', yTitle, lines = [], note}) {
   const vol = unit !== 'wells', f1 = v => v.toLocaleString('en', {maximumFractionDigits: 1});
+  const showRate = !vol && Array.isArray(rate);
   setChartTable(''); setProfile('');
   lastLabels = labels;
   lastXTitle = 'Year';
   lastDatasets = stacks.map(st => ({label: st.label, data: st.data}))
-    .concat(vol ? [] : [{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}])
+    .concat(showRate ? [{label: 'Discovery rate, %', data: rate.map(v => v ?? '')}] : [])
     .concat(lines.map(l => ({label: `${l.label}, ${unit}`, data: l.data.map(v => v ?? '')})));
   const legend = stacks.map(st => ({label: st.label, color: st.color}))
-    .concat(vol ? [] : [{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}])
+    .concat(showRate ? [{label: 'Discovery rate (right axis)', color: CMP_EXPL_RATE}] : [])
     .concat(lines.map(l => ({label: l.label + ' (dashed)', color: l.color})));
   document.getElementById('chartArea').innerHTML = `${toggle}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l => `
       <div class="legend-item"><div class="legend-dot" style="background:${l.color}"></div>${esc(l.label)}</div>`).join('')}
     </div>
-    <div class="pf-map-note">Click a year to list its wells below.${vol ? ' Volumes are counted on discovery wells only.' : ''}</div>`;
+    <div class="pf-map-note">${note || `Click a year to list its wells below.${vol ? ' Volumes are counted on discovery wells only.' : ''}`}</div>`;
   // Fargene må være rgba(), så alfaverdien kan skaleres ned.
   const dim = (c, i) => labels[i] === selected() ? c : c.replace(/[\d.]+\)$/, m => (parseFloat(m) * 0.45).toFixed(2) + ')');
   const totalOf = i => stacks.reduce((t, st) => t + st.data[i], 0);
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
     data: {labels, datasets: [
-      ...(vol ? [] : [{type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
+      ...(!showRate ? [] : [{type: 'line', label: 'Discovery rate', data: rate, yAxisID: 'y1', borderColor: CMP_EXPL_RATE,
        backgroundColor: CMP_EXPL_RATE, borderWidth: 2, pointRadius: labels.length > 30 ? 1.5 : 3, tension: 0.25, spanGaps: true, order: 0, _rate: true}]),
       ...lines.map(l => ({type: 'line', label: l.label, data: l.data, borderColor: l.color, backgroundColor: l.color,
         borderWidth: 1.25, borderDash: [4, 3], pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false, order: 0})),
@@ -8289,7 +8378,7 @@ function explYearChart({toggle, labels, per, rate, stacks, selected, onPick, uni
         x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
         y: {stacked: true, beginAtZero: true, title: {display: true, text: yTitle || unit, color: '#4a5568', font: {size: 10}},
             ticks: vol ? {font: {size: 9}} : {precision: 0, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
-        y1: {display: !vol, position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
+        y1: {display: showRate, position: 'right', min: 0, max: 100, title: {display: true, text: 'discovery rate, %', color: CMP_EXPL_RATE, font: {size: 10}},
              ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
       },
     },
