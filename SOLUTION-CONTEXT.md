@@ -845,13 +845,16 @@ videre uendret.
   ENS-løsningen har rekonstruert eller ikke kunnet avklare; de merkes med * i
   tabellen.
 - **Brønner:** `wells` = `{"columns": ["name","number","spud","completed",
-  "category","field","fieldName","operator","classification","lon","lat"], "rows": [...]}`,
+  "category","field","fieldName","operator","classification","lon","lat",
+  "wellType","licence","rig","released","source"], "rows": [...]}`,
   én rad per brønn til havs (ENS-løsningen tar ut landbrønnene), sortert på
   startdato. `category` er `exploration`, `production`, `injection` eller
   `other` (observasjon); blandingsklasser som «APPRAISAL AND PRODUCTION» følger
   det brønnen ble. `field` er feltet som har brønnens startposisjon innenfor
   sin avgrensning, ellers `null`. Datoer er ISO eller `null`. `lon`/`lat` er
   startposisjonen i WGS84 (5 desimaler) og må ligge innenfor dansk sokkel.
+  `released` er `true`/`false`/`null`, `source` er `xlsx` (ENS' brønnliste)
+  eller `shapefile` (ENS' brønn-shapefil fra 2019).
 - **Formatkontroll:** `schema_version` må være 1, enhetene må være de kjente,
   og felt-slugs må stemme mellom filene. Brønnene må være til havs, ha kjent
   kategori og ISO-datoer. Ellers `SourceFormatError`, exit 1, og ingenting
@@ -866,7 +869,7 @@ selskap eller per felt for ett selskap), Reserves (per felt og år), Drilling
 og Map.
 Production og Companies følger periodevelgeren; som NCS starter DCS i
 årsoppløsning fra 1970 og gir tilbake perioden man hadde når man går ut.
-Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`.
+Lenkeparametre: `dp`, `df`, `dc`, `dr`, `dl`, `ds`, `dy`, `dw`, `dn`.
 
 DCS → Drilling (`drawDcsDrilling`, `renderDcsWellTable`) viser brønnene til
 havs per startår, stablet etter `DCS_WELL_CAT` (leting/avgrensning grønn,
@@ -875,6 +878,15 @@ fargeblindhet mot hvit bakgrunn). Grafen bruker samme `explYearChart` som
 NCS → Exploration, uten funnratelinjen (`rate: null`). Klikk på et år lister
 brønnene under grafen; året står i adressen som `dy`, og et år uten brønner
 rettes til siste år med brønner. Feltnavn i tabellen åpner feltfaktaarket.
+
+Brønner utenfor felt har ikke noe feltark. I Drilling-tabellen er navnet
+deres en lenke til en brønnside i samme panel (`dcsOpenWell`, navnet i
+adressen som `dn`): alle opplysningene i ENS' brønnliste, posisjon i grader
+og desimal, blokk (fra brønnnummeret), varighet, nærmeste danske felt med
+avstand (`dcsNearestField`, «None within 50 km» lenger unna) og et kart på
+~3 lengdegrader rundt brønnen med de andre brønnene som grå prikker. Ett ark
+er åpent om gangen: et felt i kartet erstatter brønnen (`dcsF.fs` / `dcsF.wl`),
+og tilbake viser brønnen igjen.
 
 DCS → Map har et brønnvalg over kartet (`dcsF.mw`, lenkeparameter `dw`):
 ingen (standard), leting/avgrensning, produksjon og injeksjon, eller alle.

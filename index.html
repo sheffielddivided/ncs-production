@@ -3033,6 +3033,7 @@ function applyHash() {
     if (/^[a-z0-9_]+$/.test(q.get('ds') || '')) dcsF.fs = q.get('ds');
     if (/^\d{4}$/.test(q.get('dy') || '')) dcsF.yr = q.get('dy');   // et år uten brønner rettes i drawDcsDrilling
     if (['expl', 'dev', 'all'].includes(q.get('dw'))) dcsF.mw = q.get('dw');
+    if ((q.get('dn') || '').length && q.get('dn').length <= 40) dcsF.wl = q.get('dn');   // valideres i loadDcs
   }
   if (topMode === 'ukcs') {
     // Felt og selskap valideres når dataene er lastet (loadUk).
@@ -3446,9 +3447,10 @@ let dcsSubView = 'production';
 // · res: 'oe' | 'liq' | 'gas' · fl: 'rank' | 'rem'
 // · fs: feltet i faktaarket (popup) · yr: valgt år i Drilling ('' = siste år med brønner)
 // · mw: brønner i kartet: '' (ingen) | 'expl' | 'dev' (produksjon + injeksjon) | 'all'
-const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: ''});
+// · wl: brønnen i brønnsiden (popup), etter navn — bare brønner utenfor felt
+const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: '', wl: ''});
 let dcsF = dcsDefaults();
-const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw']];
+const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw'], ['wl', 'dn']];
 let dcsData = null, dcsOutlines = null, dcsLoading = null;
 
 function loadDcs() {
@@ -3462,6 +3464,7 @@ function loadDcs() {
     if (dcsF.field && !dcsData.bySlug[dcsF.field]) dcsF.field = '';
     if (dcsF.cmp && !dcsCompanies().includes(dcsF.cmp)) dcsF.cmp = '';
     if (dcsF.fs && !dcsData.bySlug[dcsF.fs]) dcsF.fs = '';
+    if (dcsF.wl && !dcsWellByName(dcsF.wl)) dcsF.wl = '';
   });
   return dcsLoading;
 }
@@ -3579,6 +3582,7 @@ async function refreshDcs() {
   renderSourceNote();   // datoen for de danske dataene står i kildelinjen
   drawChart();
   if (dcsF.fs && shelfSheetStale('dcs:' + dcsF.fs)) dcsOpenSheet(dcsF.fs, true);
+  else if (dcsF.wl && shelfSheetStale('dcsw:' + dcsF.wl)) dcsOpenWell(dcsF.wl, true);
 }
 
 function drawDcs() {
@@ -3889,12 +3893,120 @@ function renderDcsWellTable(wells) {
         <th class="ex-l">Operator</th><th>Spudded</th><th>Completed</th></tr></thead>
       <tbody>${list.map(w => {
         const c = lab[w.category] || lab.other;
-        return `<tr><td class="ex-name"><strong>${esc(w.name)}</strong>${w.number ? `<small>${esc(w.number)}</small>` : ''}</td>
+        // Brønner utenfor felt har ikke noe feltark; navnet åpner brønnsiden.
+        const nm = w.field ? esc(w.name) : rowLink(w.name, `dcsOpenWell(${esc(jsStr(w.name))})`, `Open the page for ${w.name}`);
+        return `<tr><td class="ex-name"><strong>${nm}</strong>${w.number ? `<small>${esc(w.number)}</small>` : ''}</td>
           <td class="ex-l" style="white-space:nowrap" title="ENS classification: ${esc(w.classification || '—')}">${dot(c)}${esc(c.label)}</td>
           <td class="ex-l">${field(w)}</td><td class="ex-l">${esc(w.operator || '—')}</td>
           <td>${fmtD(w.spud)}</td><td>${fmtD(w.completed, true)}</td></tr>`;
       }).join('')}</tbody>
     </table></div>`);
+}
+
+// ── DCS: BRØNNSIDE ──
+// Popup for en brønn utenfor felt (de har ikke noe feltark): alt ENS-lista
+// har om brønnen, nærmeste felt og et kart over posisjonen. Navnet står i
+// adressen (dn), så tilbake lukker siden og lenken kan deles.
+const dcsWellByName = name => dcsWells().find(w => w.name === name) || null;
+// Grader → 55°48'36" N.
+function dcsDms(v, pos, neg) {
+  const a = Math.abs(v), d = Math.floor(a), mf = (a - d) * 60, m = Math.floor(mf), sec = Math.round((mf - m) * 60);
+  const [dd, mm, ss] = sec === 60 ? (m === 59 ? [d + 1, 0, 0] : [d, m + 1, 0]) : [d, m, sec];
+  return `${dd}°${String(mm).padStart(2, '0')}'${String(ss).padStart(2, '0')}" ${v >= 0 ? pos : neg}`;
+}
+// Avstand (km) fra et punkt til nærmeste danske feltomriss, flat tilnærming
+// rundt punktet (feilen er under en prosent på noen titalls kilometer).
+function dcsNearestField(lon, lat) {
+  const kx = 111.32 * Math.cos(lat * Math.PI / 180), ky = 110.57;
+  let best = null;
+  Object.entries(dcsOutlines || {}).forEach(([slug, it]) => it.rings.forEach(r => {
+    for (let i = 0; i < r.length - 1; i++) {
+      const ax = (r[i][0] - lon) * kx, ay = (r[i][1] - lat) * ky, bx = (r[i + 1][0] - lon) * kx, by = (r[i + 1][1] - lat) * ky;
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+      const d = Math.hypot(ax + t * dx, ay + t * dy);
+      if (!best || d < best.km) best = {slug, name: dcsData.bySlug[slug] ? dcsName(slug) : it.name, km: d};
+    }
+  }));
+  return best;
+}
+function dcsOpenWell(name, quiet) {
+  const w = dcsWellByName(name);
+  if (!w) return;
+  if (!quiet) markNav();
+  dcsF.wl = name; dcsF.fs = '';
+  if (!quiet) syncUrl();
+  shelfSheetDestroy();
+  shelfSheetShown = 'dcsw:' + name;
+  const c = DCS_WELL_CAT.find(x => x.key === w.category) || DCS_WELL_CAT[DCS_WELL_CAT.length - 1];
+  const dot = `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${c.color}"></span>`;
+  const fmtD = d => d ? `${+d.slice(8)} ${MONTH_ABBR[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : '';
+  const days = w.spud && w.completed ? Math.round((Date.parse(w.completed) - Date.parse(w.spud)) / 864e5) : null;
+  const tc = t => t ? String(t).toLowerCase().replace(/(^|[\s/-])\S/g, m => m.toUpperCase()) : '';
+  const near = w.lon != null ? dcsNearestField(w.lon, w.lat) : null;
+  // Over 50 km sier nærmeste felt lite (brønnene i Kattegat og Østersjøen ligger 300–600 km unna).
+  const nearHtml = !near ? '' : near.km > 50 ? 'None within 50 km'
+    : (dcsData.bySlug[near.slug] ? rowLink(near.name, `dcsOpenSheet(${esc(jsStr(near.slug))})`) : esc(near.name))
+      + ` · ${near.km < 1 ? '<1' : Math.round(near.km)} km`;
+  const block = /^\d{4}\/\d+/.test(w.number || '') ? w.number.match(/^\d{4}\/\d+/)[0] : '';
+  const facts = [
+    ['Well number', esc(w.number || '')],
+    ['Type', `${dot}${esc(c.label)}`],
+    ['ENS classification', esc(tc(w.classification))],
+    ['Well type', esc(w.wellType || '')],
+    ['Licence', esc(w.licence || '')],
+    ['Operator', esc(w.operator || '')],
+    ['Rig', esc(w.rig || '')],
+    ['Spudded', esc(fmtD(w.spud))],
+    ['Completed', esc(fmtD(w.completed))],
+    ['Duration', days != null && days >= 0 ? `${days.toLocaleString('en')} days` : ''],
+    ['Block', esc(block)],
+    ['Position', w.lon != null ? esc(`${dcsDms(w.lat, 'N', 'S')}, ${dcsDms(w.lon, 'E', 'W')}`) : ''],
+    ['Decimal (WGS84)', w.lon != null ? esc(`${w.lat.toFixed(5)}, ${w.lon.toFixed(5)}`) : ''],
+    ['Nearest field', nearHtml],
+    ['Data released', w.released == null ? '' : w.released ? 'Yes' : 'No (confidential)'],
+  ];
+  // Kart: brønnen stor med navn, de andre brønnene som små grå prikker (de
+  // utenfor felt er klikkbare), danske felt klikkbare til feltarket, norske i grått.
+  const others = Object.entries(dcsOutlines || {})
+    .map(([s, it]) => dcsData.bySlug[s] ? {...it, click: `dcsOpenSheet(${jsStr(s)})`} : it);
+  const MW = 560, MH = 300;
+  const overlay = w.lon == null ? null : (px, py) => {
+    const dots = dcsWells().filter(o => o.name !== w.name && o.lon != null).map(o => {
+      const x = px(o.lon), y = py(o.lat);
+      if (x < 0 || x > MW || y < 0 || y > MH) return '';
+      const click = o.field ? '' : ` style="cursor:pointer" onclick="dcsOpenWell(${esc(jsStr(o.name))})"`;
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2" fill="rgba(100,116,139,0.55)" stroke="#fff" stroke-width="0.4"${click}><title>${esc(o.name)}</title></circle>`;
+    }).join('');
+    const x = px(w.lon), y = py(w.lat);
+    return dots + `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6.5" fill="${c.color}" stroke="#1a2332" stroke-width="2"><title>${esc(w.name)}</title></circle>`
+      + `<text class="pf-lbl pf-lbl-own" x="${(x + 10).toFixed(1)}" y="${(y + 4).toFixed(1)}" style="text-anchor:start">${esc(w.name)}</text>`;
+  };
+  const map = w.lon == null ? '<div class="pf-map-note">No position in the source.</div>' : outlineMap([], {
+    // Et utsnitt på ~3 lengdegrader (~190 km) rundt brønnen: nok til å vise
+    // feltene rundt i Nordsjøen, og kysten (Bornholm, Rügen) rundt brønnene i Østersjøen.
+    label: `Map of the location of ${w.name}`, h: MH, inset: false, labelMax: 10, pad: 1,
+    extra: [[w.lon - 1.5, w.lat], [w.lon + 1.5, w.lat]], fill: 'none', stroke: 'none',
+    layers: [{...fieldLayer(), label: false}, {items: others, fill: '#e2e8f0', stroke: '#9aa5b1'}],
+    overlay,
+    note: 'The well (large marker) with the other Danish wells as small grey dots; click one outside a field for its page, or a field for its factsheet. '
+      + 'Danish fields in light grey, Norwegian fields in grey. Position: surface location at spud. Outlines: ENS · coastline: Natural Earth',
+  });
+  document.getElementById('wdBody').innerHTML = `
+    <div class="wd-head">
+      <div><h2>${esc(w.name)}</h2><div class="wd-sub">Danish Continental Shelf · ${esc(c.label.toLowerCase())} well outside the fields · spudded ${esc(w.year)}</div></div>
+      <button class="wd-close" onclick="closeWell()" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="pf-card"><h3>Key facts</h3><div class="pf-facts">${facts.map(([k, v]) => factHtml(k, v)).join('')}</div>
+      <div class="ex-btns" style="margin-top:10px"><button class="ex-btn ex-btn-main" onclick="dcsShowWellYear(${esc(jsStr(w.year))})">All wells spudded in ${esc(w.year)} →</button></div>
+      <div class="pf-map-note">Source: ${w.source === 'shapefile' ? 'ENS shape file of exploration and appraisal wells (2019); the well is not in the current ENS well list'
+        : 'ENS «All oil and gas wells»'} via the ENS solution. The classification is ENS' at spud${w.released === false ? '; detailed well data are confidential until released' : '; released well data are available from GEUS'}.</div></div>
+    <div class="pf-card"><h3>Location</h3>${map}</div>
+    <div class="wd-foot"><button class="ex-btn" onclick="closeWell()">Close</button></div>`;
+  const ov = document.getElementById('wdOverlay');
+  ov.classList.add('open');
+  ov.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
 }
 
 // ── DCS: MAP ──
@@ -3987,7 +4099,7 @@ let shelfSheetCharts = [];
 // Arket som vises nå ('dcs:slug' / 'ukcs:slug'). Et nabofelt i kartet åpner
 // et nytt ark over det gamle; tilbake skal da vise det forrige igjen.
 let shelfSheetShown = '';
-const shelfSheetOpen = () => !!(dcsF.fs || ukF.fs);
+const shelfSheetOpen = () => !!(dcsF.fs || dcsF.wl || ukF.fs);
 function shelfSheetDestroy() { shelfSheetCharts.forEach(c => c.destroy()); shelfSheetCharts = []; shelfSheetShown = ''; }
 const shelfSheetStale = key => !overlayOpen() || shelfSheetShown !== key;
 
@@ -4086,7 +4198,7 @@ function dcsOpenSheet(slug, quiet) {
   const f = dcsData.bySlug[slug];
   if (!f) return;
   if (!quiet) markNav();
-  dcsF.fs = slug;
+  dcsF.fs = slug; dcsF.wl = '';   // ett ark om gangen: et felt fra brønnsidens kart erstatter brønnen
   if (!quiet) syncUrl();
   shelfSheetShown = 'dcs:' + slug;
   // Årlig produksjon: ENS' årsfil, og for årene etter den summen av de
@@ -16337,7 +16449,7 @@ function closeWell(fromNav) {
   if (!fromNav && history.state && history.state.ov && (explF.open || explF.rig || shelfSheetOpen())) { history.back(); return; }
   explF.open = null;
   explF.rig = null;
-  dcsF.fs = ''; ukF.fs = '';
+  dcsF.fs = ''; dcsF.wl = ''; ukF.fs = '';
   shelfSheetDestroy();
   rigStop();
   document.getElementById('wdOverlay').classList.remove('open');
