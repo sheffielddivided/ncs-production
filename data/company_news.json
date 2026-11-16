@@ -9,7 +9,7 @@
   "https://news.cision.com/aker-bp-asa/ListItems?format=rss": {
    "company": "Aker BP ASA",
    "title": "Cision News",
-   "n": 25
+   "n": 27
   },
   "https://news.cision.com/okea/ListItems?format=rss": {
    "company": "OKEA ASA",
@@ -69,10 +69,38 @@
   "https://newsweb.oslobors.no/search?category=&issuer=8376": {
    "company": "Aker BP ASA",
    "title": "NewsWeb · Aker BP ASA",
-   "n": 65
+   "n": 67
   }
  },
  "items": [
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "LTIP share awards completed and new grants issued",
+   "u": "https://newsweb.oslobors.no/message/686601",
+   "d": "2026-11-16",
+   "s": "Managers’ transaction"
+  },
+  {
+   "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
+   "t": "LTIP share awards completed and new grants issued",
+   "u": "https://newsweb.oslobors.no/message/686599",
+   "d": "2026-11-16",
+   "s": "Managers’ transaction"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "LTIP share awards completed and new grants issued",
+   "u": "https://news.cision.com/aker-bp-asa/r/ltip-share-awards-completed-and-new-grants-issued,c4425049",
+   "d": "2026-11-16",
+   "s": "Aker BP has finalised share awards under its 2023–2026 Long-Term Incentive Programme (LTIP) and initiated new grants for the 2026–2029 cycle. The LTIP is designed to align executive performance with long-term shareholder value creation. About the LTIP The LTIP is a share-based programme for the …"
+  },
+  {
+   "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
+   "t": "LTIP share awards completed and new grants issued",
+   "u": "https://news.cision.com/aker-bp-asa/r/ltip-share-awards-completed-and-new-grants-issued,c4425044",
+   "d": "2026-11-16",
+   "s": "Aker BP has finalised share awards under its 2023–2026 Long-Term Incentive Programme (LTIP) and initiated new grants for the 2026–2029 cycle. The LTIP is designed to align executive performance with long-term shareholder value creation. About the LTIP The LTIP is a share-based programme for the …"
+  },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Ex. utbytte andre kvartal 2026 i dag - OSE",
@@ -2230,6 +2258,13 @@
    "s": "Annual financial report"
   },
   {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "TotalEnergies: Den eneste leverandøren med seks godkjente smøremidler for Stellantis’ nye standarder - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMixwFBVV95cUxPMHJVX195ajN6cE9MSjVheU4zbWVnc19LZHFpelU3dUZNUVh5azhGa3FEUnNRR2c2ZE5VU0pPemJpQTJoNFd3NWVXcU1oYXdnU2lCMEhxbjV3czIycWpZOHRyaEtFTm42UkdDazE1Zlh2ekF2dHJ2YlFIX1BCZ3owV0VsdlpXQ3NQcW9oRm9OY19ZQk1qTWZ0TWdZLVVpVTd4dHlEM0NKcFB4NHFrWWJTRGN1a3Z0UFRObzlWbUhNdk9za1BQWUJr?oc=5",
+   "d": "2026-03-27",
+   "s": "TotalEnergies: Den eneste leverandøren med seks godkjente smøremidler for Stellantis’ nye standarder TotalEnergies Nordic"
+  },
+  {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
    "t": "OKEA ASA – Publication of annual reports for 2025",
    "u": "https://news.cision.com/okea/r/okea-asa---publication-of-annual-reports-for-2025,c4327566",
@@ -4303,10 +4338,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Fullmakt til erverv av egne aksjer - DNO ASA",
+   "t": "DNO ASA - Fullmakt til erverv av egne aksjer | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNNEpZbXFBMm83dG51UTJGNlFqWk5pNDd6Z3RsenlRLXhUdkt6b2h1SV9Ha0JjbWJiR0pDMGstcEtMMlZmU0NGMXBSWDJIYjI3dGJNVXlPLWdFWjBtOHd3alExWUtIWWpBVDBfRFpXM2V6UWNVQ2ZUeUN3TEtqRWpxQ2p2RkFMeklEdlFOdTN3UHo0dTg?oc=5",
    "d": "2021-09-23",
-   "s": "Fullmakt til erverv av egne aksjer DNO ASA"
+   "s": "DNO ASA - Fullmakt til erverv av egne aksjer | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -4491,13 +4526,6 @@
    "s": "Sikkerhetsdatablad for alle produkter med TotalEnergies TotalEnergies Nordic"
   },
   {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Kontakt oss | TotalEnergies - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTFBLR2ZhQm1Ob3B2SzBoU0N6R2Q4QnpvbUZ3RkRHSVFpdndCN0JLN0FhMGdpU1hrLTdNQTRJWUtDVDdRZ2EyY3laMTM2YnhYbjVVY053bmx6djZQSFE?oc=5",
-   "d": "2021-06-02",
-   "s": "Kontakt oss | TotalEnergies TotalEnergies Nordic"
-  },
-  {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
    "t": "Proposed share consolidation 2021",
    "u": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/proposed-share-consolidation-2021/",
@@ -4597,17 +4625,17 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Presentasjon Pareto Oil and Offshore Conference - dno.no",
+   "t": "DNO ASA - Presentasjon Pareto Oil and Offshore Conference | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPTnQ2ZFB4X3BWWFBma2RDekc2dFVPMW0wdUs5R1piUEEwelVpT3lNcGhhU0ZPWVJBeUtOUVNJWnFSRmVvNmNCYm5nZ0UzbGctdUlHZEIxb2g0TVc2cGdLOGpCdFJDVi1aMS1DaEhBRk9ObVJjSzVmV2JRdXVkVW1wYklMS09EZ1h2VVgwLWJDYnZGR2JyNVJSMjJJbFoyTWFsVllQNA?oc=5",
    "d": "2020-11-19",
-   "s": "Presentasjon Pareto Oil and Offshore Conference dno.no"
+   "s": "DNO ASA - Presentasjon Pareto Oil and Offshore Conference | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Ordinær Generalforsamling - DNO ASA",
+   "t": "DNO ASA - Ordinær Generalforsamling | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPRWc3cTZRWjhRdlZpWjdvbUVQdlIweHBJX3VmMnpVQnctUG5JTUVnS1lsUG1hdmtudG5JV29mc3hxMWFnZ1hwQWxiT2UxQjJkNnVCWnM2TUw4bndYc2dvbkhuWUl5ZVRUWGowR3JkdjZpcUF0MWtienhOR09hXzlGdktBeEhhMDc5?oc=5",
    "d": "2020-11-19",
-   "s": "Ordinær Generalforsamling DNO ASA"
+   "s": "DNO ASA - Ordinær Generalforsamling | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4716,10 +4744,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Ekstraordinær generalforsamling | Announcements | Investors - DNO ASA",
+   "t": "Ekstraordinær generalforsamling | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMihgFBVV95cUxNLWlUM3dCN2JCbUx2dml3NjdkcDhsb1VOZ2xDMkhEOGFCWkgtY0kxQnRSOXMwZTJqSkhheTVSaTZmb2RWeUZDZDU5TnFlWi05ZmtaeGt6alhscXJFZmtDZ1Q5aF93TkQxeUxPYWtIbnc3OG1BWFIwM29XbXZ5akJ1UXltZ25rQQ?oc=5",
    "d": "2020-11-15",
-   "s": "Ekstraordinær generalforsamling | Announcements | Investors DNO ASA"
+   "s": "Ekstraordinær generalforsamling | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4919,10 +4947,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Update on the Tawke Field in the Kurdistan region of Northern Iraq - DNO ASA",
+   "t": "DNO ASA - Update on the Tawke Field in the Kurdistan region of Northern Iraq | Announcements | Investors - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMivgFBVV95cUxOSHNIOGlrSTNLQ2N3SEdDaVl5dmYzSkZKVnFjSUx5MW81ODdodGxZMkZfdVl2RThRc3B0X2ZMbW1hN2hMLTJvQjJCUlNEUDVqa2JVVjJZaldnMlV3V0pobUpfUnNLM2ktNXN0TW1IZ092NjVyVUNVa2FxWHNoT2pmT2ZNanVETEx0MTZqdFVZWGdxS2dQbzR2SHlIc2hGelhmRmVYYmFUSjFJQjhiRVNTMXFQMV9pUFdaS2c1ZW93?oc=5",
    "d": "2007-08-22",
-   "s": "Update on the Tawke Field in the Kurdistan region of Northern Iraq DNO ASA"
+   "s": "DNO ASA - Update on the Tawke Field in the Kurdistan region of Northern Iraq | Announcements | Investors DNO ASA"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
