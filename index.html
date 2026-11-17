@@ -3090,6 +3090,7 @@ function applyHash() {
     // Felt og selskap valideres når dataene er lastet (loadDcs).
     dcsF = dcsDefaults();
     if (q.get('dp') === 'field') dcsF.prod = 'field';
+    if (q.get('dx') === '1') dcsF.sc = '1';
     if (/^[a-z0-9_]+$/.test(q.get('df') || '')) dcsF.field = q.get('df');
     if (q.get('dc')) dcsF.cmp = q.get('dc');
     if (q.get('do') === 'now') dcsF.own = 'now';
@@ -3517,9 +3518,9 @@ let dcsSubView = 'production';
 // · wl: brønnen i brønnsiden (popup), etter navn — bare brønner utenfor felt
 // · wt: brønntype i Drilling ('' = alle) · pl: '1' = linje med total olje- og gassproduksjon i Drilling
 // · own: eierandeler i Companies: 'hist' (eierne da, fra eierhistorikken) | 'now' (dagens eiere for hele perioden)
-const dcsDefaults = () => ({prod: 'product', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: '', wl: '', wt: '', pl: '', own: 'hist'});
+const dcsDefaults = () => ({prod: 'product', sc: '', field: '', cmp: '', res: 'oe', fl: 'rank', fs: '', yr: '', mw: '', wl: '', wt: '', pl: '', own: 'hist'});
 let dcsF = dcsDefaults();
-const DCS_PARAMS = [['prod', 'dp'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw'], ['wl', 'dn'],
+const DCS_PARAMS = [['prod', 'dp'], ['sc', 'dx'], ['field', 'df'], ['cmp', 'dc'], ['res', 'dr'], ['fl', 'dl'], ['fs', 'ds'], ['yr', 'dy'], ['mw', 'dw'], ['wl', 'dn'],
   ['wt', 'dt'], ['pl', 'dg'], ['own', 'do']];
 let dcsData = null, dcsOutlines = null, dcsLoading = null;
 
@@ -3655,6 +3656,8 @@ function dcsTrim(labels, datasets) {
 async function dcsSet(key, val) {
   dcsF[key] = val;
   syncUrl();
+  // Prognosene er årstall: periodevelgeren settes til Annual (det tegner på nytt).
+  if (key === 'sc' && val && period !== 'annual') return setPeriod('annual');
   if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
   drawChart();
 }
@@ -3713,11 +3716,47 @@ function drawDcs() {
   else drawDcsProduction();
 }
 
+// ── DCS: ENS' PROGNOSE ──
+// Energistyrelsens langsigtede prognose (Ressourceopgørelse og prognose for
+// olie og gas, september 2026, https://ens.dk/media/8754/download): olje i
+// mill m³ og salgsgass i mrd Nm³ per år fra 2026.
+// · expected: forventet forløb (reserver og betingede ressurser, risikovektet)
+// · possible: muligt forløb = forventet + teknologiske ressurser + leteressurser
+// 2026–2030 i forventet forløb er eksakte (tabell 5). Resten er lest av
+// pikslene i figur 3 og 4 og skalert slik at summen 2026–2050 blir ENS' egne
+// totaler (tabell 8 og 9: olje 62,4 / 72,4 mill m³, salgsgass 39,4 / 40,3 mrd
+// Nm³); avlesningen lå 2–4 % under dem. Toppene blir da 5,67 mill m³ olje og
+// 3,58 mrd Nm³ gass i 2031, mot ENS' «5,6» og «3,5» i teksten. Årene etter
+// 2030 er derfor usikre med om lag ±0,1. Byttes ut når ENS' tall foreligger.
+const ENS_FORECAST_EXACT = false;
+const ENS_FORECAST = {
+  from: 2026, report: 'September 2026',
+  oil: {
+    expected: [4.10, 4.00, 3.90, 4.66, 5.36, 5.67, 4.93, 4.75, 4.09, 3.54, 2.99, 2.70, 2.48, 2.29, 2.08, 1.98, 1.30, 0.49, 0.44, 0.35, 0.30, 0, 0, 0, 0],
+    possible: [4.10, 4.00, 3.90, 4.66, 5.53, 5.98, 5.34, 5.52, 4.86, 4.41, 3.99, 3.57, 3.31, 3.03, 2.79, 2.51, 1.83, 0.99, 0.82, 0.65, 0.55, 0.06, 0, 0, 0],
+  },
+  gas: {
+    expected: [2.77, 3.00, 2.98, 3.08, 3.42, 3.58, 3.29, 2.79, 2.30, 1.98, 1.72, 1.52, 1.32, 1.19, 1.12, 1.10, 0.78, 0.44, 0.38, 0.38, 0.26, 0, 0, 0, 0],
+    possible: [2.77, 3.00, 2.98, 3.08, 3.42, 3.58, 3.29, 2.87, 2.36, 2.04, 1.79, 1.58, 1.40, 1.26, 1.18, 1.18, 0.87, 0.50, 0.47, 0.41, 0.26, 0, 0, 0, 0],
+  },
+};
+const ENS_FC_SERIES = [['possible', 'ENS: Possible', '#1f6fb2', [5, 3]], ['expected', 'ENS: Expected', '#1a2332', []]];
+const ensFcLast = () => ENS_FORECAST.from + ENS_FORECAST.oil.expected.length - 1;
+// boe/dag i året y for forløpet k: olje + salgsgass regnet om fra Nm³ til Sm³, som historikken.
+function ensFcBoed(k, y) {
+  const i = y - ENS_FORECAST.from, o = ENS_FORECAST.oil[k][i], g = ENS_FORECAST.gas[k][i];
+  return o == null ? null : Math.round(dcsBoe(o + g * dcsData.units.nm3ToSm3, daysInYear(y)));
+}
+
 // ── DCS: PRODUCTION ──
 // Oil & Gas: olje og gass (og vann) for alle felt eller ett felt. By field:
 // oljeekvivalenter stablet per felt, største felt nederst.
 function drawDcsProduction() {
   const byField = dcsF.prod === 'field';
+  // ENS-prognosen gjelder hele sokkelen, så den tilbys ikke for ett felt.
+  const fcOk = byField || !dcsF.field;
+  const sc = fcOk && !!dcsF.sc;
+  if (sc && period !== 'annual') return setPeriod('annual');
   const slugs = !byField && dcsF.field ? [dcsF.field] : dcsSlugs();
   const per = Object.fromEntries(slugs.map(s => [s, dcsPeriodRows(s)]));
   const labels = dcsLabels();
@@ -3738,17 +3777,38 @@ function drawDcsProduction() {
   }
   const t = dcsTrim(labels, series.map(s => ({label: s.label, data: s.data, backgroundColor: bg(s.color), borderWidth: 0, stack: 's'}))
     .filter(d => hasAnyValue(d.data)));
+  // Prognosen: aksen forlenges til 2050 uten søyler, og forløpene legges på som linjer.
+  const fcLegend = [];
+  if (sc && t.labels.length && t.datasets.length) {
+    for (let y = +t.labels[t.labels.length - 1] + 1; y <= ensFcLast(); y++) t.labels.push(String(y));
+    t.datasets.forEach(d => { while (d.data.length < t.labels.length) d.data.push(null); });
+    ENS_FC_SERIES.forEach(([k, label, color, dash], i) => {
+      t.datasets.push({type: 'line', label, data: t.labels.map(y => +y >= ENS_FORECAST.from ? ensFcBoed(k, +y) : null),
+        stack: 'fc' + i, _noTotal: true, borderColor: color, backgroundColor: color, borderWidth: 2, borderDash: dash,
+        pointRadius: 0, pointHoverRadius: 3, tension: 0.3, order: -1});
+      fcLegend.push({label, color});
+    });
+  }
   const scope = byField ? 'All fields by field' : dcsF.field ? dcsName(dcsF.field) : 'All fields';
-  setChartTitle(`Danish Continental Shelf · ${dcsF.field && !byField ? esc(dcsName(dcsF.field)) : 'Production'}`,
-    byField ? 'Oil equivalents by field · boe/day' : `Oil${showWater ? ', gas & water' : ' & gas'} · boe/day`);
-  setInfo(`<strong>Scope:</strong> ${esc(scope)}${!dcsF.field || byField ? ` (${slugs.length} fields)` : ''} &nbsp;|&nbsp; <strong>Series:</strong> ${byField ? 'Oil + gas per field' : 'Oil (incl. condensate), Gas (sales and other gas as reported by ENS)' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${dcsBasis()} &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
+  setChartTitle(`Danish Continental Shelf · ${dcsF.field && !byField ? esc(dcsName(dcsF.field)) : 'Production'}${sc ? ' and ENS forecast' : ''}`,
+    (byField ? 'Oil equivalents by field' : `Oil${showWater ? ', gas & water' : ' & gas'}`) +
+    (sc ? `, with ENS' expected and possible production to ${ensFcLast()}` : '') + ' · boe/day');
+  setInfo(`<strong>Scope:</strong> ${esc(scope)}${!dcsF.field || byField ? ` (${slugs.length} fields)` : ''} &nbsp;|&nbsp; <strong>Series:</strong> ${byField ? 'Oil + gas per field' : 'Oil (incl. condensate), Gas (sales and other gas as reported by ENS)' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${dcsBasis()} &nbsp;|&nbsp; ${DCS_GAS_NOTE}` +
+    (sc ? ` &nbsp;|&nbsp; <strong>ENS forecast (lines):</strong> the Danish Energy Agency's long-term forecast for oil and sales gas (Resource assessment and forecast, ${ENS_FORECAST.report}), converted to boe/day like the history. ` +
+      `<strong>Expected</strong> = reserves and contingent resources, risk-weighted; <strong>Possible</strong> = expected plus technological and exploration resources. ` +
+      `The forecast counts sales gas only, while the history counts all gas reported, so gas steps down at the switch (2025: 2.7 bn Nm³ produced, of which 2.3 sold). ` +
+      `Production ends by 2050 under the North Sea agreement. ` +
+      (ENS_FORECAST_EXACT ? '' : `<strong>Preliminary:</strong> 2026–30 expected are ENS' table values; the rest is read off ENS' charts and scaled to ENS' totals to 2050, so later years are uncertain by roughly ±0.1 million m³ oil / bn Nm³ gas (±2,000 boe/day). `) +
+      `With the forecast on, the chart is annual` : ''));
   const bar = dcsBar(dcsPills('prod', [['product', 'Oil & Gas'], ['field', 'By field']]) +
-    (byField ? '' : dcsSelect('field', 'All fields', dcsSlugs().map(s => [s, dcsName(s)]), 'Field')));
+    (byField ? '' : dcsSelect('field', 'All fields', dcsSlugs().map(s => [s, dcsName(s)]), 'Field')) +
+    (fcOk ? dcsPills('sc', [['', 'Actual'], ['1', 'With ENS forecast']]) : ''));
   if (!t.labels.length || !t.datasets.length) {
     setChartEmpty(period === 'annual' ? 'No data for the selected period.'
       : `No monthly data for the selected period. ENS monthly reports start in ${dcsFirstMonth().slice(0, 4)}; use Annual for earlier years.`);
   } else {
-    renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
+    renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)).concat(fcLegend), 'boe/day',
+      sc ? {xTitle: 'Year'} : {});
   }
   ncsToggleAbove(bar);
 }
