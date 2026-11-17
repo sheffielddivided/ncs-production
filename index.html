@@ -3073,6 +3073,7 @@ function applyHash() {
     ncsF = ncsDefaults();
     if (q.get('np') === 'area') ncsF.prod = 'area';
     if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
+    ncsF.cum = q.get('nu') === '1';
     ncsF.vol = q.get('nv') === '1';
     if (/^\d{4}$/.test(q.get('n0') || '')) ncsF.from = q.get('n0');
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
@@ -6703,16 +6704,16 @@ const NCS_TABS = [
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
-// prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · vol: påvist volum i letegrafen · from: startår i volumgrafen
+// prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life)
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline'
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', res: 'oe', vol: false, from: '2000', year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
-const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
+const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -6851,6 +6852,15 @@ const ncsResVal = (cur, k) => !cur ? 0
   : k === 'gas' ? cur.remainingGas * BBL_PER_SM3
   : k === 'liq' ? Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3
   : cur.remainingOE * BBL_PER_SM3;
+// Akkumulert produsert ved årets slutt = opprinnelig utvinnbart − gjenværende
+// i samme årgang, Sodirs egen definisjon. Da blir stolpen gjenværende +
+// produsert lik opprinnelig utvinnbart, og felt som er stengt ned, er med.
+const ncsProdVal = (cur, k) => {
+  if (!cur) return 0;
+  const oe = Math.max(0, cur.recoverableOE - cur.remainingOE);
+  const gas = Math.min(oe, Math.max(0, ((cur.raw || {}).fldRecoverableGas || 0) - cur.remainingGas));
+  return (k === 'gas' ? gas : k === 'liq' ? oe - gas : oe) * BBL_PER_SM3;
+};
 const ncsResLabel = k => (NCS_RES.find(x => x[0] === k) || NCS_RES[0])[1];
 const ncsResNoun = k => k === 'oe' ? 'OE' : ncsResLabel(k).toLowerCase();
 
@@ -6878,12 +6888,18 @@ function drawNcsReserves() {
   const years = ncsReserveAccountYears(src);
   if (!years.length) { setChartEmpty('No reserves data available.'); setInfo(''); return; }
   const areas = ncsAreas();
-  const per = {};   // år -> område -> verdi
-  years.forEach(y => { per[y] = {}; });
+  const cum = ncsF.cum;
+  const per = {}, prod = {};   // år -> område -> verdi
+  years.forEach(y => { per[y] = {}; prod[y] = {}; });
   ids.forEach(id => {
     const rows = src[id], area = ncsArea(id);
-    years.forEach(y => { per[y][area] = (per[y][area] || 0) + ncsResVal(reserveAt(rows, y), k); });
+    years.forEach(y => {
+      const cur = reserveAt(rows, y);
+      per[y][area] = (per[y][area] || 0) + ncsResVal(cur, k);
+      prod[y][area] = (prod[y][area] || 0) + ncsProdVal(cur, k);
+    });
   });
+  const prodSum = y => Object.values(prod[y]).reduce((t, v) => t + v, 0);
   // Alle år fra første til siste på aksen; år uten regnskap får ingen stolpe.
   const axis = [];
   for (let y = years[0]; y <= years[years.length - 1]; y++) axis.push(y);
@@ -6891,13 +6907,23 @@ function drawNcsReserves() {
   const datasets = areas.map(z => ({label: z.label, data: axis.map(y => has.has(y) ? +(per[y][z.key] || 0).toFixed(1) : null),
     backgroundColor: rgba(z.color, 0.85), borderWidth: 0, stack: 's'})).filter(d => hasAnyValue(d.data));
   const legend = areas.filter(z => datasets.some(d => d.label === z.label)).map(z => ({label: z.label, color: rgba(z.color, 0.85)}));
+  // Lysere enn «Other» (samme gråtone i full styrke), så de ikke flyter sammen.
+  if (cum) {
+    const PRODUCED_COLOR = 'rgba(148,163,184,0.35)';
+    datasets.push({label: 'Cumulative produced', data: axis.map(y => has.has(y) ? +prodSum(y).toFixed(1) : null),
+      backgroundColor: PRODUCED_COLOR, borderWidth: 0, stack: 's'});
+    legend.push({label: 'Cumulative produced', color: PRODUCED_COLOR});
+  }
   const last = years[years.length - 1], prev = years[years.length - 2];
   const gaps = axis.filter(y => !has.has(y));
   const gapTxt = gaps.reduce((out, y) => { const r = out[out.length - 1]; if (r && r[1] === y - 1) r[1] = y; else out.push([y, y]); return out; }, [])
     .map(([a, b]) => a === b ? `${a}` : `${a}–${String(b).slice(2)}`).join(', ');
   const reclass = hist && has.has(NCS_RECLASS_YEAR) && years[0] < NCS_RECLASS_YEAR;
-  setChartTitle('Norwegian Continental Shelf · Remaining reserves', `${ncsResLabel(k)} by sea area · million boe`);
-  setInfo(`<strong>Scope:</strong> All fields &nbsp;|&nbsp; <strong>Series:</strong> Remaining ${ncsResNoun(k)} reserves per sea area &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${last}, as of 31 Dec of each vintage. Liquids = oil, NGL and condensate; contingent resources in discoveries are not included` +
+  setChartTitle(`Norwegian Continental Shelf · Remaining reserves${cum ? ' and cumulative production' : ''}`,
+    `${ncsResLabel(k)} by sea area${cum ? ', produced to date on top' : ''} · million boe`);
+  setInfo(`<strong>Scope:</strong> All fields &nbsp;|&nbsp; <strong>Series:</strong> Remaining ${ncsResNoun(k)} reserves per sea area` +
+    (cum ? `, with cumulative ${ncsResNoun(k)} production on top (original recoverable − remaining in each vintage, shut-down fields included), so the full bar is original recoverable reserves` : '') +
+    ` &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${last}, as of 31 Dec of each vintage. Liquids = oil, NGL and condensate; contingent resources in discoveries are not included` +
     (hist ? ` &nbsp;|&nbsp; <strong>Before 2004:</strong> Sodir resource accounts, fields only (original recoverable per field; remaining = recoverable − cumulative production). ` +
       `Sodir's own totals for those years also count discoveries the licensees had decided to develop before the plan was approved, so they are somewhat higher (about 9 % in 2003)` +
       (gapTxt ? `. No accounts for ${gapTxt}; those years are left empty, so fields approved in a gap (Troll, Oseberg, Snorre and Heidrun in 1986–89) appear in the next account` : '') +
@@ -6913,24 +6939,27 @@ function drawNcsReserves() {
     c.fillText('▼ reclass.', x, top - 3); c.restore();
   }}] : [];
   renderChart(axis.map(String), datasets, legend, 'million boe', {xTitle: 'Year', allTicks: true, plugins: mark, padTop: reclass ? 14 : 0});
-  ncsToggleAbove(ncsPills('res', NCS_RES));
+  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('res', NCS_RES)}${
+    ncsPills('cum', [[false, 'Remaining'], [true, 'Remaining + produced']])}</div>`);
 
   // Tabell: siste årgang per område og de største feltene.
   const n = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   const sum = y => areas.reduce((t, z) => t + (per[y][z.key] || 0), 0);
   const areaRows = areas.filter(z => per[last][z.key] || (prev && per[prev][z.key])).map(z => {
     const now = per[last][z.key] || 0, before = prev ? per[prev][z.key] || 0 : 0;
-    return `<tr><td>${z.label}</td><td>${n(now)}</td><td>${prev ? (now - before >= 0 ? '+' : '') + n(now - before) : '—'}</td></tr>`;
+    return `<tr><td>${z.label}</td><td>${n(now)}</td><td>${prev ? (now - before >= 0 ? '+' : '') + n(now - before) : '—'}</td>${
+      cum ? `<td>${n(prod[last][z.key] || 0)}</td><td>${n(now + (prod[last][z.key] || 0))}</td>` : ''}</tr>`;
   }).join('');
   const fields = ids.map(id => ({id, name: fieldNameOf(id), v: ncsResVal(reserveAt(fieldReserves[id], last), k)}))
     .filter(f => f.v > 0).sort((a, b) => b.v - a.v);
   const tot = sum(last);
   setChartTable(`
     <table class="res-table">
-      <caption>Remaining ${ncsResNoun(k)} reserves, vintage ${last} · million boe</caption>
-      <thead><tr><th>Sea area</th><th>${last}</th><th>Change from ${prev || '—'}</th></tr></thead>
+      <caption>Remaining ${ncsResNoun(k)} reserves${cum ? ' and cumulative production' : ''}, vintage ${last} · million boe</caption>
+      <thead><tr><th>Sea area</th><th>${cum ? 'Remaining ' : ''}${last}</th><th>Change from ${prev || '—'}</th>${cum ? '<th>Produced</th><th>Original recoverable</th>' : ''}</tr></thead>
       <tbody>${areaRows}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td>${n(tot)}</td><td>${prev ? (tot - sum(prev) >= 0 ? '+' : '') + n(tot - sum(prev)) : '—'}</td></tr></tfoot>
+      <tfoot><tr class="total-row"><td>Total</td><td>${n(tot)}</td><td>${prev ? (tot - sum(prev) >= 0 ? '+' : '') + n(tot - sum(prev)) : '—'}</td>${
+        cum ? `<td>${n(prodSum(last))}</td><td>${n(tot + prodSum(last))}</td>` : ''}</tr></tfoot>
     </table>
     <table class="res-table">
       <caption>Largest fields by remaining ${ncsResNoun(k)} reserves, vintage ${last} · million boe</caption>
