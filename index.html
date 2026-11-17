@@ -3460,7 +3460,7 @@ function drawChart() {
     else if (hubSubView === 'installations') drawHubInstallations();
     else if (hubSubView === 'havtil') drawHubHavtil();
     else if (hubSubView === 'downtime') drawHubDowntime();
-    else if (hubSubView === 'valuation') drawHubValuation();
+    else if (hubSubView === 'valuation') betaGate(drawHubValuation);
     else drawFieldsOePerField(opts);
   } else if (topMode === 'ncs') {
     drawNcs();
@@ -3487,9 +3487,78 @@ function drawChart() {
     else if (sv === 'profile')       drawCompanyProfile();
     else if (sv === 'news')          drawCompanyNews();
     else if (sv === 'licences')      drawCompanyLicences();
-    else if (sv === 'valuation')     drawCompanyValuation();
+    else if (sv === 'valuation')     betaGate(drawCompanyValuation);
     else if (sv === 'downtime')      drawCompanyOutage();
   }
+}
+
+// ── PASSORD FOR VALUATION BETA ───────────────────────────────────────────────
+// Valuation BETA (hub og selskap) vises først når passordet er tastet inn.
+// Passordet ligger bare i GitHub-secreten BETA_PASSWORD. Workflowen
+// beta-password.yml (kjøres for hånd) skriver en saltet PBKDF2-SHA256-hash av
+// det til data/beta_gate.json; her regnes det inntastede passordet om på samme
+// måte og sammenlignes. Nettleseren husker hashen den låste opp med, så et nytt
+// passord krever ny inntasting. Dette holder nysgjerrige ute, men er ingen
+// tilgangskontroll: koden og dataene er offentlige, og sperren kan omgås i
+// nettleserens utviklerverktøy.
+const BETA_KEY = 'ncsBetaUnlock';
+const betaState = {file: undefined, ok: false, err: ''};   // file: undefined = ikke hentet, null = finnes ikke
+const b64bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const bytesB64 = b => btoa(String.fromCharCode(...new Uint8Array(b)));
+
+async function betaLoad() {
+  try {
+    const r = await fetch('data/beta_gate.json', {cache: 'no-cache'});
+    const f = r.ok ? await r.json() : null;
+    betaState.file = f && f.hash && f.salt && f.iter ? f : null;
+  } catch (e) { betaState.file = null; }
+  betaState.ok = !!betaState.file && lsGet(BETA_KEY) === betaState.file.hash;
+}
+
+function betaGate(draw) {
+  if (betaState.ok) return draw();
+  setChartTitle('Valuation BETA', 'Password protected');
+  setChartNone(); setProfile(''); setInfo('');
+  if (typeof valChartCf !== 'undefined' && valChartCf) { valChartCf.destroy(); valChartCf = null; }
+  if (typeof valChartProd !== 'undefined' && valChartProd) { valChartProd.destroy(); valChartProd = null; }
+  const area = document.getElementById('chartArea');
+  if (betaState.file === undefined) {
+    area.innerHTML = '<div class="status">Checking access…</div>';
+    betaLoad().then(drawChart);
+    return;
+  }
+  if (!betaState.file) {
+    area.innerHTML = '<div class="status">Valuation BETA is password protected, and no password has been set yet.</div>';
+    return;
+  }
+  area.innerHTML = `<form class="beta-gate" onsubmit="betaUnlock(event)" style="max-width:340px;margin:40px auto;text-align:center">
+      <p style="margin:0 0 12px">Valuation BETA is in testing and password protected.</p>
+      <input type="password" id="betaPw" autocomplete="current-password" aria-label="Password" placeholder="Password"
+        style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px">
+      <button type="submit" class="grp-btn" style="margin-top:10px">Unlock</button>
+      <div id="betaErr" role="alert" style="margin-top:8px;color:#b42318;font-size:13px">${esc(betaState.err)}</div>
+    </form>`;
+  const inp = document.getElementById('betaPw');
+  if (inp) inp.focus();
+}
+
+async function betaUnlock(ev) {
+  ev.preventDefault();
+  const f = betaState.file, pw = document.getElementById('betaPw').value;
+  if (!f || !pw) return;
+  let hash = '';
+  try {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+    hash = bytesB64(await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt: b64bytes(f.salt), iterations: f.iter}, key, 256));
+  } catch (e) { betaState.err = 'Could not check the password in this browser.'; drawChart(); return; }
+  if (hash !== f.hash) {
+    betaState.err = 'Wrong password.';
+    document.getElementById('betaErr').textContent = betaState.err;
+    return;
+  }
+  betaState.ok = true; betaState.err = '';
+  try { localStorage.setItem(BETA_KEY, hash); } catch (e) { /* bare denne økten */ }
+  drawChart();
 }
 
 // ── DCS (DANSK SOKKEL) ───────────────────────────────────────────────────────

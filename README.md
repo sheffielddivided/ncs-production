@@ -130,6 +130,24 @@ komprimering. GitHub Pages er slått av.
 Redigering i appen (huber, feeder, brønnavn) skriver fortsatt til GitHub, og
 endringen når energy.kbak.no via samme webhook.
 
+## Passord for Valuation BETA
+
+Fanene **Valuation BETA** under Company og Hub krever passord. Passordet ligger
+bare i GitHub-secreten `BETA_PASSWORD`. Workflowen
+`.github/workflows/beta-password.yml` skriver en saltet PBKDF2-SHA256-hash av det
+til `data/beta_gate.json`, og appen sjekker det inntastede passordet mot hashen.
+
+Slik setter eller bytter du passordet:
+
+1. GitHub → Settings → Secrets and variables → Actions → **New repository
+   secret** (eller oppdater `BETA_PASSWORD`).
+2. Actions → **Sett passord for Valuation BETA** → **Run workflow**.
+
+Secrets utløser ingen kjøring selv, så steg 2 må gjøres hver gang. Hver kjøring
+lager nytt salt, så alle må taste passordet på nytt. Nettleseren husker at den er
+låst opp (localStorage). Sperren holder nysgjerrige ute, men er ingen
+tilgangskontroll: koden og dataene er offentlige og kan leses i nettleseren.
+
 ## Redigere huber
 
 En hub er en gruppe felt som deler prosesseringsanlegg. Åpne **Hubs**-visningen
