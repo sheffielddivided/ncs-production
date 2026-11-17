@@ -3072,6 +3072,7 @@ function applyHash() {
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
     if (q.get('np') === 'area') ncsF.prod = 'area';
+    ncsF.sc = q.get('ns') === '1';
     if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
     ncsF.cum = q.get('nu') === '1';
     ncsF.vol = q.get('nv') === '1';
@@ -6704,16 +6705,16 @@ const NCS_TABS = [
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
-// prod: 'product' | 'area' · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
+// prod: 'product' | 'area' · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life)
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline'
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
-const NCS_PARAMS = [['prod', 'np'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
+const NCS_PARAMS = [['prod', 'np'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -6788,22 +6789,52 @@ function drawNcs() {
 // hundre felt og månedsoppløsning blir for tregt. Logikken er den samme:
 // samme gyldige rader, samme komplette perioder, og et kvartal teller bare
 // når alle tre månedene finnes.
+// ── NCS: SODIRS SCENARIOER ──
+// Sodirs tre mulighetsbilder for samlet produksjon på norsk sokkel til 2050
+// (Ressursrapport 2026), i mill Sm³ o.e. per år. FORELØPIGE TALL: lest av
+// pikslene i Sodirs figur, ikke fra tallgrunnlaget, så hvert år er usikkert
+// med om lag ±2. I 2025–27 ligger kurvene oppå hverandre i figuren; der er
+// Høy og Basis satt ut fra startpunktet. Kontroll: kurvene starter på 240 i
+// 2025, og feltproduksjonen i produksjonsbundelen er 240,5 det året.
+// Byttes ut med Sodirs eksakte tall når de foreligger.
+const SODIR_SCENARIOS_EXACT = false;
+const SODIR_SCENARIOS = {
+  from: 2025,
+  high: [240.0, 240.4, 237.0, 231.7, 226.8, 221.4, 217.6, 212.8, 207.8, 203.6, 199.3, 194.9, 191.6, 188.5, 185.4,
+         182.2, 179.3, 176.6, 174.1, 171.6, 169.5, 167.3, 165.2, 163.8, 161.4, 158.0],
+  base: [240.0, 239.5, 236.0, 228.8, 215.9, 202.7, 191.7, 182.5, 174.9, 167.8, 161.2, 153.2, 145.3, 137.5, 128.6,
+         123.1, 118.4, 114.9, 111.7, 108.6, 105.5, 103.3, 101.2, 99.1, 95.4, 92.0],
+  low:  [240.0, 239.0, 235.1, 223.3, 206.7, 187.9, 174.3, 159.5, 147.7, 138.8, 127.9, 115.6, 100.4, 87.4, 77.1,
+         67.5, 59.2, 52.7, 47.5, 42.9, 37.7, 32.5, 28.6, 25.1, 20.4, 16.7],
+};
+const SODIR_SC_SERIES = [['high', 'Sodir: High', '#831f82'], ['base', 'Sodir: Base', '#004f9f'], ['low', 'Sodir: Low', '#ef7d00']];
+const sodirScLast = () => SODIR_SCENARIOS.from + SODIR_SCENARIOS.base.length - 1;
+// boe/dag for scenarioet k i året y (null utenfor scenarioets år).
+function sodirScBoed(k, y) {
+  const v = SODIR_SCENARIOS[k][y - SODIR_SCENARIOS.from];
+  return v == null ? null : +oeBoed(v, daysInYear(y)).toFixed(0);
+}
+
 function drawNcsProduction() {
   const ids = ncsFieldIds();
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
   const byArea = ncsF.prod === 'area';
-  const q = period === 'quarterly';
+  // Scenarioene er årstall, så med dem på tegnes historikken også per år,
+  // uavhengig av periodevelgeren, og aksen går til 2050.
+  const sc = ncsF.sc;
+  const yearly = sc || period === 'annual';
+  const q = !sc && period === 'quarterly';
   const acc = {}, qMonths = {};
   const add = (o, k, v) => { o[k] = (o[k] || 0) + v; };
   ids.forEach(id => {
     const area = byArea ? ncsArea(id) : '';
     (fieldProdCache[id] || []).forEach(r => {
       const a = r.attributes;
-      if (!isValidRow(a) || a.prfYear < fy || a.prfYear > ty) return;
-      const key = q ? getQuarterKey(a.prfYear, a.prfMonth) : periodKey(a);
-      if (!isCompletePeriod(key)) return;
-      const d = days(a), w = q ? d : 1;   // kvartal: fat summeres og deles på kvartalets dager
+      if ((yearly ? a.prfMonth !== 0 : !isValidRow(a)) || a.prfYear < fy || a.prfYear > ty) return;
+      const key = sc ? String(a.prfYear) : q ? getQuarterKey(a.prfYear, a.prfMonth) : periodKey(a);
+      if (sc ? a.prfYear >= new Date().getFullYear() : !isCompletePeriod(key)) return;
+      const d = sc ? daysInYear(a.prfYear) : days(a), w = q ? d : 1;   // kvartal: fat summeres og deles på kvartalets dager
       const o = acc[key] = acc[key] || {};
       const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
       if (byArea) add(o, area, oeBoed(oe, d) * w);
@@ -6825,15 +6856,31 @@ function drawNcsProduction() {
     ? ncsAreas().map(z => ({key: z.key, label: z.label, color: rgba(z.color, 0.85)}))
     : [{key: 'Oil', label: 'Oil', color: OIL_COLOR}, {key: 'Gas', label: 'Gas', color: GAS_COLOR}]
         .concat(showWater ? [{key: 'Water', label: 'Water', color: WATER_COLOR}] : []);
-  const datasets = series.map(s => ({label: s.label, data: labels.map(k => val(k, s.key)),
+  // Med scenarioer: aksen forlenges til siste scenarioår, uten søyler der.
+  const hist = labels.length;
+  if (sc) for (let y = (labels.length ? +labels[labels.length - 1] : SODIR_SCENARIOS.from - 1) + 1; y <= sodirScLast(); y++) labels.push(String(y));
+  const datasets = series.map(s => ({label: s.label, data: labels.map((k, i) => i < hist ? val(k, s.key) : null),
                                      backgroundColor: s.color, borderWidth: 0, stack: 's'}))
     .filter(d => hasAnyValue(d.data));
-  setChartTitle('Norwegian Continental Shelf · Production',
-    byArea ? 'Oil equivalents by sea area · boe/day' : `Oil${showWater ? ', gas & water' : ' & gas'} · boe/day`);
-  setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Series:</strong> ${byArea ? 'Net OE per sea area' : 'Oil (incl. NGL and condensate), Gas' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields (e.g. test production from discoveries) is not included${ncsNewsLink()}`);
+  const scLegend = [];
+  if (sc && datasets.length) SODIR_SC_SERIES.forEach(([k, label, color], i) => {
+    datasets.push({type: 'line', label, data: labels.map(y => sodirScBoed(k, +y)), stack: 'sc' + i, _noTotal: true,
+      borderColor: color, backgroundColor: color, borderWidth: 2, borderDash: [5, 3], pointRadius: 0, pointHoverRadius: 3,
+      tension: 0.3, spanGaps: false, order: -1});
+    scLegend.push({label, color});
+  });
+  setChartTitle('Norwegian Continental Shelf · Production' + (sc ? ' and Sodir scenarios' : ''),
+    (byArea ? 'Oil equivalents by sea area' : `Oil${showWater ? ', gas & water' : ' & gas'}`) +
+    (sc ? `, annual, with Sodir's High / Base / Low scenarios to ${sodirScLast()}` : '') + ' · boe/day');
+  setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Series:</strong> ${byArea ? 'Net OE per sea area' : 'Oil (incl. NGL and condensate), Gas' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields (e.g. test production from discoveries) is not included` +
+    (sc ? ` &nbsp;|&nbsp; <strong>Sodir scenarios (dashed):</strong> the Norwegian Offshore Directorate's three possibility scenarios for total NCS production (Resource Report 2026), total OE converted from million Sm³ o.e. per year. They are not forecasts: the spread reflects exploration, technology, investment and how fast discoveries are developed. ` +
+      (SODIR_SCENARIOS_EXACT ? '' : `<strong>Preliminary:</strong> the values are read off Sodir's chart, not taken from its data, so each year is uncertain by roughly ±2 million Sm³ o.e. (±35,000 boe/day). `) +
+      `With scenarios on, history is shown per year and the current, incomplete year is left out` : '') + ncsNewsLink());
   if (!labels.length || !datasets.length) { setChartEmpty('No data for the selected period.'); }
-  else renderChart(labels, datasets, series.filter(s => datasets.some(d => d.label === s.label)), 'boe/day');
-  ncsToggleAbove(ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area']]));
+  else renderChart(labels, datasets, series.filter(s => datasets.some(d => d.label === s.label)).concat(scLegend), 'boe/day',
+    sc ? {xTitle: 'Year'} : {});
+  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area']])}${
+    ncsPills('sc', [[false, 'Actual'], [true, 'With Sodir scenarios']])}</div>`);
 }
 
 // Lenke til Sodirs siste månedlige produksjonsmelding (data/sodir_news.json,
@@ -13560,7 +13607,7 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
         tooltip:{callbacks:{
           label: ctx => ` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('en')} ${yTitle}`,
           footer: items => {
-            const tot = items.reduce((s,i)=>s+i.parsed.y,0);
+            const tot = items.filter(i => !i.dataset._noTotal).reduce((s,i)=>s+i.parsed.y,0);
             return `Total: ${Math.round(tot).toLocaleString('en')} ${yTitle}`;
           }
         }}
