@@ -3107,6 +3107,7 @@ function applyHash() {
     // Felt og selskap valideres når dataene er lastet (loadUk).
     ukF = ukDefaults();
     if (q.get('up') === 'field') ukF.prod = 'field';
+    if (q.get('ux') === '1') ukF.sc = '1';
     if (/^[a-z0-9_]+$/.test(q.get('uf') || '')) ukF.field = q.get('uf');
     if (q.get('uc')) ukF.cmp = q.get('uc');
     if (q.get('ul') === 'cum') ukF.fl = 'cum';
@@ -4570,9 +4571,9 @@ const UKCS_TABS = [
 let ukSubView = 'production';
 // prod: 'product' | 'field' · field: ett felt (slug), '' = alle · cmp: konsern, '' = største, '*' = alle
 // · fl: 'rank' | 'cum' · fs: felt i faktaarket
-const ukDefaults = () => ({prod: 'product', field: '', cmp: '', fl: 'rank', fs: ''});
+const ukDefaults = () => ({prod: 'product', sc: '', field: '', cmp: '', fl: 'rank', fs: ''});
 let ukF = ukDefaults();
-const UK_PARAMS = [['prod', 'up'], ['field', 'uf'], ['cmp', 'uc'], ['fl', 'ul'], ['fs', 'us']];
+const UK_PARAMS = [['prod', 'up'], ['sc', 'ux'], ['field', 'uf'], ['cmp', 'uc'], ['fl', 'ul'], ['fs', 'us']];
 let ukData = null, ukLoading = null;
 const UK_TOP = 15;
 const UK_OTHER_COLOR = 'rgba(148,163,184,0.75)';
@@ -4701,6 +4702,8 @@ function ukTopSeries(list, labels, otherLabel) {
 async function ukSet(key, val) {
   ukF[key] = val;
   syncUrl();
+  // Prognosen er årstall: periodevelgeren settes til Annual (det tegner på nytt).
+  if (key === 'sc' && val && period !== 'annual') return setPeriod('annual');
   if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
   drawChart();
 }
@@ -4754,8 +4757,52 @@ function drawUk() {
 // ── UKCS: PRODUCTION ──
 // Som DCS: Oil & Gas for alle felt eller ett felt, eller By field med de
 // største feltene hver for seg og resten samlet.
+// ── UKCS: NSTAS PROGNOSE ──
+// NSTAs produksjonsprognose for britisk sokkel, oktober 2026 («NSTA October
+// 2026 production projections plus CCC and DESNZ demand projections», arket
+// Projections): eksakte tall, ikke avlest. Råolje (inkl. kondensat, uten NGL)
+// i tusen fat/dag og bruttogass i mrd m³ per år, delt i NSTAs tre
+// illustrerende lag, som til sammen er hovedprognosen:
+// · base: felt i produksjon og godkjente utbygginger, uten nye felt
+// · undev: utbygging av kjente, ikke utbygde funn
+// · future: utbygging av fremtidige funn
+// Lagene er oppgitt i mtoe; hvert lag er hovedprognosen (fat/dag, mrd m³)
+// ganget med lagets andel det året. Kontroll: i 2025 gir NSTAs råolje og
+// bruttogass, regnet om som historikken (6,29 fat o.e. per 1000 m³ gass),
+// 1,094 mill fat o.e./dag, mot 1,092 i PPRS-dataene her.
+const NSTA_PROJ = {
+  from: 2026, report: 'October 2026',
+  oil: {
+    base:   [526.3, 446.7, 381.0, 336.2, 292.3, 258.2, 230.3, 207.3, 182.6, 162.5, 142.5, 128.3, 113.6, 101.3, 89.4, 79.4, 69.9, 62.0, 54.4, 48.0, 42.6, 37.5, 33.4, 29.5, 26.5],
+    undev:  [6.5, 43.5, 63.9, 68.6, 74.8, 77.9, 74.4, 76.7, 73.1, 71.1, 67.6, 62.8, 58.9, 54.0, 50.8, 45.6, 43.0, 39.8, 38.0, 35.6, 33.4, 31.6, 29.6, 28.0, 26.0],
+    future: [0, 0, 1.2, 1.2, 2.3, 3.5, 4.7, 5.9, 7.0, 8.2, 8.2, 9.5, 9.8, 10.0, 9.9, 9.9, 9.7, 8.6, 7.9, 6.8, 6.3, 5.4, 4.8, 4.1, 3.5],
+  },
+  gas: {
+    base:   [27.671, 24.898, 21.376, 18.251, 15.335, 12.905, 10.954, 9.266, 7.695, 6.472, 5.348, 4.511, 3.723, 3.106, 2.547, 2.066, 1.65, 1.336, 1.056, 0.821, 0.63, 0.476, 0.355, 0.252, 0.178],
+    undev:  [0.13, 0.401, 0.648, 0.851, 1.23, 1.584, 1.639, 1.808, 1.826, 1.876, 1.889, 1.802, 1.691, 1.627, 1.528, 1.348, 1.269, 1.14, 1.084, 0.991, 0.933, 0.877, 0.82, 0.764, 0.708],
+    future: [0, 0, 0.047, 0.047, 0.094, 0.142, 0.189, 0.236, 0.283, 0.33, 0.33, 0.356, 0.369, 0.385, 0.394, 0.401, 0.392, 0.369, 0.337, 0.288, 0.26, 0.22, 0.197, 0.165, 0.142],
+  },
+};
+// Linjene er kumulative: hver linje er lagene til og med sitt eget.
+// Fremtidige funn er et tynt lag, så de to øverste linjene ligger nær hverandre.
+const NSTA_SERIES = [['future', 'NSTA: Central projection', '#1a2332', [], ['base', 'undev', 'future']],
+                     ['undev', 'NSTA: Without future discoveries', '#1f6fb2', [5, 3], ['base', 'undev']],
+                     ['base', 'NSTA: No new fields', '#7a8594', [2, 3], ['base']]];
+const nstaLast = () => NSTA_PROJ.from + NSTA_PROJ.oil.base.length - 1;
+function nstaBoed(layers, y) {
+  const i = y - NSTA_PROJ.from;
+  if (i < 0 || NSTA_PROJ.oil.base[i] == null) return null;
+  const oil = layers.reduce((t, k) => t + NSTA_PROJ.oil[k][i], 0) * 1000;                       // fat/dag
+  const gas = layers.reduce((t, k) => t + NSTA_PROJ.gas[k][i], 0) * 1e6 * BBL_PER_SM3 / daysInYear(y);   // mrd m³ → fat o.e./dag
+  return Math.round(oil + gas);
+}
+
 function drawUkProduction() {
   const byField = ukF.prod === 'field';
+  // NSTAs prognose gjelder hele sokkelen, så den tilbys ikke for ett felt.
+  const fcOk = byField || !ukF.field;
+  const sc = fcOk && !!ukF.sc;
+  if (sc && period !== 'annual') return setPeriod('annual');
   const slugs = !byField && ukF.field ? [ukF.field] : ukSlugs();
   const per = Object.fromEntries(slugs.map(s => [s, ukPeriodRows(s)]));
   const labels = ukLabels();
@@ -4775,15 +4822,34 @@ function drawUkProduction() {
   }
   const t = dcsTrim(labels, series.map(s => ({label: s.label, data: s.data, backgroundColor: s.color, borderWidth: 0, stack: 's'}))
     .filter(d => hasAnyValue(d.data)));
+  // Prognosen: aksen forlenges til 2050 uten søyler, og lagene legges på som linjer.
+  const fcLegend = [];
+  if (sc && t.labels.length && t.datasets.length) {
+    for (let y = +t.labels[t.labels.length - 1] + 1; y <= nstaLast(); y++) t.labels.push(String(y));
+    t.datasets.forEach(d => { while (d.data.length < t.labels.length) d.data.push(null); });
+    NSTA_SERIES.forEach(([k, label, color, dash, layers], i) => {
+      t.datasets.push({type: 'line', label, data: t.labels.map(y => nstaBoed(layers, +y)),
+        stack: 'fc' + i, _noTotal: true, borderColor: color, backgroundColor: color, borderWidth: 2, borderDash: dash,
+        pointRadius: 0, pointHoverRadius: 3, tension: 0.3, order: -1});
+      fcLegend.push({label, color});
+    });
+  }
   const scope = byField ? 'All fields by field' : ukF.field ? ukName(ukF.field) : 'All fields';
-  setChartTitle(`UK Continental Shelf · ${ukF.field && !byField ? esc(ukName(ukF.field)) : 'Production'}`,
-    byField ? 'Oil equivalents by field · boe/day' : `Oil${showWater ? ', gas & water' : ' & gas'} · boe/day`);
-  setInfo(`<strong>Scope:</strong> ${esc(scope)}${!ukF.field || byField ? ` (${slugs.length} offshore fields)` : ''}${byField ? ` · the ${UK_TOP} largest in the period shown, the rest as «Other fields»` : ''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> ${UK_BASIS}; monthly from ${ukMonthTxt(ukData.months[0])} to ${ukMonthTxt(ukLastMonth())}. NSTA revises earlier months when operators resubmit`);
+  setChartTitle(`UK Continental Shelf · ${ukF.field && !byField ? esc(ukName(ukF.field)) : 'Production'}${sc ? ' and NSTA projection' : ''}`,
+    (byField ? 'Oil equivalents by field' : `Oil${showWater ? ', gas & water' : ' & gas'}`) +
+    (sc ? `, with NSTA's projection to ${nstaLast()}` : '') + ' · boe/day');
+  setInfo(`<strong>Scope:</strong> ${esc(scope)}${!ukF.field || byField ? ` (${slugs.length} offshore fields)` : ''}${byField ? ` · the ${UK_TOP} largest in the period shown, the rest as «Other fields»` : ''} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> ${UK_BASIS}; monthly from ${ukMonthTxt(ukData.months[0])} to ${ukMonthTxt(ukLastMonth())}. NSTA revises earlier months when operators resubmit` +
+    (sc ? ` &nbsp;|&nbsp; <strong>NSTA projection (lines):</strong> the North Sea Transition Authority's production projection to 2050 (${NSTA_PROJ.report}), crude oil incl. condensate and gross gas, converted to boe/day like the history (NGLs, which the history does not include, are left out). ` +
+      `<strong>Central projection</strong> is NSTA's figure; the two lines below it are NSTA's illustrative tranches of it: <strong>no new fields</strong> = producing fields and consented developments, and <strong>without future discoveries</strong> adds undeveloped discoveries. ` +
+      `NSTA describes the profiles as informed judgement and deliberately stylised, with assumed declines of 9 % a year for oil and 13 % for gas after the first years. ` +
+      `With the projection on, the chart is annual and the current, incomplete year is left out` : ''));
   const bar = dcsBar(ukPills('prod', [['product', 'Oil & Gas'], ['field', 'By field']]) +
     (byField ? '' : ukSelect('field', 'All fields', ukSlugs().map(s => [s, ukName(s)]), 'Field')) +
-    (ukF.field && !byField ? `<button class="grp-btn" onclick="ukOpenSheet(${esc(jsStr(ukF.field))})">Factsheet →</button>` : ''));
+    (ukF.field && !byField ? `<button class="grp-btn" onclick="ukOpenSheet(${esc(jsStr(ukF.field))})">Factsheet →</button>` : '') +
+    (fcOk ? ukPills('sc', [['', 'Actual'], ['1', 'With NSTA projection']]) : ''));
   if (!t.labels.length || !t.datasets.length) setChartEmpty('No data for the selected period.');
-  else renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
+  else renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)).concat(fcLegend), 'boe/day',
+    sc ? {xTitle: 'Year'} : {});
   ncsToggleAbove(bar);
 }
 
