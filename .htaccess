@@ -9,6 +9,8 @@
   RewriteRule (^|/)\. - [F,L]
   RewriteRule \.(py|md|yml|yaml|xls|xlsx)$ - [F,L]
   RewriteRule ^data/[^/]+-raw/ - [F,L]
+  # Besøkstelleren kjører på ncs-io.kbak.no, ikke her.
+  RewriteRule ^counter/ - [F,L]
 </IfModule>
 
 # Datafilene oppdateres daglig: nettleseren skal alltid sjekke om det finnes

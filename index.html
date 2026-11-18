@@ -3203,6 +3203,7 @@ function applyHash() {
 const canShare = () => !!navigator.share && window.matchMedia('(pointer: coarse)').matches;
 const shareLabel = () => canShare() ? 'Share' : 'Copy link';
 async function copyViewLink() {
+  ioEvent('link');
   const url = location.origin + location.pathname + (topMode === 'home' ? '' : '#' + stateToHash());
   const lbl = document.getElementById('shareLbl');
   if (canShare()) {
@@ -3260,9 +3261,46 @@ const EARLY_MODES = ['home', 'prices', 'dcs', 'ukcs'];
 const SHELF_MODES = ['ncs', 'dcs', 'ukcs'];
 let coreDone = false, coreResolve;
 const coreReady = new Promise(res => { coreResolve = res; });
+// ── BESØKSTELLER ─────────────────────────────────────────────────────────────
+// Egen teller på ncs-io.kbak.no (counter/ i repoet). Et treff sendes når
+// seksjon eller fane byttes (ikke ved filterendringer), og ved noen handlinger
+// (ioEvent). Bare seksjon og fane sendes — ikke valgt felt, hub eller selskap —
+// pluss skjermbredde, språk og henvisende side ved første treff. Ingen cookies
+// eller lagring i nettleseren; serveren lagrer ingen IP-adresser. Do Not Track
+// og Global Privacy Control respekteres, og det telles bare på energy.kbak.no.
+const IO_URL = 'https://ncs-io.kbak.no/h.php', IO_HOSTS = ['energy.kbak.no'];
+let ioLast = '', ioRefSent = false;
+const ioSlug = t => String(t || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function ioPath() {
+  if (topMode === 'home') return '/';
+  const sv = currentSubView(), mode = ioSlug(MODE_LABEL[topMode] || topMode);
+  const tab = isProdView(sv) ? `production/${ioSlug(prodViews().find(x => x.id === sv).label)}`
+            : ioSlug((modeTabs().find(t => t.id === sv) || {}).label || sv);
+  return `/${mode}${tab ? '/' + tab : ''}`;
+}
+function ioSend(o) {
+  const c = window.__io || {url: IO_URL, hosts: IO_HOSTS};   // __io: bare for lokal testing
+  if (!c.hosts.includes(location.hostname)) return;
+  if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
+  try {
+    const body = JSON.stringify({...o, w: screen.width || 0, l: navigator.language || ''});
+    if (!(navigator.sendBeacon && navigator.sendBeacon(c.url, body))) fetch(c.url, {method: 'POST', body, mode: 'no-cors', keepalive: true}).catch(() => {});
+  } catch (e) { /* telling skal aldri forstyrre appen */ }
+}
+function ioView() {
+  const p = ioPath();
+  if (p === ioLast) return;
+  ioLast = p;
+  const o = {k: 'v', p};
+  if (!ioRefSent) { ioRefSent = true; o.r = document.referrer || ''; }
+  ioSend(o);
+}
+const ioEvent = name => ioSend({k: 'e', e: name, p: ioPath()});
+
 async function refresh() {
   syncUrl();
   syncTitle();
+  ioView();
   if (!coreDone && !EARLY_MODES.includes(topMode)) return;
   favSync();
   if (topMode === 'home') renderHome();
@@ -3600,6 +3638,7 @@ async function betaUnlock(ev) {
     return;
   }
   betaState.ok = true; betaState.err = '';
+  ioEvent('beta-unlock');
   try { localStorage.setItem(BETA_KEY, hash); } catch (e) { /* bare denne økten */ }
   drawChart();
 }
@@ -14952,6 +14991,7 @@ function pptAddChartSlide(pptx, spec, meta) {
 }
 
 async function downloadPpt() {
+  ioEvent('ppt');
   const spec = pptSpec || (chartInstance ? pptSpecFromChart(chartInstance) : null);
   if (!spec) return;
   const btn = document.getElementById('pptBtn');
@@ -15015,6 +15055,7 @@ function pptToast(msg) {
 }
 
 function pptAddCurrent() {
+  ioEvent('ppt-add');
   const spec = pptSpec || (chartInstance ? pptSpecFromChart(chartInstance) : null);
   if (!spec) return;
   pptBasket.push({kind: 'chart', spec, meta: pptMeta()});
@@ -15113,7 +15154,7 @@ function pptDecorate() {
     const b = document.createElement('button');
     b.className = 'ppt-add'; b.type = 'button'; b.textContent = '+ PPT';
     b.title = 'Add this chart to the PowerPoint basket (as a native chart)';
-    b.onclick = e => { e.stopPropagation(); pptAddCardSpec(b); };
+    b.onclick = e => { e.stopPropagation(); ioEvent('ppt-add-card'); pptAddCardSpec(b); };
     card.classList.add('ppt-card');
     card.prepend(b);
   });
@@ -15123,7 +15164,7 @@ function pptDecorate() {
     const b = document.createElement('button');
     b.className = 'ppt-add'; b.type = 'button'; b.textContent = '+ PPT';
     b.title = 'Add this figure to the PowerPoint basket (as an SVG image)';
-    b.onclick = e => { e.stopPropagation(); pptAddSvg(b); };
+    b.onclick = e => { e.stopPropagation(); ioEvent('ppt-add-card'); pptAddSvg(b); };
     card.classList.add('ppt-card');
     card.prepend(b);
   });
@@ -15185,6 +15226,7 @@ function pptAddSvgSlide(pptx, it) {
 }
 
 async function downloadPptBasket() {
+  ioEvent('ppt-basket');
   if (!pptBasket.length) return;
   pptToast('Preparing PowerPoint…');
   try {
@@ -15206,6 +15248,7 @@ renderPptBasket();
 
 // ── EXCEL ─────────────────────────────────────────────────────────────────────
 async function downloadExcel() {
+  ioEvent('excel');
   if (!lastLabels.length || !lastDatasets.length) return;
   try { await loadExcel(); }
   catch (e) { pptToast('Could not load the Excel library — check the connection and try again'); return; }
@@ -20657,6 +20700,7 @@ async function init() {
   //    Market, DCS and UKCS load their own data. Draw those right away; the core
   //    data below (about 4 MB) then loads in the background. ──
   const startMode = (/(?:^|[#&])m=([a-z]+)/.exec(location.hash) || [])[1] || 'home';
+  if (startMode === 'home') ioView();
   let early = null;
   if (startMode === 'home') {
     fetchBundle('home').then(h => { if (h && !coreDone && topMode === 'home') { homeQuick = h; renderHome(); } });
