@@ -3267,7 +3267,8 @@ const coreReady = new Promise(res => { coreResolve = res; });
 // Egen teller på ncs-io.kbak.no (counter/ i repoet). Et treff sendes når
 // seksjon eller fane byttes (ikke ved filterendringer), og ved noen handlinger
 // (ioEvent). Bare seksjon og fane sendes — ikke valgt felt, hub eller selskap —
-// pluss skjermbredde, språk og henvisende side ved første treff. Ingen cookies
+// pluss skjermbredde, språk, tidssone (reserve for land) og henvisende side ved
+// første treff. Ingen cookies
 // eller lagring i nettleseren; serveren lagrer ingen IP-adresser. Do Not Track
 // og Global Privacy Control respekteres, og det telles bare på energy.kbak.no.
 const IO_URL = 'https://ncs-io.kbak.no/h.php', IO_HOSTS = ['energy.kbak.no'];
@@ -3285,7 +3286,9 @@ function ioSend(o) {
   if (!c.hosts.includes(location.hostname)) return;
   if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
   try {
-    const body = JSON.stringify({...o, w: screen.width || 0, l: navigator.language || ''});
+    let z = '';
+    try { z = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ingen tidssone */ }
+    const body = JSON.stringify({...o, w: screen.width || 0, l: navigator.language || '', z});
     if (!(navigator.sendBeacon && navigator.sendBeacon(c.url, body))) fetch(c.url, {method: 'POST', body, mode: 'no-cors', keepalive: true}).catch(() => {});
   } catch (e) { /* telling skal aldri forstyrre appen */ }
 }

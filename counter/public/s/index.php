@@ -16,6 +16,18 @@ try { $db = io_db(); } catch (Throwable $e) { http_response_code(500); exit('Cou
 $q = function (string $sql, array $a = []) use ($db) { $s = $db->prepare($sql); $s->execute($a); return $s->fetchAll(PDO::FETCH_ASSOC); };
 $span = [$from, $to];
 
+// Organisasjoner med færre enn ORG_MIN besøkende i perioden vises ikke hver
+// for seg, men samles: små tall for et lite firma kan ellers peke ut personer.
+// Det gjelder også CSV-eksporten.
+const ORG_MIN = 3;
+function io_orgs(callable $q, string $from, string $to): array {
+    $rows = $q('SELECT val, SUM(n) AS n FROM dims WHERE dim = ? AND day BETWEEN ? AND ? GROUP BY val ORDER BY n DESC', ['org', $from, $to]);
+    $shown = array_values(array_filter($rows, fn($o) => $o['n'] >= ORG_MIN && $o['val'] !== 'Unknown'));
+    $rest = array_values(array_filter($rows, fn($o) => $o['n'] < ORG_MIN || $o['val'] === 'Unknown'));
+    if ($rest) $shown[] = ['val' => 'Other networks (' . count($rest) . ', each under ' . ORG_MIN . ' visitors, or unknown)', 'n' => array_sum(array_column($rest, 'n'))];
+    return [$shown, array_sum(array_column($rows, 'n'))];
+}
+
 // CSV-eksport av en tabell for perioden.
 if (isset($_GET['csv'])) {
     $t = $_GET['csv'];
@@ -23,10 +35,13 @@ if (isset($_GET['csv'])) {
         'daily'  => 'SELECT day, visitors, views FROM daily WHERE day BETWEEN ? AND ? ORDER BY day',
         'views'  => 'SELECT day, path, n AS views, visits FROM views WHERE day BETWEEN ? AND ? ORDER BY day, path',
         'events' => 'SELECT day, name, page, n FROM events WHERE day BETWEEN ? AND ? ORDER BY day, name, page',
-        'dims'   => 'SELECT day, dim, val, n FROM dims WHERE day BETWEEN ? AND ? ORDER BY day, dim, val',
+        'dims'   => "SELECT day, dim, val, n FROM dims WHERE day BETWEEN ? AND ? AND dim <> 'org' ORDER BY day, dim, val",
+        'orgs'   => true,
     ][$t] ?? null;
     if (!$sql) { http_response_code(400); exit; }
-    $rows = $q($sql, $span);
+    $rows = $t === 'orgs'
+        ? array_map(fn($o) => ['network' => $o['val'], 'visitors' => $o['n']], io_orgs($q, $from, $to)[0])
+        : $q($sql, $span);
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="ncs-io-' . $t . '-' . $from . '-' . $to . '.csv"');
     $out = fopen('php://output', 'w');
@@ -84,6 +99,12 @@ function io_table(array $rows, array $cols, int $total = 0, string $e = ''): str
     }
     return $h . '</tbody></table>';
 }
+[$orgShown, $orgTotal] = io_orgs($q, $from, $to);
+$geoBuilt = null;
+try {
+    $gf = dirname(io_config()['db_path']) . '/geo.sqlite';
+    if (is_file($gf)) $geoBuilt = (new PDO('sqlite:' . $gf))->query("SELECT v FROM meta WHERE k = 'built'")->fetchColumn();
+} catch (Throwable $e) { $geoBuilt = null; }
 $dimTable = function (string $d, string $label) use ($dim) {
     $rows = $dim($d);
     $sum = array_sum(array_column($rows, 'n'));
@@ -111,7 +132,7 @@ $dimTable = function (string $d, string $label) use ($dim) {
   table{width:100%;border-collapse:collapse;font-size:.82rem} th{text-align:left;color:var(--navy);background:#e8edf3;padding:6px 8px}
   td{padding:5px 8px;border-top:1px solid var(--border)} .num{text-align:right;white-space:nowrap}
   .muted{color:var(--muted);font-size:.8rem} .chart{position:relative;height:260px}
-  .csv a{color:var(--pink);margin-right:12px;font-size:.8rem}
+  .csv a{color:var(--pink);margin-right:12px;font-size:.8rem} .muted a{color:var(--pink)}
 </style></head>
 <body><header><h1>NCS Insight · Visitors</h1></header><main>
   <div class="pills"><?php foreach ($ranges as $k => $l): ?><a class="<?= $k === $r ? 'on' : '' ?>" href="?d=<?= $k ?>"><?= $e($l) ?></a><?php endforeach ?></div>
@@ -136,14 +157,26 @@ $dimTable = function (string $d, string $label) use ($dim) {
     <div class="card"><h2>Browsers</h2><?= $dimTable('browser', 'Browser') ?></div>
     <div class="card"><h2>Operating systems</h2><?= $dimTable('os', 'System') ?></div>
     <div class="card"><h2>Languages</h2><?= $dimTable('lang', 'Language') ?></div>
+    <div class="card"><h2>Countries</h2><div class="cc"><?= $dimTable('country', 'Country') ?></div>
+      <p class="muted">From the visitor's IP address (DB-IP), or the browser's time zone when that is unknown.</p></div>
+    <div class="card"><h2>Organisations (network owner)</h2><?= io_table($orgShown, [['val', 'Network', false], ['n', 'Visitors', true]], (int)$orgTotal) ?>
+      <p class="muted">The owner of the network the visit came from: often the internet provider (Telenor, Telia …), sometimes the company itself. Networks with fewer than <?= ORG_MIN ?> visitors in the period are pooled.</p></div>
   </div>
   <div class="card" style="margin-top:12px"><h2>Export (CSV, this period)</h2><div class="csv">
-    <?php foreach (['daily' => 'Per day', 'views' => 'Pages', 'events' => 'Events', 'dims' => 'Devices, browsers, systems, languages, referrers'] as $k => $l): ?>
+    <?php foreach (['daily' => 'Per day', 'views' => 'Pages', 'events' => 'Events', 'dims' => 'Devices, browsers, systems, languages, countries, referrers', 'orgs' => 'Organisations (period total, small ones pooled)'] as $k => $l): ?>
       <a href="?d=<?= $r ?>&amp;csv=<?= $k ?>"><?= $e($l) ?></a><?php endforeach ?></div>
-    <p class="muted">No IP addresses, cookies or identifiers are stored. Unique visitors are counted with a hash that changes every day and is deleted when the day ends. Visitors with Do Not Track or Global Privacy Control are not counted. Ad blockers may block some page views.</p></div>
+    <p class="muted">No IP addresses, cookies or identifiers are stored. Unique visitors are counted with a hash that changes every day and is deleted when the day ends; country and network owner are looked up from the IP address when the visit arrives, and only the result is kept, as daily totals. Visitors with Do Not Track or Global Privacy Control are not counted. Ad blockers may block some page views.</p>
+    <p class="muted"><a href="https://db-ip.com" rel="noopener">IP Geolocation by DB-IP</a> (CC BY 4.0)<?= $geoBuilt ? ' · database built ' . $e(substr($geoBuilt, 0, 10)) : ' · geo database not built yet: run the scheduled task update-geo.php' ?>.</p></div>
 </main>
 <script>
 const S = <?= json_encode($series) ?>, H = <?= json_encode($hours) ?>;
+try {
+  const dn = new Intl.DisplayNames(['en'], {type: 'region'});
+  document.querySelectorAll('.cc tbody td:first-child').forEach(td => {
+    const c = td.textContent.trim();
+    if (/^[A-Z]{2}$/.test(c)) td.textContent = `${dn.of(c) || c} (${c})`;
+  });
+} catch (e) { /* koden står igjen */ }
 const ax = t => ({beginAtZero: true, title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {precision: 0, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}});
 if (S.length) new Chart(document.getElementById('cDays'), {data: {labels: S.map(x => x[0]), datasets: [
     {type: 'bar', label: 'Page views', data: S.map(x => x[2]), backgroundColor: 'rgba(206,15,105,0.25)', borderWidth: 0, yAxisID: 'y'},
