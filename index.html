@@ -15287,6 +15287,7 @@ const DRILL_TABS = [
   {id:'fleet', label:'Map'},
   {id:'perf',  label:'Performance'},
   {id:'trends', label:'Trends'},
+  {id:'activity', label:'Activity'},
 ];
 const explMode = () => topMode === 'exploration' || topMode === 'drilling';
 let explSubView = 'wells';
@@ -15503,7 +15504,7 @@ function explSet(key, val, rebuildBar) {
 
 function explRenderBar() {
   if (explSubView === 'perf') return drillRenderBar();
-  if (explSubView === 'trends') return setBar('explBar', '');
+  if (explSubView === 'trends' || explSubView === 'activity') return setBar('explBar', '');
   if (explSubView === 'success') return epRenderBar();
   const f = explF, wells = explSubView === 'wells', map = explSubView === 'map';
   const opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
@@ -15710,9 +15711,9 @@ function explReset() {
 // feilverdier på enkeltbrønner. Operatør: Sodirs wlbDrillingOperator, ellers
 // feltets operatørhistorikk. Brønner på noen få dager gir tilfeldige
 // ytterverdier, og kan utelates med «Min days».
-const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm'], ['view', 'dv'], ['minw', 'dn'], ['purpose', 'dp'], ['bore', 'db'], ['rig', 'dr'], ['tp', 'dq']];
+const DRILL_PARAMS = [['from', 'df'], ['to', 'dt'], ['cat', 'dc'], ['hl', 'dh'], ['min', 'dm'], ['view', 'dv'], ['minw', 'dn'], ['purpose', 'dp'], ['bore', 'db'], ['rig', 'dr'], ['tp', 'dq'], ['act', 'da'], ['actFrom', 'dy']];
 const DRILL_HL = '#e6007e', DRILL_GREY = '#c3cad3';
-const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5', view: 'well', minw: '5', purpose: 'all', bore: 'all', rig: 'all', tp: 'recent'});
+const drillDefaults = () => ({from: String(currentYear - 2), to: String(currentYear), cat: 'all', hl: '', min: '5', view: 'well', minw: '5', purpose: 'all', bore: 'all', rig: 'all', tp: 'recent', act: 'wells', actFrom: '1966'});
 let drillF = drillDefaults();
 let drillRows = null, drillLoading = null, drillLimit = 50;
 
@@ -16028,6 +16029,86 @@ function dtSpan(D, y0, y1, f = () => true) {
 
 function dtSet(key, val) { drillF[key] = val; syncUrl(); drillRenderTrends(); }
 
+// ── DRILLING · ACTIVITY ──────────────────────────────────────────────────────
+// Brønner spuddet per år på norsk sokkel, fordelt på Sodirs brønntype
+// (leting, utbygging, annet). data/well_activity.json (fetch_sodir.py,
+// build_well_activity) er ferdig aggregert: en brønn er hovedboringen med
+// sidesteg og grener, telt på den første brønnbanens år og type; brønnbaner
+// telles hver for seg. «Other» er Sodirs OTHER: grunnboringer (soil drilling),
+// grunngassbrønner og pilothull, mest stedsundersøkelser.
+let wellActivity = null, wellActivityLoading = null;
+function loadWellActivity() {
+  if (wellActivity) return Promise.resolve();
+  if (!wellActivityLoading) wellActivityLoading = fetchBundle('well_activity').then(d => { wellActivity = d; });
+  return wellActivityLoading;
+}
+const ACT_SER = [['Expl', 'Exploration', '#2a6fa8'], ['Dev', 'Development', '#ce0f69'], ['Other', 'Other', '#9aa5b1']];
+function actSet(key, val) { drillF[key] = val; syncUrl(); drillRenderActivity(); }
+
+function drillRenderActivity() {
+  const box = document.getElementById('explBody');
+  drillTrendKill();
+  const A = wellActivity;
+  if (!A || !A.rows || !A.rows.length) { box.innerHTML = '<div class="status">No well activity data available.</div>'; dockBar('explBody'); return; }
+  const bores = drillF.act === 'bores', noun = bores ? 'wellbores' : 'wells', Noun = bores ? 'Wellbores' : 'Wells';
+  const C = A.columns, col = k => C.indexOf((bores ? 'bores' : 'wells') + k);
+  const from = /^\d{4}$/.test(drillF.actFrom) ? +drillF.actFrom : 1966;
+  const rows = A.rows.filter(r => r[0] >= from);
+  const years = rows.map(r => r[0]);
+  const ytd = A.lastEntry && +A.lastEntry.slice(0, 4) === currentYear;
+  const val = (r, k) => r[col(k)] || 0, tot = r => ACT_SER.reduce((t, [k]) => t + val(r, k), 0);
+  const byYear = Object.fromEntries(A.rows.map(r => [r[0], r]));
+  const last = ytd ? currentYear - 1 : years[years.length - 1];
+  const n0 = v => Math.round(v).toLocaleString('en-US');
+  const split = r => ACT_SER.map(([k, l]) => `${val(r, k)} ${l.toLowerCase()}`).join(' · ');
+  const lr = byYear[last], pr = byYear[last - 1];
+  const tenY = A.rows.filter(r => r[0] > last - 10 && r[0] <= last);
+  const avg = k => tenY.reduce((t, r) => t + (k ? val(r, k) : tot(r)), 0) / (tenY.length || 1);
+  const peak = A.rows.filter(r => r[0] <= last).reduce((b, r) => (!b || tot(r) > tot(b) ? r : b), null);
+  const chg = lr && pr && tot(pr) ? (tot(lr) / tot(pr) - 1) * 100 : null;
+  const d = A.lastEntry ? new Date(A.lastEntry + 'T00:00:00Z') : null;
+  const asOf = d ? d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', timeZone: 'UTC'}) : '';
+  const facts = [
+    lr && [`${last}`, `${n0(tot(lr))} ${noun}`, `${split(lr)}${chg != null ? ` · ${chg >= 0 ? '+' : '−'}${Math.abs(Math.round(chg))} % on ${last - 1}` : ''}`],
+    ytd && byYear[currentYear] && [`${currentYear} so far`, `${n0(tot(byYear[currentYear]))} ${noun}`, `${split(byYear[currentYear])} · spudded to ${asOf}`],
+    [`Average ${last - 9}–${String(last).slice(2)}`, `${n0(avg())} ${noun}/yr`, ACT_SER.map(([k, l]) => `${n0(avg(k))} ${l.toLowerCase()}`).join(' · ')],
+    peak && ['Peak year', `${peak[0]}: ${n0(tot(peak))} ${noun}`, split(peak)],
+  ].filter(Boolean);
+  const pill = (key, v, l) => `<button class="pill-btn${drillF[key] === v ? ' active' : ''}" onclick="actSet('${key}','${v}')">${l}</button>`;
+  box.innerHTML = `
+    <div class="pf-card" data-ppt-spec="daWells"><h3>Wells spudded per year on the Norwegian shelf</h3>
+      <div class="ex-sum">${Noun} spudded each year, by Sodir well type: exploration (wildcats and appraisal wells), development (production, injection and observation wells on fields) and other (soil drilling, shallow gas and pilot holes, mostly site surveys).</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px">
+        <div class="pill-group" style="width:max-content;max-width:100%">${pill('act', 'wells', 'Wells')}${pill('act', 'bores', 'Wellbores incl. sidetracks')}</div>
+        <div class="pill-group" style="width:max-content;max-width:100%">${pill('actFrom', '1966', 'Since 1966')}${pill('actFrom', '2000', 'Since 2000')}${pill('actFrom', String(currentYear - 10), 'Last 10 years')}</div>
+      </div>
+      <div class="pf-facts" style="margin-bottom:12px">${facts.map(([l, v, sub]) =>
+        `<div class="pf-fact"><span>${l}</span><strong>${v}</strong><small style="display:block;font-size:0.68rem;color:var(--muted)">${sub}</small></div>`).join('')}</div>
+      <div class="chart-container" style="height:340px"><canvas id="daWells"></canvas></div><div class="legend-row" id="daWellsLeg"></div>
+      <div class="ex-note">${bores
+        ? 'Each wellbore counts on its own spud year and type, so sidetracks and multilateral branches count separately. Re-entries are not new wellbores.'
+        : 'A well is the main bore with all its sidetracks and branches, counted once, on the spud year and type of its first wellbore.'}
+        ${ytd ? `${currentYear} is year to date (latest spud ${A.lastEntry}) and shown faded.` : ''}
+        Wellbores that have not been spudded (planned) are not included. Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
+  dockBar('explBody');
+  const labels = years.map(y => (ytd && y === currentYear ? `${y}*` : String(y)));
+  const fade = c => c + '66';
+  const ch = new Chart(document.getElementById('daWells').getContext('2d'), {type: 'bar',
+    data: {labels, datasets: ACT_SER.map(([k, l, c]) => ({label: l, data: rows.map(r => val(r, k)), stack: 's', borderWidth: 0,
+      backgroundColor: years.map(y => (ytd && y === currentYear ? fade(c) : c))}))},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: c => ` ${c.dataset.label}: ${c.parsed.y}`,
+        footer: items => `Total: ${items.reduce((t, i) => t + i.parsed.y, 0)} ${noun}`}}},
+      scales: {x: {stacked: true, ticks: {maxRotation: 45, autoSkipPadding: 6, font: {size: 9}}, grid: {display: false}},
+               y: {stacked: true, beginAtZero: true, title: {display: true, text: `${noun} spudded`, color: '#4a5568', font: {size: 10}},
+                   ticks: {precision: 0, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+  drillTrendCharts.push(ch);
+  document.getElementById('daWellsLeg').innerHTML = ACT_SER.map(([, l, c]) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('');
+  pptCardSpecs.daWells = {...pptSpecFromChart(ch), subtitle: `${Noun} spudded per year by type, ${years[0]}–${years[years.length - 1]}${ytd ? ` (${currentYear} to ${asOf})` : ''}`};
+}
+
 function drillRenderTrends() {
   const box = document.getElementById('explBody');
   if (!drillRows) { box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>'; dockBar('explBody'); return; }
@@ -16205,6 +16286,7 @@ async function refreshExploration() {
   setInfo('');
   await loadExploration();
   if (explSubView === 'perf' || explSubView === 'trends') await loadDrill();
+  if (explSubView === 'activity') await loadWellActivity();
   if (explSubView === 'success') await Promise.all([loadDiscoveries(), loadFieldReserves()]);
   if (explSubView === 'rigs') await Promise.all([loadRigWells(), loadRigContracts(), loadRigFacts()]);
   if (explSubView === 'fleet') await loadRigContracts();
@@ -16224,6 +16306,7 @@ function explRenderBody() {
   drillTrendKill();
   if (explSubView === 'perf') return drillRenderPerf();
   if (explSubView === 'trends') return drillRenderTrends();
+  if (explSubView === 'activity') return drillRenderActivity();
   if (explSubView === 'success') return epRender();
   if (explSubView === 'map') return explRenderMap();
   if (explSubView === 'rigs') return explRenderRigs();

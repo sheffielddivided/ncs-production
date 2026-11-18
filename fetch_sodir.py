@@ -1036,6 +1036,41 @@ def _clean(v):
     return (v or '').strip()
 
 
+# Boreaktivitet til Drilling -> Activity: antall bronner og bronnbaner per
+# ar, fordelt pa Sodirs bronntype (EXPLORATION, DEVELOPMENT, OTHER). En bronn
+# er wlbWell: hovedboringen med alle sidesteg og grener. Bronnens spuddar og
+# type er den forste bronnbanens (tidligste wlbEntryDate); bronnbanene telles
+# hver for seg pa sitt eget ar og sin egen type. Bronnbaner uten startdato
+# (planlagte, aldri borede) er utelatt.
+WELL_TYPES = ['EXPLORATION', 'DEVELOPMENT', 'OTHER']
+
+
+def build_well_activity():
+    rows = fetch_layer(WELL_LAYER, 'wlbNpdidWellbore,wlbWell,wlbWellType,wlbEntryDate', 'wlbEntryDate IS NOT NULL')
+    first = {}   # wlbWell -> (entry_ms, type)
+    bores = {}   # (ar, type) -> antall
+    for r in rows:
+        ms, well = r.get('wlbEntryDate'), _clean(r.get('wlbWell'))
+        typ = _clean(r.get('wlbWellType')).upper()
+        if ms is None or not well:
+            continue
+        typ = typ if typ in WELL_TYPES else 'OTHER'
+        year = int(_day(ms)[:4])
+        bores[(year, typ)] = bores.get((year, typ), 0) + 1
+        if well not in first or ms < first[well][0]:
+            first[well] = (ms, typ)
+    wells = {}
+    for ms, typ in first.values():
+        year = int(_day(ms)[:4])
+        wells[(year, typ)] = wells.get((year, typ), 0) + 1
+    years = sorted({y for y, _ in wells} | {y for y, _ in bores})
+    out = [[y] + [wells.get((y, t), 0) for t in WELL_TYPES] + [bores.get((y, t), 0) for t in WELL_TYPES]
+           for y in range(years[0], years[-1] + 1)] if years else []
+    last = max((ms for ms, _ in first.values()), default=None)
+    return {'columns': ['year', 'wellsExpl', 'wellsDev', 'wellsOther', 'boresExpl', 'boresDev', 'boresOther'],
+            'lastEntry': _day(last), 'rows': out}
+
+
 def build_exploration_wells():
     rows = fetch_layer(
         WELL_LAYER,
@@ -1274,6 +1309,7 @@ def main():
         ('companies.json', 'selskaper', build_companies),
         ('exploration_wells.json', 'letebronner', build_exploration_wells),
         ('rig_wells.json', 'utviklingsbronner til riggoversikt', build_rig_wells),
+        ('well_activity.json', 'boreaktivitet per ar', build_well_activity),
         ('rig_facts.json', 'riggfakta', build_rig_facts),
     ]
 
