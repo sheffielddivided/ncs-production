@@ -557,6 +557,9 @@
     /* TradingViews selskapsprofil i Valuation BETA; to eiere side om side på brede skjermer. */
     .val-tvp{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;}
     .val-tvp tv-company-profile{display:block;width:100%;min-height:200px;}
+    /* Financials-widgeten trenger fast høyde (den setter beholderen til 100 %) og ruller selv. */
+    .val-fin{height:760px;margin-bottom:6px;}
+    @media (max-width: 700px){ .val-fin{height:600px;} }   /* «compact» på smale skjermer: kort som rulles sidelengs */
     .val-ass td, .val-ass th{text-align:left !important;white-space:normal !important;vertical-align:top;}
     .val-ass td:first-child{font-weight:600;white-space:nowrap !important;}
     .val-ass td:nth-child(3){color:#44505f;}
@@ -9337,13 +9340,24 @@ function valShareCard(cmp) {
     <div class="pf-card pf-wide"><h3>About the listed ${many ? 'owners' : 'company'}</h3>
       <div class="val-tvp">${own.map(t => `<tv-company-profile symbol="${esc(valW(t))}"></tv-company-profile>`).join('')}</div>
       <div class="pf-map-note">Company profile${many ? 's' : ''} by
-        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>; ${many ? 'they describe the listed companies' : 'it describes the listed company'} as a whole.</div></div>`;
+        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>; ${many ? 'they describe the listed companies' : 'it describes the listed company'} as a whole.</div></div>
+    <div class="pf-card pf-wide"><h3>Key financials of the listed ${many ? 'owners' : 'company'}</h3>
+      ${own.map(t => `${many ? `<div class="pf-map-note" style="margin:6px 0 2px"><strong>${esc(t.n)}</strong></div>` : ''}
+        <div class="val-fin"><div class="tradingview-widget-container" data-sym="${esc(valW(t))}" style="height:100%"><div class="tradingview-widget-container__widget" style="height:100%"></div></div></div>`).join('')}
+      <div class="pf-map-note">Fundamentals for ${own.map(t => valTvLink(valW(t))).join(' and ')} by
+        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>: the listed ${many ? 'companies' : 'company'} as a whole, from the latest reports${
+        own.some(t => t.w && t.w !== t.main) ? '; for a US listing (ADR) the amounts are in USD' : ''}. These are not the figures behind the indicative valuation above.</div></div>`;
 }
 
 function valMountShares(cmp) {
   const own = valTickers(cmp), box = document.getElementById('valTv');
   if (!own) return;
   if (box) mountTvChart(box, own.filter(t => t.chart !== false).map(t => [t.n, `${valW(t)}|3M`]));
+  // Nøkkeltall (Financials), ett per børsnotert eier, med brukerens oppsett.
+  document.querySelectorAll('.val-fin .tradingview-widget-container').forEach(el =>
+    // «regular» (brukerens valg) gir to spalter som blir uleselige på mobil; der brukes «compact».
+    mountTvScript(el, 'financials', {symbol: el.dataset.sym, colorTheme: 'light', displayMode: el.clientWidth < 600 ? 'compact' : 'regular',
+      isTransparent: true, locale: 'en', width: '100%', height: '100%'}));
   // Selskapsprofilen (tv-company-profile) er et eget webkomponent fra
   // TradingView: skriptet lastes én gang og definerer elementet, som så
   // oppgraderes uansett når kortet tegnes.
@@ -9375,9 +9389,13 @@ function mountTvChart(box, symbols) {
   // eget script-element, med oppsettet som innhold, slik TradingView forventer.
   // Skriptet setter beholderens høyde til 100 %, så den faste høyden ligger på
   // en ytre div (se valShareCard).
+  mountTvScript(box, 'symbol-overview', cfg);
+}
+// Et klassisk TradingView-skript (embed-widget-<kind>.js) med oppsettet som innhold.
+function mountTvScript(box, kind, cfg) {
   const sc = document.createElement('script');
   sc.type = 'text/javascript';
-  sc.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js';
+  sc.src = `https://s3.tradingview.com/external-embedding/embed-widget-${kind}.js`;
   sc.async = true;
   sc.innerHTML = JSON.stringify(cfg);
   box.appendChild(sc);
