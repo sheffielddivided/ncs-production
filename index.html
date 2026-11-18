@@ -4020,6 +4020,31 @@ function drawDcsFields() {
 // historikken — eldre år viser hva dagens eiere ville hatt, ikke hva de
 // faktisk eide da (Maersk Oil, Hess, Wintershall Dea og andre er ikke med).
 // Med ett selskap valgt: selskapets netto produksjon per felt.
+// Selskapsvelgeren i Companies: selskaper med produksjon nå øverst, størst
+// først, med volumet i navnet; deretter de øvrige (historiske eiere, eller
+// dagens eiere uten produksjon) alfabetisk. «Nå» er dagens andeler (ENS'
+// lisensliste) av feltenes produksjon de siste tolv månedene med data.
+function dcsCurrentNet() {
+  const L = dcsLast12(), out = {};
+  dcsData.fields.forEach(f => {
+    const p = dcsFieldProd12(f.slug, L), tot = p.liq + p.gas;
+    if (tot > 0) f.owners.forEach(([c, sh]) => { out[c] = (out[c] || 0) + tot * sh / 100; });
+  });
+  return {net: out, span: L.span};
+}
+function dcsCompanySelect(cmps) {
+  const {net, span} = dcsCurrentNet();
+  const now = cmps.filter(c => net[c] >= 1).sort((a, b) => net[b] - net[a]);
+  const rest = cmps.filter(c => !(net[c] >= 1)).sort((a, b) => a.localeCompare(b));
+  const opt = (c, l) => `<option value="${esc(c)}"${dcsF.cmp === c ? ' selected' : ''}>${esc(l)}</option>`;
+  const boed = v => Math.round(v).toLocaleString('en');
+  return `<select class="year-select" onchange="dcsSet('cmp', this.value)" aria-label="Company">
+    <option value="">All companies</option>
+    ${now.length ? `<optgroup label="Producing now (${esc(span)}, today's shares)">${now.map(c => opt(c, `${c} · ${boed(net[c])} boe/d`)).join('')}</optgroup>` : ''}
+    ${rest.length ? `<optgroup label="${now.length ? 'No current production' : 'Companies'}">${rest.map(c => opt(c, c)).join('')}</optgroup>` : ''}
+  </select>`;
+}
+
 function drawDcsCompanies() {
   // Eierne da (eierhistorikken) eller dagens eiere for hele perioden.
   const hist = dcsF.own !== 'now' && dcsHasHistory();
@@ -4068,7 +4093,7 @@ function drawDcsCompanies() {
       : `<strong>Shares:</strong> current licensees from ENS (${esc((dcsData.ownershipUpdated || '').slice(0, 10))}), applied to the whole history: earlier years show what today's owners would have had, not what they owned then &nbsp;|&nbsp; `)
     + `Nordsøfonden is the Danish state's participant &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${dcsBasis()} &nbsp;|&nbsp; ${DCS_GAS_NOTE}`);
   const bar = dcsBar((dcsHasHistory() ? dcsPills('own', [['hist', 'Owners at the time'], ['now', "Today's owners"]]) : '')
-    + dcsSelect('cmp', 'All companies', cmps.map(c => [c, c]), 'Company'));
+    + dcsCompanySelect(cmps));
   if (!t.labels.length || !t.datasets.length) {
     setChartEmpty(period === 'annual' ? 'No data for the selected period.'
       : `No monthly data for the selected period. ENS monthly reports start in ${dcsFirstMonth().slice(0, 4)}; use Annual for earlier years.`);
