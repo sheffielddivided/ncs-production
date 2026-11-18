@@ -3084,8 +3084,8 @@ function applyHash() {
     if (['all', 'prod', 'rp'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     ncsF.crArea = q.get('na') === '1';
-    if (['rem', 'orig', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
-    if (['rem', 'orig', 'change'].includes(q.get('nh'))) ncsF.hb = q.get('nh');
+    if (['rem', 'orig', 'life', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
+    if (['rem', 'orig', 'life', 'change'].includes(q.get('nh'))) ncsF.hb = q.get('nh');
     if (['mboe', 'scatter'].includes(q.get('nd'))) ncsF.chg = q.get('nd');
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
     if (q.get('ni') === 'real') ncsF.inv = 'real';
@@ -6908,7 +6908,7 @@ const NCS_TABS = [
 let ncsSubView = 'production';
 // prod: 'product' | 'area' · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life)
-// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'change' | 'timeline' · hb: samme uten 'timeline' (NCS → Hubs)
+// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'life' | 'change' | 'timeline' · hb: samme uten 'timeline' (NCS → Hubs)
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
@@ -7572,12 +7572,14 @@ function drawNcsFields() {
   const hubMode = ncsSubView === 'hubs';
   const L = NCS_LEVEL[hubMode ? 'hub' : 'field'];
   const mode = hubMode ? ncsF.hb : ncsF.fl;
-  const opts = [['rank', 'Production'], ['rem', 'Remaining reserves'], ['orig', 'Original reserves'], ['change', 'Reserve change']];
+  const opts = [['rank', 'Production'], ['rem', 'Remaining reserves'], ['orig', 'Original reserves'],
+                ['life', 'Reserve life'], ['change', 'Reserve change']];
   const toggle = hubMode ? ncsPills('hb', opts) : ncsPills('fl', opts.concat([['timeline', 'Start-ups & shutdowns']]));
   setProfile(''); setChartTable('');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   if (mode === 'timeline' && !hubMode) return drawNcsFieldTimeline(ids, toggle);
   if (mode === 'change') return drawNcsReserveChange(toggle, hubMode);
+  if (mode === 'life') return drawNcsReserveLife(ids, toggle, hubMode);
 
   let list, unit, n0, sub, info, note, facts;
   if (mode === 'rank') {
@@ -7890,6 +7892,94 @@ function drawNcsReserveScatter(list, head, k) {
              {y: k.wPct, color: pptHex(W_C), label: `Volume-weighted ${k.fP(k.wPct)}`}],
     note: (clipped.length ? `Axis cut at ${CAP} %: ${clipped.map(p => `${p.f.name} ${k.fP(p.f.pct)}`).join(', ')}. ` : '') +
           `Bubble area = first reserve estimate (largest: ${pts[0].f.name}, ${k.fM(maxFirst).replace(/^\+/, '')} million boe).`};
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+// ── NCS: FIELDS / HUBS · RESERVE LIFE ──
+// Rangering etter reserveliv (R/P): gjenstående reserver i siste årgang delt
+// på produksjonen samme kalenderår. Felt som kom i produksjon det året er
+// utelatt — et delvis oppstartsår gir et kunstig langt reserveliv — også fra
+// hubsummene, så de to rangeringene er sammenlignbare. Det samme gjelder felt
+// og huber under 1000 boe/d i snitt: nesten stengte felt (Skuld med 24 boe/d)
+// gir ellers hundrevis av år. Per hub summeres gjenstående og produksjon over
+// de gjenværende feltene.
+const NCS_LIFE_MIN_BOED = 1000;
+function drawNcsReserveLife(ids, toggle, hubMode) {
+  const L = NCS_LEVEL[hubMode ? 'hub' : 'field'];
+  const res = fieldReservesLong || fieldReserves || {};
+  const vintage = Math.max(...Object.values(fieldReserves || {}).filter(r => r.length).map(r => r[r.length - 1].year));
+  const prodIn = id => (fieldProdCache[id] || []).map(r => r.attributes)
+    .filter(a => a.prfMonth === 0 && a.prfYear === vintage).reduce((t, a) => t + (a.prfPrdOeNetMillSm3 || 0), 0);
+  const startYear = id => { const d = (profileRow(id) || {}).productionStart; return d ? new Date(d).getUTCFullYear() : null; };
+  const minProd = NCS_LIFE_MIN_BOED * daysInYear(vintage) / 1e6;   // mill fat i året
+  let started = 0;
+  let list = ids.map(id => {
+    const cur = reserveAt(res[id] || [], vintage);
+    return {id, rem: cur ? cur.remainingOE * BBL_PER_SM3 : 0, prod: prodIn(id) * BBL_PER_SM3};
+  }).filter(f => f.rem > 0 || f.prod > 0).filter(f => {
+    const skip = f.prod > 0 && startYear(f.id) === vintage;
+    if (skip) started++;
+    return !skip;
+  });
+  if (hubMode) {
+    const g = {};
+    list.forEach(f => {
+      const h = hubNameOf(f.id);
+      const o = g[h] = g[h] || {hub: true, name: h, rem: 0, prod: 0, ids: []};
+      o.rem += f.rem; o.prod += f.prod; o.ids.push(f.id);
+    });
+    list = Object.values(g);
+  } else {
+    list = list.map(f => ({...f, name: fieldNameOf(f.id)}));
+  }
+  const small = list.filter(f => f.prod > 0 && f.prod < minProd).length;
+  list = list.filter(f => f.prod >= minProd && f.rem > 0);
+  const totRem = list.reduce((t, f) => t + f.rem, 0), totProd = list.reduce((t, f) => t + f.prod, 0);
+  list = list.map(f => ({...f, life: f.rem / f.prod}))
+    .sort((a, b) => b.life - a.life || a.name.localeCompare(b.name));
+  if (!list.length) { setChartEmpty('No reserves and production data available.'); setInfo(''); return; }
+  const lifes = list.map(f => f.life).sort((a, b) => a - b);
+  const median = lifes.length % 2 ? lifes[(lifes.length - 1) / 2] : (lifes[lifes.length / 2 - 1] + lifes[lifes.length / 2]) / 2;
+  const under5 = list.filter(f => f.life < 5).length;
+  const n1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const n0 = v => v.toLocaleString('en', {maximumFractionDigits: v < 10 ? 1 : 0});
+  const facts = [[`${L.Nouns} ranked`, list.length], ['NCS reserve life', `${n1(totRem / totProd)} years`],
+                 ['Median', `${n1(median)} years`], ['Under 5 years', under5]];
+  const shown = ncsF.all ? list : list.slice(0, 25);
+  const max = shown[0].life;
+  const C = REMAINING_COLOR;
+  const bars = shown.map((f, i) => {
+    const call = ncsOpenCall(f);
+    const tip = `${f.name} · ${n0(f.rem)} million boe remaining ÷ ${n0(f.prod)} million boe produced in ${vintage} = ${n1(f.life)} years` +
+      (f.hub && f.ids.length > 1 ? ` · ${f.ids.length} fields: ${f.ids.map(fieldNameOf).join(', ')}` : '');
+    return `<div class="lc-row"${call ? ` onclick="${call}" role="link" tabindex="0"
+      onkeydown="if(event.key==='Enter')${call}"` : ''} title="${esc(tip)}">
+      <div class="lc-name" title="${esc(f.name)}">${i + 1}. <span class="${call ? 'lc-u' : ''}">${esc(f.name)}</span></div>
+      <div class="lc-track" style="width:${(f.life / max * 70).toFixed(1)}%"><span style="flex:1;background:${C}"></span></div>
+      <div class="lc-val">${n1(f.life)} yrs</div></div>`;
+  }).join('');
+  document.getElementById('chartArea').innerHTML = `${toggle}
+    <div class="pf-facts" style="margin-bottom:10px">
+      ${facts.map(([l, v]) => `<div class="pf-fact"><span>${l}</span><strong>${v}</strong></div>`).join('')}
+    </div>
+    ${bars}
+    <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${C}"></span>Reserve life, years</span>
+      <span class="ex-leg">Showing ${shown.length} of ${list.length}
+      ${list.length > 25 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 25' : 'show all'}</a>` : ''}</span></div>
+    <div class="pf-map-note">Remaining reserves (vintage ${vintage}) ÷ production in ${vintage}, years. Hover a bar for the volumes; click a ${L.noun} for its factsheet.</div>`;
+  setChartTitle(`Norwegian Continental Shelf · ${L.Nouns}`, `Ranked by reserve life, vintage ${vintage} · years`);
+  setInfo(`<strong>Reserve life:</strong> remaining reserves (OE), Sodir estimate as of 31 Dec ${vintage}, ÷ net production (OE) in ${vintage} &nbsp;|&nbsp; ` +
+    `<strong>NCS reserve life:</strong> total remaining ÷ total production of the ${L.nouns} in the ranking &nbsp;|&nbsp; ` +
+    `Left out: ${L.nouns} without production in ${vintage}${small ? `, ${small} ${small === 1 ? L.noun : L.nouns} averaging under ${NCS_LIFE_MIN_BOED.toLocaleString('en')} boe/day` : ''}${started ? `, and ${started} fields that came on stream in ${vintage}${hubMode ? ' (also left out of their hub)' : ''} — a partial first year gives an artificially long reserve life` : ''}` +
+    `${hubMode ? ' &nbsp;|&nbsp; <strong>Hubs:</strong> fields grouped by host as in the Hub tab (a field without a hub is its own hub); remaining and production are summed over the hub\'s fields' : ''}` +
+    ` &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages`);
+  const r1 = v => +v.toFixed(1);
+  lastLabels = list.map(f => f.name); lastXTitle = L.X;
+  lastDatasets = [{label: `Remaining ${vintage}, million boe`, data: list.map(f => r1(f.rem))},
+                  {label: `Production ${vintage}, million boe`, data: list.map(f => +f.prod.toFixed(2))},
+                  {label: 'Reserve life, years', data: list.map(f => r1(f.life))}];
+  pptSpec = {kind: 'cat', dir: 'bar', stacked: false, labels: shown.map(f => f.name), yTitle: 'years',
+    series: [{name: 'Reserve life, years', type: 'bar', color: pptHex(C), values: shown.map(f => r1(f.life))}]};
   document.getElementById('downloadBtn').disabled = false;
 }
 
