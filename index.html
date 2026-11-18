@@ -1859,8 +1859,13 @@ const CMP_PROD_VIEWS = [
 ];
 const isCmpProd = v => CMP_PROD_VIEWS.some(x => x.id === v);
 let cmpProdLast = 'oe_per_hub';
-const cmpProdPills = () => `<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${CMP_PROD_VIEWS.map(x =>
-  `<button class="pill-btn${companySubView === x.id ? ' active' : ''}" onclick="setSubView('${x.id}')">${x.label}</button>`).join('')}</div>`;
+// Felles velger over en graf eller tabell: segmentert knapperad (pill-group),
+// som i Company → Production. opts: [[verdi, etikett]], call(verdi) gir onclick.
+const pillRow = (opts, cur, call) => `<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${opts.map(([v, l]) =>
+  `<button class="pill-btn${cur === v ? ' active' : ''}" onclick="${call(v)}">${l}</button>`).join('')}</div>`;
+const cmpProdPills = () => pillRow(CMP_PROD_VIEWS.map(x => [x.id, x.label]), companySubView, v => `setSubView('${v}')`);
+const RES_METRICS = [['volume', 'Volumes'], ['life', 'Reserve life']];
+const resMetricPills = () => pillRow(RES_METRICS, resMetric, v => `resSetMetric('${v}')`);
 const COMPANY_TABS = [
   {id:'production',    label:'Production'},
   {id:'reserves',      label:'Reserves'},
@@ -10188,10 +10193,7 @@ function drawFieldsReserves(opts = {}) {
     produced.push(+prod.toFixed(1));
   });
 
-  const metricToggle = `<div class="grp-row"><span class="grp-label">Show</span>` +
-    [['volume', 'Volumes'], ['life', 'Reserve life']].map(([id, label]) =>
-      `<button class="grp-btn${resMetric === id ? ' active' : ''}" onclick="resSetMetric('${id}')">${label}</button>`).join('') +
-    `</div>`;
+  const metricToggle = resMetricPills();
   const fromSelect = `<div style="margin-bottom:10px"><select class="year-select" onchange="resSetFrom(this.value)" aria-label="Start year">
     <option value=""${base ? '' : ' selected'}>From ${allYears[0]} (all years)</option>${allYears.slice(1).map(y =>
       `<option value="${y}"${y === base ? ' selected' : ''}>From ${y}</option>`).join('')}</select></div>`;
@@ -13977,10 +13979,7 @@ function drawCompaniesReserves() {
   const reservesOe = liquids[liquids.length - 1] + gas[gas.length - 1];
   const closing = Object.fromEntries(years.map((y, i) => [y, liquids[i] + gas[i]]));
   const netProd = companyNetProduction(companies);
-  const metricToggle = `<div class="grp-row"><span class="grp-label">Show</span>` +
-    [['volume', 'Volumes'], ['life', 'Reserve life']].map(([id, label]) =>
-      `<button class="grp-btn${resMetric === id ? ' active' : ''}" onclick="resSetMetric('${id}')">${label}</button>`).join('') +
-    `</div>`;
+  const metricToggle = resMetricPills();
   // Startår, som i felt- og hubvisningen (samme resFrom og lenkeparameter).
   // Grafen viser bare gjenstående, så startåret kutter bare aksen. Valgene er
   // årene der selskapet har reserver; et startår utenfor dem ignoreres.
@@ -14404,11 +14403,7 @@ function setHubReserveGrouping(g) {
 }
 
 function hubGroupingToggle() {
-  const btn = (id, label) =>
-    `<button class="grp-btn${hubReserveGrouping===id?' active':''}" ` +
-    `onclick="setHubReserveGrouping('${id}')">${label}</button>`;
-  return `<div class="grp-row"><span class="grp-label">Group by</span>` +
-         btn('field','Field') + btn('company','Company') + `</div>`;
+  return pillRow([['field', 'By field'], ['company', 'By company']], hubReserveGrouping, v => `setHubReserveGrouping('${v}')`);
 }
 
 // Hubs-visningen: brutto feltreserver dekomponert på lisensiærene, gruppert
