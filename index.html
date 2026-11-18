@@ -2812,6 +2812,8 @@ function stateToHash() {
   }
   if (resFrom && ((topMode === 'fields' && fieldSubView === 'reserves')
                   || (topMode === 'hubs' && hubSubView === 'reserves'))) q.set('ry', resFrom);
+  if (resMetric === 'life' && ((topMode === 'fields' && fieldSubView === 'reserves')
+                  || (topMode === 'hubs' && hubSubView === 'reserves'))) q.set('rm', 'life');
   if (topMode === 'ncs') {
     const dflt = ncsDefaults();
     NCS_PARAMS.forEach(([k, p]) => { if (ncsF[k] !== dflt[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
@@ -3163,6 +3165,7 @@ function applyHash() {
   document.getElementById('waterToggle').checked = showWater;
   if (q.get('g') === 'company') hubReserveGrouping = 'company';
   resFrom = /^\d{4}$/.test(q.get('ry') || '') ? q.get('ry') : '';
+  resMetric = q.get('rm') === 'life' ? 'life' : 'volume';
   explF.open = +q.get('xw') > 0 ? +q.get('xw') : null;
   explF.rig = q.get('xg') || null;
   return true;
@@ -9487,6 +9490,30 @@ function reserveAt(rows, y) {
 let resFrom = '';
 function resSetFrom(v) { resFrom = v; syncUrl(); drawChart(); }
 
+// Reservegrafen kan vise volum (gjenstående + produsert) eller reserveliv:
+// siste reserveanslag for året delt på produksjonen samme år, i år (R/P).
+let resMetric = 'volume';
+function resSetMetric(v) { resMetric = v; syncUrl(); drawChart(); }
+
+// Siste kalenderår med fullstendig produksjon (desember rapportert). Året
+// som pågår har bare delvis produksjon og ville gitt et kunstig langt reserveliv.
+let prodLastFullYear = null;
+function lastFullProdYear() {
+  if (prodLastFullYear !== null) return prodLastFullYear;
+  let y = 0;
+  Object.values(bundle.production?.fields || {}).forEach(rows =>
+    rows.forEach(r => { if (r[1] === 12 && r[0] > y) y = r[0]; }));
+  return (prodLastFullYear = y || Infinity);
+}
+// Årsproduksjon i mill Sm³ o.e. per år for et felt.
+function annualProdOE(id) {
+  const out = {};
+  (bundle.production?.fields?.[id] || []).forEach(r => { if (r[1] === 0) out[r[0]] = r[4] || 0; });
+  return out;
+}
+
+const hasHistAny = series => series.some(s => s.rows.some(r => r.hist));
+
 function drawFieldsReserves(opts = {}) {
   const ids = opts.ids || [...selectedFieldIds];
   const scope = opts.scope;
@@ -9523,6 +9550,63 @@ function drawFieldsReserves(opts = {}) {
     produced.push(+prod.toFixed(1));
   });
 
+  const metricToggle = `<div class="grp-row"><span class="grp-label">Show</span>` +
+    [['volume', 'Volumes'], ['life', 'Reserve life']].map(([id, label]) =>
+      `<button class="grp-btn${resMetric === id ? ' active' : ''}" onclick="resSetMetric('${id}')">${label}</button>`).join('') +
+    `</div>`;
+  const fromSelect = `<div style="margin-bottom:10px"><select class="year-select" onchange="resSetFrom(this.value)" aria-label="Start year">
+    <option value=""${base ? '' : ' selected'}>From ${allYears[0]} (all years)</option>${allYears.slice(1).map(y =>
+      `<option value="${y}"${y === base ? ' selected' : ''}>From ${y}</option>`).join('')}</select></div>`;
+  const fnames = series.map(s => s.name).join(', ');
+  const scopeTitle = scope ? scope.label
+                   : series.length === 1 ? series[0].name : `${series.length} fields`;
+  const last = years[years.length - 1];
+
+  if (resMetric === 'life') {
+    // Reserveliv = gjenstående ved utgangen av året / produksjonen samme år.
+    // Flere felt: summen av gjenstående delt på summen av produksjonen.
+    // År uten produksjon, og året som pågår, utelates.
+    const prod = new Map(series.map(s => [s.id, annualProdOE(s.id)]));
+    const lastFull = lastFullProdYear();
+    const lifeYears = [], life = [];
+    years.forEach(y => {
+      if (y > lastFull) return;
+      let rem = 0, p = 0;
+      series.forEach(s => {
+        const cur = reserveAt(s.rows, y);
+        if (cur) rem += cur.remainingOE;
+        p += prod.get(s.id)[y] || 0;
+      });
+      if (p <= 0) return;
+      lifeYears.push(y);
+      life.push(+(rem / p).toFixed(1));
+    });
+    if (!lifeYears.length) {
+      setChartTitle(`${scopeTitle} · Reserve life`, fnames);
+      setChartEmpty('No years with both a reserve estimate and production.');
+      ncsToggleAbove(metricToggle + fromSelect);
+      setInfo('');
+      return;
+    }
+    const carriedLife = new Set(lifeYears.filter(y => {
+      const cs = series.map(s => reserveAt(s.rows, y)).filter(Boolean);
+      return cs.length && cs.every(c => c.filled);
+    }).map(String));
+    const fadedLife = REMAINING_COLOR.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(,[^)]*)?\)/, 'rgba($1,$2,$3,0.3)');
+    setChartTitle(`${scopeTitle} · Reserve life`, `${fnames} · ${base ? `from ${base} · ` : ''}years (remaining reserves ÷ production that year)`);
+    setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Reserve life = remaining reserves at year-end ÷ production in the same year${series.length > 1 ? ' (sum of remaining ÷ sum of production across the selected fields)' : ''} &nbsp;|&nbsp; <strong>Unit:</strong> years &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates and annual production ${lifeYears[0]}–${lifeYears[lifeYears.length-1]}; years without production and the current, incomplete year are left out${hasHistAny(series) ? ` &nbsp;|&nbsp; ${RES_HIST_NOTE}` : ''}`);
+    renderChart(lifeYears.map(String),
+      [{label:'Reserve life', data:life, borderWidth:0, stack:'s',
+        backgroundColor: ctx => carriedLife.has(ctx.chart?.data.labels[ctx.dataIndex]) ? fadedLife : REMAINING_COLOR}],
+      [{label:'Reserve life (years)', color:REMAINING_COLOR}].concat(carriedLife.size
+        ? [{label:'No estimate that year (previous carried forward)', color:fadedLife}] : []), 'years',
+      {xTitle:'Year', allTicks:true, dec:1, noFooter:true});
+    ncsToggleAbove(metricToggle + fromSelect);
+    if (scope) renderReserveTableByFieldPartner(series, last);
+    else       renderReserveTableByPartner(series, last);
+    return;
+  }
+
   const labels   = years.map(String);
   // Før 2004: år der ingen av feltene har et eget anslag (bare videreført)
   // tones ned, keyed på årstallet så trimmingen i renderChart ikke forskyver dem.
@@ -9541,11 +9625,7 @@ function drawFieldsReserves(opts = {}) {
     {label:'Remaining', color:REMAINING_COLOR},
     {label:prodLabel,   color:PRODUCED_COLOR},
   ].concat(carriedYear.size ? [{label:'No estimate that year (previous carried forward)', color:faded(REMAINING_COLOR)}] : []);
-  const hasHist = series.some(s => s.rows.some(r => r.hist));
-
-  const fnames = series.map(s => s.name).join(', ');
-  const scopeTitle = scope ? scope.label
-                   : series.length === 1 ? series[0].name : `${series.length} fields`;
+  const hasHist = hasHistAny(series);
   const carried = series.length > 1 && series.some(s => s.rows.length < years.length);
 
   setChartTitle(`${scopeTitle} · Reserves over time`, `${fnames} · ${base ? `from ${base} · ` : ''}million boe`);
@@ -9554,10 +9634,7 @@ function drawFieldsReserves(opts = {}) {
     : 'Remaining, Produced (recoverable − remaining)';
   setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> ${seriesNote} &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${years[years.length-1]}${carried ? ' · fields without an estimate in a given year carry forward their previous one' : ''}${hasHist ? ` &nbsp;|&nbsp; ${RES_HIST_NOTE}` : ''}`);
   renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
-  ncsToggleAbove(`<div style="margin-bottom:10px"><select class="year-select" onchange="resSetFrom(this.value)" aria-label="Start year">
-    <option value=""${base ? '' : ' selected'}>From ${allYears[0]} (all years)</option>${allYears.slice(1).map(y =>
-      `<option value="${y}"${y === base ? ' selected' : ''}>From ${y}</option>`).join('')}</select></div>`);
-  const last = years[years.length - 1];
+  ncsToggleAbove(metricToggle + fromSelect);
   // Hub-modus bryter ned på felt og partner; feltmodus summerer per partner.
   if (scope) renderReserveTableByFieldPartner(series, last);
   else       renderReserveTableByPartner(series, last);
@@ -13800,8 +13877,9 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{
-          label: ctx => ` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('en')} ${yTitle}`,
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en', {minimumFractionDigits: opts.dec || 0, maximumFractionDigits: opts.dec || 0})} ${yTitle}`,
           footer: items => {
+            if (opts.noFooter) return '';
             const tot = items.filter(i => !i.dataset._noTotal).reduce((s,i)=>s+i.parsed.y,0);
             return `Total: ${Math.round(tot).toLocaleString('en')} ${yTitle}`;
           }
