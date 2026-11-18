@@ -48,9 +48,10 @@
     .year-row{display:flex;gap:6px;align-items:center;}
     .year-row label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;}
     .year-select{padding:6px 24px 6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;color:#1a2332;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 6px center;appearance:none;-webkit-appearance:none;cursor:pointer;}
-    .pill-group{display:flex;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;}
-    .pill-btn{padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;}
-    .pill-btn:not(:last-child){border-right:1.5px solid var(--border);}
+    /* Skillelinjene tegnes med gap mot grå bakgrunn, så gruppen kan bryte over
+       flere rader når den ikke får plass (mobil) uten at knapper skyves ut. */
+    .pill-group{display:flex;flex-wrap:wrap;gap:1.5px;background:var(--border);border:1.5px solid var(--border);border-radius:7px;overflow:hidden;width:fit-content;max-width:100%;}
+    .pill-btn{flex:1 1 auto;padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;}
     .pill-btn.active{background:var(--blue);color:#fff;}
     .ctrl-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
 
