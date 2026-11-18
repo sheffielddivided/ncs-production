@@ -16,6 +16,11 @@ og EIA-delen), til disse filene:
   månedlig, USD/MMBtu) og råoljeproduksjonen (EIA, ukentlig WCRFPUS2 og
   månedlig MCRFPUS2, tusen fat per dag). Til US supply-fanen og
   gassprisgrafen i Market.
+- data/refining.json: ukentlige spotpriser til 3-2-1-raffineringsmarginen i
+  Refining-fanen i Market: WTI Cushing (RWTC, USD/fat), NY Harbor bensin
+  (regular, USD/gallon) og NY Harbor nr. 2 fyringsolje/diesel (USD/gallon),
+  samme serier som Refining-visningen i eia-repoet. Brent (RBRTE) er med til
+  varianten mot Brent. Marginen regnes ut i appen.
 
 Feiler en henting, beholdes forrige fil for den. Steget i arbeidsflyten er
 continue-on-error.
@@ -114,8 +119,30 @@ def us_supply():
     print(f'eugas: US supply {", ".join(inv["series"])}; LNG {len((flows or {}).get("lng") or [])} mnd')
 
 
+# Seriene bak 3-2-1-marginen i eia-repoet (index.html, loadRefining).
+REFINING_SERIES = {
+    'wti': 'RWTC',                          # WTI Cushing, USD/fat
+    'brent': 'RBRTE',                       # Brent spot, USD/fat
+    'gasoline': 'EER_EPMRU_PF4_Y35NY_DPG',  # NY Harbor regular bensin, USD/gallon
+    'diesel': 'EER_EPD2F_PF4_Y35NY_DPG',    # NY Harbor nr. 2 fyringsolje, USD/gallon
+}
+
+
+def refining():
+    prices = get('eia/prices.json')
+    out = {k: [[x['date'], x['value']] for x in ((prices or {}).get(sid) or []) if x.get('value') is not None]
+           for k, sid in REFINING_SERIES.items()}
+    if not (out['wti'] and out['gasoline'] and out['diesel']):
+        print('eugas: mangler WTI-, bensin- eller dieselpriser i kilden; beholder forrige fil', file=sys.stderr)
+        return
+    write('refining.json', {'updated': (prices or {}).get('updatedAt'), 'series': REFINING_SERIES, **out,
+                            'source': 'U.S. Energy Information Administration (EIA), weekly spot prices, via sheffielddivided/eia'})
+    print(f'eugas: raffinering {", ".join(f"{k} {len(v)}" for k, v in out.items())}; siste {out["wti"][-1][0]}')
+
+
 if __name__ == '__main__':
     ttf()
     storage()
     lng()
     us_supply()
+    refining()
