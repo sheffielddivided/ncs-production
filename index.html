@@ -16077,13 +16077,18 @@ function cbClose(inp) {
   inp.setAttribute('aria-expanded', 'false');
 }
 // i = -1: tomt felt, «alle».
+// Valget lagres før blur: cbBlur setter feltet tilbake til o.value, og ble det
+// kalt med den gamle verdien, viste feltet forrige valg der pick() ikke tegner
+// filterlinjen på nytt (Drilling → Performance).
 function cbPick(inp, i) {
   const o = cbOf(inp), box = inp.closest('.cb');
   const v = i < 0 ? '' : box._hits[i].v;
+  const changed = v !== (o.value || '');
+  o.value = v;
   inp.value = v;
   cbClose(inp);
   inp.blur();
-  if (v !== (o.value || '')) { o.value = v; o.pick(v); }
+  if (changed) o.pick(v);
 }
 // Uten valg settes forrige verdi tilbake. Et tomt felt nullstiller filteret der
 // det er lov.
