@@ -1847,11 +1847,22 @@ const DISCOVERY_TABS = [
   {id:'maturity',      label:'Maturity'},
   {id:'profile',       label:'Factsheet'},
 ];
-const COMPANY_TABS = [
-  {id:'oe_per_hub',    label:'Prod per hub'},
-  {id:'oe_per_field',  label:'Prod per field'},
+// De fire produksjonsgrafene er samlet i én fane, Production, med en velger
+// over grafen. companySubView beholder variantens id (oe_per_hub, oe_per_field,
+// oilgas, operated), så tegnefunksjonene, lenkene (v=…) og gamle lenker er
+// uendret; fanen er aktiv for alle fire og husker sist brukte variant.
+const CMP_PROD_VIEWS = [
+  {id:'oe_per_hub',    label:'Per hub'},
+  {id:'oe_per_field',  label:'Per field'},
   {id:'oilgas',        label:'Oil & Gas'},
   {id:'operated',      label:'Operated'},
+];
+const isCmpProd = v => CMP_PROD_VIEWS.some(x => x.id === v);
+let cmpProdLast = 'oe_per_hub';
+const cmpProdPills = () => `<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${CMP_PROD_VIEWS.map(x =>
+  `<button class="pill-btn${companySubView === x.id ? ' active' : ''}" onclick="setSubView('${x.id}')">${x.label}</button>`).join('')}</div>`;
+const COMPANY_TABS = [
+  {id:'production',    label:'Production'},
   {id:'reserves',      label:'Reserves'},
   {id:'licences',      label:'Licences'},
   {id:'exploration',   label:'Exploration'},
@@ -1884,8 +1895,9 @@ function renderViewTabs() {
   if (!((topMode === 'fields' && fieldSubView === 'profile') || (topMode === 'hubs' && hubSubView === 'profile'))) {
     setSideMap('');   // settes av drawFieldProfile og drawHubProfile
   }
+  const curTab = topMode === 'companies' && isCmpProd(cur) ? 'production' : cur;
   document.getElementById('viewTabs').innerHTML = tabs.map(t =>
-    `<button class="view-tab${cur===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
+    `<button class="view-tab${curTab===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
   const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas'
@@ -1913,7 +1925,11 @@ function setSubView(v) {
   else if (topMode === 'prices') priceSubView = v;
   else if (topMode === 'dcs') dcsSubView = v;
   else if (topMode === 'ukcs') ukSubView = v;
-  else { companySubView = v; syncCompanySelection(); }
+  else {
+    if (v === 'production') v = cmpProdLast;
+    if (isCmpProd(v)) cmpProdLast = v;
+    companySubView = v; syncCompanySelection();
+  }
   renderViewTabs();
   updateFab();
   if (sheetOpen) renderList();
@@ -3000,7 +3016,7 @@ function applyHash() {
   // Differentials er flyttet nederst på Brent-siden; gamle lenker sendes dit.
   const v = topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas'
           : topMode === 'prices' && q.get('v') === 'diff' ? 'brent' : q.get('v');
-  if (tabs.some(t => t.id === v)) {
+  if (tabs.some(t => t.id === v) || (topMode === 'companies' && (isCmpProd(v) || v === 'production'))) {
     if (topMode === 'fields') fieldSubView = v;
     else if (topMode === 'hubs') hubSubView = v;
     else if (topMode === 'discoveries') discoverySubView = v;
@@ -3010,7 +3026,10 @@ function applyHash() {
     else if (topMode === 'prices') priceSubView = v;
     else if (topMode === 'dcs') dcsSubView = v;
     else if (topMode === 'ukcs') ukSubView = v;
-    else companySubView = v;
+    else {
+      companySubView = v === 'production' ? cmpProdLast : v;
+      if (isCmpProd(companySubView)) cmpProdLast = companySubView;
+    }
   }
 
   if (topMode === 'licences') {
@@ -3215,7 +3234,10 @@ function modeTabs() {
 function syncTitle() {
   let t = 'NCS Insight – the Norwegian Continental Shelf in numbers';
   if (topMode !== 'home') {
-    const tab = (modeTabs().find(x => x.id === currentSubView()) || {}).label;
+    const sv = currentSubView();
+    const tab = topMode === 'companies' && isCmpProd(sv)
+      ? `Production · ${CMP_PROD_VIEWS.find(x => x.id === sv).label}`
+      : (modeTabs().find(x => x.id === sv) || {}).label;
     const pick = topMode === 'fields' ? (allFields.find(f => selectedFieldIds.has(f.id)) || {}).name
       : topMode === 'hubs' ? [...selectedHubNames][0]
       : topMode === 'companies' ? [...selectedCompanyNames][0]
@@ -3484,6 +3506,14 @@ function drawChart() {
     else                         drawDiscoveriesPerDiscovery();
   } else {
     const sv = companySubView;
+    if (isCmpProd(sv)) {
+      if (sv === 'oilgas')            drawCompaniesOilGas();
+      else if (sv === 'oe_per_field') drawCompaniesOePerField();
+      else if (sv === 'oe_per_hub')   drawCompaniesOePerHub();
+      else                            drawCompaniesOperated();
+      ncsToggleAbove(cmpProdPills());
+      return;
+    }
     if (sv === 'oilgas')         drawCompaniesOilGas();
     else if (sv === 'oe_per_field')  drawCompaniesOePerField();
     else if (sv === 'oe_per_hub')    drawCompaniesOePerHub();
