@@ -2811,7 +2811,8 @@ function stateToHash() {
     q.set('g', hubReserveGrouping);
   }
   if (resFrom && ((topMode === 'fields' && fieldSubView === 'reserves')
-                  || (topMode === 'hubs' && hubSubView === 'reserves'))) q.set('ry', resFrom);
+                  || (topMode === 'hubs' && hubSubView === 'reserves')
+                  || (topMode === 'companies' && companySubView === 'reserves'))) q.set('ry', resFrom);
   if (resMetric === 'life' && ((topMode === 'fields' && fieldSubView === 'reserves')
                   || (topMode === 'hubs' && hubSubView === 'reserves')
                   || (topMode === 'companies' && companySubView === 'reserves'))) q.set('rm', 'life');
@@ -13496,32 +13497,46 @@ function drawCompaniesReserves() {
     [['volume', 'Volumes'], ['life', 'Reserve life']].map(([id, label]) =>
       `<button class="grp-btn${resMetric === id ? ' active' : ''}" onclick="resSetMetric('${id}')">${label}</button>`).join('') +
     `</div>`;
+  // Startår, som i felt- og hubvisningen (samme resFrom og lenkeparameter).
+  // Grafen viser bare gjenstående, så startåret kutter bare aksen. Valgene er
+  // årene der selskapet har reserver; et startår utenfor dem ignoreres.
+  // Reserveregnskapet under grafen viser fortsatt hele perioden.
+  const avail = years.filter(y => closing[y] > 0);
+  const base = resFrom && avail.includes(+resFrom) && +resFrom !== avail[0] ? +resFrom : null;
+  const inRange = y => !base || y >= base;
+  const fromSelect = avail.length > 1 ? `<div style="margin-bottom:10px"><select class="year-select" onchange="resSetFrom(this.value)" aria-label="Start year">
+    <option value=""${base ? '' : ' selected'}>From ${avail[0]} (all years)</option>${avail.slice(1).map(y =>
+      `<option value="${y}"${y === base ? ' selected' : ''}>From ${y}</option>`).join('')}</select></div>` : '';
+  const fromTxt = base ? `from ${base} · ` : '';
 
   if (resMetric === 'life') {
     // Reserveliv = egenandelsjusterte reserver 31.12 ÷ netto produksjon samme
     // år — samme R/P som i reserveregnskapet under grafen. År uten produksjon
     // utelates (companyNetProduction tar ikke med året som pågår).
-    const lifeYears = years.filter(y => netProd[y] > 0 && closing[y] > 0);
+    const lifeYears = years.filter(y => netProd[y] > 0 && closing[y] > 0 && inRange(y));
     if (!lifeYears.length) {
       setChartTitle(`${cmpTitle} · Reserve life`, 'Equity-adjusted');
       setChartEmpty('No years with both remaining reserves and net production.');
-      ncsToggleAbove(metricToggle);
+      ncsToggleAbove(metricToggle + fromSelect);
       setInfo('');
     } else {
-      setChartTitle(`${cmpTitle} · Reserve life`, `Equity-adjusted · years (remaining reserves ÷ net production that year)`);
+      setChartTitle(`${cmpTitle} · Reserve life`, `Equity-adjusted · ${fromTxt}years (remaining reserves ÷ net production that year)`);
       setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Reserve life = equity-adjusted remaining reserves at 31 Dec ÷ net production in the same year${companies.length > 1 ? ' (summed over the selected companies)' : ''} &nbsp;|&nbsp; <strong>Unit:</strong> years &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual estimates and monthly production ${lifeYears[0]}–${lifeYears[lifeYears.length-1]}; years without production and the current, incomplete year are left out`);
       renderChart(lifeYears.map(String),
         [{label:'Reserve life', data:lifeYears.map(y => +(closing[y] / netProd[y]).toFixed(1)),
           backgroundColor:REMAINING_COLOR, borderWidth:0, stack:'s'}],
         [{label:'Reserve life (years)', color:REMAINING_COLOR}], 'years',
         {xTitle:'Year', allTicks:true, dec:1, noFooter:true});
-      ncsToggleAbove(metricToggle);
+      ncsToggleAbove(metricToggle + fromSelect);
     }
   } else {
-    setChartTitle(`${cmpTitle} · Remaining reserves`, `Equity-adjusted · million boe`);
-    setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
-    renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
-    ncsToggleAbove(metricToggle);
+    const keep = years.map(inRange);
+    const cut = a => a.filter((_, i) => keep[i]);
+    const shownYears = cut(years);
+    setChartTitle(`${cmpTitle} · Remaining reserves`, `Equity-adjusted · ${fromTxt}million boe`);
+    setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${shownYears[0]}–${shownYears[shownYears.length-1]}, equity-adjusted at 31 Dec of each vintage`);
+    renderChart(cut(labels), datasets.map(d => ({...d, data: cut(d.data)})), legend, 'million boe', {xTitle:'Year', allTicks:true});
+    ncsToggleAbove(metricToggle + fromSelect);
   }
   // Rekkefølge under grafen: reserveregnskapet, så oppsummeringen for siste
   // årgang, så detaljlistene per felt og per funn.
