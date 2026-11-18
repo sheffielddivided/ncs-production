@@ -2813,7 +2813,8 @@ function stateToHash() {
   if (resFrom && ((topMode === 'fields' && fieldSubView === 'reserves')
                   || (topMode === 'hubs' && hubSubView === 'reserves'))) q.set('ry', resFrom);
   if (resMetric === 'life' && ((topMode === 'fields' && fieldSubView === 'reserves')
-                  || (topMode === 'hubs' && hubSubView === 'reserves'))) q.set('rm', 'life');
+                  || (topMode === 'hubs' && hubSubView === 'reserves')
+                  || (topMode === 'companies' && companySubView === 'reserves'))) q.set('rm', 'life');
   if (topMode === 'ncs') {
     const dflt = ncsDefaults();
     NCS_PARAMS.forEach(([k, p]) => { if (ncsF[k] !== dflt[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
@@ -13334,17 +13335,47 @@ function drawCompaniesReserves() {
   const legend = [{label:'Liquids',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR}];
 
   const cmpStr = companies.join(', ');
-  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Remaining reserves`, `Equity-adjusted · million boe`);
-  setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
-  renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
+  const cmpTitle = companies.length === 1 ? companies[0] : companies.length + ' companies';
   const lastYear = years[years.length - 1];
   const reservesOe = liquids[liquids.length - 1] + gas[gas.length - 1];
   const closing = Object.fromEntries(years.map((y, i) => [y, liquids[i] + gas[i]]));
+  const netProd = companyNetProduction(companies);
+  const metricToggle = `<div class="grp-row"><span class="grp-label">Show</span>` +
+    [['volume', 'Volumes'], ['life', 'Reserve life']].map(([id, label]) =>
+      `<button class="grp-btn${resMetric === id ? ' active' : ''}" onclick="resSetMetric('${id}')">${label}</button>`).join('') +
+    `</div>`;
+
+  if (resMetric === 'life') {
+    // Reserveliv = egenandelsjusterte reserver 31.12 ÷ netto produksjon samme
+    // år — samme R/P som i reserveregnskapet under grafen. År uten produksjon
+    // utelates (companyNetProduction tar ikke med året som pågår).
+    const lifeYears = years.filter(y => netProd[y] > 0 && closing[y] > 0);
+    if (!lifeYears.length) {
+      setChartTitle(`${cmpTitle} · Reserve life`, 'Equity-adjusted');
+      setChartEmpty('No years with both remaining reserves and net production.');
+      ncsToggleAbove(metricToggle);
+      setInfo('');
+    } else {
+      setChartTitle(`${cmpTitle} · Reserve life`, `Equity-adjusted · years (remaining reserves ÷ net production that year)`);
+      setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Reserve life = equity-adjusted remaining reserves at 31 Dec ÷ net production in the same year${companies.length > 1 ? ' (summed over the selected companies)' : ''} &nbsp;|&nbsp; <strong>Unit:</strong> years &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual estimates and monthly production ${lifeYears[0]}–${lifeYears[lifeYears.length-1]}; years without production and the current, incomplete year are left out`);
+      renderChart(lifeYears.map(String),
+        [{label:'Reserve life', data:lifeYears.map(y => +(closing[y] / netProd[y]).toFixed(1)),
+          backgroundColor:REMAINING_COLOR, borderWidth:0, stack:'s'}],
+        [{label:'Reserve life (years)', color:REMAINING_COLOR}], 'years',
+        {xTitle:'Year', allTicks:true, dec:1, noFooter:true});
+      ncsToggleAbove(metricToggle);
+    }
+  } else {
+    setChartTitle(`${cmpTitle} · Remaining reserves`, `Equity-adjusted · million boe`);
+    setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Liquids (oil, NGL, condensate), Gas &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Remaining reserves, Sodir annual estimates ${years[0]}–${years[years.length-1]}, equity-adjusted at 31 Dec of each vintage`);
+    renderChart(labels, datasets, legend, 'million boe', {xTitle:'Year', allTicks:true});
+    ncsToggleAbove(metricToggle);
+  }
   // Rekkefølge under grafen: reserveregnskapet, så oppsummeringen for siste
   // årgang, så detaljlistene per felt og per funn.
   const disc = companyDiscoveryTable(companies, reservesOe, {noSum: true});
   setChartTable(
-      reserveAccountingHtml(closing, companyNetProduction(companies))
+      reserveAccountingHtml(closing, netProd)
     + `<h3 class="tbl-sec">Reserves and resources, ${lastYear}<small>Equity-adjusted remaining reserves (Sodir estimate per 31 Dec ${lastYear}) and contingent resources in undeveloped discoveries (current estimate)</small></h3>`
     + companyResSummary(companies, reservesOe)
     + `<h3 class="tbl-sec">Remaining reserves per field, ${lastYear}</h3>`
