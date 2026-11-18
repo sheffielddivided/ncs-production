@@ -3585,6 +3585,7 @@ const DCS_TABS = [
   {id: 'reserves',   label: 'Reserves'},
   {id: 'drilling',   label: 'Drilling'},
   {id: 'map',        label: 'Map'},
+  {id: 'valuation',  label: 'Valuation BETA'},
 ];
 let dcsSubView = 'production';
 // prod: 'product' | 'field' · field: ett felt (slug) i Oil & Gas, '' = alle · cmp: ett selskap i Companies
@@ -3783,12 +3784,14 @@ async function refreshDcs() {
 function drawDcs() {
   if (!dcsReady()) return;
   setProfile(''); setChartTable('');
+  dcsValCharts.forEach(c => c.destroy()); dcsValCharts = [];
   const v = dcsSubView;
   if (v === 'fields') drawDcsFields();
   else if (v === 'companies') drawDcsCompanies();
   else if (v === 'reserves') drawDcsReserves();
   else if (v === 'drilling') drawDcsDrilling();
   else if (v === 'map') drawDcsMap();
+  else if (v === 'valuation') betaGate(drawDcsValuation);
   else drawDcsProduction();
 }
 
@@ -4129,6 +4132,214 @@ function drawDcsReserves() {
         <tr class="hub-row"><td>Sum of fields</td>${years.map(y => `<td>${fmt(sumY(y))}</td>`).join('')}</tr>
         <tr><td>Reported total (ENS)</td>${years.map(y => `<td>${fmt(repY(y))}</td>`).join('')}</tr></tbody>
     </table>`);
+}
+
+// ── DCS: VALUATION BETA ──
+// Enda grovere enn den norske verdsettelsen (COMPANIES: VALUATION BETA), fordi
+// ENS ikke oppgir investeringer per felt:
+// · reserver: ENS' gjenstående reserver per 1. januar (olje + gass) i siste
+//   årgang, minus produksjonen fra årgangen til i fjor hvis årgangen er eldre
+// · produksjon: fra fjorårets produksjon P faller hvert felt etter samme
+//   formel som hubmodellen (cfDecline) til reservene er produsert; felt med
+//   reserver men ingen produksjon i fjor får profilen for nye felt (cfNewField)
+//   fra neste år. Tyra Sydøst produserer for seg, men ENS fører reservene under
+//   Tyra, så produksjonen deres legges sammen
+// · inntekter: scenarioprisen for alle fat o.e., som i hubmodellen
+// · driftskostnad: DCS_OPEX_USD per fat o.e. (OPEX_BASE-dollar), inflatert
+// · ingen capex og ingen fjerningskostnad
+// · skatt: DCS_TAX flatt på alt
+// · eierskap: dagens andeler (dcsShare); historikken i produksjonsgrafen bruker
+//   eierhistorikken der den finnes
+// NPV per 1.1. i år med midtårskonvensjon, samme priser, inflasjon, horisont
+// og rater som den norske modellen.
+const DCS_OPEX_USD = 30, DCS_TAX = 0.64;
+const DCS_MERGE = {tyra_se: 'tyra'};   // produksjonen regnes med feltet ENS fører reservene under
+let dcsValCharts = [];
+
+function dcsValFields() {
+  const P = dcsData.production.yearly, y0 = currentYear, ry = dcsResYear();
+  const prodIn = (slug, y) => { const r = (P[slug] || []).find(x => +x[0] === y); return r ? ((r[1] || 0) + (r[2] || 0)) * 1e6 * BBL_PER_SM3 : 0; };
+  const merged = slug => [slug].concat(Object.keys(DCS_MERGE).filter(k => DCS_MERGE[k] === slug));
+  return dcsData.fields.filter(f => !DCS_MERGE[f.slug]).map(f => {
+    const r = (dcsData.reserves.fields[f.slug] || []).find(x => x[0] === ry) || [ry, 0, 0];
+    const oil = (r[1] || 0) * 1e6 * BBL_PER_SM3, gas = (r[2] || 0) * 1e6 * BBL_PER_SM3;
+    let R = oil + gas;
+    for (let y = ry; y < y0; y++) R -= merged(f.slug).reduce((t, s) => t + prodIn(s, y), 0);
+    R = Math.max(0, R);
+    const last = merged(f.slug).reduce((t, s) => t + prodIn(s, y0 - 1), 0);
+    const rows = R <= 0 ? [] : last > 0 ? cfDecline(last, R, y0) : cfNewField(R, y0 + 1);
+    const hist = {};
+    for (let y = y0 - 12; y < y0; y++) hist[y] = merged(f.slug).reduce((t, s) => t + prodIn(s, y), 0);
+    return {slug: f.slug, name: f.name, R, liqShare: oil + gas > 0 ? oil / (oil + gas) : 1, last, rows, hist,
+            members: merged(f.slug), zeroRounded: R <= 0 && last > 0};
+  });
+}
+
+function dcsValCompute(cmp, price, fields) {
+  const y0 = currentYear, per = {}, list = [];
+  const get = y => per[y] = per[y] || {liq: 0, gas: 0, opex: 0};
+  fields.forEach(f => {
+    const s = dcsShare(f.slug, cmp);
+    if (!s) return;
+    const net = {};
+    f.rows.forEach(([y, q]) => {
+      const k = cfInfl(y), rev = q * price * k / 1e9 * s, opex = q * DCS_OPEX_USD * k / 1e9 * s, r = get(y);
+      r.liq += rev * f.liqShare; r.gas += rev * (1 - f.liqShare); r.opex -= opex;
+      net[y] = (net[y] || 0) + rev - opex;
+    });
+    const npv = CF_RATES.map(rate => Object.entries(net).reduce((t, [y, v]) => t + v / Math.pow(1 + rate, +y - y0 + 0.5), 0));
+    list.push({...f, share: s, reserves: f.R * s, prod: f.last * s, end: f.rows.length ? f.rows[f.rows.length - 1][0] : null, npv});
+  });
+  list.sort((a, b) => b.npv[0] - a.npv[0] || b.prod - a.prod);
+  const ys = Object.keys(per).map(Number), rows = [];
+  let acc = 0;
+  if (ys.length) for (let y = Math.min(...ys); y <= Math.max(...ys); y++) {
+    const r = per[y] || {liq: 0, gas: 0, opex: 0}, n = r.liq + r.gas + r.opex;
+    acc += n; rows.push({y, ...r, net: n, acc});
+  }
+  return {list, rows, npv: CF_RATES.map((_, k) => list.reduce((t, f) => t + f.npv[k], 0)),
+          reserves: list.reduce((t, f) => t + f.reserves, 0), prod: list.reduce((t, f) => t + f.prod, 0)};
+}
+
+function drawDcsValuation() {
+  dcsValCharts.forEach(c => c.destroy()); dcsValCharts = [];
+  setChartNone();
+  const fields = dcsValFields(), y0 = currentYear, ry = dcsResYear(), tax = 1 - DCS_TAX;
+  const cmps = dcsCompanies();
+  // Uten valgt selskap: det med høyest verdi.
+  const byVal = cmps.map(c => ({c, v: dcsValCompute(c, hubCfPrice, fields).npv[0]})).sort((a, b) => b.v - a.v);
+  const cmp = cmps.includes(dcsF.cmp) ? dcsF.cmp : (byVal[0] || {}).c;
+  if (!cmp) { setChartEmpty('No Danish ownership data available.'); setInfo(''); return; }
+  const all = CF_PRICES.map(p => ({p, v: dcsValCompute(cmp, p, fields)}));
+  const v = (all.find(a => a.p === hubCfPrice) || all[0]).v;
+  const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const pct = r => `${Math.round(r * 100)} %`;
+  const perBoe = (x, boe) => boe > 1e5 ? n2(x * 1e9 / boe) : '—';
+  const fact = (k, val, sub = '') => `<div class="pf-fact"><span>${k}</span><strong>${val}</strong>${sub ? `<small class="val-sub">${sub}</small>` : ''}</div>`;
+  const boed = x => Math.round(x / daysInYear(y0 - 1)).toLocaleString('en');
+  setChartTitle(`${cmp} · Valuation (beta), Denmark`, `Indicative after-tax value of the Danish portfolio · oil price USD ${hubCfPrice} · as at 1 January ${y0}`);
+  setInfo(`<strong>Method:</strong> ${esc(cmp)}'s share today of each Danish field's forecast, ENS reserves per 1 January ${ry} declining from ${y0 - 1} production, USD ${DCS_OPEX_USD}/boe operating cost, ${pct(DCS_TAX)} tax, no capex &nbsp;|&nbsp; <strong>Sources:</strong> Danish Energy Agency (ENS) production, reserves and licences &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
+  ncsToggleAbove(dcsBar(`<span class="ctrl-label">Company</span><select class="year-select" onchange="dcsSet('cmp', this.value)" aria-label="Company">${
+    byVal.map(({c}) => `<option value="${esc(c)}"${c === cmp ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`));
+
+  const zero = v.list.filter(f => f.zeroRounded);
+  const warn = `<div class="pf-card pf-wide val-warn" role="note">
+      <strong>Beta · indicative only, and rougher than the Norwegian valuation.</strong> The Danish data have no investment figures per field,
+      so there is no capex and no abandonment cost in the model: every field simply declines from last year's production at a flat
+      USD ${DCS_OPEX_USD} per boe operating cost and ${pct(DCS_TAX)} tax. It does not reflect company-specific costs, contracts, tariffs, tax positions,
+      hedging, new developments or reserve assessments, and it must not be used for investment or other decisions.</div>`;
+  const head = `<div class="pf-card pf-wide">
+      <div class="val-head">
+        <div><h3>Indicative value, after tax</h3>
+          <div class="pill-group" style="width:max-content">${CF_PRICES.map(p =>
+            `<button class="pill-btn${p === hubCfPrice ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div></div>
+        <div class="val-big"><span>NPV at ${pct(CF_RATES[0])}</span><strong>USD ${n1(v.npv[0] * tax)} bn</strong>
+          <small>at ${pct(CF_RATES[1])}: USD ${n1(v.npv[1] * tax)} bn</small></div>
+      </div>
+      <div class="pf-facts" style="margin-top:12px">
+        ${fact(`Value per boe, ${pct(CF_RATES[0])}`, `${perBoe(v.npv[0] * tax, v.reserves)} USD/boe`, 'after tax, per boe of net reserves')}
+        ${fact(`Net reserves, 1 January ${ry}`, `${n1(v.reserves / 1e6)} million boe`, (n => `${n} ${n === 1 ? 'field' : 'fields'} with reserves`)(v.list.filter(f => f.reserves > 0).length))}
+        ${fact(`Net production ${y0 - 1}`, `${boed(v.prod)} boe/d`, v.prod > 0 ? `reserve life ${n1(v.reserves / v.prod)} years` : '')}
+        ${fact('Fields with a share', v.list.length, zero.length ? `${zero.length} producing with reserves rounded to 0 by ENS` : '')}
+      </div></div>`;
+
+  const SER = [['liq', 'Revenue, liquids', OIL_COLOR], ['gas', 'Revenue, gas', GAS_COLOR], ['opex', 'Operating cost', CF_OPEX]];
+  const cfCard = `<div class="pf-card pf-wide" data-ppt-spec="dcsValCf"><h3>Equity cash flow forecast, pre-tax</h3>
+      <div class="chart-container" style="height:320px"><canvas id="dcsValCf"></canvas></div>
+      <div class="legend-row">${SER.map(([, l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
+        <div class="legend-item"><div class="legend-dot" style="background:${CF_LINE}"></div>Cumulative (right axis)</div></div>
+      <div class="pf-map-note">${esc(cmp)}'s share of each field's revenue and operating cost, nominal USD bn, from ${y0} with today's shares.
+        No capex or abandonment. The cumulative line is undiscounted.</div></div>`;
+  const prodCard = `<div class="pf-card pf-wide" data-ppt-spec="dcsValProd"><h3>Net production, history and forecast</h3>
+      <div class="chart-container" style="height:300px"><canvas id="dcsValProd"></canvas></div><div class="legend-row" id="dcsValProdLeg"></div>
+      <div class="pf-map-note">${esc(cmp)}'s share of production, boe/day. History ${y0 - 12}–${y0 - 1} with the share in each year from the
+        ownership history where it is known (otherwise today's share); lighter bars from ${y0}: the forecast with today's shares.</div></div>`;
+
+  const sens = `<table class="res-table"><caption>NPV after tax, USD bn</caption>
+      <thead><tr><th>Oil price</th>${CF_RATES.map(r => `<th>${pct(r)}</th>`).join('')}</tr></thead>
+      <tbody>${all.map(a => `<tr${a.p === hubCfPrice ? ' class="total-row"' : ''}><td>USD ${a.p}</td>${CF_RATES.map((r, k) =>
+        `<td>${n1(a.v.npv[k] * tax)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    <table class="res-table" style="margin-top:12px"><caption>Value bridge at USD ${hubCfPrice}, ${pct(CF_RATES[0])}</caption>
+      <tbody><tr><td>NPV pre-tax</td><td>${n1(v.npv[0])}</td></tr><tr><td>Tax (${pct(DCS_TAX)})</td><td>${n1(-v.npv[0] * DCS_TAX)}</td></tr></tbody>
+      <tfoot><tr class="total-row"><td>NPV after tax, USD bn</td><td>${n1(v.npv[0] * tax)}</td></tr></tfoot></table>`;
+  const fieldTable = `<table class="res-table"><caption>${esc(cmp)}'s share · oil price USD ${hubCfPrice} · after tax</caption>
+      <thead><tr><th>Field</th><th>Share</th><th>Net reserves, mill boe</th><th>Net prod. ${y0 - 1}, boe/d</th><th>Production to</th>
+        ${CF_RATES.map(r => `<th>NPV ${pct(r)}, USD bn</th>`).join('')}<th>USD/boe, ${pct(CF_RATES[0])}</th></tr></thead>
+      <tbody>${v.list.map(f => `<tr><td>${rowLink(f.name, `dcsOpenSheet(${esc(jsStr(f.slug))})`, `Open the factsheet for ${f.name}`)}${
+          f.members.length > 1 ? ` <small style="color:var(--muted)">incl. ${f.members.slice(1).map(dcsName).map(esc).join(', ')}</small>` : ''}${
+          f.zeroRounded ? ' <small style="color:var(--muted)" title="ENS rounds each field to whole million m³ oil / bn Nm³ gas">reserves rounded to 0</small>' : ''}</td>
+        <td>${(f.share * 100).toFixed(1)} %</td><td>${n1(f.reserves / 1e6)}</td><td>${f.prod ? boed(f.prod) : '—'}</td><td>${f.end || '—'}</td>
+        ${f.npv.map(x => `<td>${n2(x * tax)}</td>`).join('')}<td>${perBoe(f.npv[0] * tax, f.reserves)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td></td><td>${n1(v.reserves / 1e6)}</td><td>${boed(v.prod)}</td><td></td>
+        ${v.npv.map(x => `<td>${n2(x * tax)}</td>`).join('')}<td>${perBoe(v.npv[0] * tax, v.reserves)}</td></tr></tfoot></table>`;
+  const A = [
+    ['Reserves', `ENS remaining reserves per 1 January ${ry}`, 'Fields in production and approved developments; ENS rounds each field to whole million m³ oil / bn Nm³ gas, so small fields count as zero'],
+    ['Production', `Decline from ${y0 - 1} production`, `Per field, ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year until the reserves R are produced; a field with reserves but no production last year starts next year with ramp-up and plateau. Tyra Southeast is counted with Tyra`],
+    ['Oil price', `USD ${CF_PRICES.join(' / ')} per boe in ${OPEX_BASE} money`, 'All boe, including gas, at the oil price; escalated with inflation'],
+    ['Inflation', `${(CF_INFL * 100).toFixed(1)} % a year`, 'On prices and operating cost'],
+    ['Operating cost', `USD ${DCS_OPEX_USD} per boe in ${OPEX_BASE} money`, 'Flat for all fields'],
+    ['Capex and abandonment', 'Not included', 'ENS has no investment figures per field'],
+    ['Tax', `${pct(DCS_TAX)} flat`, 'On all cash flows'],
+    ['Discounting', CF_RATES.map(pct).join(' and '), `Mid-year, as at 1 January ${y0}`],
+    ['Horizon', `${CF_HORIZON} years`, ''],
+    ['Ownership', 'Today\'s licence shares (ENS)', 'Forecast only; the production history uses the ownership history'],
+  ];
+  // Samme oppsett som antakelsestabellen i den norske verdsettelsen (val-ass).
+  const assumptions = `<div class="pf-card pf-wide"><h3>Assumptions</h3><div class="pf-scroll"><table class="res-table val-ass">
+      <thead><tr><th>Item</th><th>Assumption</th><th>Comment</th></tr></thead>
+      <tbody>${A.map(([k, a, b]) => `<tr><td>${k}</td><td>${a}</td><td>${b}</td></tr>`).join('')}</tbody></table></div>
+    <div class="pf-map-note">Not included: capex, abandonment, tariffs and transport costs, company-specific costs and tax positions, hedging,
+      new developments not in ENS' reserves, exploration, and acquisitions or divestments after today.</div></div>`;
+  setProfile(warn + head + cfCard + `<div class="pf-row2"><div class="pf-card"><h3>Sensitivity and value bridge</h3>${sens}</div>
+      <div class="pf-card"><h3>Value by field, after tax, ${pct(CF_RATES[0])} · USD bn</h3>${v.list.filter(f => Math.abs(f.npv[0]) > 1e-4).map(f => {
+        const x = f.npv[0] * tax, mx = Math.max(...v.list.map(g => Math.abs(g.npv[0] * tax)), 1e-9);
+        return `<div class="lc-row" style="cursor:default"><div class="lc-name">${esc(f.name)}</div>
+          <div class="lc-track" style="width:${(Math.abs(x) / mx * 62).toFixed(1)}%"><span style="flex:1;background:${OIL_COLOR}"></span></div><div class="lc-val">${n2(x)}</div></div>`;
+      }).join('') || '<div class="pf-map-note">No field with value.</div>'}</div></div>`
+    + `<div class="pf-card pf-wide"><h3>Fields</h3><div class="pf-scroll">${fieldTable}</div></div>` + prodCard + assumptions);
+
+  // Kontantstrøm.
+  const labels = v.rows.map(r => String(r.y));
+  const cf = new Chart(document.getElementById('dcsValCf').getContext('2d'), {
+    data: {labels, datasets: SER.map(([k, l, c]) => ({type: 'bar', label: l, data: v.rows.map(r => +r[k].toFixed(3)), backgroundColor: c, borderWidth: 0, stack: 's', yAxisID: 'y', order: 1}))
+      .concat([{type: 'line', label: 'Cumulative', data: v.rows.map(r => +r.acc.toFixed(3)), borderColor: CF_LINE, backgroundColor: CF_LINE, borderWidth: 2, pointRadius: 0, yAxisID: 'y1', order: 0}])},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${c.dataset.label}: USD ${n2(c.parsed.y)} bn`}}},
+      scales: {x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {display: false}},
+               y: {stacked: true, title: {display: true, text: 'USD bn per year', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}},
+               y1: {position: 'right', title: {display: true, text: 'cumulative, USD bn', color: CF_LINE, font: {size: 10}}, ticks: {font: {size: 9}}, grid: {display: false}}}}});
+  dcsValCharts.push(cf);
+  pptCardSpecs.dcsValCf = {...pptSpecFromChart(cf), subtitle: `${cmp} · equity cash flow forecast, pre-tax, USD bn · oil price USD ${hubCfPrice}`};
+
+  // Produksjon: historikk (eierandel det året) + prognose, per felt.
+  const hy = [...Array(12)].map((_, i) => y0 - 12 + i), fy = [...new Set(v.list.flatMap(f => f.rows.map(r => r[0])))].sort((a, b) => a - b);
+  const pyrs = hy.concat(fy.filter(y => y >= y0));
+  const histShare = (f, y) => {
+    if (!dcsHasHistory()) return f.share;
+    const sp = dcsHistSplit(f.slug, String(y));
+    return sp.unknown >= 0.999 ? f.share : (sp.groups[cmp] || 0);
+  };
+  const shown = v.list.filter(f => f.prod > 0 || f.reserves > 0 || hy.some(y => f.hist[y] > 0 && histShare(f, y) > 0));
+  const pds = shown.map((f, i) => {
+    const c = dcsColor(i), fc = Object.fromEntries(f.rows);
+    return {label: f.name, stack: 's', borderWidth: 0,
+      data: pyrs.map(y => Math.round((y < y0 ? (f.hist[y] || 0) * histShare(f, y) : (fc[y] || 0) * f.share) / daysInYear(y))),
+      backgroundColor: pyrs.map(y => (y < y0 ? c : dcsLighter(c)))};
+  });
+  const pc = new Chart(document.getElementById('dcsValProd').getContext('2d'), {type: 'bar', data: {labels: pyrs.map(String), datasets: pds},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {filter: c => c.parsed.y > 0, callbacks: {label: c => ` ${c.dataset.label}: ${c.parsed.y.toLocaleString('en')} boe/d`}}},
+      scales: {x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {display: false}},
+               y: {stacked: true, beginAtZero: true, title: {display: true, text: 'boe/day, net', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+  dcsValCharts.push(pc);
+  document.getElementById('dcsValProdLeg').innerHTML = shown.map((f, i) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${dcsColor(i)}"></div>${esc(f.name)}</div>`).join('');
+  pptCardSpecs.dcsValProd = {...pptSpecFromChart(pc), subtitle: `${cmp} · net production, boe/day, history and forecast`};
+  lastLabels = labels; lastXTitle = 'Year';
+  lastDatasets = SER.map(([k, l]) => ({label: `${l}, USD bn`, data: v.rows.map(r => +r[k].toFixed(3))}))
+    .concat([{label: 'Net cash flow, USD bn', data: v.rows.map(r => +r.net.toFixed(3))}]);
+  document.getElementById('downloadBtn').disabled = false;
 }
 
 // ── DCS: DRILLING ──
