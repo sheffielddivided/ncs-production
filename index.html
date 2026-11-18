@@ -9512,7 +9512,7 @@ function drawCompaniesOperated() {
     [{label: 'Operated', color: OP_C}, {label: 'Partner', color: PART_C}], 'boe/day');
   const sum = a => a.reduce((t, v) => t + v, 0), totOp = sum(dOp), tot = totOp + sum(dPart);
   const last = labels[labels.length - 1];
-  setChartTitle(`${cmp} · Operated`, `Net production, operated vs partner · equity-adjusted · boe/day`);
+  setChartTitle(`${cmp} · Production, operated vs partner`, `Net production · equity-adjusted · boe/day`);
   setInfo(`<strong>Company:</strong> ${esc(cmp)} &nbsp;|&nbsp; <strong>Operated</strong> = the company's share of production from fields it operated at the time; <strong>Partner</strong> = its share in fields operated by others &nbsp;|&nbsp; <strong>Operated share in the period:</strong> ${tot ? (totOp / tot * 100).toFixed(0) : '—'} % &nbsp;|&nbsp; <strong>Basis:</strong> equity-adjusted net OE; operator from Sodir's operator history`);
   // Tabell: de siste (inntil) fem periodene grafen viser, gruppert på rolle.
   const periods = lastLabels.slice(-5);
@@ -12846,7 +12846,7 @@ function drawCompaniesOilGas() {
     datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
     datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
-    setChartTitle(`${cmp}`, `Oil & Gas production · equity-adjusted · boe/day`);
+    setChartTitle(`${cmp} · Production, oil & gas`, `Equity-adjusted · boe/day`);
     setInfo(`<strong>Company:</strong> ${cmp} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   } else {
     const oilD = labels.map(lbl => {
@@ -12880,7 +12880,7 @@ function drawCompaniesOilGas() {
     datasets.push({label:'Oil',data:oilD,backgroundColor:OIL_COLOR,borderWidth:0,stack:'s'});
     datasets.push({label:'Gas',data:gasD,backgroundColor:GAS_COLOR,borderWidth:0,stack:'s'});
     legend.push({label:'Oil',color:OIL_COLOR},{label:'Gas',color:GAS_COLOR});
-    setChartTitle(`${companies.length} companies · Oil & Gas production`, `${companies.join(', ')} · boe/day`);
+    setChartTitle(`${companies.length} companies · Production, oil & gas`, `${companies.join(', ')} · boe/day`);
     setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   }
   renderChart(labels, datasets, legend, 'boe/day');
@@ -13001,7 +13001,7 @@ function drawCompaniesOePerField() {
   });
 
   const cmpStr = companies.join(', ');
-  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Prod per field`, `Equity-adjusted · boe/day`);
+  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Production per field`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
 }
@@ -13043,7 +13043,7 @@ function drawCompaniesOePerHub() {
   });
 
   const cmpStr = companies.join(', ');
-  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Prod per hub`, `Equity-adjusted · boe/day`);
+  setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Production per hub`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per hub &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
   renderChart(labels, datasets, legend, 'boe/day');
   // lastLabels er trimmet av renderChart, så tabellen viser nøyaktig de
