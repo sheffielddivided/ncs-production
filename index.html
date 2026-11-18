@@ -554,6 +554,12 @@
     .val-big strong{display:block;font-size:1.7rem;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1.15;}
     .val-big small{font-size:0.72rem;color:var(--muted);}
     .val-sub{display:block;font-size:0.66rem;color:var(--muted);margin-top:1px;}
+    /* TradingViews selskapsprofil i Valuation BETA; to eiere side om side på brede skjermer. */
+    .val-tvp{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;}
+    .val-tvp tv-company-profile{display:block;width:100%;min-height:200px;}
+    /* Financials-widgeten trenger fast høyde (den setter beholderen til 100 %) og ruller selv. */
+    .val-fin{height:760px;margin-bottom:6px;}
+    @media (max-width: 700px){ .val-fin{height:600px;} }   /* «compact» på smale skjermer: kort som rulles sidelengs */
     .val-ass td, .val-ass th{text-align:left !important;white-space:normal !important;vertical-align:top;}
     .val-ass td:first-child{font-weight:600;white-space:nowrap !important;}
     .val-ass td:nth-child(3){color:#44505f;}
@@ -9269,51 +9275,101 @@ function valWarnCard(discoveries) {
 }
 
 // ── Aksjekurs i Valuation BETA ──
-// TradingView-widgeten «Symbol Overview», med samme oppsett som brukerens egen
-// widget (tradingview.com), men bare med selskapets børsnoterte eier (to faner
-// for INPEX Idemitsu, som eies av to børsnoterte selskaper). Nøkkel er Sodirs selskapsgruppe (companies.json
-// «group»), så både dagens og eventuelle eldre selskapsnavn i gruppen treffer.
-// Symbolene er kontrollert mot TradingViews symbolsøk. Selskaper uten
-// børsnotert eier (Petoro, private selskaper) får ingen graf.
+// TradingView-widgetene «Symbol Overview» (kurs, samme oppsett som brukerens
+// egen widget) og «Company Profile», for selskapets børsnoterte eier (to for
+// INPEX Idemitsu, som eies av to børsnoterte selskaper). Nøkkel er Sodirs
+// selskapsgruppe (companies.json «group»), så både dagens og eventuelle eldre
+// selskapsnavn i gruppen treffer. Selskaper uten børsnotert eier (Petoro,
+// private selskaper) får ingen graf.
+//
+// TradingView tillater ikke børsene i London, Singapore og Tokyo i innebygde
+// widgeter («This symbol is only available on TradingView»; testet 18.11.2026
+// for alle symbolene her). For selskaper som bare er notert der, brukes den
+// amerikanske noteringen (NYSE eller OTC, ADR i USD) i widgetene. Der den
+// handles så sjelden at kursgrafen blir misvisende (Kistos, Rex, JAPEX), vises
+// ingen kursgraf, bare profilen og en lenke til hovednoteringen.
+// {n: navn, main: hovednotering, w: symbol i widgetene (standard main),
+//  chart: false = ingen kursgraf}
 const VAL_TICKERS = {
-  'AKER BP': [['Aker BP', 'OSL:AKRBP']],
-  'EQUINOR ENERGY': [['Equinor', 'OSL:EQNR']],
-  'VÅR': [['Vår Energi', 'OSL:VAR']],
-  'DNO NORGE': [['DNO', 'OSL:DNO']],
-  'OKEA': [['OKEA', 'OSL:OKEA']],
-  'SHELL': [['Shell', 'LSE:SHEL']],
-  'CONPHIL SKANDINAVIA': [['ConocoPhillips', 'NYSE:COP']],
-  'HARBOUR': [['Harbour Energy', 'LSE:HBR']],
+  'AKER BP': [{n: 'Aker BP', main: 'OSL:AKRBP'}],
+  'EQUINOR ENERGY': [{n: 'Equinor', main: 'OSL:EQNR'}],
+  'VÅR': [{n: 'Vår Energi', main: 'OSL:VAR'}],
+  'DNO NORGE': [{n: 'DNO', main: 'OSL:DNO'}],
+  'OKEA': [{n: 'OKEA', main: 'OSL:OKEA'}],
+  'SHELL': [{n: 'Shell', main: 'LSE:SHEL', w: 'NYSE:SHEL'}],
+  'CONPHIL SKANDINAVIA': [{n: 'ConocoPhillips', main: 'NYSE:COP'}],
+  'HARBOUR': [{n: 'Harbour Energy', main: 'LSE:HBR', w: 'OTC:HBRIY'}],
   // INPEX Idemitsu Norge eies av INPEX (flertall) og Idemitsu Kosan.
-  'INPEX': [['INPEX', 'TSE:1605'], ['Idemitsu Kosan', 'TSE:5019']],
-  'JAPEX': [['JAPEX', 'TSE:1662']],
-  'KISTOS': [['Kistos Holdings', 'LSE:KIST']],
-  'LIME': [['Rex International', 'SGX:5WH']],
-  'OMV': [['OMV', 'VIE:OMV']],
-  'ORLEN': [['ORLEN', 'GPW:PKN']],
-  'PETROLIA': [['Petrolia SE', 'OSL:PSE']],
-  'REPSOL': [['Repsol', 'BME:REP']],
-  'TOTAL': [['TotalEnergies', 'EURONEXT:TTE']],
+  'INPEX': [{n: 'INPEX', main: 'TSE:1605', w: 'OTC:IPXHY'}, {n: 'Idemitsu Kosan', main: 'TSE:5019', w: 'OTC:IDKOY'}],
+  'JAPEX': [{n: 'JAPEX', main: 'TSE:1662', w: 'OTC:JPTXF', chart: false}],
+  'KISTOS': [{n: 'Kistos Holdings', main: 'LSE:KIST', w: 'OTC:KSTOF', chart: false}],
+  'LIME': [{n: 'Rex International', main: 'SGX:5WH', w: 'OTC:REXHF', chart: false}],
+  'OMV': [{n: 'OMV', main: 'VIE:OMV'}],
+  'ORLEN': [{n: 'ORLEN', main: 'GPW:PKN'}],
+  'PETROLIA': [{n: 'Petrolia SE', main: 'OSL:PSE'}],
+  'REPSOL': [{n: 'Repsol', main: 'BME:REP'}],
+  'TOTAL': [{n: 'TotalEnergies', main: 'EURONEXT:TTE'}],
 };
-const valTickers = cmp => VAL_TICKERS[(companyRow(cmp) || {}).group] || null;
+const valTickers = cmp => (VAL_TICKERS[(companyRow(cmp) || {}).group] || null);
+const valW = t => t.w || t.main;
+const valTvUrl = sym => `https://www.tradingview.com/symbols/${sym.replace(':', '-')}/`;
+const valTvLink = (sym, label) => `<a href="${esc(valTvUrl(sym))}" rel="noopener nofollow" target="_blank">${esc(label || sym)}</a>`;
 
 function valShareCard(cmp) {
   const own = valTickers(cmp);
   if (!own) return `<div class="pf-card pf-wide"><h3>Share price</h3>
       <div class="pf-map-note" style="margin-top:0">${esc(cmp)} has no listed parent company${(companyRow(cmp) || {}).group === 'PETORO' ? ' (Petoro manages the state\'s direct financial interest, SDFI)' : ''}, so there is no share price to show.
         The Oslo-listed NCS companies are on the valuation pages for Aker BP, Equinor, Vår Energi, DNO and OKEA.</div></div>`;
-  const parent = own.map(([n, s]) => `${esc(n)} (${esc(s)})`).join(' and ');
-  return `<div class="pf-card pf-wide"><h3>Share price</h3>
-      <div style="height:440px"><div class="tradingview-widget-container" id="valTv" style="height:100%"><div class="tradingview-widget-container__widget" style="height:100%"></div></div></div>
-      <div class="pf-map-note"><strong>Listed ${own.length > 1 ? 'owners' : 'company'}:</strong> ${parent}. The share price${own.length > 1 ? 's are' : ' is'} for the listed
-        ${own.length > 1 ? 'companies' : 'company'} as a whole, not only ${own.length > 1 ? 'their' : 'its'} Norwegian business.
-        Chart and prices by <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">TradingView</a>; prices may be delayed.</div></div>`;
+  const many = own.length > 1;
+  // «Aker BP (OSL:AKRBP)», eller «Shell (LSE:SHEL; shown: NYSE:SHEL, US listing in USD)».
+  const listed = own.map(t => `${esc(t.n)} (${valTvLink(t.main)}${t.w && t.w !== t.main
+    ? `; ${t.chart === false ? 'profile from' : 'shown:'} ${esc(t.w)}, ${t.w.startsWith('NYSE') ? 'its NYSE listing' : 'its US OTC listing'} in USD` : ''})`).join(' and ');
+  const charted = own.filter(t => t.chart !== false);
+  const noChart = own.filter(t => t.chart === false);
+  const why = 'TradingView does not allow the London, Singapore and Tokyo exchanges in embedded charts';
+  const chartHtml = charted.length
+    ? `<div style="height:440px"><div class="tradingview-widget-container" id="valTv" style="height:100%"><div class="tradingview-widget-container__widget" style="height:100%"></div></div></div>`
+    : `<div class="pf-map-note" style="margin-top:0">No price chart: ${why}, and the US listing${noChart.length > 1 ? 's trade' : ' trades'} too rarely for a meaningful chart.
+        See ${noChart.map(t => valTvLink(t.main, `${t.main} on TradingView`)).join(' and ')}.</div>`;
+  const usNote = own.some(t => t.w && t.w !== t.main && t.chart !== false)
+    ? ` ${why}, so the US listing (ADR) is shown instead; its price is in USD and follows the main listing.` : '';
+  return `<div class="pf-card pf-wide"><h3>Share price</h3>${chartHtml}
+      <div class="pf-map-note"><strong>Listed ${many ? 'owners' : 'company'}:</strong> ${listed}. The share price${many ? 's are' : ' is'} for the listed
+        ${many ? 'companies' : 'company'} as a whole, not only ${many ? 'their' : 'its'} Norwegian business.${usNote}
+        Chart and prices by <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">TradingView</a>; prices may be delayed.</div></div>
+    <div class="pf-card pf-wide"><h3>About the listed ${many ? 'owners' : 'company'}</h3>
+      <div class="val-tvp">${own.map(t => `<tv-company-profile symbol="${esc(valW(t))}"></tv-company-profile>`).join('')}</div>
+      <div class="pf-map-note">Company profile${many ? 's' : ''} by
+        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>; ${many ? 'they describe the listed companies' : 'it describes the listed company'} as a whole.</div></div>
+    <div class="pf-card pf-wide"><h3>Key financials of the listed ${many ? 'owners' : 'company'}</h3>
+      ${own.map(t => `${many ? `<div class="pf-map-note" style="margin:6px 0 2px"><strong>${esc(t.n)}</strong></div>` : ''}
+        <div class="val-fin"><div class="tradingview-widget-container" data-sym="${esc(valW(t))}" style="height:100%"><div class="tradingview-widget-container__widget" style="height:100%"></div></div></div>`).join('')}
+      <div class="pf-map-note">Fundamentals for ${own.map(t => valTvLink(valW(t))).join(' and ')} by
+        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>: the listed ${many ? 'companies' : 'company'} as a whole, from the latest reports${
+        own.some(t => t.w && t.w !== t.main) ? '; for a US listing (ADR) the amounts are in USD' : ''}. These are not the figures behind the indicative valuation above.</div></div>`;
 }
 
 function valMountShares(cmp) {
   const own = valTickers(cmp), box = document.getElementById('valTv');
-  if (!own || !box) return;
-  const symbols = own.map(([n, s]) => [n, `${s}|3M`]);
+  if (!own) return;
+  if (box) mountTvChart(box, own.filter(t => t.chart !== false).map(t => [t.n, `${valW(t)}|3M`]));
+  // Nøkkeltall (Financials), ett per børsnotert eier, med brukerens oppsett.
+  document.querySelectorAll('.val-fin .tradingview-widget-container').forEach(el =>
+    // «regular» (brukerens valg) gir to spalter som blir uleselige på mobil; der brukes «compact».
+    mountTvScript(el, 'financials', {symbol: el.dataset.sym, colorTheme: 'light', displayMode: el.clientWidth < 600 ? 'compact' : 'regular',
+      isTransparent: true, locale: 'en', width: '100%', height: '100%'}));
+  // Selskapsprofilen (tv-company-profile) er et eget webkomponent fra
+  // TradingView: skriptet lastes én gang og definerer elementet, som så
+  // oppgraderes uansett når kortet tegnes.
+  if (!customElements.get('tv-company-profile') && !document.getElementById('tvProfileJs')) {
+    const m = document.createElement('script');
+    m.type = 'module'; m.id = 'tvProfileJs';
+    m.src = 'https://widgets.tradingview-widget.com/w/en/tv-company-profile.js';
+    document.head.appendChild(m);
+  }
+}
+
+function mountTvChart(box, symbols) {
   const cfg = {
     lineWidth: 2, lineType: 0, chartType: 'area',
     fontColor: 'rgb(106, 109, 120)', gridLineColor: 'rgba(46, 46, 46, 0.06)',
@@ -9333,9 +9389,13 @@ function valMountShares(cmp) {
   // eget script-element, med oppsettet som innhold, slik TradingView forventer.
   // Skriptet setter beholderens høyde til 100 %, så den faste høyden ligger på
   // en ytre div (se valShareCard).
+  mountTvScript(box, 'symbol-overview', cfg);
+}
+// Et klassisk TradingView-skript (embed-widget-<kind>.js) med oppsettet som innhold.
+function mountTvScript(box, kind, cfg) {
   const sc = document.createElement('script');
   sc.type = 'text/javascript';
-  sc.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js';
+  sc.src = `https://s3.tradingview.com/external-embedding/embed-widget-${kind}.js`;
   sc.async = true;
   sc.innerHTML = JSON.stringify(cfg);
   box.appendChild(sc);
