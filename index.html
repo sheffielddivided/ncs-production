@@ -8502,28 +8502,40 @@ const RP_COLOR = 'rgba(0,48,87,0.75)';
 // withCr: «Resource life» — gjenstående reserver pluss betingede ressurser i
 // funn (selskapets andel, som i «Reserves + contingent resources») delt på
 // årsproduksjonen. Søylen deles i reservedelen og ressursdelen, så
-// reservelivet kan leses av som den mørke delen.
-const CR_COLOR = 'rgba(0,179,115,0.7)';
+// reservelivet kan leses av som den mørke delen. Ressursdelen deles videre på
+// Sodirs tre klasser, mørkest for den mest modne (4F).
+// Heldekkende farger (ikke rgba), så PowerPoint-eksporten, som dropper
+// gjennomsiktighet, også skiller klassene.
+const CR_RC_COLOR = {'4F': 'rgb(0,140,90)', '5F': 'rgb(102,209,171)', '7F': 'rgb(184,233,216)'};
+const CR_RC_GREY  = {'4F': 'rgba(154,165,177,0.6)', '5F': 'rgba(154,165,177,0.42)', '7F': 'rgba(154,165,177,0.25)'};
 function drawNcsCompaniesRp(withCr = false) {
   const {res: R, get} = ncsCompanyReserves(), P = ncsCompanyProd12();
   if (withCr) allDiscoveries.forEach(d => {
     const v = discoveryRes[d.id];
     if (!v) return;
-    discoveryPartners(d).forEach(p => { get(p.name).cr += v.oe * BBL_PER_SM3 * p.share / 100; });
+    discoveryPartners(d).forEach(p => {
+      const o = get(p.name), k = p.share / 100 * BBL_PER_SM3;
+      o.cr += v.oe * k;
+      o.rc = o.rc || {};
+      CONTINGENT_RC.forEach(rc => { o.rc[rc] = (o.rc[rc] || 0) + ((v.byRc[rc] || {}).oe || 0) * k; });
+    });
   });
   const yr = v => v * 365.25 / 1e6;   // boe/dag → mill boe per år
+  const rcOf = o => Object.fromEntries(CONTINGENT_RC.map(rc => [rc, (o && o.rc && o.rc[rc]) || 0]));
   const names = new Set([...Object.keys(R), ...Object.keys(P.res)]);
   const all = [...names].map(name => {
     const rv = R[name] ? R[name].liq + R[name].gas : 0;
     const cr = withCr && R[name] ? R[name].cr : 0;
     const r = rv + cr;
     const pd = P.res[name] ? P.res[name].liq + P.res[name].gas : 0;
-    return {name, res: r, rv, cr, prod: pd, rp: pd > 0 ? r / yr(pd) : null};
+    return {name, res: r, rv, cr, rc: rcOf(withCr ? R[name] : null), prod: pd, rp: pd > 0 ? r / yr(pd) : null};
   });
   const list = all.filter(o => o.prod >= RP_MIN_PROD && o.res > 0).sort((a, b) => b.rp - a.rp || a.name.localeCompare(b.name));
   const noProd = all.filter(o => o.res >= 1 && o.prod < RP_MIN_PROD);
   const totR = all.reduce((t, o) => t + o.res, 0), totP = all.reduce((t, o) => t + o.prod, 0);
   const totRv = all.reduce((t, o) => t + o.rv, 0), totCr = all.reduce((t, o) => t + o.cr, 0);
+  const totRc = Object.fromEntries(CONTINGENT_RC.map(rc => [rc, all.reduce((t, o) => t + o.rc[rc], 0)]));
+  const rcName = rc => `${rc} · ${RC_LABEL[rc]}`;
   const ncsRp = totP > 0 ? totR / yr(totP) : null;
   const what = withCr ? 'Resource life' : 'Reserve life (R/P)';
   const shown = ncsF.all ? list : list.slice(0, 20);
@@ -8535,11 +8547,12 @@ function drawNcsCompaniesRp(withCr = false) {
     const open = link ? ` onclick="openCompanyProfile(${esc(jsStr(o.name))})" role="link" tabindex="0"
       onkeydown="if(event.key==='Enter')openCompanyProfile(${esc(jsStr(o.name))})"` : ' style="cursor:default"';
     const tip = withCr
-      ? `${o.name}: ${f1(o.rp)} years · reserves ${n0(o.rv)} + contingent resources ${n0(o.cr)} = ${n0(o.res)} million boe · production ${n0(o.prod)} boe/day` +
+      ? `${o.name}: ${f1(o.rp)} years · reserves ${n0(o.rv)} + contingent resources ${n0(o.cr)} ` +
+        `(${CONTINGENT_RC.map(rc => `${rc} ${n0(o.rc[rc])}`).join(', ')}) = ${n0(o.res)} million boe · production ${n0(o.prod)} boe/day` +
         ` · reserve life alone ${f1(o.rv / yr(o.prod))} years`
       : `${o.name}: ${f1(o.rp)} years · reserves ${n0(o.res)} million boe · production ${n0(o.prod)} boe/day`;
     const segs = withCr
-      ? [[o.rv, ref ? 'rgba(154,165,177,0.85)' : RP_COLOR], [o.cr, ref ? 'rgba(154,165,177,0.5)' : CR_COLOR]]
+      ? [[o.rv, ref ? 'rgba(154,165,177,0.85)' : RP_COLOR]].concat(CONTINGENT_RC.map(rc => [o.rc[rc], (ref ? CR_RC_GREY : CR_RC_COLOR)[rc]]))
       : [[o.res, ref ? 'rgba(154,165,177,0.85)' : RP_COLOR]];
     return `<div class="lc-row"${open}>
       <div class="lc-name" title="${esc(o.name)}">${ref ? '' : `${i + 1}. `}<span class="${ref ? '' : 'lc-u'}"${ref ? ' style="font-weight:700"' : ''}>${esc(label)}</span></div>
@@ -8547,7 +8560,7 @@ function drawNcsCompaniesRp(withCr = false) {
         `<span style="flex:${v};background:${c}"></span>`).join('')}</div>
       <div class="lc-val">${f1(o.rp)} yrs · ${n0(o.res)} mboe</div></div>`;
   };
-  const bars = (ncsRp != null ? row('NCS total', {name: 'NCS total', res: totR, rv: totRv, cr: totCr, prod: totP, rp: ncsRp}, 0, true) : '')
+  const bars = (ncsRp != null ? row('NCS total', {name: 'NCS total', res: totR, rv: totRv, cr: totCr, rc: totRc, prod: totP, rp: ncsRp}, 0, true) : '')
     + shown.map((o, i) => row(o.name, o, i, false)).join('');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   setProfile('');
@@ -8556,7 +8569,7 @@ function drawNcsCompaniesRp(withCr = false) {
     ${ncsCompanyPills()}
     ${bars}
     <div class="ex-legend"><span class="ex-leg"><span class="ex-dot" style="background:${RP_COLOR}"></span>${withCr ? 'From reserves' : 'Reserve life'}, years</span>
-      ${withCr ? `<span class="ex-leg"><span class="ex-dot" style="background:${CR_COLOR}"></span>From contingent resources, years</span>` : ''}
+      ${withCr ? CONTINGENT_RC.map(rc => `<span class="ex-leg"><span class="ex-dot" style="background:${CR_RC_COLOR[rc]}"></span>${rcName(rc)}</span>`).join('') : ''}
       <span class="ex-leg"><span class="ex-dot" style="background:rgba(154,165,177,0.85)"></span>NCS total (reference)</span>
       <span class="ex-leg">Showing ${shown.length} of ${list.length}
       ${list.length > 20 ? `· <a href="#" class="row-link" onclick="ncsF.all=${!ncsF.all};drawChart();return false;">${ncsF.all ? 'show top 20' : 'show all'}</a>` : ''}</span></div>
@@ -8565,20 +8578,21 @@ function drawNcsCompaniesRp(withCr = false) {
       Click a company for its factsheet.</div>`;
   setChartTitle('Norwegian Continental Shelf · Companies', `Ranked by ${withCr ? 'resource life (reserves + contingent resources)' : 'reserve life (R/P)'}, equity-adjusted · years`);
   setInfo((withCr
-    ? `<strong>Resource life:</strong> (remaining reserves + contingent resources) ÷ annual production &nbsp;|&nbsp; <strong>Reserves:</strong> Sodir field reserves, vintage ${vintage}, × each company's licence share today (as in «Reserves») &nbsp;|&nbsp; <strong>Contingent resources:</strong> undeveloped discoveries (resource classes 4F, 5F, 7F) by licence share, as in «Reserves + contingent resources»; NCS total ${n0(totCr)} million boe &nbsp;|&nbsp; `
+    ? `<strong>Resource life:</strong> (remaining reserves + contingent resources) ÷ annual production &nbsp;|&nbsp; <strong>Reserves:</strong> Sodir field reserves, vintage ${vintage}, × each company's licence share today (as in «Reserves») &nbsp;|&nbsp; <strong>Contingent resources:</strong> undeveloped discoveries by licence share, as in «Reserves + contingent resources», split by Sodir resource class — 4F in clarification phase, 5F production likely but not clarified, 7F not evaluated; NCS total ${n0(totCr)} million boe (${CONTINGENT_RC.map(rc => `${rc} ${n0(totRc[rc])}`).join(', ')}) &nbsp;|&nbsp; `
     : `<strong>Reserve life (R/P):</strong> remaining reserves ÷ annual production &nbsp;|&nbsp; <strong>Reserves:</strong> Sodir field reserves, vintage ${vintage}, × each company's licence share today (as in «Reserves»; contingent resources not included) &nbsp;|&nbsp; `) + `<strong>Production:</strong> average net production ${P.span} × each month's licence share (as in «Production, last 12 months»), × 365.25 days &nbsp;|&nbsp; <strong>NCS total:</strong> ${ncsRp != null ? f1(ncsRp) : '—'} years &nbsp;|&nbsp; A high R/P can mean large undeveloped or ramping-up reserves; a low R/P, a mature portfolio. Cross-border shares held outside Norway are not included`);
   lastLabels = list.map(o => o.name); lastXTitle = 'Company';
   lastDatasets = [
     {label: `${what}, years`, data: list.map(o => +o.rp.toFixed(1))},
     ...(withCr ? [{label: 'Reserve life alone, years', data: list.map(o => +(o.rv / yr(o.prod)).toFixed(1))}] : []),
     {label: 'Remaining reserves, million boe', data: list.map(o => +o.rv.toFixed(1))},
-    ...(withCr ? [{label: 'Contingent resources, million boe', data: list.map(o => +o.cr.toFixed(1))}] : []),
+    ...(withCr ? [{label: 'Contingent resources, million boe', data: list.map(o => +o.cr.toFixed(1))}]
+      .concat(CONTINGENT_RC.map(rc => ({label: `Contingent ${rcName(rc)}, million boe`, data: list.map(o => +o.rc[rc].toFixed(1))}))) : []),
     {label: `Net production ${P.span}, boe/day`, data: list.map(o => Math.round(o.prod))},
   ];
   pptSpec = {kind: 'cat', dir: 'bar', stacked: false, labels: shown.map(o => o.name), yTitle: 'years',
     series: withCr
       ? [{name: 'From reserves, years', type: 'bar', color: pptHex(RP_COLOR), values: shown.map(o => +(o.rv / yr(o.prod)).toFixed(1))},
-         {name: 'From contingent resources, years', type: 'bar', color: pptHex(CR_COLOR), values: shown.map(o => +(o.cr / yr(o.prod)).toFixed(1))}]
+         ...CONTINGENT_RC.map(rc => ({name: `${rcName(rc)}, years`, type: 'bar', color: pptHex(CR_RC_COLOR[rc]), values: shown.map(o => +(o.rc[rc] / yr(o.prod)).toFixed(1))}))]
       : [{name: 'Reserve life (R/P), years', type: 'bar', color: pptHex(RP_COLOR), values: shown.map(o => +o.rp.toFixed(1))}]};
   if (withCr) pptSpec.stacked = true;
   document.getElementById('downloadBtn').disabled = false;
