@@ -2690,7 +2690,7 @@ function resetView() {
   ukSubView = 'production';
   ukF = ukDefaults();
   priceSubView = 'brent';
-  prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
+  prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: true};
   if (priceData && priceData.diff) {
     const ys = priceYears();
     prF.y1 = Math.min(ys[ys.length - 1], currentYear); prF.y0 = Math.max(ys[0], Math.min(prF.y1, currentYear - 1));
@@ -2796,7 +2796,8 @@ function stateToHash() {
   else if (topMode === 'prices') {
     if (prF.y0) q.set('py', prF.y0 + '-' + prF.y1);
     if (prF.selSet) q.set('pf', prF.sel.join(SEP));
-    if (prF.ba) q.set('pm', 'y'); else if (prF.bq) q.set('pm', 'q'); else if (prF.bm) q.set('pm', '1');
+    // Månedssnitt er standard og står ikke i lenken; dagsverdier er pm=d.
+    if (prF.ba) q.set('pm', 'y'); else if (prF.bq) q.set('pm', 'q'); else if (!prF.bm) q.set('pm', 'd');
     if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
     if (prF.gr === 'q' || prF.gr === 'y') q.set('pq', prF.gr);
     if (prF.sk && prF.sk !== 'eu') q.set('ps', prF.sk);
@@ -3076,7 +3077,8 @@ function applyHash() {
     const py = (q.get('py') || '').match(/^(\d{4})-(\d{4})$/);
     if (py) { prF.y0 = +py[1]; prF.y1 = +py[2]; }
     if (q.has('pf')) { prF.sel = q.get('pf') ? q.get('pf').split(SEP) : []; prF.selSet = true; }
-    prF.bm = q.get('pm') === '1';
+    // pm=1 (månedssnitt) fra eldre lenker gir det samme som ingen pm.
+    prF.bm = q.get('pm') !== 'd';
     prF.ba = q.get('pm') === 'y';
     prF.bq = q.get('pm') === 'q';
     if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
@@ -5601,9 +5603,9 @@ const PRICE_DEFAULT_SEL = ['TROLL', 'JOHAN SVERDRUP', 'EKOFISK', 'OSEBERG'];
 const PRICE_FAV_KEY = 'normpris.favoriteFields.v1';
 const PRICE_SRC = 'Source: Norwegian Petroleum Price Board / Ministry of Energy (regjeringen.no)';
 let priceData = null, priceLoading = null;
-// y0/y1: periode · sel: valgte felt i valgrekkefølge · slot: felt -> farge 0..7 · bm: Brent som månedssnitt · bq: kvartalssnitt · ba: årssnitt
+// y0/y1: periode · sel: valgte felt i valgrekkefølge · slot: felt -> farge 0..7 · bm: Brent som månedssnitt (standard) · bq: kvartalssnitt · ba: årssnitt
 // · avg: Brent med snittlinje for det som vises
-let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
+let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: true};
 
 function loadPrices() {
   if (priceData) return Promise.resolve();
@@ -6089,6 +6091,15 @@ function drawPriceDiff() {
     return {label: f, data: months.map(m => d.fields[f][m] ?? null), borderColor: c, backgroundColor: c, borderWidth: 2,
       spanGaps: false, pointRadius: months.length > 60 ? 1.5 : 3, tension: 0};
   });
+  // Snittet for hver valgt serie i perioden, av månedene som har en verdi.
+  const fmtD = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  const avgTiles = prF.sel.length ? `<div class="pf-facts" style="margin:4px 0 10px">${prF.sel.map(f => {
+      const vals = months.map(m => d.fields[f][m]).filter(v => v != null);
+      const avg = vals.length ? vals.reduce((t, v) => t + v, 0) / vals.length : null;
+      return `<div class="pf-fact" style="border-left:3px solid ${PRICE_COLORS[prF.slot[f]]};padding-left:8px"><span>${esc(f)}</span>
+        <strong>${avg == null ? '—' : `${fmtD(avg)} $/bbl`}</strong>
+        <small class="val-sub">${vals.length ? `average of ${vals.length} of ${months.length} months` : 'no values in the period'}</small></div>`;
+    }).join('')}</div>` : '';
   setProfile(`<div class="pf-card pf-wide"><h3>Norm price differentials</h3>
     <div class="pf-map-note" style="margin:0 0 8px">Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1} (the period above)</div>
     <div class="np-chips">${chips}</div>
@@ -6098,6 +6109,7 @@ function drawPriceDiff() {
       <button class="grp-btn" onclick="priceSelAction('save')" ${prF.sel.length ? '' : 'disabled'} title="Save the selected fields as favourites in this browser">★ Save as favourites</button>
       ${favs.length ? `<button class="grp-btn" onclick="priceSelAction('unsave')">Delete favourites</button>` : ''}
       <span class="pf-map-note" style="margin:0">Up to ${PRICE_MAX_SEL} fields.</span></div>
+    ${avgTiles}
     ${prF.sel.length ? `<div class="chart-container"><canvas id="diffChart"></canvas></div>
       <div class="legend-row">${datasets.map(x => `<div class="legend-item"><div class="legend-dot" style="background:${x.borderColor}"></div>${esc(x.label)}</div>`).join('')}</div>`
       : '<div class="status">Pick one or more fields above.</div>'}
