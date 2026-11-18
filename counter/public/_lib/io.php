@@ -6,7 +6,9 @@
 // telle unike besøkende per dag brukes en SHA-256-hash av (dagens salt + IP +
 // User-Agent). Saltet lages tilfeldig hver dag, og saltet og hashene slettes
 // når dagen er over, så de kan ikke føres tilbake til noen. Resten lagres bare
-// som summer per dag (og time).
+// som summer per dag (og time). Land og nettverkseier slås opp fra IP-en i
+// geo.sqlite (update-geo.php, DB-IP Lite) i øyeblikket; bare landkoden og
+// navnet på nettverkseieren lagres, i dagssummene.
 if (!defined('IO_ENTRY')) { http_response_code(404); exit; }
 
 function io_config(): array {
@@ -94,6 +96,40 @@ function io_device(int $w): string {
     if ($w < 1100) return 'Tablet';
     return 'Desktop';
 }
+// Land (ISO-kode) og nettverkseier for en IP-adresse, fra geo.sqlite.
+// [null, null] uten database eller treff.
+function io_geo(string $ip): array {
+    static $g = false;
+    if ($g === false) {
+        $f = dirname(io_config()['db_path']) . '/geo.sqlite';
+        try { $g = is_file($f) ? new PDO('sqlite:' . $f, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]) : null; }
+        catch (Throwable $e) { $g = null; }
+    }
+    if (!$g || $ip === '') return [null, null];
+    $v4 = strpos($ip, ':') === false;
+    $key = $v4 ? ip2long($ip) : @inet_pton($ip);
+    if ($key === false || $key === null) return [null, null];
+    $type = $v4 ? PDO::PARAM_INT : PDO::PARAM_LOB;
+    $find = function (string $sql) use ($g, $key, $type) {
+        $st = $g->prepare($sql);
+        $st->bindValue(1, $key, $type);
+        $st->execute();
+        $r = $st->fetch(PDO::FETCH_NUM);
+        return $r && $r[0] >= $key ? $r[1] : null;
+    };
+    try {
+        $cc = $find('SELECT e, cc FROM ' . ($v4 ? 'c4' : 'c6') . ' WHERE s <= ? ORDER BY s DESC LIMIT 1');
+        $org = $find('SELECT e, (SELECT name FROM orgs WHERE id = org) FROM ' . ($v4 ? 'a4' : 'a6') . ' WHERE s <= ? ORDER BY s DESC LIMIT 1');
+    } catch (Throwable $e) { return [null, null]; }
+    return [$cc && $cc !== 'ZZ' ? $cc : null, $org];
+}
+// Land fra nettleserens tidssone (f.eks. Europe/Oslo → NO), som reserve.
+function io_tz_country(string $tz): ?string {
+    if ($tz === '' || !preg_match('#^[A-Za-z_]+(/[A-Za-z0-9_+-]+){0,2}$#', $tz)) return null;
+    try { $cc = (new DateTimeZone($tz))->getLocation()['country_code'] ?? ''; } catch (Throwable $e) { return null; }
+    return preg_match('/^[A-Z]{2}$/', $cc) && $cc !== '??' ? $cc : null;
+}
+
 function io_is_bot(string $ua): bool {
     return $ua === '' || (bool)preg_match('/bot|crawl|spider|slurp|headless|lighthouse|preview|monitor|curl|wget|python|httpclient|phantom|puppeteer|playwright/i', $ua);
 }
@@ -142,6 +178,9 @@ function io_record(array $hit, string $ip, string $ua, string $originHost): bool
             $dim('device', io_device((int)($hit['w'] ?? 0)));
             $lang = strtolower(substr(preg_replace('/[^A-Za-z-]/', '', (string)($hit['l'] ?? '')), 0, 2));
             $dim('lang', $lang !== '' ? $lang : 'unknown');
+            [$cc, $org] = io_geo($ip);
+            $dim('country', $cc ?? io_tz_country((string)($hit['z'] ?? '')) ?? 'Unknown');
+            $dim('org', $org ?? 'Unknown');
         }
         // Henviser: bare verten, og bare ved første treff i et sidebesøk.
         if (array_key_exists('r', $hit)) {
