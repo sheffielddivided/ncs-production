@@ -9270,9 +9270,8 @@ function valWarnCard(discoveries) {
 
 // ── Aksjekurs i Valuation BETA ──
 // TradingView-widgeten «Symbol Overview», med samme oppsett som brukerens egen
-// widget (tradingview.com), men tilpasset selskapet: dets børsnoterte eier
-// først, deretter de oljeselskapene på Oslo Børs som er med i den opprinnelige
-// widgeten, til sammenligning. Nøkkel er Sodirs selskapsgruppe (companies.json
+// widget (tradingview.com), men bare med selskapets børsnoterte eier (to faner
+// for INPEX Idemitsu, som eies av to børsnoterte selskaper). Nøkkel er Sodirs selskapsgruppe (companies.json
 // «group»), så både dagens og eventuelle eldre selskapsnavn i gruppen treffer.
 // Symbolene er kontrollert mot TradingViews symbolsøk. Selskaper uten
 // børsnotert eier (Petoro, private selskaper) får ingen graf.
@@ -9296,7 +9295,6 @@ const VAL_TICKERS = {
   'REPSOL': [['Repsol', 'BME:REP']],
   'TOTAL': [['TotalEnergies', 'EURONEXT:TTE']],
 };
-const VAL_PEERS = [['Aker BP', 'OSL:AKRBP'], ['Equinor', 'OSL:EQNR'], ['Vår Energi', 'OSL:VAR'], ['DNO', 'OSL:DNO'], ['OKEA', 'OSL:OKEA']];
 const valTickers = cmp => VAL_TICKERS[(companyRow(cmp) || {}).group] || null;
 
 function valShareCard(cmp) {
@@ -9308,15 +9306,14 @@ function valShareCard(cmp) {
   return `<div class="pf-card pf-wide"><h3>Share price</h3>
       <div style="height:440px"><div class="tradingview-widget-container" id="valTv" style="height:100%"><div class="tradingview-widget-container__widget" style="height:100%"></div></div></div>
       <div class="pf-map-note"><strong>Listed ${own.length > 1 ? 'owners' : 'company'}:</strong> ${parent}. The share price${own.length > 1 ? 's are' : ' is'} for the listed
-        ${own.length > 1 ? 'companies' : 'company'} as a whole, not only ${own.length > 1 ? 'their' : 'its'} Norwegian business. The other tabs are the Oslo-listed NCS companies, for comparison.
+        ${own.length > 1 ? 'companies' : 'company'} as a whole, not only ${own.length > 1 ? 'their' : 'its'} Norwegian business.
         Chart and prices by <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">TradingView</a>; prices may be delayed.</div></div>`;
 }
 
 function valMountShares(cmp) {
   const own = valTickers(cmp), box = document.getElementById('valTv');
   if (!own || !box) return;
-  const seen = new Set(own.map(([, s]) => s));
-  const symbols = own.concat(VAL_PEERS.filter(([, s]) => !seen.has(s))).map(([n, s]) => [n, `${s}|3M`]);
+  const symbols = own.map(([n, s]) => [n, `${s}|3M`]);
   const cfg = {
     lineWidth: 2, lineType: 0, chartType: 'area',
     fontColor: 'rgb(106, 109, 120)', gridLineColor: 'rgba(46, 46, 46, 0.06)',
