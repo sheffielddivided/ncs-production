@@ -54,7 +54,8 @@ jobs:
       # Fra repoet sheffielddivided/eia (eugas og EIA): daglige TTF
       # day-ahead-priser til prognosen i Gas-fanen, gasslagre og LNG send-out
       # til EU storage-fanen, og amerikanske lagre, LNG-eksport og
-      # LNG-eksportpris til US supply og Gas.
+      # LNG-eksportpris til US supply og Gas, og ukentlige spotpriser (WTI,
+      # Brent, NY Harbor bensin og diesel) til 3-2-1-marginen i Refining.
       - name: Hent TTF-priser, gasslagre og EIA-data fra eia-repoet
         continue-on-error: true
         timeout-minutes: 5

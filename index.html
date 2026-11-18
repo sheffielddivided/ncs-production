@@ -2926,7 +2926,7 @@ function pageSources() {
     if (v === 'gas' || v === 'oilgas') add('ssb', 'imf', 'eia', 'nb');
     if (v === 'gas' && priceData && priceData.ttfd) add('eex');
     if (v === 'storage') add('gie', 'gie_lng');
-    if (v === 'us') add('eia');
+    if (v === 'us' || v === 'refining') add('eia');
     if (v === 'forex') add('nb');
     if (v === 'interest') add('nb_ir', 'fred', 'ecb', 'boe', 'riksbank', 'ssb', 'eurostat', 'ons', 'ustreas');
     if (prF.real) {
@@ -5279,6 +5279,7 @@ const PRICE_TABS = [
   {id: 'oilgas',  label: 'Oil vs gas'},
   {id: 'storage', label: 'EU storage'},
   {id: 'us',      label: 'US supply'},
+  {id: 'refining', label: 'Refining'},
   {id: 'forex',   label: 'Forex'},
   {id: 'interest', label: 'Interest'},
 ];
@@ -5295,8 +5296,8 @@ let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: false};
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily'), fetchBundle('us_supply')]).then(([b, d, e, g, c, , t, us]) => {
-    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t, us} : {};
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily'), fetchBundle('us_supply'), fetchBundle('refining')]).then(([b, d, e, g, c, , t, us, ref]) => {
+    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t, us, ref} : {};
     if (!priceData.diff) return;
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
@@ -5466,6 +5467,7 @@ function drawPrices() {
   else if (priceSubView === 'oilgas') drawPriceOilGas();
   else if (priceSubView === 'storage') drawPriceStorage();
   else if (priceSubView === 'us') drawPriceUs();
+  else if (priceSubView === 'refining') drawPriceRefining();
   else if (priceSubView === 'forex') drawPriceForex();
   else if (priceSubView === 'interest') drawPriceInterest();
   else { drawPriceBrent(); drawPriceDiff(); }
@@ -6185,7 +6187,10 @@ const US_PROD = [['WGTSTUS1', 'Gasoline', 'Total gasoline stocks'], ['WDISTUS1',
 // [prF-nøkkel, URL-parameter, standard, gyldige verdier]
 const US_PARAMS = [['uc', 'uc', 'WCRSTUS1', US_CRUDE.map(x => x[0])], ['ucy', 'ucy', '5', ['3', '5', '10']], ['ucm', 'ucm', 'seasonal', ['seasonal', 'historic']],
                    ['up', 'up', 'WGTSTUS1', US_PROD.map(x => x[0])], ['upy', 'upy', '5', ['3', '5', '10']], ['upm', 'upm', 'seasonal', ['seasonal', 'historic']],
-                   ['ul', 'ul', '10', ['1', '2', '5', '10', '20']], ['uq', 'uq', '5', ['2', '5', '10', '20']]];
+                   ['ul', 'ul', '10', ['1', '2', '5', '10', '20']], ['uq', 'uq', '5', ['2', '5', '10', '20']],
+                   // Refining-fanen: visning, råolje og periode.
+                   ['rfm', 'kr', 'spread', ['spread', 'crude', 'annual']], ['rfc', 'kc', 'wti', ['wti', 'brent']],
+                   ['rfy', 'kp', '2', ['1', '2', '5', '10', '20', 'all']]];
 let usCharts = [];
 
 function usWeekly(rows, yearsBack) {
@@ -6296,6 +6301,122 @@ function usStockBlock(id, list, sk, yk, mk, unitNote) {
     return {chart, spec: pptSpecFromChart(chart), sub};
   };
   return {html, draw, drawWow, name};
+}
+
+// ── MARKET · REFINING ──
+// 3-2-1-raffineringsmargin («crack spread»): verdien av to fat bensin og ett
+// fat diesel minus tre fat råolje, per fat råolje:
+//   (2 × bensin + 1 × diesel − 3 × råolje) / 3, i USD/fat (1 fat = 42 gallon).
+// Samme serier og formel som Refining-visningen i eia-repoet: ukentlige EIA-
+// spotpriser for NY Harbor regular bensin og nr. 2 fyringsolje/diesel og WTI
+// Cushing (data/refining.json fra fetch_eugas.py). Brent er med som et
+// alternativ for råoljen, siden det er referansen for norsk olje. Seriene
+// slås sammen på uka (mandag), som i eia-repoet, siden EIA kan bruke ulike
+// ukedager per serie.
+const REF_C = {margin: '#00a36c', crude: '#f08c2e', gasoline: '#2a6fa8', diesel: '#ce0f69', avg: '#1a2332'};
+function refiningWeeks(crudeKey) {
+  const R = priceData.ref;
+  if (!R || !R[crudeKey] || !R.gasoline || !R.diesel) return [];
+  const mon = d => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+  const by = rows => { const m = {}; rows.forEach(([d, v]) => { m[mon(d)] = [d, v]; }); return m; };
+  const c = by(R[crudeKey]), g = by(R.gasoline), dl = by(R.diesel);
+  return Object.keys(c).filter(w => g[w] && dl[w]).sort().map(w => {
+    const crude = c[w][1], gas = g[w][1] * 42, dsl = dl[w][1] * 42;
+    return {date: c[w][0], crude, gas, dsl, margin: (2 * gas + dsl - 3 * crude) / 3};
+  });
+}
+
+function drawPriceRefining() {
+  US_PARAMS.forEach(([k, , d]) => { if (prF[k] == null) prF[k] = d; });
+  const crudeKey = prF.rfc === 'brent' ? 'brent' : 'wti', crudeName = crudeKey === 'brent' ? 'Brent' : 'WTI';
+  const all = refiningWeeks(crudeKey);
+  if (!all.length) { setChartTitle('', ''); setChartEmpty('Could not load the refining price data.'); setInfo(''); return; }
+  const mode = prF.rfm, yrs = prF.rfy;
+  const f2 = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const f1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const last = all[all.length - 1];
+  const avgOf = rows => rows.reduce((t, r) => t + r.margin, 0) / (rows.length || 1);
+  const since = (n, unit) => { const d = new Date(last.date + 'T00:00:00Z'); if (unit === 'w') d.setUTCDate(d.getUTCDate() - 7 * n); else d.setUTCFullYear(d.getUTCFullYear() - n); return d.toISOString().slice(0, 10); };
+  const w4 = all.filter(r => r.date > since(4, 'w')), y1 = all.filter(r => r.date > since(1, 'y')), y5 = all.filter(r => r.date > since(5, 'y'));
+  const hi = y1.reduce((b, r) => (!b || r.margin > b.margin ? r : b), null), lo = y1.reduce((b, r) => (!b || r.margin < b.margin ? r : b), null);
+  const facts = [
+    ['Latest week', `${f2(last.margin)} $/bbl`, `week to ${fmtShort(last.date)} · ${crudeName} ${f2(last.crude)} $/bbl`],
+    ['4-week average', `${f2(avgOf(w4))} $/bbl`, `${w4.length} weeks`],
+    ['52-week average', `${f2(avgOf(y1))} $/bbl`, hi && lo ? `range ${f1(lo.margin)} – ${f1(hi.margin)} $/bbl` : ''],
+    ['5-year average', `${f2(avgOf(y5))} $/bbl`, `since ${all[0].date.slice(0, 4)}: ${f2(avgOf(all))} $/bbl`],
+  ];
+  const pills = usPills('rfm', [['spread', '3-2-1 margin'], ['crude', `vs. ${crudeName}`], ['annual', 'Annual average']], mode)
+    + usPills('rfc', [['wti', 'WTI'], ['brent', 'Brent']], prF.rfc)
+    + (mode === 'annual' ? '' : usPills('rfy', [['1', '1y'], ['2', '2y'], ['5', '5y'], ['10', '10y'], ['20', '20y'], ['all', 'All']], yrs));
+  document.getElementById('chartArea').innerHTML = `
+    <div class="np-bar">${pills}</div>
+    <div class="pf-facts" style="margin-bottom:10px">${facts.map(([l, v, sub]) =>
+      `<div class="pf-fact"><span>${l}</span><strong>${v}</strong>${sub ? `<small style="display:block;font-size:0.68rem;color:var(--muted)">${sub}</small>` : ''}</div>`).join('')}</div>
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row" id="refLeg"></div>`;
+  if (chartInstance) chartInstance.destroy();
+  const ax = (t) => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}});
+  const legend = items => { document.getElementById('refLeg').innerHTML = items.map(([l, c, dash]) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${dash ? 'none' : c};${dash ? `border-top:2px dashed ${c};height:0;border-radius:0;width:14px` : ''}"></div>${l}</div>`).join(''); };
+  let ch, sub;
+  if (mode === 'annual') {
+    // Årssnitt av ukene. Året som pågår er hittil i år og vises blekere.
+    const by = {};
+    all.forEach(r => { const y = r.date.slice(0, 4); (by[y] = by[y] || []).push(r); });
+    const ys = Object.keys(by).sort(), cy = String(currentYear);
+    const labels = ys.map(y => (y === cy ? `${y}*` : y));
+    const mean = (y, k) => +(by[y].reduce((t, r) => t + r[k], 0) / by[y].length).toFixed(2);
+    ch = new Chart(document.getElementById('prodChart').getContext('2d'), {type: 'bar',
+      data: {labels, datasets: [{label: '3-2-1 margin', data: ys.map(y => mean(y, 'margin')), borderWidth: 0,
+        backgroundColor: ys.map(y => (y === cy ? REF_C.margin + '66' : REF_C.margin))},
+        {label: crudeName, type: 'line', data: ys.map(y => mean(y, 'crude')), yAxisID: 'y1', borderColor: REF_C.crude, backgroundColor: REF_C.crude,
+         borderWidth: 1.5, pointRadius: 2, tension: 0.2}]},
+      options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${f2(c.parsed.y)} $/bbl`,
+          afterBody: it => { const y = ys[it[0].dataIndex]; return `${by[y].length} weeks${y === cy ? ' (year to date)' : ''}`; }}}},
+        scales: {x: {ticks: {maxRotation: 45, font: {size: 9}}, grid: {display: false}}, y: {...ax('3-2-1 margin, $/bbl'), beginAtZero: true},
+                 y1: {...ax(`${crudeName}, $/bbl`), position: 'right', beginAtZero: true, grid: {display: false}}}}});
+    legend([['3-2-1 margin, annual average (left axis)', REF_C.margin], [`${crudeName}, annual average (right axis)`, REF_C.crude]]);
+    sub = `Annual average of weekly spot prices, $/bbl · ${ys[0]}–${ys[ys.length - 1]}${ys.includes(cy) ? ` (${cy} to date)` : ''}`;
+    lastLabels = labels; lastXTitle = 'Year';
+  } else {
+    const cut = yrs === 'all' ? '' : since(+yrs, 'y');
+    const rows = all.filter(r => r.date > cut);
+    const labels = rows.map(r => r.date);
+    // 52 ukers glidende snitt, regnet på hele serien så starten av utsnittet også har et snitt.
+    const idx0 = all.indexOf(rows[0]);
+    const ma = rows.map((r, i) => { const j = idx0 + i; if (j < 51) return null; let t = 0; for (let k = j - 51; k <= j; k++) t += all[k].margin; return +(t / 52).toFixed(2); });
+    const pr = rows.length > 150 ? 0 : 2;
+    const ds = mode === 'crude'
+      ? [{label: crudeName, data: rows.map(r => +r.crude.toFixed(2)), borderColor: REF_C.crude, backgroundColor: 'rgba(240,140,46,0.3)', fill: 'origin', borderWidth: 1.5, pointRadius: 0, tension: 0.25},
+         {label: '3-2-1 margin', data: rows.map(r => +(r.crude + r.margin).toFixed(2)), borderColor: REF_C.margin, backgroundColor: 'rgba(0,163,108,0.4)', fill: '-1', borderWidth: 2, pointRadius: 0, tension: 0.25}]
+      : [{label: '3-2-1 margin', data: rows.map(r => +r.margin.toFixed(2)), borderColor: REF_C.margin, backgroundColor: 'rgba(0,163,108,0.12)', fill: true, borderWidth: 2, pointRadius: pr, pointHoverRadius: 4, tension: 0.25},
+         {label: '52-week average', data: ma, borderColor: REF_C.avg, borderDash: [5, 4], borderWidth: 1.25, pointRadius: 0, fill: false, tension: 0.25, spanGaps: true}];
+    ch = new Chart(document.getElementById('prodChart').getContext('2d'), {type: 'line', data: {labels, datasets: ds},
+      options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {filter: c => c.parsed.y != null, callbacks: {
+          title: it => `Week to ${fmtShort(labels[it[0].dataIndex])}`,
+          label: c => { const r = rows[c.dataIndex];
+            if (mode === 'crude') return c.datasetIndex === 1 ? ` 3-2-1 margin: ${f2(r.margin)} $/bbl` : ` ${crudeName}: ${f2(r.crude)} $/bbl`;
+            return ` ${c.dataset.label}: ${f2(c.parsed.y)} $/bbl`; },
+          afterBody: it => { const r = rows[it[0].dataIndex]; return [`Gasoline ${f2(r.gas)} $/bbl · Diesel ${f2(r.dsl)} $/bbl`, ...(mode === 'crude' ? [`Products value ${f2(r.crude + r.margin)} $/bbl`] : [])]; }}}},
+        scales: {x: {type: 'category', ticks: {maxRotation: 0, autoSkipPadding: 18, font: {size: 9},
+                   callback: function (v) { return this.getLabelForValue(v).slice(0, 7); }}, grid: {display: false}},
+                 y: {...ax('$/bbl'), beginAtZero: mode === 'crude'}}}});
+    legend(mode === 'crude'
+      ? [[crudeName, REF_C.crude], [`3-2-1 margin (band on top of ${crudeName}; the top line is the value of the products)`, REF_C.margin]]
+      : [['3-2-1 margin, weekly', REF_C.margin], ['52-week moving average', REF_C.avg, true]]);
+    sub = `${mode === 'crude' ? `Margin on top of ${crudeName}` : 'Weekly'}, NY Harbor spot prices, $/bbl · ${yrs === 'all' ? 'all weeks' : `last ${yrs} year${yrs === '1' ? '' : 's'}`}`;
+    lastLabels = labels; lastXTitle = 'Week';
+  }
+  chartInstance = ch;
+  lastDatasets = ch.data.datasets.map((d, i) => ({label: `${d.label}, $/bbl`,
+    data: mode === 'crude' && i === 1 ? ch.data.labels.map((_, j) => +(all.find(r => r.date === ch.data.labels[j]) || {margin: 0}).margin.toFixed(2)) : d.data.map(v => v ?? '')}));
+  setChartTitle(`3-2-1 refining margin · ${crudeName}`, sub);
+  setInfo(`<strong>3-2-1 margin</strong> ("crack spread"): the value of two barrels of gasoline and one barrel of diesel less three barrels of crude, per barrel of crude: (2 × gasoline + 1 × diesel − 3 × ${crudeName}) / 3 &nbsp;|&nbsp; ` +
+    `<strong>Prices:</strong> EIA weekly spot prices — NY Harbor conventional regular gasoline and NY Harbor No. 2 heating oil (diesel), converted from $/gallon at 42 gallons per barrel, and ${crudeName === 'WTI' ? 'WTI Cushing' : 'Brent (Europe Brent spot FOB)'}; weeks where all three have a price &nbsp;|&nbsp; ` +
+    `A simple indicator of refining profitability on the US East Coast, before refinery operating costs; it is not a European margin. ${crudeName === 'Brent' ? 'Brent is shown because it is the benchmark for Norwegian crude; the eia solution uses WTI. ' : ''}` +
+    `Latest data: week to ${fmtShort(last.date)}`);
 }
 
 function drawPriceUs() {
