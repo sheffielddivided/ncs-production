@@ -1,0 +1,3 @@
+# Koden og konfigurasjonen her skal aldri kunne hentes direkte.
+Require all denied
+Deny from all
