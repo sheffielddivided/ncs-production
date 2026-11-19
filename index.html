@@ -3128,6 +3128,7 @@ function applyHash() {
     ncsF = ncsDefaults();
     if (['area', 'operator'].includes(q.get('np'))) ncsF.prod = q.get('np');
     ncsF.tot = q.get('nt') === '1';
+    ncsF.grp = q.get('ng') === '1';
     ncsF.sc = !ncsF.tot && q.get('ns') === '1';
     if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
     ncsF.cum = q.get('nu') === '1';
@@ -7379,16 +7380,16 @@ const NCS_TABS = [
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
-// prod: 'product' | 'area' | 'operator' · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
+// prod: 'product' | 'area' | 'operator' · grp: lisenshavere telles per konsern · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life) | 'rl' (resource life, med ressurser i funn)
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'life' | 'change' | 'timeline' · hb: samme uten 'timeline' (NCS → Hubs)
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', tot: false, sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', tot: false, grp: false, sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', hb: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
-const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
+const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['grp', 'ng'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['hb', 'nh'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -7500,7 +7501,16 @@ function sodirScBoed(k, y) {
 const NCS_OP_TOP = 10;
 const NCS_OP_ALIAS = {'CONPHIL NORGE': 'CONOCOPHILLIPS', 'CONPHIL SKANDINAVIA': 'CONOCOPHILLIPS', 'BP PETROLEUM': 'BP NORGE',
   'DET NORSKE (OLD)': 'AKER BP', 'HAR': 'HARBOUR', 'Repsol': 'REPSOL', 'TALISMAN ENERGY': 'TALISMAN',
-  'TALISMAN PRODUCTION': 'TALISMAN', 'TALISMAN RESOURCES': 'TALISMAN'};
+  'TALISMAN PRODUCTION': 'TALISMAN', 'TALISMAN RESOURCES': 'TALISMAN',
+  // Sodirs gruppefelt følger stort sett ett selskap og navnebyttene dets, og
+  // samme gruppe er skrevet på flere måter. Disse slår sammen variantene, så
+  // et konsern ikke telles to ganger i NCS → Companies → Licensees over time.
+  'TALISMAN PETROLEUM': 'TALISMAN', 'OMV NORGE': 'OMV', 'ØMV': 'OMV', 'BG': 'BG NORGE', 'AMOCO NORWAY': 'AMOCO',
+  'BAYERNGAS NORGE': 'BAYERNGAS', 'CAPEOMEGA II': 'CAPEOMEGA', 'CNR NORWAY': 'CNR', 'CONDECO': 'CONCEDO',
+  'CONOCO': 'NORSKE CONOCO', 'CONOCO NORWAY': 'NORSKE CONOCO', 'DET NORSKE EXP': 'AKER BP', 'DET NORSKE OIL': 'AKER BP',
+  'DNO OLJE': 'DNO NORGE', 'IDEMITSU OIL': 'IDEMITSU', 'MAERSK OIL': 'MÆRSK', 'TEXACO II': 'TEXACO', 'TULLOW(BREAM)': 'TULLOW',
+  'ENI NORGE (OLD)': 'VÅR', 'NORSKE RWE-DEA': 'WINTERSHALL', 'PGNiG': 'PGNIG', 'NORSKE CONPHIL': 'CONOCOPHILLIPS',
+  'VNG NORGE': 'NEPTUNE ENERGY'};
 // Hydros datterselskap het Norsk Hydro Petroleum AS fram til fusjonen i
 // oktober 2007, men står i Equinor-konsernet i companies.json.
 const NCS_OP_NAME = {'Norsk Hydro Petroleum AS': 'HYDRO'};
@@ -7509,7 +7519,9 @@ const NCS_OP_LABEL = {'EQUINOR ENERGY': 'Equinor', 'HYDRO': 'Norsk Hydro', 'AKER
   'SAGA': 'Saga Petroleum', 'WINTERSHALL': 'Wintershall Dea', 'NORSKE CONOCO': 'Conoco', 'AMOCO': 'Amoco', 'LUNDIN': 'Lundin',
   'DNO NORGE': 'DNO', 'NEPTUNE ENERGY': 'Neptune Energy', 'HARBOUR': 'Harbour Energy', 'OKEA': 'OKEA', 'REPSOL': 'Repsol',
   'TALISMAN': 'Talisman', 'MARATHON': 'Marathon', 'SPIRIT': 'Spirit Energy', 'INEOS': 'INEOS', 'SVAL': 'Sval Energi',
-  'POINT': 'Point Resources', 'LOTOS': 'Lotos', 'OMV NORGE': 'OMV', 'PERTRA': 'Pertra', 'BG NORGE': 'BG'};
+  'POINT': 'Point Resources', 'LOTOS': 'Lotos', 'OMV': 'OMV', 'PERTRA': 'Pertra', 'BG NORGE': 'BG', 'PETORO': 'Petoro / SDFI',
+  'MÆRSK': 'Maersk Oil', 'CAPEOMEGA': 'CapeOmega', 'CNR': 'CNR', 'PGNIG': 'PGNiG', 'INPEX': 'INPEX', 'JAPEX': 'JAPEX', 'KUFPEC': 'KUFPEC',
+  'ONE-DYAS': 'ONE-Dyas', 'ENQUEST': 'EnQuest', 'M VEST': 'M Vest Energy', 'ORLEN': 'ORLEN', 'NORTH E&P': 'North E&P', 'DNO': 'DNO'};
 const NCS_OP_COLORS = ['#003057', '#e3a73a', '#2a6fa8', '#ce0f69', '#00b373', '#8e6bbf', '#d14f4e', '#6c9a2f', '#7d2248', '#3fa7a0',
   '#b07d2b', '#5a6f8a'];
 const NCS_OP_OTHER = '~other';
@@ -9048,9 +9060,13 @@ let ncsLicHistData = null;
 async function ncsLoadLicHist() {
   if (!ncsLicHistData) ncsLicHistData = licHist || await fetchBundle('licence_history');
 }
-// Selskapene per år: {years, act: [Set], op: [Set]}.
-function ncsLicenseeYears() {
+// Selskapene per år: {years, act: [Set], op: [Set]}. Med grp telles konsern
+// (ncsOperatorGroup: concernKey og NCS_OP_ALIAS, som i Production → By
+// operator), så navnebytter og etterfølgere i samme konsern teller som ett.
+// Et konsern er operatør når ett av selskapene i det er det.
+function ncsLicenseeYears(grp) {
   const h = ncsLicHistData;
+  const key = grp ? h.companies.map(n => ncsOperatorGroup(n)) : h.companies;
   const today = Math.floor(Date.now() / 864e5);
   const first = Math.max(1965, new Date(Math.min(...h.shares.map(r => r[2] == null ? Infinity : r[2])) * 864e5).getUTCFullYear());
   const years = [];
@@ -9059,30 +9075,45 @@ function ncsLicenseeYears() {
   const act = years.map(() => new Set()), op = years.map(() => new Set());
   const mark = (sets, ci, from, to) => years.forEach((y, i) => {
     const t = dayOf(y);
-    if ((from == null || from <= t) && (to == null || to >= t)) sets[i].add(h.companies[ci]);
+    if ((from == null || from <= t) && (to == null || to >= t)) sets[i].add(key[ci]);
   });
-  h.shares.forEach(([, ci, from, to, share]) => { if (share > 0) mark(act, ci, from, to); });
+  const na = h.companies.indexOf('Not allocated');   // ikke et selskap: en andel uten eier i en kort periode
+  h.shares.forEach(([, ci, from, to, share]) => { if (share > 0 && ci !== na) mark(act, ci, from, to); });
   h.oper.forEach(([, ci, from, to]) => mark(op, ci, from, to));
   return {years, act, op};
 }
 
 function drawNcsCompaniesCount() {
   if (!ncsLicHistData) { setChartEmpty('Licence history is not available.'); setInfo(''); return; }
-  const {years, act, op} = ncsLicenseeYears();
+  const grp = ncsF.grp;
+  const {years, act, op} = ncsLicenseeYears(grp);
+  const unit = grp ? 'groups' : 'companies';
   const labels = years.map(String);
   const BAR = 'rgba(0,48,87,0.8)', LINE = '#e3a73a';
   renderChart(labels, [
-    {label: 'Licensees', data: act.map(s => s.size), backgroundColor: BAR, borderWidth: 0, stack: 's', order: 1},
+    {label: grp ? 'Licensee groups' : 'Licensees', data: act.map(s => s.size), backgroundColor: BAR, borderWidth: 0, stack: 's', order: 1},
     {type: 'line', label: 'Of which operators', data: op.map(s => s.size), borderColor: LINE, backgroundColor: LINE,
      borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.2, stack: 'op', _noTotal: true, order: 0},
-  ], [{label: 'Licensees', color: BAR}, {label: 'Of which operators', color: LINE}], 'companies', {xTitle: 'Year', noFooter: true});
+  ], [{label: grp ? 'Licensee groups' : 'Licensees', color: BAR}, {label: 'Of which operators', color: LINE}], unit, {xTitle: 'Year', noFooter: true});
   const peak = act.reduce((b, s, i) => s.size > act[b].size ? i : b, 0), last = act.length - 1;
-  setChartTitle('Norwegian Continental Shelf · Companies', 'Number of licensees in production licences, at year end · companies');
-  setInfo(`<strong>Count:</strong> companies (legal entities) with a share in at least one production licence on 31 December each year; ${currentYear} as of today &nbsp;|&nbsp; ` +
-    `<strong>Operators:</strong> licensees operating at least one licence &nbsp;|&nbsp; <strong>Now:</strong> ${act[last].size} licensees, ${op[last].size} operators &nbsp;|&nbsp; ` +
-    `<strong>Peak:</strong> ${act[peak].size} in ${years[peak]} &nbsp;|&nbsp; <strong>Basis:</strong> Sodir's licence ownership history. A company that changes its name or is merged counts as a new entity, so a rename shows as one company in and one out. The State's direct financial interest (SDFI) counts as a licensee`);
+  setChartTitle('Norwegian Continental Shelf · Companies', `Number of licensees in production licences, at year end, ${grp ? 'by corporate group' : 'legal entities'} · ${unit}`);
+  setInfo(`<strong>Count:</strong> ${grp ? 'corporate groups' : 'companies (legal entities)'} with a share in at least one production licence on 31 December each year; ${currentYear} as of today &nbsp;|&nbsp; ` +
+    `<strong>Operators:</strong> ${grp ? 'groups where at least one company operates' : 'licensees operating'} at least one licence &nbsp;|&nbsp; <strong>Now:</strong> ${act[last].size} ${grp ? 'groups' : 'licensees'}, ${op[last].size} operators &nbsp;|&nbsp; ` +
+    `<strong>Peak:</strong> ${act[peak].size} in ${years[peak]} &nbsp;|&nbsp; <strong>Basis:</strong> Sodir's licence ownership history. ` +
+    (grp ? `Companies are grouped by Sodir's corporate group, with known successors joined under today's name (Statoil, StatoilHydro → Equinor; Det norske → Aker BP; Phillips → ConocoPhillips; Dea → Wintershall Dea), so a rename does not count as a change. A group that is taken over (Norsk Hydro, Saga) leaves in the year of the merger` :
+            `A company that changes its name or is merged counts as a new entity, so a rename shows as one company in and one out. Switch to <em>Corporate groups</em> to count each group once`) +
+    `. The State's direct financial interest (SDFI) counts as a licensee`);
   // Tabell: nye og borte per år, nyeste først.
-  const names = set => [...set].sort((a, b) => a.localeCompare(b, 'en')).map(esc).join(', ');
+  // Konsern uten fast navn i NCS_OP_LABEL: navnet på selskapet i gruppen som
+  // var lisenshaver sist (Sodirs gruppekoder er ofte avkortet, f.eks. «CALIFORN»).
+  const latest = {};
+  if (grp) ncsLicHistData.shares.forEach(([, ci, , to]) => {
+    const k = ncsOperatorGroup(ncsLicHistData.companies[ci]), t = to == null ? Infinity : to;
+    if (!latest[k] || t > latest[k][0]) latest[k] = [t, ncsLicHistData.companies[ci]];
+  });
+  const strip = n => { let o = n.replace(/\s*\(old\d*\)/i, ''), p; do { p = o; o = o.replace(/[\s,]+(AS|ASA|A\/S|a\.s\.|Inc\.?|Ltd\.?|Limited|Company\.?|co of Norway|Norge|Norway|\(Norge\)|\(Norway\))$/i, ''); } while (o !== p); return o || n; };
+  const grpLabel = k => NCS_OP_LABEL[k] || (latest[k] ? strip(latest[k][1]) : tc(k));
+  const names = set => [...set].map(k => grp ? grpLabel(k) : k).sort((a, b) => a.localeCompare(b, 'en')).map(esc).join(', ');
   const rows = years.map((y, i) => {
     if (!i) return '';
     const inn = new Set([...act[i]].filter(c => !act[i - 1].has(c))), out = new Set([...act[i - 1]].filter(c => !act[i].has(c)));
@@ -9091,11 +9122,12 @@ function drawNcsCompaniesCount() {
   }).reverse().join('');
   setChartTable(`
     <table class="res-table">
-      <caption>Licensees per year, with companies entering and leaving · newest first</caption>
-      <thead><tr><th>Year</th><th>Licensees</th><th>Operators</th><th>New</th><th>Left</th><th style="text-align:left">Companies</th></tr></thead>
+      <caption>Licensees per year, with ${grp ? 'corporate groups' : 'companies'} entering and leaving · newest first</caption>
+      <thead><tr><th>Year</th><th>${grp ? 'Groups' : 'Licensees'}</th><th>Operators</th><th>New</th><th>Left</th><th style="text-align:left">${grp ? 'Groups' : 'Companies'}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`);
-  ncsToggleAbove(ncsCompanyPills());
+  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsCompanyPills()}${
+    ncsPills('grp', [[false, 'Legal entities'], [true, 'Corporate groups']])}</div>`);
 }
 
 // Rangering etter egenandelsjustert produksjon de siste tolv månedene med
