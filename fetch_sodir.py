@@ -45,6 +45,9 @@ FLDOPER_LAYER = 7110     # field_operator_hst
 LICENCE_LAYER = 3000   # licence
 COMPANY_LAYER = 1200   # company
 WELL_LAYER    = 5000   # wellbore
+PIPELINE_LAYER = 6100  # pipeline (transportrør)
+PIPELINE_SIMPLIFY = 0.002  # grader (~200 m); rørene vises bare på oversiktskart
+PIPELINE_DECIMALS = 3
 OUTLINE_SIMPLIFY = 0.001   # grader (~110 m) for Douglas-Peucker
 OUTLINE_DECIMALS = 4
 
@@ -976,6 +979,40 @@ def build_field_outlines():
     return {'fields': dict(sorted(out.items(), key=lambda x: int(x[0])))}
 
 
+# Transportrørledningene (lag 6100) til NCS -> Gas exports -> Infrastructure:
+# attributter og forenklet trasé per rør. Eksportrørene til utlandet settes
+# sammen av flere slike strekninger i frontenden. Noen avviklede rør har ingen
+# geometri; de tas med uten trasé.
+def build_pipelines():
+    fields = ['pplNpdidPipeline', 'pplName', 'pplBelongsToName', 'cmpLongName', 'pplCurrentPhase',
+              'fclNameFrom', 'fclNameTo', 'pplDimension', 'pplMedium']
+    feats = _get(f'{BASE}/{PIPELINE_LAYER}/query', {
+        'f': 'json', 'where': '1=1', 'outFields': ','.join(fields),
+        'returnGeometry': 'true', 'outSR': 4326, 'resultRecordCount': PAGE_SIZE,
+    }).get('features', [])
+    if len(feats) < 50:
+        raise RuntimeError(f'for fa rorledninger ({len(feats)})')
+    rows, paths = [], {}
+    for f in feats:
+        a = f.get('attributes') or {}
+        pid = as_int(a.get('pplNpdidPipeline'))
+        if pid is None:
+            continue
+        rows.append([pid, a.get('pplName'), a.get('pplBelongsToName'), a.get('cmpLongName'), a.get('pplCurrentPhase'),
+                     (a.get('fclNameFrom') or '').strip() or None, (a.get('fclNameTo') or '').strip() or None,
+                     num(a.get('pplDimension')), a.get('pplMedium')])
+        out = []
+        for path in (f.get('geometry') or {}).get('paths', []):
+            pts = _simplify([tuple(p[:2]) for p in path], PIPELINE_SIMPLIFY)
+            if len(pts) >= 2:
+                out.append([[round(x, PIPELINE_DECIMALS), round(y, PIPELINE_DECIMALS)] for x, y in pts])
+        if out:
+            paths[str(pid)] = out
+    rows.sort(key=lambda r: r[0])
+    return {'columns': ['id', 'name', 'belongsTo', 'operator', 'phase', 'from', 'to', 'dimension', 'medium'],
+            'rows': rows, 'paths': dict(sorted(paths.items(), key=lambda x: int(x[0])))}
+
+
 # Funnomriss til funnprofilens kart. Samme forenkling som feltomrissene, men
 # bare for de funnene appen faktisk lister - de som har et ressursanslag i lag
 # 7008. Hele lag 7000 ville vaert 324 KB mot 53 KB, og de ovrige funnene vises
@@ -1298,6 +1335,7 @@ def main():
         ('field_outlines.json', 'feltomriss', build_field_outlines),
         ('field_investments.json', 'investeringer per felt', build_field_investments),
         ('facilities.json', 'innretninger', build_facilities),
+        ('pipelines.json', 'rorledninger', build_pipelines),
         ('field_wells.json', 'bronner per felt', build_field_wells),
         ('licences.json', 'utvinningstillatelser', build_licences),
         ('licence_outlines.json', 'lisensomriss', build_licence_outlines),
