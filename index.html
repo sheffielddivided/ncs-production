@@ -469,6 +469,24 @@
       .side-map-card .pf-map-box{flex:none;height:300px;}
     }
     body.disc-sheet .profile-wrap{margin-top:12px;}   /* luften grafkortet ellers gir over kortene */
+    /* NCS → Gas exports → Infrastructure: tabell til venstre, kart til høyre (under hverandre på mobil). */
+    .gx-split{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start;}
+    .gx-split .gx-r{position:sticky;top:10px;}
+    .gx-split svg{width:100%;height:auto;display:block;border-radius:8px;background:#eef3f8;}
+    .gx-row{cursor:pointer;}
+    .gx-row:hover td{background:rgba(0,48,87,0.04);}
+    .gx-row.sel td{background:#e3eaf2 !important;}
+    .gx-split .res-table{width:100%;}
+    .gx-split .res-table td,.gx-split .res-table th{white-space:normal;padding-left:6px;padding-right:6px;}
+    .gx-split .res-table td:nth-child(n+3),.gx-split .res-table th:nth-child(n+3){white-space:nowrap;}
+    .gx-row td:first-child{font-weight:600;}
+    .gx-row:not(.gx-sub) td{border-bottom:0;padding-bottom:2px;}
+    .gx-sub td{padding-top:0;text-align:left !important;}
+    .gx-sub .gx-note{margin-top:0;}
+    .gx-note{display:block;font-weight:400;font-size:11px;color:var(--muted,#6b7785);margin-top:2px;white-space:normal;}
+    .gx-split .res-table td,.gx-split .res-table th{vertical-align:top;}
+    .gx-pipe{cursor:pointer;}
+    @media (max-width: 899px){ .gx-split{grid-template-columns:minmax(0,1fr);} .gx-split .gx-r{position:static;} }
     .pf-split{column-span:all;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;}
     .pf-split > div{min-width:0;}
     /* Siste kort i venstre kolonne uten bunnmarg, så bunnen flukter med kartet.
@@ -3137,6 +3155,7 @@ function applyHash() {
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
     if (['all', 'prod', 'rp', 'rl', 'count'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
+    if (q.get('nx') === 'infra') ncsF.gx = 'infra';
     ncsF.crArea = q.get('na') === '1';
     if (['rem', 'orig', 'life', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
     if (['rem', 'orig', 'life', 'change'].includes(q.get('nh'))) ncsF.hb = q.get('nh');
@@ -7376,20 +7395,20 @@ const NCS_TABS = [
   {id:'exploration', label:'Exploration'},
   {id:'creaming',    label:'Creaming'},
   {id:'investments', label:'Investments'},
-  {id:'outage',      label:'Gas outage'},
+  {id:'outage',      label:'Gas exports'},
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
-// prod: 'product' | 'area' | 'operator' · grp: lisenshavere telles per konsern · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
+// prod: 'product' | 'area' | 'operator' · gx: Gas exports → 'outages' | 'infra' · grp: lisenshavere telles per konsern · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life) | 'rl' (resource life, med ressurser i funn)
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'life' | 'change' | 'timeline' · hb: samme uten 'timeline' (NCS → Hubs)
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', tot: false, grp: false, sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', tot: false, grp: false, gx: 'outages', sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', hb: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
-const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['grp', 'ng'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
+const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['grp', 'ng'], ['gx', 'nx'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['hb', 'nh'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -7415,7 +7434,7 @@ async function ncsSet(key, val) {
   syncUrl();
   if (key === 'vol' && val) await Promise.all([loadFieldReserves(), loadDiscoveries()]);
   // Rangeringene og antall lisenshavere bruker ulike data; refreshNcs laster det som mangler.
-  if (key === 'rank') return refreshNcs();
+  if (key === 'rank' || key === 'gx') return refreshNcs();
   if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
   drawChart();
 }
@@ -7442,7 +7461,7 @@ async function refreshNcs() {
   else if (v === 'investments') { if (!ncsCpi) ncsCpi = await fetchBundle('cpi'); }
   else if (v === 'companies' && ncsF.rank === 'count') await ncsLoadLicHist();
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries(), loadProdForFields(ncsFieldIds())]);
-  else if (v === 'outage') await loadGassco();
+  else if (v === 'outage') await (ncsF.gx === 'infra' ? ncsLoadPipelines() : loadGassco());
   drawChart();
 }
 
@@ -11558,11 +11577,214 @@ function drawHubDowntime() {
 // null, tapt volum fra Gasscos hendelser under null, ett segment per hub
 // (felt uten hub er sin egen). Hubene sorteres etter samlet tap i perioden;
 // den største kommer først i stabelen og ligger nærmest nullinjen.
+// ── NCS: GAS EXPORTS → INFRASTRUCTURE ──
+// Eksportrørene fra norsk sokkel til utlandet, satt sammen av Sodirs
+// strekninger i lag 6100 (data/pipelines.json, ids under). Lengden regnes av
+// Sodirs trasé. Kapasitet, oppstart og merknader er lagt inn for hånd; Gassco
+// oppgir ikke kapasitet på sine egne sider, så tallene er veiledende og har
+// kilde (capSrc → GX_SOURCES). Kartet viser hele transportnettet i lag 6100.
+const GX_SOURCES = {
+  g: ['Gassco (as quoted in the press)', 'https://gassco.eu/en/transport-map/'],
+  o: ['Oxford Institute for Energy Studies, Insight 110 (2022), citing Gassco', 'https://www.oxfordenergy.org/publications/the-eu-plan-to-reduce-russian-gas-imports-by-two-thirds-by-the-end-of-2022-practical-realities-and-implications/'],
+  t: ['Offshore Technology', 'https://www.offshore-technology.com/features/featureunderwater-arteries-the-worlds-longest-offshore-pipelines-4365616/'],
+  b: ['Baltic Pipe project (Energinet, GAZ-SYSTEM): 10 bcm per year', 'https://www.baltic-pipe.eu/'],
+};
+const GX_PIPES = [
+  {key: 'langeled', name: 'Langeled', medium: 'Gas', ids: [369461, 369498], from: 'Nyhamna, via Sleipner', to: 'Easington', country: 'UK',
+   start: '2006–07', dia: '42–44', cap: 75, capSrc: 'g',
+   note: 'Langeled North runs from Nyhamna (Ormen Lange, and Aasta Hansteen via Polarled) to Sleipner; Langeled South from Sleipner to Easington.'},
+  {key: 'ep2', name: 'Europipe II', medium: 'Gas', ids: [323212], from: 'Kårstø', to: 'Dornum', country: 'Germany',
+   start: '1999', dia: '42', cap: 74, capSrc: 't',
+   note: 'Direct from the Kårstø processing plant. Baltic Pipe (2022) branches off in the Danish sector to Denmark and Poland.'},
+  {key: 'ep1', name: 'Europipe I', medium: 'Gas', ids: [326340, 327394], from: 'Draupner E', to: 'Dornum / Emden', country: 'Germany',
+   start: '1995', dia: '40', cap: 54, capSrc: 't',
+   note: 'Lands at Dornum, with metering at Emden.'},
+  {key: 'baltic', name: 'Baltic Pipe', medium: 'Gas', ids: [789409], from: 'Europipe II (Danish sector)', to: 'Niechorze', country: 'Poland, via Denmark',
+   start: '2022', dia: '36', cap: 27, capSrc: 'b',
+   note: 'Takes Norwegian gas off Europipe II in the Danish sector, across Denmark and the Baltic Sea to Poland. Owned by Energinet and GAZ-SYSTEM, not part of Gassled.'},
+  {key: 'franpipe', name: 'Franpipe', medium: 'Gas', ids: [326374], from: 'Draupner E', to: 'Dunkerque', country: 'France',
+   start: '1998', dia: '42', cap: 54.8, capSrc: 'o',
+   note: 'The only pipeline from Norway to France.'},
+  {key: 'norpipe', name: 'Norpipe', medium: 'Gas', ids: [326918, 319166, 324844, 321784], from: 'Ekofisk', to: 'Emden', country: 'Germany',
+   start: '1977', dia: '36', cap: 44.4, capSrc: 'o',
+   note: 'The first Norwegian gas export pipeline. Also receives gas from Draupner via Statpipe.'},
+  {key: 'zeepipe', name: 'Zeepipe I', medium: 'Gas', ids: [321002, 310326], from: 'Sleipner', to: 'Zeebrugge', country: 'Belgium',
+   start: '1993', dia: '40', cap: 42.2, capSrc: 'o',
+   note: 'Gas from the Sleipner area and the Troll system to Belgium.'},
+  {key: 'vesterled', name: 'Vesterled', medium: 'Gas', ids: [322532], from: 'Heimdal', to: 'St Fergus', country: 'UK',
+   start: '2001', dia: '32', cap: null,
+   note: 'Built as the Frigg Norwegian Pipeline (laid from 1976); adapted for other fields and renamed in 2001.'},
+  {key: 'tampen', name: 'Tampen Link', medium: 'Gas', ids: [377106], from: 'Statfjord B', to: 'FLAGS → St Fergus', country: 'UK',
+   start: '2010', dia: '32', cap: null,
+   note: 'Links Statfjord to the UK FLAGS system, which lands at St Fergus.'},
+  {key: 'alvheim', name: 'Alvheim–SAGE', medium: 'Gas', ids: [375427], from: 'Alvheim FPSO', to: 'SAGE → St Fergus', country: 'UK',
+   start: '2008', dia: '14', cap: null,
+   note: 'Gas from the Alvheim area into the UK SAGE system.'},
+  {key: 'uh', name: 'Utsira High gas pipeline', medium: 'Gas', ids: [442969], from: 'Edvard Grieg', to: 'SAGE → St Fergus', country: 'UK',
+   start: '2015', dia: '16', cap: null,
+   note: 'Gas from Edvard Grieg (and tied-in fields) into the UK SAGE system.'},
+  {key: 'norpipeoil', name: 'Norpipe Oil', medium: 'Oil', ids: [326884, 306314, 306280], from: 'Ekofisk', to: 'Teesside', country: 'UK',
+   start: '1975', dia: '34', cap: null,
+   note: 'Oil and NGL from Ekofisk and tied-in fields, via two booster platforms in the UK sector.'},
+];
+// Terminaler som får navn i kartet. Norske anlegg flyttes til nærmeste
+// rørende (koordinatene er omtrentlige); dx/anchor plasserer etiketten.
+const GX_TERMINALS = [
+  {name: 'Emden', at: [7.19, 53.35], dx: 6, abroad: true}, {name: 'Dornum', at: [7.33, 53.68], dx: 6, abroad: true},
+  {name: 'Dunkerque', at: [2.25, 51.05], dx: 6, abroad: true}, {name: 'Zeebrugge', at: [3.23, 51.35], dx: 6, abroad: true},
+  {name: 'Easington', at: [0.11, 53.66], dx: -6, abroad: true}, {name: 'St Fergus', at: [-1.83, 57.58], dx: -6, abroad: true},
+  {name: 'Teesside', at: [-1.29, 54.63], dx: -6, abroad: true}, {name: 'Niechorze', at: [15.077, 54.104], dx: 6, abroad: true},
+  {name: 'Kårstø', at: [5.51, 59.27], dx: 6}, {name: 'Kollsnes', at: [4.84, 60.55], dx: 6}, {name: 'Mongstad', at: [5.03, 60.81], dx: 6},
+  {name: 'Nyhamna', at: [6.95, 62.85], dx: 6}, {name: 'Tjeldbergodden', at: [8.7, 63.4], dx: 6}, {name: 'Melkøya', at: [23.6, 70.69], dx: -6},
+];
+const GX_MEDIUM_COLOR = {Gas: 'rgba(246,141,46,0.9)', Oil: 'rgba(206,15,105,0.85)', Condensate: 'rgba(142,107,191,0.9)'};
+let ncsPipes = null, ncsGxSel = null;
+async function ncsLoadPipelines() {
+  if (!ncsPipes) {
+    const b = await fetchBundle('pipelines');
+    if (b) ncsPipes = {rows: b.rows.map(r => Object.fromEntries(b.columns.map((c, i) => [c, r[i]]))), paths: b.paths || {}};
+  }
+}
+function gxKm(ids) {
+  const R = 6371, rad = Math.PI / 180;
+  let km = 0;
+  ids.forEach(id => (ncsPipes.paths[id] || []).forEach(p => {
+    for (let i = 1; i < p.length; i++) {
+      const [x1, y1] = p[i - 1], [x2, y2] = p[i];
+      const a = Math.sin((y2 - y1) * rad / 2) ** 2 + Math.cos(y1 * rad) * Math.cos(y2 * rad) * Math.sin((x2 - x1) * rad / 2) ** 2;
+      km += 2 * R * Math.asin(Math.sqrt(a));
+    }
+  }));
+  return km;
+}
+
+// Kartet over hele rørnettet. Med et valgt eksportrør tegnes resten svakere
+// og det valgte rørets strekninger oppå i mørk blå med hvit kant.
+function gxMapSvg() {
+  const pts = Object.values(ncsPipes.paths).flat(2);
+  let x0 = Math.min(...pts.map(p => p[0])), x1 = Math.max(...pts.map(p => p[0]));
+  let y0 = Math.min(...pts.map(p => p[1])), y1 = Math.max(...pts.map(p => p[1]));
+  x0 -= 3.6; x1 += 0.8; y0 -= 0.5; y1 += 0.6;   // luft i vest til de britiske etikettene
+  const kx = Math.cos((y0 + y1) / 2 * Math.PI / 180);
+  const W = 520, H = Math.round(W * (y1 - y0) / ((x1 - x0) * kx));
+  const px = x => (x - x0) / (x1 - x0) * W, py = y => H - (y - y0) / (y1 - y0) * H;
+  const line = path => path.map(([x, y], i) => (i ? 'L' : 'M') + px(x).toFixed(1) + ' ' + py(y).toFixed(1)).join('');
+  const inBox = r => r.some(([x, y]) => x > x0 - 2 && x < x1 + 2 && y > y0 - 2 && y < y1 + 2);
+  const land = ((bundle.coastline && bundle.coastline.rings) || []).filter(inBox).map(r => {
+    let d = '', lx = NaN, ly = NaN, n = 0;
+    for (const [x, y] of r) {
+      const sx = px(x), sy = py(y);
+      if (n && Math.abs(sx - lx) < 1.5 && Math.abs(sy - ly) < 1.5) continue;
+      d += (n ? 'L' : 'M') + sx.toFixed(1) + ' ' + sy.toFixed(1); lx = sx; ly = sy; n++;
+    }
+    return n >= 3 ? d + 'Z' : '';
+  }).join('');
+  const sel = GX_PIPES.find(g => g.key === ncsGxSel);
+  const selIds = new Set(sel ? sel.ids.map(String) : []);
+  const keyOf = {};
+  GX_PIPES.forEach(g => g.ids.forEach(id => { keyOf[id] = g.key; }));
+  const pipe = r => {
+    const paths = ncsPipes.paths[r.id];
+    if (!paths) return '';
+    const live = r.phase === 'IN SERVICE' || r.phase === 'INSTALLATION';
+    const color = live ? (GX_MEDIUM_COLOR[r.medium] || '#7a8594') : '#a7b1bc';
+    const w = (0.6 + (r.dimension || 10) / 22).toFixed(2);
+    const k = keyOf[r.id];
+    const g = k && GX_PIPES.find(x => x.key === k);
+    return `<path d="${paths.map(line).join('')}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"` +
+      `${live ? '' : ' stroke-dasharray="3 2"'}${sel ? ' opacity="0.35"' : ''}${k ? ` class="gx-pipe" onclick="ncsGxSelect('${k}')"` : ''}>` +
+      `<title>${esc((g ? g.name + ' · ' : '') + r.name + ' · ' + tc(r.phase || ''))}</title></path>`;
+  };
+  const rows = ncsPipes.rows.filter(r => !selIds.has(String(r.id)));
+  const hi = sel ? sel.ids.filter(id => ncsPipes.paths[id]).map(id => {
+    const d = ncsPipes.paths[id].map(line).join('');
+    return `<path d="${d}" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>` +
+      `<path d="${d}" fill="none" stroke="#003057" stroke-width="3.6" stroke-linecap="round" class="gx-pipe" onclick="ncsGxSelect('${sel.key}')"><title>${esc(sel.name)}</title></path>`;
+  }).join('') : '';
+  // Terminalene: norske flyttes til nærmeste rørende innen 0,4°.
+  const ends = Object.values(ncsPipes.paths).flatMap(ps => ps.flatMap(p => [p[0], p[p.length - 1]]));
+  const snap = ([x, y]) => {
+    let best = null, bd = 0.16;
+    ends.forEach(e => { const d = (e[0] - x) ** 2 + (e[1] - y) ** 2; if (d < bd) { bd = d; best = e; } });
+    return best || [x, y];
+  };
+  const term = GX_TERMINALS.map(t => {
+    const [x, y] = t.abroad ? t.at : snap(t.at), sx = px(x), sy = py(y);
+    const on = sel && (sel.to.includes(t.name) || sel.from.includes(t.name));
+    return `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${on ? 4 : 2.6}" fill="${t.abroad ? '#003057' : '#fff'}" stroke="#003057" stroke-width="1.2"/>` +
+      `<text x="${(sx + t.dx).toFixed(1)}" y="${(sy + 3.5).toFixed(1)}" font-size="${on ? 12 : 10.5}" font-weight="${on || t.abroad ? 700 : 500}"` +
+      ` fill="#1a2332" text-anchor="${t.dx < 0 ? 'end' : 'start'}" paint-order="stroke" stroke="rgba(255,255,255,0.85)" stroke-width="3">${esc(t.name)}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of the Norwegian gas and oil transport pipelines">
+    <rect width="${W}" height="${H}" fill="#e9f0f6"/>
+    <path d="${land}" fill="#dedad0" stroke="#b3bcc6" stroke-width="0.6"/>
+    ${rows.map(pipe).join('')}${hi}${term}
+  </svg>`;
+}
+
+function ncsGxSelect(key) {
+  ncsGxSel = ncsGxSel === key ? null : key;
+  const m = document.getElementById('gxMap');
+  if (!m || !ncsPipes) return;
+  m.innerHTML = gxMapSvg();
+  document.querySelectorAll('.gx-row').forEach(tr => tr.classList.toggle('sel', tr.dataset.key === ncsGxSel));
+  // På smal skjerm ligger kartet under tabellen; vis det fram når et rør velges.
+  if (ncsGxSel && window.innerWidth < 900) m.scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function drawNcsInfra() {
+  setChartNone(); setProfile('');
+  setChartTitle('Norwegian Continental Shelf · Gas exports · Infrastructure', 'Export pipelines from the Norwegian shelf to other countries, and the transport network');
+  if (!ncsPipes) { setChartEmpty('Pipeline data is not available.'); setInfo(''); return; }
+  const n1 = v => v == null ? '—' : v.toLocaleString('en', {maximumFractionDigits: 1});
+  // Baltic Pipe tar gass fra Europipe II og legges ikke til summen.
+  const capGas = GX_PIPES.filter(g => g.medium === 'Gas' && g.cap && g.key !== 'baltic').reduce((t, g) => t + g.cap, 0);
+  const rows = GX_PIPES.map(g => {
+    const km = gxKm(g.ids);
+    return `<tr class="gx-row${ncsGxSel === g.key ? ' sel' : ''}" data-key="${g.key}" onclick="ncsGxSelect('${g.key}')" tabindex="0"
+        onkeydown="if(event.key==='Enter')ncsGxSelect('${g.key}')">
+      <td style="white-space:nowrap"><span class="ex-dot" style="background:${GX_MEDIUM_COLOR[g.medium]}"></span>${esc(g.name)}</td>
+      <td style="text-align:left">${esc(g.from)} → <strong>${esc(g.to)}</strong><span class="gx-note">${esc(g.country)}</span></td>
+      <td>${esc(g.start)}</td><td>${esc(g.dia)}″</td><td>${km ? Math.round(km).toLocaleString('en') : '—'}</td>
+      <td>${g.cap ? `≈${n1(g.cap)}<sup>${g.capSrc}</sup>` : g.medium === 'Oil' ? 'oil' : '—'}</td></tr>
+      <tr class="gx-row gx-sub${ncsGxSel === g.key ? ' sel' : ''}" data-key="${g.key}" onclick="ncsGxSelect('${g.key}')"><td colspan="6"><span class="gx-note">${esc(g.note)}</span></td></tr>`;
+  }).join('');
+  const src = Object.entries(GX_SOURCES).map(([k, [l, u]]) => `<sup>${k}</sup> <a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(' · ');
+  document.getElementById('chartArea').innerHTML = `
+    <div class="gx-split">
+      <div class="gx-l"><div class="pf-scroll"><table class="res-table">
+        <caption>Export pipelines to other countries · click a pipeline to highlight it on the map</caption>
+        <thead><tr><th>Pipeline</th><th style="text-align:left">Route</th><th>Start-up</th><th>Ø</th><th>km</th><th>Capacity, MSm³/d</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div class="pf-map-note">Length is measured along Sodir's route to the landfall; for Tampen Link and the two SAGE links, only to the tie-in with the UK system. Capacity is indicative: Gassco does not publish it per pipeline, sources differ, and actual capacity depends on pressure and gas quality. Sum of the stated capacities out of Norway: ≈${Math.round(capGas)} MSm³/d (Baltic Pipe left out, as it takes its gas from Europipe II). Sources: ${src}</div></div>
+      <div class="gx-r"><div id="gxMap">${gxMapSvg()}</div>
+        <div class="pf-map-note">All transport pipelines in Sodir's register: <span style="color:${GX_MEDIUM_COLOR.Gas}">■</span> gas, <span style="color:${GX_MEDIUM_COLOR.Oil}">■</span> oil, <span style="color:${GX_MEDIUM_COLOR.Condensate}">■</span> condensate; dashed grey = decommissioned. Line width follows the diameter. Click an export pipeline on the map or in the table to highlight it. Coastline: Natural Earth.</div></div>
+    </div>`;
+  setInfo(`<strong>Scope:</strong> pipelines that carry gas or oil from the Norwegian shelf to landfalls in other countries, built from Sodir's pipeline register (layer 6100, ${ncsPipes.rows.length} transport pipelines) &nbsp;|&nbsp; ` +
+    `<strong>Not in the table:</strong> pipelines that end at processing plants or terminals in Norway (shown on the map) &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactMaps (routes, diameter, status); start-up, notes and capacity added by hand`);
+  lastLabels = GX_PIPES.map(g => g.name); lastXTitle = 'Pipeline';
+  lastDatasets = [{label: 'Landfall', data: GX_PIPES.map(g => `${g.to}, ${g.country}`)},
+                  {label: 'Start-up', data: GX_PIPES.map(g => g.start)},
+                  {label: 'Diameter, inches', data: GX_PIPES.map(g => g.dia)},
+                  {label: 'Length, km (Sodir route)', data: GX_PIPES.map(g => Math.round(gxKm(g.ids)))},
+                  {label: 'Capacity, MSm³/d (indicative)', data: GX_PIPES.map(g => g.cap ?? '')}];
+  document.getElementById('downloadBtn').disabled = false;
+}
+
+// NCS → Gas exports: to visninger, Outages (Gasscos hendelser) og
+// Infrastructure (eksportrørene). Fanen har id 'outage' fra før, så gamle
+// lenker virker.
 function drawNcsOutage() {
+  if (ncsF.gx === 'infra') drawNcsInfra(); else drawNcsOutages();
+  ncsToggleAbove(ncsPills('gx', [['outages', 'Outages'], ['infra', 'Infrastructure']]));
+}
+
+function drawNcsOutages() {
   setChartNone(); setProfile('');
   const d = gasscoData || {}, f = d.fields || {};
   const ids = Object.keys(f).map(Number);
-  setChartTitle('Norwegian Continental Shelf · Gas outage', `Gas production and volume lost to outages reported by Gassco, per hub · ${gsUnitLabel()}`);
+  setChartTitle('Norwegian Continental Shelf · Gas exports · Outages', `Gas production and volume lost to outages reported by Gassco, per hub · ${gsUnitLabel()}`);
   setInfo(gasscoInfo('Scope: all fields Gassco reports on, grouped by hub'));
   if (!ids.length) { setChartEmpty('No Gassco outage data.'); return; }
   const months = gasscoMonths(ids);

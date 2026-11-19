@@ -797,7 +797,7 @@ Gassco-noden — `drawFieldDowntime`,
 Fanene heter «Gas outage», men har id `downtime` i lenkene, så eldre lenker
 virker.
 
-**NCS → Gas outage** (`drawNcsOutage`, id `outage`): hele sokkelen — Sodirs
+**NCS → Gas exports → Outages** (`drawNcsOutages`, fane-id `outage`, `nx=outages`): hele sokkelen — Sodirs
 gassproduksjon for alle felt over null, tapt volum under null, stablet med
 ett segment per hub (`hubOfField`; felt uten hub er sin egen). Hubene
 sorteres etter samlet tap i perioden, og de som ikke får farge i paletten,
@@ -1703,6 +1703,7 @@ Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`
 | Fields | `drawNcsFields` | Rangering etter gjennomsnittlig produksjon siste 12 måneder med data, med andel og konsentrasjon (topp 10, antall felt for halve produksjonen). Veksler `nf=timeline`: felt i produksjon og nedstengt per år (produksjonsstart; siste produksjonsår for status «Shut down») med antall producerende felt som linje |
 | Water | `drawNcsWater` | Olje og produsert vann per år (bbl/d) og vannkuttet, vann / (vann + olje). Starter ved første år med rapportert vann (2000). Tabell: de største vannprodusentene siste hele år |
 | Creaming | `drawNcsCreaming` | Creaming-kurve: samlet funnvolum mot samlet antall wildcats, år for år (`nc=year` gir funnvolum per funnår med wildcats som linje). Volum: feltenes utvinnbare volum på feltets funnår pluss betingede ressurser i funn på funnåret. Total eller per havområde (`na=1`) |
+| Gas exports | `drawNcsOutage` | To visninger (`nx`): **Outages** (`drawNcsOutages`, tidligere «Gas outage»: Sodirs gassproduksjon over null og tapt volum fra Gasscos hendelser per hub under null) og **Infrastructure** (`nx=infra`, `drawNcsInfra`): tabell over eksportrørene til utlandet (`GX_PIPES`: Sodir-strekninger per rør, oppstart, diameter, lengde målt langs Sodirs trasé, veiledende kapasitet med kilde i `GX_SOURCES`) og kart over hele transportnettet fra `data/pipelines.json`. Klikk på en rad eller et eksportrør i kartet uthever røret (`ncsGxSelect`). Fanens id er fortsatt `outage`, så gamle lenker virker |
 | Investments | `drawNcsInvestments` | Investeringer per år og havområde (nominelt), og forventede framtidige investeringer per felt (faste kroner) |
 
 **Economy** (`drawNcsEconomy`) bruker SSB-data fra `data/ssb_petroleum.json`,

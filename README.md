@@ -38,6 +38,7 @@ som statiske JSON-filer i dette repoet.
 | `data/field_profile.json` | Faktaark per felt — funnår, operatør, produksjonsstart |
 | `data/field_descriptions.json` | Sodirs feltbeskrivelser (lag 7102) |
 | `data/field_outlines.json` | Forenklede feltomriss til profilkartet |
+| `data/pipelines.json` | Transportrørledninger (lag 6100) med attributter og forenklet trasé, til NCS → Gas exports → Infrastructure. Bygges av `fetch_sodir.py` |
 | `data/facilities.json` | Innretninger per felt (lag 6000) — til hubprofilen |
 | `data/exploration_wells.json` | Letebrønner (lag 5000) — planlagte, pågående og avsluttede, med eierskap per spud-dato. Lastes først når Exploration åpnes |
 | `fetch_prospects.py` | Henter prospektnavn til letebrønner fra Sodirs RSS-feed «Exploration drilling results» (brønn fra tittelen, prospekt fra beskrivelsen) og bygger `data/exploration_prospects.json` — et arkiv som bare vokser. Brukes som navn på brønner uten funnnavn, typisk tørre |
@@ -58,7 +59,7 @@ som statiske JSON-filer i dette repoet.
 | `data/company_news.json` | Siste saker (inntil 100 per feed) og status per feed fra feedene i `company_feeds.json` |
 | `fetch_gassco.py` | Henter Gasscos hendelser (UMM) fra umm.gassco.no — forsiden og arkivet, etter å ha godtatt vilkårene der — til arkivet `data/gassco_events.json`, og regner dem om til nedetid per felt i `data/gassco_downtime.json`. Kjøres daglig (arkivets siste 120 dager); `--backfill` leser alt fra 1. januar 2025 |
 | `data/gassco_events.json` | Arkiv over Gasscos hendelser fra 2025, siste revisjon per hendelse. Bare vokser, så historikken beholdes når Gassco fjerner gamle hendelser (de holder om lag to år) |
-| `data/gassco_downtime.json` | Dager og tapt gassvolum per felt og måned (planlagt og uplanlagt), fra januar 2025 og så langt fram som hendelsene går. Vises i Field, Hub, Company og NCS → Gas outage som volumeffekt: produksjon over null, tapt volum under, i boe/day eller Sm³/day |
+| `data/gassco_downtime.json` | Dager og tapt gassvolum per felt og måned (planlagt og uplanlagt), fra januar 2025 og så langt fram som hendelsene går. Vises i Field, Hub, Company og NCS → Gas exports → Outages som volumeffekt: produksjon over null, tapt volum under, i boe/day eller Sm³/day |
 | `data/gassco_aliases.json` | Gasscos anleggsnavn → feltnavn i Sodir, og anlegg som ikke er felt (prosessanlegg, terminaler). Redigeres for hånd |
 | `fetch_ens.py` | Leser de publiserte JSON-filene fra ENS-løsningen (`sheffielddivided/ens`) og bygger `data/dcs.json` og `data/dcs_outlines.json` til DCS-seksjonen. Regner gass om fra Nm³ til Sm³. Ukjent format gir feil og exit 1 uten at noe skrives. `--local ../ens` leser fra en lokal kopi |
 | `data/dcs.json` | Danske felt: operatør, gjeldende eierandeler og eierskap over tid (1999–), årlig (1972–) og månedlig (2018–) produksjon med foreløpig-flagg, reserver per 1. januar, og brønnene til havs (1966–) med type, felt og posisjon til DCS → Drilling og DCS → Map |
