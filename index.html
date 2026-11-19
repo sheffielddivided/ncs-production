@@ -3134,7 +3134,7 @@ function applyHash() {
     ncsF.vol = q.get('nv') === '1';
     if (/^\d{4}$/.test(q.get('n0') || '')) ncsF.from = q.get('n0');
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
-    if (['all', 'prod', 'rp', 'rl'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
+    if (['all', 'prod', 'rp', 'rl', 'count'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     ncsF.crArea = q.get('na') === '1';
     if (['rem', 'orig', 'life', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
@@ -7413,6 +7413,8 @@ async function ncsSet(key, val) {
   ncsF[key] = val;
   syncUrl();
   if (key === 'vol' && val) await Promise.all([loadFieldReserves(), loadDiscoveries()]);
+  // Rangeringene og antall lisenshavere bruker ulike data; refreshNcs laster det som mangler.
+  if (key === 'rank') return refreshNcs();
   if (key === 'prod') renderViewTabs();   // vannveksleren gjelder bare olje/gass-visningen
   drawChart();
 }
@@ -7437,6 +7439,7 @@ async function refreshNcs() {
   else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
   else if (v === 'exploration') await Promise.all([loadExploration(), ...(ncsF.vol ? [loadFieldReserves(), loadDiscoveries()] : [])]);
   else if (v === 'investments') { if (!ncsCpi) ncsCpi = await fetchBundle('cpi'); }
+  else if (v === 'companies' && ncsF.rank === 'count') await ncsLoadLicHist();
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries(), loadProdForFields(ncsFieldIds())]);
   else if (v === 'outage') await loadGassco();
   drawChart();
@@ -8984,6 +8987,7 @@ function ncsCompanyReserves() {
 function drawNcsCompanies() {
   if (ncsF.rank === 'prod') return drawNcsCompaniesProd();
   if (ncsF.rank === 'rp' || ncsF.rank === 'rl') return drawNcsCompaniesRp(ncsF.rank === 'rl');
+  if (ncsF.rank === 'count') return drawNcsCompaniesCount();
   const {res, get} = ncsCompanyReserves();
   const withRes = ncsF.rank === 'all';
   if (withRes) allDiscoveries.forEach(d => {
@@ -9031,7 +9035,68 @@ function drawNcsCompanies() {
 
 const ncsCompanyPills = () => ncsPills('rank', [['res', 'Reserves'], ['all', 'Reserves + contingent resources'],
                                                   ['prod', 'Production, last 12 months'], ['rp', 'Reserve life (R/P)'],
-                                                  ['rl', 'Resource life']]);
+                                                  ['rl', 'Resource life'], ['count', 'Licensees over time']]);
+
+// ── NCS: ANTALL LISENSHAVERE OVER TID ──
+// Hvor mange selskaper (juridiske enheter) som har andel i minst én
+// utvinningstillatelse ved utgangen av hvert år, og hvor mange av dem som er
+// operatør for minst én. Fra eierhistorikken i licence_history.json (lag
+// 3007/3008), datoene i dager siden 1970, «til» inklusiv. Inneværende år
+// telles per i dag. SDØE/Petoro er med som rettighetshaver. Bare
+// licence_history lastes; resten av Licences-dataene trengs ikke.
+let ncsLicHistData = null;
+async function ncsLoadLicHist() {
+  if (!ncsLicHistData) ncsLicHistData = licHist || await fetchBundle('licence_history');
+}
+// Selskapene per år: {years, act: [Set], op: [Set]}.
+function ncsLicenseeYears() {
+  const h = ncsLicHistData;
+  const today = Math.floor(Date.now() / 864e5);
+  const first = Math.max(1965, new Date(Math.min(...h.shares.map(r => r[2] == null ? Infinity : r[2])) * 864e5).getUTCFullYear());
+  const years = [];
+  for (let y = first; y <= currentYear; y++) years.push(y);
+  const dayOf = y => y === currentYear ? today : Date.UTC(y, 11, 31) / 864e5;
+  const act = years.map(() => new Set()), op = years.map(() => new Set());
+  const mark = (sets, ci, from, to) => years.forEach((y, i) => {
+    const t = dayOf(y);
+    if ((from == null || from <= t) && (to == null || to >= t)) sets[i].add(h.companies[ci]);
+  });
+  h.shares.forEach(([, ci, from, to, share]) => { if (share > 0) mark(act, ci, from, to); });
+  h.oper.forEach(([, ci, from, to]) => mark(op, ci, from, to));
+  return {years, act, op};
+}
+
+function drawNcsCompaniesCount() {
+  if (!ncsLicHistData) { setChartEmpty('Licence history is not available.'); setInfo(''); return; }
+  const {years, act, op} = ncsLicenseeYears();
+  const labels = years.map(String);
+  const BAR = 'rgba(0,48,87,0.8)', LINE = '#e3a73a';
+  renderChart(labels, [
+    {label: 'Licensees', data: act.map(s => s.size), backgroundColor: BAR, borderWidth: 0, stack: 's', order: 1},
+    {type: 'line', label: 'Of which operators', data: op.map(s => s.size), borderColor: LINE, backgroundColor: LINE,
+     borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.2, stack: 'op', _noTotal: true, order: 0},
+  ], [{label: 'Licensees', color: BAR}, {label: 'Of which operators', color: LINE}], 'companies', {xTitle: 'Year', noFooter: true});
+  const peak = act.reduce((b, s, i) => s.size > act[b].size ? i : b, 0), last = act.length - 1;
+  setChartTitle('Norwegian Continental Shelf · Companies', 'Number of licensees in production licences, at year end · companies');
+  setInfo(`<strong>Count:</strong> companies (legal entities) with a share in at least one production licence on 31 December each year; ${currentYear} as of today &nbsp;|&nbsp; ` +
+    `<strong>Operators:</strong> licensees operating at least one licence &nbsp;|&nbsp; <strong>Now:</strong> ${act[last].size} licensees, ${op[last].size} operators &nbsp;|&nbsp; ` +
+    `<strong>Peak:</strong> ${act[peak].size} in ${years[peak]} &nbsp;|&nbsp; <strong>Basis:</strong> Sodir's licence ownership history. A company that changes its name or is merged counts as a new entity, so a rename shows as one company in and one out. The State's direct financial interest (SDFI) counts as a licensee`);
+  // Tabell: nye og borte per år, nyeste først.
+  const names = set => [...set].sort((a, b) => a.localeCompare(b, 'en')).map(esc).join(', ');
+  const rows = years.map((y, i) => {
+    if (!i) return '';
+    const inn = new Set([...act[i]].filter(c => !act[i - 1].has(c))), out = new Set([...act[i - 1]].filter(c => !act[i].has(c)));
+    return `<tr><td>${y}</td><td>${act[i].size}</td><td>${op[i].size}</td><td>${inn.size ? '+' + inn.size : '–'}</td><td>${out.size ? '−' + out.size : '–'}</td>
+      <td style="text-align:left;white-space:normal;font-size:11px">${inn.size ? `<strong>In:</strong> ${names(inn)}` : ''}${inn.size && out.size ? '<br>' : ''}${out.size ? `<strong>Out:</strong> ${names(out)}` : ''}</td></tr>`;
+  }).reverse().join('');
+  setChartTable(`
+    <table class="res-table">
+      <caption>Licensees per year, with companies entering and leaving · newest first</caption>
+      <thead><tr><th>Year</th><th>Licensees</th><th>Operators</th><th>New</th><th>Left</th><th style="text-align:left">Companies</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`);
+  ncsToggleAbove(ncsCompanyPills());
+}
 
 // Rangering etter egenandelsjustert produksjon de siste tolv månedene med
 // data. Andelen slås opp midt i hver måned, som i selskapsvisningene, så et
