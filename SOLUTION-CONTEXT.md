@@ -1695,7 +1695,7 @@ Tilstanden ligger i `ncsF` og i lenken (`np`, `nr`, `nw`, `ny`, `nk`, `nc`, `na`
 
 | Fane | Funksjon | Hva som tegnes |
 |---|---|---|
-| Production | `drawNcsProduction` | Summen av alle felt, olje/gass(/vann) eller OE per havområde (`np=area`). Én gjennomgang av radene i stedet for oppslag per periode og felt, men samme regler for gyldige rader, komplette perioder og kvartaler som feltvisningene |
+| Production | `drawNcsProduction` | Summen av alle felt, olje/gass(/vann) eller OE per havområde (`np=area`), eller OE per operatør (`np=operator`): feltets bruttoproduksjon (100 %) til operatøren på datoen (`fieldOperatorAt`, midt i perioden; årsrader 1. juli), samlet per konsern med `concernKey` og `NCS_OP_ALIAS` (Statoil/StatoilHydro → Equinor, Phillips → ConocoPhillips, Det norske → Aker BP), mens Hydro, Saga og Amoco står for seg til fusjonen. De `NCS_OP_TOP` (10) største i perioden får egen serie, resten «Other operators». Én gjennomgang av radene i stedet for oppslag per periode og felt, men samme regler for gyldige rader, komplette perioder og kvartaler som feltvisningene |
 | Reserves | `drawNcsReserves` | Gjenstående reserver per årgang, stablet per havområde, veksler Total OE / Liquids / Gas (`nr`). Tabell: per havområde med endring fra året før, og de 15 største feltene |
 | Replacement | `drawNcsReplacement` | Tilført = gjenstående(y) − gjenstående(y−1) + produsert(y), mot produsert, med erstatningsgraden som linje. Produksjonen tas fra årsradene i produksjonsbundelen, så fanen krever bundelen |
 | Exploration | `drawNcsExploration` | Letebrønner per spuddår: funn (wlbDiscoveryWell), øvrige, tørre, med funnrate og «Wildcats only» (`nw`). Felles graf og tabell med Companies/Exploration (`explYearChart`, `explYearTableHtml`) |
