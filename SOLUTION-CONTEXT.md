@@ -1681,6 +1681,15 @@ PowerPoint-tabell (`kind: 'table'`) med cellefargene blandet mot hvitt og
 skrift som krymper med antall selskaper. Kurven lagres i localStorage og lastes ned som én fil
 med ett lysbilde per element, i den rekkefølgen panelet viser.
 
+#### Market → Power
+
+`drawPricePower`, data fra `data/power.json` (`fetch_nve.py`, som leser nve-løsningen `sheffielddivided/nve`; lastes først når fanen åpnes). Områdevelger Norge / NO1–NO5 (`pw`) og periode for prisgrafen (`pz`: 1y, 3y, 5y, all).
+
+- Nøkkeltall øverst (`pwStats`): fyllingsgrad og TWh, endring fra forrige uke, mot normal og mot samme uke i fjor (prosentpoeng), siste ukepris, snitt siste fire uker, snitt hittil i år mot samme uker i fjor (timevektet), og avstand til Tyskland (DE-LU).
+- Magasingrafen: uke 1–52 for inneværende år og fjoråret, normal = median for samme uke de 20 foregående årene (`POWER_HIST`), bånd = min–maks for de samme årene, som i nve-løsningen. Uke 53 utelates.
+- Prisgrafen: ukesnitt for NO1–NO5 og Tyskland (stiplet), valgt område uthevet. Norge = uvektet snitt av NO1–NO5 i uker der alle har pris. Siste uke kan være ufullstendig (timer < 168), merket «week to date».
+- Tabell per område med de samme nøkkeltallene. Excel-eksporten er magasinserien; PPT tar med prisgrafen som ekstra lysbilde.
+
 #### NCS-modusen
 
 Standardvalg: appen åpner på Companies / Prod per hub med Aker BP.
