@@ -956,6 +956,7 @@
         <button class="pill-btn active" id="btnMonthly" onclick="setPeriod('monthly')">Monthly</button>
         <button class="pill-btn" id="btnQuarterly" onclick="setPeriod('quarterly')">Quarterly</button>
         <button class="pill-btn" id="btnAnnual" onclick="setPeriod('annual')">Annual</button>
+        <button class="pill-btn" id="btnTotal" onclick="ncsSetTotal(true)" style="display:none" title="Cumulative production in the selected years, as a pie chart">Total</button>
       </div>
     </div>
     <div class="ctrl-row" id="waterRow" style="display:none">
@@ -1919,7 +1920,7 @@ function renderViewTabs() {
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
   const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas'
-    : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product'
+    : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product' && !ncsF.tot
     : topMode === 'dcs' ? cur === 'production' && dcsF.prod === 'product'
     : topMode === 'ukcs' ? cur === 'production' && ukF.prod === 'product' : false;
   document.getElementById('settingsBtn').style.display =
@@ -1930,6 +1931,7 @@ function renderViewTabs() {
   // årsutvalg gjelder ikke der.
   document.getElementById('periodRow').style.display =
     isReservesView() || topMode === 'licences' ? 'none' : '';
+  syncPeriodButtons();
 }
 
 function setSubView(v) {
@@ -1977,12 +1979,11 @@ function firstYearInCache() {
 }
 
 function setPeriod(p) {
+  if (ncsTotalOn()) { ncsF.tot = false; syncPeriodButtons(); syncUrl(); renderViewTabs(); if (period === p) { drawChart(); return; } }
   if (period === p) return;
   if (SHELF_MODES.includes(topMode)) ncsPrevPeriod = null;   // valgt i NCS/DCS: beholdes
   period = p;
-  document.getElementById('btnMonthly').classList.toggle('active',   p === 'monthly');
-  document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
-  document.getElementById('btnAnnual').classList.toggle('active',    p === 'annual');
+  syncPeriodButtons();
   if (p === 'annual') {
     // Load full history: set yearFrom to 1970, clear cache, fetch, then snap to first real data year
     document.getElementById('yearFrom').value = 1970;
@@ -2004,15 +2005,32 @@ function setPeriod(p) {
   }
 }
 
+// Periodeknappene. «Total» finnes bare i NCS / Production (ncsF.tot) og
+// står da aktiv i stedet for perioden, som beholdes til Total slås av.
+const ncsTotalOn = () => topMode === 'ncs' && ncsSubView === 'production' && !!ncsF.tot;
+function syncPeriodButtons() {
+  const t = ncsTotalOn();
+  document.getElementById('btnMonthly').classList.toggle('active',   !t && period === 'monthly');
+  document.getElementById('btnQuarterly').classList.toggle('active', !t && period === 'quarterly');
+  document.getElementById('btnAnnual').classList.toggle('active',    !t && period === 'annual');
+  const b = document.getElementById('btnTotal');
+  b.style.display = topMode === 'ncs' && ncsSubView === 'production' ? '' : 'none';
+  b.classList.toggle('active', t);
+}
+function ncsSetTotal(on) {
+  if (!!ncsF.tot === on) return;
+  ncsF.tot = on;
+  if (on) ncsF.sc = false;   // scenarioene er en tidsserie
+  syncPeriodButtons(); syncUrl(); renderViewTabs(); drawChart();
+}
+
 // NCS-produksjonen viser hele historikken som standard: årsoppløsning fra
 // 1970. Perioden brukeren hadde ellers i appen tas vare på og settes
 // tilbake når man går ut av NCS — med mindre den er endret i NCS.
 let ncsPrevPeriod = null;
 function applyPeriodQuiet(p, yf, yt) {
   period = p;
-  document.getElementById('btnMonthly').classList.toggle('active',   p === 'monthly');
-  document.getElementById('btnQuarterly').classList.toggle('active', p === 'quarterly');
-  document.getElementById('btnAnnual').classList.toggle('active',    p === 'annual');
+  syncPeriodButtons();
   document.getElementById('yearFrom').value = yf;
   if (yt) document.getElementById('yearTo').value = yt;
   sessionClearProd();
@@ -3109,7 +3127,8 @@ function applyHash() {
   if (topMode === 'ncs') {
     ncsF = ncsDefaults();
     if (['area', 'operator'].includes(q.get('np'))) ncsF.prod = q.get('np');
-    ncsF.sc = q.get('ns') === '1';
+    ncsF.tot = q.get('nt') === '1';
+    ncsF.sc = !ncsF.tot && q.get('ns') === '1';
     if (['liq', 'gas'].includes(q.get('nr'))) ncsF.res = q.get('nr');
     ncsF.cum = q.get('nu') === '1';
     ncsF.vol = q.get('nv') === '1';
@@ -3159,10 +3178,8 @@ function applyHash() {
   const pr = q.get('p');
   if (['monthly','quarterly','annual'].includes(pr)) {
     period = pr;
-    document.getElementById('btnMonthly').classList.toggle('active',   pr === 'monthly');
-    document.getElementById('btnQuarterly').classList.toggle('active', pr === 'quarterly');
-    document.getElementById('btnAnnual').classList.toggle('active',    pr === 'annual');
   }
+  syncPeriodButtons();
 
   if ((SHELF_MODES.includes(topMode)) && !pr) ncsEnterPeriod();
 
@@ -7362,16 +7379,16 @@ const NCS_TABS = [
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
-// prod: 'product' | 'area' | 'operator' · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
+// prod: 'product' | 'area' | 'operator' · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life) | 'rl' (resource life, med ressurser i funn)
 // · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'life' | 'change' | 'timeline' · hb: samme uten 'timeline' (NCS → Hubs)
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', tot: false, sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', hb: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
-const NCS_PARAMS = [['prod', 'np'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
+const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['hb', 'nh'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -7514,7 +7531,87 @@ function ncsOperatorSeries(acc, labels) {
     .concat(ranked.length > NCS_OP_TOP ? [{key: NCS_OP_OTHER, label: 'Other operators', color: '#9aa5b1'}] : []);
 }
 
+// «Total»: samlet produksjon i årene From–To som kakediagram, med samme
+// inndeling som grafen (olje/gass, havområde eller operatør). Summen tas fra
+// månedsradene, så operatøren slås opp måned for måned; inneværende år er med
+// så langt det finnes tall. Vann er ikke med, siden det ikke er produksjon av
+// petroleum.
+function drawNcsProductionTotal() {
+  const ids = ncsFieldIds();
+  const fy = +document.getElementById('yearFrom').value;
+  const ty = +document.getElementById('yearTo').value;
+  const byArea = ncsF.prod === 'area', byOp = ncsF.prod === 'operator';
+  const o = {};
+  let m0 = Infinity, m1 = -Infinity;
+  const add = (k, v) => { o[k] = (o[k] || 0) + v; };
+  ids.forEach(id => {
+    const area = byArea ? ncsArea(id) : '';
+    (fieldProdCache[id] || []).forEach(r => {
+      const a = r.attributes;
+      if (!(a.prfMonth > 0) || a.prfYear < fy || a.prfYear > ty) return;
+      const oe = (a.prfPrdOeNetMillSm3 || 0) * BBL_PER_SM3, gas = (a.prfPrdGasNetBillSm3 || 0) * BBL_PER_SM3;   // mill boe
+      if (!(oe > 0)) return;
+      const mk = a.prfYear * 12 + a.prfMonth - 1;
+      m0 = Math.min(m0, mk); m1 = Math.max(m1, mk);
+      if (byArea) add(area, oe);
+      else if (byOp) add(ncsOperatorGroup(fieldOperatorAt(id, new Date(Date.UTC(a.prfYear, a.prfMonth - 1, 15)))), oe);
+      else { add('Oil', Math.max(0, oe - gas)); add('Gas', gas); }
+    });
+  });
+  const acc = {t: o};
+  const series = (byArea
+    ? ncsAreas().map(z => ({key: z.key, label: z.label, color: rgba(z.color, 0.85)}))
+    : byOp ? ncsOperatorSeries(acc, ['t'])
+    : [{key: 'Oil', label: 'Oil', color: OIL_COLOR}, {key: 'Gas', label: 'Gas', color: GAS_COLOR}])
+    .map(z => ({...z, v: o[z.key] || 0})).filter(z => z.v > 0);
+  const total = series.reduce((t, z) => t + z.v, 0);
+  const fmtM = k => `${MONTH_ABBR[k % 12]} ${Math.floor(k / 12)}`;
+  const span = total ? `${fmtM(m0)}–${fmtM(m1)}` : '';
+  const dayCount = total ? (Date.UTC(Math.floor(m1 / 12), m1 % 12 + 1, 1) - Date.UTC(Math.floor(m0 / 12), m0 % 12, 1)) / 864e5 : 0;
+  const what = byArea ? 'by sea area' : byOp ? 'by field operator, gross' : 'oil & gas';
+  setChartTitle('Norwegian Continental Shelf · Total production', `Cumulative ${what}, ${span || `${fy}–${ty}`} · million boe`);
+  setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Period:</strong> ${span || '—'}, the selected years From–To, with the current year to the latest month reported &nbsp;|&nbsp; <strong>Unit:</strong> million boe (net OE, 1 Sm³ = 6.29 bbl)` +
+    (byOp ? ` &nbsp;|&nbsp; <strong>Operator:</strong> each month's gross field production (100 %) goes to the field's operator that month (Sodir's operator history), the ${NCS_OP_TOP} largest shown and the rest as «Other operators». Successor companies are shown under today's name (Statoil, StatoilHydro → Equinor; Det norske → Aker BP; Phillips → ConocoPhillips); Norsk Hydro, Saga and Amoco keep their own share until the merger` : '') +
+    (!byArea && !byOp ? ' &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate; produced water is not included' : '') +
+    ' &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields is not included' + ncsNewsLink());
+  if (!total) { setChartEmpty('No data for the selected period.'); return; }
+  setChartTable(''); setProfile('');
+  const n = v => v.toLocaleString('en', {maximumFractionDigits: v < 100 ? 1 : 0});
+  const pct = v => (v / total * 100).toFixed(1) + ' %';
+  document.getElementById('chartArea').innerHTML = `
+    <div class="chart-container" style="max-width:560px;margin:0 auto"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">${series.map(z => `
+      <div class="legend-item"><div class="legend-dot" style="background:${z.color}"></div>${esc(z.label)} · ${pct(z.v)}</div>`).join('')}
+    </div>`;
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'pie',
+    data: {labels: series.map(z => z.label), datasets: [{data: series.map(z => +z.v.toFixed(1)), backgroundColor: series.map(z => z.color),
+      borderColor: '#fff', borderWidth: 1}]},
+    options: {responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {display: false},
+        tooltip: {callbacks: {label: c => ` ${c.label}: ${n(c.parsed)} million boe (${pct(c.parsed)})`}}}},
+  });
+  const avg = v => Math.round(v * 1e6 / dayCount);
+  setChartTable(`
+    <table class="res-table">
+      <caption>Total production ${span} · million boe, share and average per day</caption>
+      <thead><tr><th>${byArea ? 'Sea area' : byOp ? 'Operator' : 'Product'}</th><th>Million boe</th><th>Share</th><th>Average boe/day</th></tr></thead>
+      <tbody>${series.map(z => `<tr><td><span class="ex-dot" style="background:${z.color}"></span>${esc(z.label)}</td><td>${n(z.v)}</td><td>${pct(z.v)}</td><td>${avg(z.v).toLocaleString('en')}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td>${n(total)}</td><td>100 %</td><td>${avg(total).toLocaleString('en')}</td></tr></tfoot>
+    </table>`);
+  lastLabels = series.map(z => z.label); lastXTitle = byArea ? 'Sea area' : byOp ? 'Operator' : 'Product';
+  lastDatasets = [{label: `Total ${span}, million boe`, data: series.map(z => +z.v.toFixed(2))},
+                  {label: 'Share, %', data: series.map(z => +(z.v / total * 100).toFixed(2))},
+                  {label: 'Average, boe/day', data: series.map(z => avg(z.v))}];
+  pptSpec = {kind: 'pie', labels: lastLabels, values: series.map(z => +z.v.toFixed(1)), colors: series.map(z => pptHex(z.color)),
+    subtitle: `Cumulative ${what}, ${span} · million boe`};
+  document.getElementById('downloadBtn').disabled = false;
+  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area'], ['operator', 'By operator']])}</div>`);
+}
+
 function drawNcsProduction() {
+  if (ncsF.tot) return drawNcsProductionTotal();
   const ids = ncsFieldIds();
   const fy = +document.getElementById('yearFrom').value;
   const ty = +document.getElementById('yearTo').value;
@@ -14940,6 +15037,12 @@ function pptAddChart(pptx, slide, spec, box) {
   const common = {...box, ...font, showLegend: true, legendPos: 'b', valAxisLabelFormatCode: '#,##0',
     valGridLine: {color: 'E3E8EE', size: 0.75}, catGridLine: {style: 'none'}};
 
+  if (spec.kind === 'pie') {
+    slide.addChart(C.PIE, [{name: 'Total', labels: spec.labels, values: spec.values}], {...box, ...font, chartColors: spec.colors,
+      showLegend: true, legendPos: 'r', showPercent: true, showValue: false, dataLabelColor: 'FFFFFF', dataLabelFontSize: 9,
+      dataBorder: {pt: 0.75, color: 'FFFFFF'}});
+    return;
+  }
   if (spec.kind === 'table') {
     // Tabell (overlappsmatrisen): første kolonne bredere, resten likt fordelt;
     // skriften krymper med antall rader så alt får plass på lysbildet.
