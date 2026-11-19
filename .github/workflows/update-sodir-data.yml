@@ -137,6 +137,14 @@ jobs:
         timeout-minutes: 5
         run: python fetch_ens.py
 
+      # Magasinfylling og strømpriser til Market → Power: leser de publiserte
+      # JSON-filene fra nve-løsningen (sheffielddivided/nve), som selv henter
+      # fra NVE og ENTSO-E. Feiler steget, beholdes forrige data/power.json.
+      - name: Hent magasin og strømpriser (nve)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python fetch_nve.py
+
       # Britiske felt til UKCS-seksjonen: produksjon (PPRS), eierandeler
       # (Field Partners), feltomriss og lisensunderområder fra NSTA. Feiler
       # steget, beholdes forrige data/ukcs*.json og resten committes likevel.
