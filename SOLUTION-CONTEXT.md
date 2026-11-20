@@ -1683,7 +1683,7 @@ med ett lysbilde per element, i den rekkefølgen panelet viser.
 
 #### Market → Power
 
-`drawPricePower`, data fra `data/power.json` (`fetch_nve.py`, som leser nve-løsningen `sheffielddivided/nve`; lastes først når fanen åpnes). Områdevelger Norge / NO1–NO5 (`pw`) og periode for prisgrafen (`pz`: 1y, 3y, 5y, all).
+`drawPricePower`, data fra `data/power.json` (`fetch_nve.py`, som leser nve-løsningen `sheffielddivided/nve`; lastes først når fanen åpnes). Områdevelger Norge / NO1–NO5 (`pw`), periode for prisgrafen (`pz`: 1y, 3y, 5y, all) og enhet (`pe`: €/MWh eller `ore` for øre/kWh). Øre/kWh = €/MWh × EURNOK / 10, med Norges Banks kurs fra `data/fx.json` (snitt av dagskursene i ISO-uken, `pwEurNok`; uker uten kurs får siste kjente ukesnitt). Kursene lastes bare når øre/kWh velges. Omregningen skjer i `pwPrices`, så nøkkeltall, graf og tabell følger samme enhet; uten moms og nettleie.
 
 - Nøkkeltall øverst (`pwStats`): fyllingsgrad og TWh, endring fra forrige uke, mot normal og mot samme uke i fjor (prosentpoeng), siste ukepris, snitt siste fire uker, snitt hittil i år mot samme uker i fjor (timevektet), og avstand til Tyskland (DE-LU).
 - Magasingrafen: uke 1–52 for inneværende år og fjoråret, normal = median for samme uke de 20 foregående årene (`POWER_HIST`), bånd = min–maks for de samme årene, som i nve-løsningen. Uke 53 utelates.
