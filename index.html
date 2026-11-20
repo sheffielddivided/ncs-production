@@ -10831,8 +10831,20 @@ const RES_HIST_NOTE = 'Before 2004: Sodir resource accounts 1980–2003 (origina
 // og oppføringen finnes i nøyaktig de to årene Skarv faller. Radene slås
 // derfor sammen her. Datafilene speiler Sodir uendret; korreksjonen hører
 // hjemme sammen med den øvrige forretningslogikken.
+//
+// Vega Sør (4467609) er samme sak: eget felt i reservelaget i årgangene
+// 2007–2010, nullet i 2011 da det ble slått inn i Vega, og ikke i feltlaget.
+// Uten sammenslåingen sto det som egen «hub» («Field 4467609») med +24 % i
+// NCS → Hubs → Reserve change, og Vegas hopp i 2011 talte som oppjustering:
+//
+//   årgang   Vega alene   Vega + Vega Sør   (mill Sm³ o.e.)
+//   2009     12,074       25,144
+//   2010     12,088       25,168
+//   2011     23,140       23,140
+//   2012     25,169       25,169
 const SPLIT_RESERVE_ENTRIES = {
-  33310197: 4704482,   // → SKARV, årgangene 2018 og 2019
+  33310197: 4704482,   // Ærfugl → SKARV, årgangene 2018 og 2019
+  4467609: 4467595,    // VEGA SØR → VEGA, årgangene 2007–2011
 };
 
 function mergeSplitReserveEntries(byField) {
