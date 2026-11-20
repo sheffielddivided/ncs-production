@@ -88,7 +88,7 @@ som statiske JSON-filer i dette repoet.
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
 | `fetch_gas.py` | Henter månedlige gasspriser (SSB eksportpris, IMF Europa, Henry Hub, Norges Bank-kurser) til `data/gas_prices.json` |
 | `fetch_nve.py` | Leser de publiserte JSON-filene fra nve-løsningen (`sheffielddivided/nve`): NVEs magasinstatistikk og ENTSO-Es day-ahead-priser, og bygger `data/power.json` til Market → Power. Ukjent format gir exit 1 uten at noe skrives. `--local ../nve` leser fra en lokal kopi |
-| `data/power.json` | Magasinfylling per uke for Norge og NO1–NO5 (inneværende år og de 20 foregående) og ukepriser for NO1–NO5 og Tyskland fra 2015 |
+| `data/power.json` | Magasinfylling per uke for Norge og NO1–NO5 (inneværende år og de 20 foregående), ukepriser for NO1–NO5 og Tyskland fra 2015, og netto eksport per utenlandsforbindelse (MW, ukesnitt) fra 2015 |
 | `fetch_fx.py` | Henter daglige valutakurser fra Norges Bank (NOK, USD, EUR, GBP, SEK, DKK, CHF, CAD) til `data/fx.json`, Forex-fanen i Market |
 | `fetch_rates.py` | Bygger `data/rates.json` (styringsrente, inflasjon og rentekurver for NO, US, EU, UK, SE) fra convert-repoets nb-data, pluss Feds målintervall og Treasury-kurven, til Interest-fanen i Market |
 | `fetch_cpi.py` | Henter konsumprisindekser (US CPI-U, euroområdets HICP, SSBs KPI) til `data/cpi.json`, realprisene i Prices |

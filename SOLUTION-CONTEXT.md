@@ -1688,7 +1688,8 @@ med ett lysbilde per element, i den rekkefølgen panelet viser.
 - Nøkkeltall øverst (`pwStats`): fyllingsgrad og TWh, endring fra forrige uke, mot normal og mot samme uke i fjor (prosentpoeng), siste ukepris, snitt siste fire uker, snitt hittil i år mot samme uker i fjor (timevektet), og avstand til Tyskland (DE-LU).
 - Magasingrafen: uke 1–52 for inneværende år og fjoråret, normal = median for samme uke de 20 foregående årene (`POWER_HIST`), bånd = min–maks for de samme årene, som i nve-løsningen. Uke 53 utelates.
 - Prisgrafen: ukesnitt for NO1–NO5 og Tyskland (stiplet), valgt område uthevet. Norge = uvektet snitt av NO1–NO5 i uker der alle har pris. Siste uke kan være ufullstendig (timer < 168), merket «week to date».
-- Tabell per område med de samme nøkkeltallene. Excel-eksporten er magasinserien; PPT tar med prisgrafen som ekstra lysbilde.
+- Utveksling: netto eksport per utenlandsforbindelse (`flows.net` i `power.json`: ut av Norge minus inn, MW som ukesnitt, fra ENTSO-E A11 via nve-løsningen), stablet per forbindelse med summen som stiplet linje, samme periode som prisgrafen. Norge viser alle ni forbindelsene, NO1–NO4 sine egne; NO5 har ingen kabel til utlandet. Nøkkeltall: netto eksport siste uke (MW) og hittil i år (TWh = MW × timer / 10⁶) mot samme uker i fjor, og egen tabell per forbindelse. Flyt mellom de norske prisområdene er ikke med (`POWER_CONNS`).
+- Tabell per område med de samme nøkkeltallene. Excel-eksporten er magasinserien; PPT tar med pris- og utvekslingsgrafen som ekstra lysbilder.
 
 #### NCS-modusen
 

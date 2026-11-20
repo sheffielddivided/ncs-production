@@ -488,7 +488,7 @@
     .gx-pipe{cursor:pointer;}
     @media (max-width: 899px){ .gx-split{grid-template-columns:minmax(0,1fr);} .gx-split .gx-r{position:static;} }
     /* Market → Power: nøkkeltall øverst, magasin og pris side om side. */
-    .pw-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:4px 0 14px;}
+    .pw-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:4px 0 14px;}
     .pw-kpi{background:#f4f6f9;border-radius:10px;padding:9px 11px;min-width:0;}
     .pw-kpi > span{display:block;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);}
     .pw-kpi strong{display:block;font-size:1.2rem;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;color:#1a2332;}
@@ -498,7 +498,7 @@
     .pw-grid h3{font-size:0.8rem;font-weight:600;margin:0 0 6px;color:#1a2332;min-height:28px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
     .pw-grid h3 .pill-group{margin:0;}
     .pw-grid h3 .pill-btn{padding:3px 9px;font-size:0.7rem;}
-    @media (max-width: 899px){ .pw-grid{grid-template-columns:minmax(0,1fr);} }
+    @media (max-width: 899px){ .pw-grid{grid-template-columns:minmax(0,1fr) !important;} .pw-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} }
     .pf-split{column-span:all;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;}
     .pf-split > div{min-width:0;}
     /* Siste kort i venstre kolonne uten bunnmarg, så bunnen flukter med kartet.
@@ -5848,6 +5848,7 @@ function drawPrices() {
   if (diffChart) { diffChart.destroy(); diffChart = null; }
   if (usCharts.length) { usCharts.forEach(c => c.destroy()); usCharts = []; }
   if (powerPriceChart) { powerPriceChart.destroy(); powerPriceChart = null; }
+  if (powerFlowChart) { powerFlowChart.destroy(); powerFlowChart = null; }
   if (priceSubView === 'gas') drawPriceGas();
   else if (priceSubView === 'oilgas') drawPriceOilGas();
   else if (priceSubView === 'storage') drawPriceStorage();
@@ -6508,7 +6509,29 @@ const POWER_AREAS = [{key: 'NO', label: 'Norway'}, {key: 'NO1', label: 'NO1 East
 const POWER_COLORS = {NO: '#1a2332', NO1: '#8e6bbf', NO2: '#2a6fa8', NO3: '#00b373', NO4: '#e3a73a', NO5: '#ce0f69', 'DE-LU': '#7a8594'};
 const POWER_PERIODS = [['1y', '1 year', 52], ['3y', '3 years', 156], ['5y', '5 years', 260], ['all', 'Since 2015', 1e9]];
 const POWER_HIST = 20;
-let powerData, powerLoading = null, powerPriceChart = null, pwFxWeek = null;
+let powerData, powerLoading = null, powerPriceChart = null, powerFlowChart = null, pwFxWeek = null;
+// Utenlandsforbindelsene i flows.net (netto eksport, MW, + = ut av Norge).
+// Flyt mellom de norske prisområdene er ikke med.
+const POWER_CONNS = [
+  ['NO1>SE3', 'Sweden SE3', '#2a6fa8'], ['NO3>SE2', 'Sweden SE2 (from NO3)', '#5b9bc8'], ['NO4>SE1', 'Sweden SE1', '#8fbcdc'],
+  ['NO4>SE2', 'Sweden SE2 (from NO4)', '#b9d5ea'], ['NO4>FI', 'Finland', '#00b373'], ['NO2>DK1', 'Denmark DK1 (Skagerrak)', '#d14f4e'],
+  ['NO2>NL', 'Netherlands (NorNed)', '#e3a73a'], ['NO2>DE-LU', 'Germany (NordLink)', '#1a2332'], ['NO2>GB', 'UK (North Sea Link)', '#8e6bbf']];
+const pwConns = key => POWER_CONNS.filter(([k]) => (key === 'NO' || k.startsWith(key + '>')) && powerData.flows && powerData.flows.net[k]);
+// Netto eksport per uke for områdets forbindelser: {total: {uke: [MW, timer]}, by: {forbindelse: {uke: MW}}}.
+function pwFlowWeeks(key) {
+  const by = {}, total = {};
+  pwConns(key).forEach(([c]) => {
+    const m = by[c] = {};
+    powerData.flows.net[c].forEach(([y, w, mw, h]) => {
+      const k = y * 100 + w;
+      m[k] = mw;
+      const t = total[k] = total[k] || [0, h];
+      t[0] += mw; t[1] = Math.min(t[1], h);
+    });
+  });
+  return {by, total};
+}
+const pwTwh = (rows, pred) => Object.entries(rows).filter(([k]) => pred(+k)).reduce((t, [, [mw, h]]) => t + mw * h / 1e6, 0);
 // Enhet for prisene: €/MWh (som i kilden) eller øre/kWh. Øre/kWh = €/MWh ×
 // EURNOK / 10, med Norges Banks kurs (data/fx.json, samme som Forex), snitt av
 // dagskursene i uken. Uker uten kurs (inneværende uke før første notering,
@@ -6614,7 +6637,20 @@ function drawPricePower() {
     kpi(`Price ${S.py} so far`, `${eur(S.ytd)} <small style="display:inline">${U}</small>`,
       `${pwSigned(pctCh(S.ytd, S.ytdLy), 0, ' %')} vs same weeks ${S.py - 1}`),
     kpi('Against Germany', `<span>${pwSigned(S.de, 1)}</span> <small style="display:inline">${U}</small>`, `week ${S.pw}, DE-LU`),
-  ].join('');
+  ];
+  // Utveksling: netto eksport siste uke og hittil i år.
+  const FW = pwFlowWeeks(key), fKeys = Object.keys(FW.total).map(Number).sort((a, b) => a - b);
+  const fk = fKeys[fKeys.length - 1], fy = Math.floor(fk / 100), fw = fk % 100;
+  const fNow = fk ? FW.total[fk] : null;
+  const fYtd = fk ? pwTwh(FW.total, k => Math.floor(k / 100) === fy) : null;
+  const fLy = fk ? pwTwh(FW.total, k => Math.floor(k / 100) === fy - 1 && k % 100 <= fw) : null;
+  const exim = v => v == null ? '' : v >= 0 ? 'net export' : 'net import';
+  if (!fk) kpis.push(kpi('Exchange', '—', `${esc(area.label)} has no direct connections abroad`));
+  else kpis.push(
+    kpi(`Net export, week ${fw}`, `${pwSigned(fNow[0], 0)} <small style="display:inline">MW</small>`,
+      `${exim(fNow[0])}${fNow[1] < 168 ? ', week to date' : ''}`),
+    kpi(`Net export ${fy} so far`, `${pwSigned(fYtd, 1)} <small style="display:inline">TWh</small>`, `same weeks ${fy - 1}: ${pwSigned(fLy, 1)} TWh`));
+  const kpiHtml = kpis.join('');
   const areaPills = `<div class="pill-group">${POWER_AREAS.map(a =>
     `<button class="pill-btn${key === a.key ? ' active' : ''}" onclick="priceSet('pw','${a.key}')">${a.label}</button>`).join('')}</div>`;
   const unitPills = `<div class="pill-group">${[['eur', '€/MWh'], ['ore', 'øre/kWh']].map(([k, l]) =>
@@ -6622,12 +6658,17 @@ function drawPricePower() {
   const perPills = `<div class="pill-group">${POWER_PERIODS.map(([k, l]) =>
     `<button class="pill-btn${(prF.pz || '3y') === k ? ' active' : ''}" onclick="priceSet('pz','${k}')">${l}</button>`).join('')}</div>`;
   document.getElementById('chartArea').innerHTML = `<div class="np-bar" style="display:flex;flex-wrap:wrap;gap:8px">${areaPills}${unitPills}</div>
-    <div class="pw-kpis">${kpis}</div>
+    <div class="pw-kpis">${kpiHtml}</div>
     <div class="pw-grid">
       <div><h3>Reservoir level · ${esc(area.label)} · % of capacity</h3>
         <div class="chart-container"><canvas id="prodChart"></canvas></div><div class="legend-row" id="pwResLegend"></div></div>
       <div><h3><span>Day-ahead price, weekly average · ${U}</span>${perPills}</h3>
         <div class="chart-container"><canvas id="pwPriceChart"></canvas></div><div class="legend-row" id="pwPriceLegend"></div></div>
+    </div>
+    <div class="pw-grid" style="grid-template-columns:minmax(0,1fr);margin-top:18px">
+      <div><h3><span>Exchange with other countries · net export by connection, MW, weekly average (+ export, − import)</span></h3>
+        ${fk ? `<div class="chart-container"><canvas id="pwFlowChart"></canvas></div><div class="legend-row" id="pwFlowLegend"></div>`
+             : `<div class="pf-map-note">${esc(area.label)} has no direct connections abroad; its exchange goes through the other Norwegian price areas.</div>`}</div>
     </div>`;
 
   // ── Magasinet: inneværende år, fjoråret, median og min–maks, uke 1–52 ──
@@ -6690,6 +6731,30 @@ function drawPricePower() {
   document.getElementById('pwPriceLegend').innerHTML = priceSets.map(d =>
     `<div class="legend-item"><div class="legend-dot" style="background:${d.borderDash.length ? `repeating-linear-gradient(90deg,${d.backgroundColor} 0 4px,transparent 4px 7px)` : d.backgroundColor};height:3px;border-radius:0"></div>${esc(d.label)}</div>`).join('');
 
+  // ── Utveksling: stablet netto eksport per forbindelse, med summen som linje ──
+  const conns = pwConns(key);
+  if (fk) {
+    const flowKeys = fKeys.slice(-n);
+    const fLabels = flowKeys.map(k => `${Math.floor(k / 100)}-W${String(k % 100).padStart(2, '0')}`);
+    const flowSets = conns.map(([c, l, col]) => ({label: l, data: flowKeys.map(k => FW.by[c][k] ?? null), backgroundColor: col,
+      borderWidth: 0, stack: 'f', order: 1}));
+    if (conns.length > 1) flowSets.push({type: 'line', label: 'Net export, total', data: flowKeys.map(k => FW.total[k] ? Math.round(FW.total[k][0]) : null),
+      borderColor: '#4a5568', backgroundColor: '#4a5568', borderWidth: 1.8, borderDash: [4, 2], pointRadius: 0, tension: 0.2, stack: 'net', _noTotal: true, order: 0});
+    powerFlowChart = new Chart(document.getElementById('pwFlowChart').getContext('2d'), {
+      type: 'bar', data: {labels: fLabels, datasets: flowSets},
+      options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+        plugins: {legend: {display: false}, tooltip: {filter: c => c.parsed.y != null && Math.abs(c.parsed.y) > 0.5, callbacks: {
+          title: items => { const k = flowKeys[items[0].dataIndex]; return `Week ${k % 100} ${Math.floor(k / 100)}`; },
+          label: c => ` ${c.dataset.label}: ${pwSigned(c.parsed.y, 0)} MW`}}},
+        scales: {x: {stacked: true, ticks: {maxTicksLimit: 12, maxRotation: 0, font: {size: 9}}, grid: {display: false}},
+          y: {stacked: true, ticks: {font: {size: 9}, callback: v => v.toLocaleString('en')},
+              grid: {color: c => c.tick.value === 0 ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.05)'},
+              title: {display: true, text: 'MW · export above zero, import below', color: '#4a5568', font: {size: 10}}}}},
+    });
+    document.getElementById('pwFlowLegend').innerHTML = flowSets.map(d =>
+      `<div class="legend-item"><div class="legend-dot" style="${d.type === 'line' ? `background:repeating-linear-gradient(90deg,${d.borderColor} 0 4px,transparent 4px 6px);height:2px;border-radius:0` : `background:${d.backgroundColor}`}"></div>${esc(d.label)}</div>`).join('');
+  }
+
   // ── Tabell: nøkkeltall per område ──
   const rows = POWER_AREAS.map(a => {
     const t = pwStats(a.key);
@@ -6704,12 +6769,31 @@ function drawPricePower() {
     <caption>Key figures per price area · reservoir ${wk(S.y, S.w)}, price week ${S.pw} ${S.py}${S.partial ? ' (* week to date)' : ''}</caption>
     <thead><tr><th>Area</th><th>Reservoir</th><th>Δ week, pp</th><th>vs normal, pp</th><th>vs ${S.y - 1}, pp</th><th>Filling, TWh</th><th>Capacity, TWh</th>
       <th>Price, ${U}</th><th>Last 4 weeks</th><th>${S.py} so far</th><th>Same weeks ${S.py - 1}</th><th>vs Germany</th></tr></thead>
-    <tbody>${rows}</tbody></table></div>`);
+    <tbody>${rows}</tbody></table></div>${fk ? (() => {
+      const last4 = fKeys.slice(-4);
+      const crow = ([c, l, col]) => {
+        const m = FW.by[c], rows2 = Object.fromEntries(Object.entries(powerData.flows.net[c].reduce((o, [y, w, mw, h]) => (o[y * 100 + w] = [mw, h], o), {})));
+        const a4 = last4.map(k => m[k]).filter(v => v != null);
+        return `<tr><td><span class="ex-dot" style="background:${col}"></span>${esc(l)}</td><td>${pwSigned(m[fk], 0)}</td>
+          <td>${a4.length ? pwSigned(a4.reduce((t, v) => t + v, 0) / a4.length, 0) : '—'}</td>
+          <td>${pwSigned(pwTwh(rows2, k => Math.floor(k / 100) === fy), 2)}</td><td>${pwSigned(pwTwh(rows2, k => Math.floor(k / 100) === fy - 1 && k % 100 <= fw), 2)}</td>
+          <td>${pwSigned(pwTwh(rows2, k => Math.floor(k / 100) === fy - 1), 2)}</td></tr>`;
+      };
+      return `<div class="pf-scroll" style="margin-top:14px"><table class="res-table">
+        <caption>Exchange by connection · net export (+) or import (−) · week ${fw} ${fy}${FW.total[fk][1] < 168 ? ' (week to date)' : ''}</caption>
+        <thead><tr><th>Connection</th><th>Week ${fw}, MW</th><th>Last 4 weeks, MW</th><th>${fy} so far, TWh</th><th>Same weeks ${fy - 1}, TWh</th><th>${fy - 1} total, TWh</th></tr></thead>
+        <tbody>${conns.map(crow).join('')}</tbody>
+        ${conns.length > 1 ? `<tfoot><tr class="total-row"><td>Total</td><td>${pwSigned(fNow[0], 0)}</td>
+          <td>${pwSigned(last4.reduce((t, k) => t + (FW.total[k] ? FW.total[k][0] : 0), 0) / last4.length, 0)}</td>
+          <td>${pwSigned(fYtd, 2)}</td><td>${pwSigned(fLy, 2)}</td><td>${pwSigned(pwTwh(FW.total, k => Math.floor(k / 100) === fy - 1), 2)}</td></tr></tfoot>` : ''}
+      </table></div>`;
+    })() : ''}`);
 
   setChartTitle(`Power · ${area.label}`, `Hydro reservoir level and day-ahead prices · reservoir ${wk(S.y, S.w)}, price week ${S.pw} ${S.py}`);
   const next = powerData.reservoir.next;
   setInfo(`<strong>Reservoir:</strong> NVE reservoir statistics, weekly filling of the hydropower reservoirs as a share of capacity, for Norway and per price area (NO1–NO5)${next ? `; next update from NVE ${fmtShort(next)}` : ''}. Normal is the median for the same week in ${span}, and the band the lowest and highest &nbsp;|&nbsp; ` +
     `<strong>Prices:</strong> ENTSO-E Transparency Platform, day-ahead prices, weekly average in €/MWh${pwOre() ? `, converted to øre/kWh with Norges Bank's EURNOK (weekly average of the daily rates; latest known rate for weeks without one), excluding VAT and grid tariffs` : ''}. Norway is the simple average of NO1–NO5; the latest week may be incomplete &nbsp;|&nbsp; ` +
+    `<strong>Exchange:</strong> ENTSO-E physical flows across the border (A11), weekly average in MW; net export is flow out of Norway minus flow in, per connection. TWh = MW × hours in the week. Flows between the Norwegian price areas are not included, so NO5, which has no cable abroad, shows none &nbsp;|&nbsp; ` +
     `<strong>Via:</strong> <a href="https://github.com/sheffielddivided/nve" target="_blank" rel="noopener">the nve solution ↗</a>, updated daily`);
   lastLabels = weeks.map(w => 'W' + w); lastXTitle = 'Week';
   lastDatasets = [{label: `${S.y}, %`, data: curD.map(v => v ?? '')}, {label: `${S.y - 1}, %`, data: prevD.map(v => v ?? '')},
@@ -6724,7 +6808,10 @@ function drawPricePower() {
              {name: String(S.y - 1), type: 'line', color: pptHex('rgba(42,111,168,0.55)'), values: r2(prevD)},
              {name: String(S.y), type: 'line', color: pptHex('rgba(0,48,87,0.95)'), values: r2(curD)}]};
   pptExtra = [{id: 'power-price', spec: pptSpecFromChart(powerPriceChart),
-    meta: {title: 'Day-ahead power prices', subtitle: `Weekly average, ${U}`, source: 'Source: ENTSO-E Transparency Platform (via nve)'}}];
+    meta: {title: 'Day-ahead power prices', subtitle: `Weekly average, ${U}`, source: 'Source: ENTSO-E Transparency Platform (via nve)'}}]
+    .concat(powerFlowChart ? [{id: 'power-flow', spec: pptSpecFromChart(powerFlowChart),
+      meta: {title: `Exchange with other countries · ${area.label}`, subtitle: 'Net export by connection, MW, weekly average (+ export, − import)',
+             source: 'Source: ENTSO-E Transparency Platform, physical flows (via nve)'}}] : []);
 }
 
 function drawPriceStorage() {
