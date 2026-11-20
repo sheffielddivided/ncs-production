@@ -189,11 +189,79 @@ def build_production():
     for series in fields.values():
         series.sort(key=lambda x: (x[0], x[1]))
     if fields and not water_seen:
-        keep_previous_water(fields)
+        if not water_from_factpages(fields):
+            keep_previous_water(fields)
     return {
         'columns': ['year', 'month', 'oil', 'gas', 'oe', 'water'],
         'fields': fields,
     }
+
+
+# FactPages-tabellen med månedlig feltproduksjon (CSV). Den har produsert vann
+# også når FactMaps-APIet (lag 7300) leverer null for hele kolonnen, som det
+# har gjort siden høsten 2026.
+FACTPAGES_PROD_MONTHLY = ('https://factpages.sodir.no/public?/Factpages/external/tableview/field_production_monthly'
+                          '&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=en'
+                          '&rs:Format=CSV&Top100=false')
+FACTPAGES_WATER_COL = 'prfPrdProducedWaterInFieldMillSm3'
+
+
+def water_from_factpages(fields):
+    """Fyll vannkolonnen fra FactPages' CSV når APIet ikke har den. Månedsradene
+    tas rett fra tabellen. En årsrad regnes som summen av månedene, men bare når
+    en av månedene i året har endret vannverdi siden forrige production.json
+    (typisk inneværende år) - ellers beholdes forrige årsverdi, så avrundingen i
+    CSV-en (5 desimaler) ikke gir støy i historikken. Rader CSV-en ikke dekker,
+    får forrige verdi. Returnerer False (og endrer ingenting) hvis tabellen ikke
+    kan hentes eller ser feil ut."""
+    import csv
+    import io
+    try:
+        resp = requests.get(FACTPAGES_PROD_MONTHLY, timeout=TIMEOUT)
+        resp.raise_for_status()
+        rows = list(csv.DictReader(io.StringIO(resp.content.decode('utf-8-sig'))))
+        if len(rows) < 10000 or FACTPAGES_WATER_COL not in rows[0]:
+            raise ValueError(f'uventet tabell ({len(rows)} rader)')
+        water = {}
+        for r in rows:
+            water[(r['prfNpdidInformationCarrier'], int(r['prfYear']), int(r['prfMonth']))] = \
+                round(float(r[FACTPAGES_WATER_COL] or 0), 6)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ! kunne ikke hente produsert vann fra FactPages ({exc})", file=sys.stderr)
+        return False
+
+    old = {}
+    try:
+        with open(os.path.join(OUT_DIR, 'production.json'), encoding='utf-8') as fh:
+            prev = json.load(fh)
+        idx = prev['columns'].index('water')
+        old = {(fid, row[0], row[1]): row[idx] for fid, series in prev['fields'].items() for row in series}
+    except (OSError, ValueError, KeyError):
+        pass
+
+    changed_years, month_sum = set(), {}
+    for fid, series in fields.items():
+        for row in series:
+            if row[1] == 0:
+                continue
+            key = (fid, row[0], row[1])
+            v = old.get(key, 0)
+            # CSV-en har 5 desimaler, APIet hadde 6: forskjeller innenfor
+            # avrundingen beholder forrige verdi, så historikken ikke endres.
+            if key in water and (key not in old or abs(water[key] - old[key]) > 1e-5):
+                v = water[key]
+                changed_years.add((fid, row[0]))
+            row[5] = v
+            month_sum[(fid, row[0])] = month_sum.get((fid, row[0]), 0) + v
+    for fid, series in fields.items():
+        for row in series:
+            if row[1] != 0:
+                continue
+            fy = (fid, row[0])
+            row[5] = round(month_sum[fy], 6) if fy in changed_years else old.get((fid, row[0], 0), 0)
+    print(f"  ! APIet leverte ikke produsert vann; hentet fra FactPages ({len(water)} månedsrader, "
+          f"{len(changed_years)} felt-år med nye eller endrede tall)", file=sys.stderr)
+    return True
 
 
 def keep_previous_water(fields):

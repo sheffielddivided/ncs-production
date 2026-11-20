@@ -298,6 +298,15 @@ Hver rad er et array i rekkefølgen gitt av `columns`:
 Radene sorteres på `(year, month)` per carrier (`fetch_sodir.py:176`).
 Bygges av `fetch_sodir.py:155-180`.
 
+**Produsert vann:** FactMaps-APIet (lag 7300) har siden høsten 2026 levert
+null i `prfPrdProducedWaterInFieldMillS` for alle rader, mens FactPages har
+tallene. Når ingen rad har vann, henter `water_from_factpages()` kolonnen fra
+FactPages-tabellen `field_production_monthly` (CSV, `prfPrdProducedWaterInFieldMillSm3`,
+5 desimaler). Månedsverdier byttes bare der forrige `production.json` mangler
+verdien eller avviker mer enn avrundingen (1e-5); årsraden regnes da som summen
+av månedene, ellers beholdes forrige årsverdi. Kan tabellen ikke hentes, beholdes
+forrige vannkolonne (`keep_previous_water()`), som før.
+
 > **`month = 0` er ikke en måned — det er årssummen.** Kilden leverer både
 > månedsrader og en aggregert årsrad per år i samme tabell. Koden skiller dem i
 > `isValidRow` (`index.html:791-793`). Blander man dem, dobbelttelles alt.
