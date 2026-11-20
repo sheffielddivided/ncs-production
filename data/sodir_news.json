@@ -2,6 +2,12 @@
  "source": "https://www.sodir.no/en/whats-new/news/rss/production-figures/",
  "items": [
   {
+   "title": "Production figures October 2026",
+   "link": "https://www.sodir.no/en/whats-new/news/production-figures/2026/production-figures-2026/",
+   "description": "Preliminary production figures for October 2026 show an average daily production of 2 030 000 barrels of oil, NGL and condensate.",
+   "date": "2026-11-20"
+  },
+  {
    "title": "Production figures September 2026",
    "link": "https://www.sodir.no/en/whats-new/news/production-figures/2026/production-figures-september-2026/",
    "description": "Preliminary production figures for September 2026 show an average daily production of 1 900 000 barrels of oil, NGL and condensate.",
@@ -30,12 +36,6 @@
    "link": "https://www.sodir.no/en/whats-new/news/production-figures/2026/production-figures-may-2026/",
    "description": "Preliminary production figures for May 2026 show an average daily production of 1 909 000 barrels of oil, NGL and condensate.",
    "date": "2026-06-23"
-  },
-  {
-   "title": "Production figures April 2026",
-   "link": "https://www.sodir.no/en/whats-new/news/production-figures/2026/production-figures-april-2026/",
-   "description": "Preliminary production figures for April 2026 show an average daily production of 2 158 000 barrels of oil, NGL and condensate.",
-   "date": "2026-05-20"
   }
  ]
 }
