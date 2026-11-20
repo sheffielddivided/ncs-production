@@ -1708,6 +1708,27 @@ PowerPoint-tabell (`kind: 'table'`) med cellefargene blandet mot hvitt og
 skrift som krymper med antall selskaper. Kurven lagres i localStorage og lastes ned som én fil
 med ett lysbilde per element, i den rekkefølgen panelet viser.
 
+#### Market → Brent: opplasting av normpris-filer
+
+Tannhjulet i Market → Brent (`openNpUpload`) laster opp normpris-xlsx til
+`data/normpris-raw/`, som ellers måtte pushes for hånd (regjeringen.no ligger
+bak Cloudflare).
+
+- **Sjekk i nettleseren** (`npCheck`, ExcelJS): de samme reglene som
+  `fetch_normpris.py` — begge arkene, kvartal i tittelen (B2/B1), månedsoverskrifter
+  i rad 4 (C–I) som hører til kvartalet, og i verdicellene bare tall, `*`, N/A eller
+  tomt. Sammenslåtte celler leses bare i første celle (`npCell`), som openpyxl, og
+  flere verdier for samme felt og måned regnes som delperioder. Kontrollert mot alle
+  77 filene i repoet: kvartal, antall felt, verdier og Brent-dager er identiske med
+  Python-importen.
+- **Opplasting** (`npUpload`): alle filene i én commit via Git Data API (blob → tree
+  → commit → `PATCH refs/heads/main` uten force; avvises oppdateringen fordi `main`
+  har flyttet seg, bygges commiten på nytt, inntil tre forsøk). Filnavn renses til
+  `a–z0–9._-`. Samme token som hub-innstillingene (`GH_TOKEN_KEY`).
+- **Oppfølging** (`npWatch`): Actions-kjøringen for commiten hvis tokenet kan lese
+  den (feil vises med lenke), ellers om `normpris_*.json` har ny blob-sha. De nye
+  filene leses rett fra repoet og grafene tegnes på nytt, før nettstedet har hentet dem.
+
 #### Market → Power
 
 `drawPricePower`, data fra `data/power.json` (`fetch_nve.py`, som leser nve-løsningen `sheffielddivided/nve`; lastes først når fanen åpnes). Områdevelger Norge / NO1–NO5 (`pw`), periode for prisgrafen (`pz`: 1y, 3y, 5y, all) og enhet (`pe`: €/MWh eller `ore` for øre/kWh). Øre/kWh = €/MWh × EURNOK / 10, med Norges Banks kurs fra `data/fx.json` (snitt av dagskursene i ISO-uken, `pwEurNok`; uker uten kurs får siste kjente ukesnitt). Kursene lastes bare når øre/kWh velges. Omregningen skjer i `pwPrices`, så nøkkeltall, graf og tabell følger samme enhet; uten moms og nettleie.

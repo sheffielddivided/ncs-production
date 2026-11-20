@@ -659,6 +659,13 @@
     .save-status{font-size:0.72rem;color:var(--muted);flex-basis:100%;}
     .save-status.err{color:#c0392b;}
     .save-status.ok{color:var(--green);}
+    .np-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--card);font-size:0.78rem;}
+    .np-row .np-name{font-weight:600;word-break:break-all;}
+    .np-row .np-info{grid-column:1;color:var(--muted);font-size:0.72rem;}
+    .np-row .np-info.err{color:#c0392b;}
+    .np-row .np-info.ok{color:var(--green);}
+    .np-row button{grid-row:1 / span 2;grid-column:2;align-self:center;}
+    .np-foot{padding:10px 12px;font-size:0.72rem;color:var(--muted);}
     .settings-list{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;padding-bottom:24px;}
     .hub-group{border-bottom:1px solid var(--border);background:var(--card);}
     .hub-group-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--light);}
@@ -1104,6 +1111,32 @@
     Feeds apply to the whole corporate group.
   </div>
   <div class="settings-list" id="feedList"></div>
+</div>
+
+<div class="settings-panel" id="npPanel">
+  <div class="settings-head">
+    <div>
+      <h3>Normpris files</h3>
+      <div class="sub">Uploaded to data/normpris-raw/ and imported by GitHub Actions · shared by everyone</div>
+    </div>
+    <button class="settings-close" onclick="closeNpUpload()">&#10005;</button>
+  </div>
+  <div class="settings-bar">
+    <label class="save-btn" style="background:var(--navy);cursor:pointer">Choose files…
+      <input type="file" id="npFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple style="display:none" onchange="npAddFiles(this.files)"/></label>
+    <button class="save-btn" id="npUploadBtn" onclick="npUpload()" disabled>Upload</button>
+    <div class="save-status" id="npStatus"></div>
+  </div>
+  <div class="settings-note">
+    Download the quarterly xlsx files from the
+    <a href="https://www.regjeringen.no/no/tema/energi/olje-og-gass/petroleumsprisradet--og-fastsetting-av-n/id661459/" target="_blank" rel="noopener">Petroleum Price Board's page at regjeringen.no</a>
+    (the site blocks automatic downloads) and choose them here. Correction files (e.g. «…-troll-februar») can be uploaded the same way; they override the main file for their fields and months.
+    Each file is checked in your browser first, with the same rules as the import: both sheets
+    («Differensialer» and «Daglige normpriser (Dt. Brent)»), the quarter in the title, months that belong to the quarter, and numbers in the value cells.
+    Upload writes all the files to the repository in one commit with your GitHub token (the same as for hub settings); the import job then rebuilds the normpris data,
+    usually within a minute or two — the status above updates by itself. A file with the same name as one in the repository replaces it.
+  </div>
+  <div class="settings-list" id="npList"></div>
 </div>
 
 <div class="sheet-overlay" id="sheetOverlay" onclick="dismissSheet()"></div>
@@ -1954,8 +1987,8 @@ function renderViewTabs() {
     : topMode === 'dcs' ? cur === 'production' && dcsF.prod === 'product'
     : topMode === 'ukcs' ? cur === 'production' && ukF.prod === 'product' : false;
   document.getElementById('settingsBtn').style.display =
-    topMode === 'hubs' || (topMode === 'companies' && cur === 'news') ? '' : 'none';
-  document.getElementById('settingsBtn').title = topMode === 'hubs' ? 'Edit hubs' : 'Company news feeds';
+    topMode === 'hubs' || (topMode === 'companies' && cur === 'news') || (topMode === 'prices' && cur === 'brent') ? '' : 'none';
+  document.getElementById('settingsBtn').title = topMode === 'hubs' ? 'Edit hubs' : topMode === 'prices' ? 'Upload normpris files' : 'Company news feeds';
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
   // Reservevisningen har ingen tidsakse — ett estimat per felt — så periode og
   // årsutvalg gjelder ikke der.
@@ -16450,6 +16483,7 @@ async function saveHubs() {
 
 function openSettings() {
   if (topMode === 'companies') openFeedSettings();
+  else if (topMode === 'prices') openNpUpload();
   else openHubSettings();
 }
 
@@ -16665,6 +16699,278 @@ async function saveFeeds() {
     setFeedStatus(`Saving failed: ${e.message}`, 'err');
     btn.disabled = false;
   }
+}
+
+// ── NORMPRIS: OPPLASTING ─────────────────────────────────────────────────────
+// Tannhjulet i Market → Brent laster opp nye normpris-xlsx-filer til
+// data/normpris-raw/. regjeringen.no ligger bak Cloudflare, så filene må lastes
+// ned for hånd; før måtte de også pushes for hånd.
+//
+// Hver fil sjekkes i nettleseren (ExcelJS, som Excel-eksporten) med de samme
+// reglene som fetch_normpris.py: begge arkene, kvartal i tittelen (B2 eller B1),
+// månedsoverskrifter i rad 4 (C–I) som hører til kvartalet, og i verdicellene
+// bare tall, '*'-markører, N/A eller tomt. Da feiler importjobben ikke på en
+// fil som slapp gjennom her.
+//
+// Alle filene skrives i én commit via Git Data API (blob → tree → commit →
+// ref), så update-normpris.yml bare kjører én gang. Samme token som hub-
+// innstillingene; «Contents: read and write» dekker disse endepunktene.
+// Deretter følges jobben: Actions-kjøringen for commiten hvis tokenet kan lese
+// den, ellers bare om normpris_*.json har endret seg i repoet.
+const NP_RAW_DIR = 'data/normpris-raw';
+const NP_DIFF_SHEET = 'Differensialer', NP_BRENT_SHEET = 'Daglige normpriser (Dt. Brent)';
+const NP_MONTHS = {januar: 1, februar: 2, mars: 3, april: 4, mai: 5, juni: 6, juli: 7, august: 8, september: 9, oktober: 10, november: 11, desember: 12};
+const NP_MAX_BYTES = 10 * 1024 * 1024;
+let npFiles = [], npRepo = null, npBusy = false, npWatchRun = 0;
+
+function openNpUpload() {
+  if (!npBusy) { npFiles = []; setNpStatus(''); }
+  document.getElementById('npFile').value = '';
+  document.getElementById('npPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderNp();
+  npListRepo();
+}
+function closeNpUpload() {
+  if (!npBusy && npFiles.some(f => f.ok) && !confirm('The checked files have not been uploaded. Close anyway?')) return;
+  document.getElementById('npPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function setNpStatus(msg, kind) {
+  const el = document.getElementById('npStatus');
+  el.innerHTML = msg || '';
+  el.className = 'save-status' + (kind ? ' ' + kind : '');
+}
+// Filnavn i repoet: bare a–z, 0–9, '.', '_' og '-', alltid .xlsx.
+function npSafeName(n) {
+  const base = n.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\.xlsx$/i, '')
+    .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+  return (base || 'normpris') + '.xlsx';
+}
+// Filene som allerede ligger i repoet (navn -> blob-sha). Repoet er offentlig, så
+// lista kan hentes uten token.
+async function npListRepo() {
+  try {
+    const t = lsGet(GH_TOKEN_KEY);
+    const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${NP_RAW_DIR}?ref=${GH_BRANCH}`,
+      {headers: {Accept: 'application/vnd.github+json', ...(t ? {Authorization: `Bearer ${t}`} : {})}, cache: 'no-store'});
+    if (!res.ok) return;
+    npRepo = new Map((await res.json()).filter(f => f.type === 'file').map(f => [f.name, f.sha]));
+    npFiles.forEach(f => { f.exists = npRepo.has(f.name); });
+    renderNp();
+  } catch (e) { /* lista er bare til informasjon */ }
+}
+
+const npVal = v => v instanceof Date ? v : v && typeof v === 'object'
+  ? (v.result !== undefined ? v.result : v.richText ? v.richText.map(t => t.text).join('') : v.text !== undefined ? v.text : null) : v;
+// Sammenslåtte celler: ExcelJS gir verdien til alle cellene i området,
+// openpyxl (som importen bruker) bare til den første. Uten dette ble
+// månedsoverskrifter over to kolonner og deres verdier telt to ganger.
+const npCell = cell => cell.isMerged && cell.master && cell.master.address !== cell.address ? null : npVal(cell.value);
+const npQuarter = ws => {
+  const title = String(npCell(ws.getCell('B2')) || npCell(ws.getCell('B1')) || '');
+  const m = /(\d)Q\s*(\d{4})/.exec(title);
+  if (!m) throw new Error(`no quarter/year in the title of «${ws.name}» (${title || 'empty'})`);
+  return [+m[1], +m[2]];
+};
+async function npCheck(file) {
+  if (!/\.xlsx$/i.test(file.name)) throw new Error('not an .xlsx file');
+  if (file.size > NP_MAX_BYTES) throw new Error('larger than 10 MB');
+  await loadExcel();
+  const wb = new ExcelJS.Workbook();
+  try { await wb.xlsx.load(await file.arrayBuffer()); } catch (e) { throw new Error('could not be read as an Excel workbook'); }
+  const ws = wb.getWorksheet(NP_DIFF_SHEET), wsB = wb.getWorksheet(NP_BRENT_SHEET);
+  if (!ws) throw new Error(`the sheet «${NP_DIFF_SHEET}» is missing`);
+  if (!wsB) throw new Error(`the sheet «${NP_BRENT_SHEET}» is missing`);
+  const [q, y] = npQuarter(ws);
+  const months = {};
+  for (let c = 3; c <= 9; c++) {
+    const lab = npCell(ws.getRow(4).getCell(c));
+    if (lab == null || String(lab).trim() === '') continue;
+    const m = NP_MONTHS[String(lab).trim().toLowerCase()];
+    if (!m) throw new Error(`unknown month «${lab}» in ${ws.getRow(4).getCell(c).address}`);
+    if (Math.floor((m - 1) / 3) + 1 !== q) throw new Error(`«${lab}» does not belong to ${q}Q ${y}`);
+    months[c] = m;
+  }
+  if (!Object.keys(months).length) throw new Error('no month headings in row 4');
+  // Som importen: per felt og måned. Flere rader for samme felt og måned
+  // (GUDRUN (*) / GUDRUN (**)) eller en '*' betyr delperioder, ikke en verdi.
+  const cells = new Map();
+  for (let r = 5; r <= ws.rowCount; r++) {
+    const raw = npCell(ws.getRow(r).getCell(2));
+    if (raw == null || !String(raw).trim() || /^[*(]/.test(String(raw).trim())) continue;
+    for (const c of Object.keys(months)) {
+      const cell = ws.getRow(r).getCell(+c), v = npCell(cell);
+      if (v == null || v === '') continue;
+      if (typeof v === 'string') {
+        const t = v.trim();
+        const key = String(raw).trim().replace(/\s*\(?\*+\)?\s*$/, '').toUpperCase() + '|' + c;
+        if (/^\*+$/.test(t)) { cells.set(key, (cells.get(key) || []).concat(['split'])); continue; }
+        if (t === '' || /^(n\/?a|-+)$/i.test(t)) continue;
+        throw new Error(`expected a number in ${cell.address}, found «${t}»`);
+      }
+      if (typeof v !== 'number') throw new Error(`expected a number in ${cell.address}`);
+      const key = String(raw).trim().replace(/\s*\(?\*+\)?\s*$/, '').toUpperCase() + '|' + c;
+      cells.set(key, (cells.get(key) || []).concat([v]));
+    }
+  }
+  const valued = [...cells].filter(([, vs]) => vs.length === 1 && vs[0] !== 'split');
+  const values = valued.length, fields = new Set(valued.map(([k]) => k.split('|')[0]));
+  npQuarter(wsB);
+  let days = 0;
+  for (let r = 5; r <= wsB.rowCount; r++) {
+    for (const [dc, pc] of [[2, 3], [5, 6], [8, 9]]) {
+      const d = npCell(wsB.getRow(r).getCell(dc));
+      if (d == null || (typeof d === 'string' && !d.trim())) continue;
+      if (!(d instanceof Date)) throw new Error(`expected a date in ${wsB.getRow(r).getCell(dc).address}`);
+      const pv = npCell(wsB.getRow(r).getCell(pc));
+      if (pv != null && pv !== '' && typeof pv !== 'number') throw new Error(`expected a price in ${wsB.getRow(r).getCell(pc).address}`);
+      if (typeof pv === 'number') days++;
+    }
+  }
+  const mn = Object.values(months).map(m => MONTH_ABBR[m - 1]).join(', ');
+  return {q, y, info: `${q}Q ${y} · ${mn} · ${fields.size} field${fields.size === 1 ? '' : 's'}, ${values} value${values === 1 ? '' : 's'} · ${days} days of Dated Brent`};
+}
+
+async function npAddFiles(list) {
+  for (const file of list) {
+    const f = {file, name: npSafeName(file.name), ok: false, info: 'Checking…'};
+    if (npFiles.some(x => x.name === f.name)) continue;
+    npFiles.push(f);
+    renderNp();
+    try { Object.assign(f, await npCheck(file), {ok: true}); }
+    catch (e) { f.info = `Cannot be imported: ${e.message}`; f.err = true; }
+    f.exists = !!(npRepo && npRepo.has(f.name));
+    renderNp();
+  }
+  document.getElementById('npFile').value = '';
+}
+function npRemove(i) { npFiles.splice(i, 1); renderNp(); }
+
+function renderNp() {
+  const box = document.getElementById('npList');
+  if (!box) return;
+  const rows = npFiles.map((f, i) => `<div class="np-row">
+      <span class="np-name">${esc(f.file.name)}${f.name !== f.file.name ? ` <span style="font-weight:400;color:var(--muted)">→ ${esc(f.name)}</span>` : ''}</span>
+      <span class="np-info${f.err ? ' err' : f.ok ? ' ok' : ''}">${esc(f.info)}${f.exists ? ' · replaces the file with the same name in the repository' : ''}</span>
+      ${npBusy ? '' : `<button class="fd-del" onclick="npRemove(${i})">Remove</button>`}</div>`).join('');
+  const d = priceData && priceData.diff, last = d && d.months && d.months[d.months.length - 1];
+  box.innerHTML = (rows || '<div class="np-foot">No files chosen yet.</div>') +
+    `<div class="np-foot">${npRepo ? `${npRepo.size} file${npRepo.size === 1 ? '' : 's'} in <a href="https://github.com/${GH_OWNER}/${GH_REPO}/tree/${GH_BRANCH}/${NP_RAW_DIR}" target="_blank" rel="noopener">${NP_RAW_DIR}</a>` : ''}${
+      last ? `${npRepo ? ' · ' : ''}differentials currently up to ${esc(last)}` : ''}</div>`;
+  document.getElementById('npUploadBtn').disabled = npBusy || !npFiles.some(f => f.ok) || npFiles.some(f => !f.ok && !f.err);
+}
+
+function npB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+async function npUpload() {
+  const files = npFiles.filter(f => f.ok);
+  if (!files.length || npBusy) return;
+  let token = lsGet(GH_TOKEN_KEY);
+  if (!token) {
+    token = prompt(`Paste a GitHub fine-grained token with "Contents: read and write" on ${GH_OWNER}/${GH_REPO}.\n\n` +
+      'The token is stored only in your own browser, never in the page code.');
+    if (!token) return;
+    token = token.trim();
+    lsSet(GH_TOKEN_KEY, token);
+  }
+  npBusy = true; renderNp();
+  const repo = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`;
+  const headers = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'};
+  const call = async (url, opts = {}) => {
+    const res = await fetch(url, {headers, cache: 'no-store', ...opts});
+    if (res.status === 401 || res.status === 403) { lsDel(GH_TOKEN_KEY); throw Object.assign(new Error('The token was rejected. Upload again and paste a new one.'), {token: true}); }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw Object.assign(new Error(d.message || `HTTP ${res.status}`), {status: res.status}); }
+    return res.json();
+  };
+  try {
+    // Hvordan normpris_*.json ser ut nå, så jobbens resultat kan kjennes igjen.
+    const shaOf = async p => { try { return (await call(`${repo}/contents/${p}?ref=${GH_BRANCH}`)).sha; } catch (e) { if (e.token) throw e; return null; } };
+    const before = {diff: await shaOf('data/normpris_diff.json'), brent: await shaOf('data/normpris_brent.json')};
+    setNpStatus(`Uploading ${files.length} file${files.length === 1 ? '' : 's'}…`);
+    const blobs = [];
+    for (const f of files) {
+      const b = await call(`${repo}/git/blobs`, {method: 'POST', body: JSON.stringify({content: npB64(await f.file.arrayBuffer()), encoding: 'base64'})});
+      blobs.push({path: `${NP_RAW_DIR}/${f.name}`, mode: '100644', type: 'blob', sha: b.sha});
+    }
+    const names = files.map(f => f.name).join(', ');
+    let commit;
+    for (let attempt = 0; attempt < 3 && !commit; attempt++) {
+      // Hvis main flytter seg mellom lesing og oppdatering (en annen commit),
+      // avvises oppdateringen (ikke fast-forward), og vi bygger på nytt.
+      const head = (await call(`${repo}/git/ref/heads/${GH_BRANCH}`)).object.sha;
+      const baseTree = (await call(`${repo}/git/commits/${head}`)).tree.sha;
+      const tree = await call(`${repo}/git/trees`, {method: 'POST', body: JSON.stringify({base_tree: baseTree, tree: blobs})});
+      const c = await call(`${repo}/git/commits`, {method: 'POST', body: JSON.stringify({
+        message: `Normpris-filer fra appen: ${names}`, tree: tree.sha, parents: [head]})});
+      try {
+        await call(`${repo}/git/refs/heads/${GH_BRANCH}`, {method: 'PATCH', body: JSON.stringify({sha: c.sha, force: false})});
+        commit = c.sha;
+      } catch (e) { if (e.status !== 422 || attempt === 2) throw e; }
+    }
+    files.forEach(f => { f.uploaded = true; if (npRepo) npRepo.set(f.name, ''); });
+    npFiles = npFiles.filter(f => !f.uploaded);
+    npWatch(token, commit, before);
+  } catch (e) {
+    setNpStatus(`Upload failed: ${esc(e.message)}`, 'err');
+    npBusy = false; renderNp();
+  }
+}
+
+// Følger importjobben til normpris_*.json er endret i repoet (eller jobben har
+// feilet). Nettstedet bruker et par minutter på å publisere, så de nye filene
+// leses rett fra repoet og grafene tegnes på nytt med dem.
+async function npWatch(token, commit, before) {
+  const run = ++npWatchRun, t0 = Date.now();
+  const repo = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`;
+  const h = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json'};
+  const get = async (url, accept) => { const r = await fetch(url, {headers: accept ? {...h, Accept: accept} : h, cache: 'no-store'}); return r.ok ? r : null; };
+  const short = commit.slice(0, 7), runLink = u => u ? ` <a href="${esc(u)}" target="_blank" rel="noopener">See the run on GitHub ↗</a>` : '';
+  let jobDone = null, jobUrl = '';
+  while (run === npWatchRun && Date.now() - t0 < 8 * 60000) {
+    const secs = Math.round((Date.now() - t0) / 1000);
+    setNpStatus(`Uploaded (commit ${short}). Running the import job on GitHub… (${secs} s)`, 'ok');
+    await new Promise(r => setTimeout(r, secs < 30 ? 5000 : 10000));
+    if (run !== npWatchRun) return;
+    try {
+      // Actions-kjøringen, hvis tokenet har lov til å lese den.
+      const rr = await get(`${repo}/actions/runs?head_sha=${commit}`);
+      if (rr) {
+        const wf = ((await rr.json()).workflow_runs || []).find(x => /update-normpris\.yml$/.test(x.path || ''));
+        if (wf) { jobUrl = wf.html_url; if (wf.status === 'completed') jobDone = wf.conclusion; }
+      }
+      if (jobDone && jobDone !== 'success') {
+        setNpStatus(`The import job failed (${esc(jobDone)}): a file did not match what the import expects. The files are in the repository, but the data is unchanged.${runLink(jobUrl)}`, 'err');
+        break;
+      }
+      const sha = async p => { const r = await get(`${repo}/contents/${p}?ref=${GH_BRANCH}`); return r ? (await r.json()).sha : null; };
+      const now = {diff: await sha('data/normpris_diff.json'), brent: await sha('data/normpris_brent.json')};
+      if (now.diff !== before.diff || now.brent !== before.brent) {
+        const raw = async p => { const r = await get(`${repo}/contents/${p}?ref=${GH_BRANCH}`, 'application/vnd.github.raw+json'); return r ? r.json() : null; };
+        const [d, b] = await Promise.all([raw('data/normpris_diff.json'), raw('data/normpris_brent.json')]);
+        if (priceData && d && b) {
+          priceData.diff = d; priceData.brent = b;
+          Object.keys(priceData).filter(k => k.startsWith('_')).forEach(k => delete priceData[k]);
+          if (topMode === 'prices') drawChart();
+        }
+        const last = d && d.months ? d.months[d.months.length - 1] : '';
+        setNpStatus(`Imported. The differentials now go up to ${esc(last)}; the public site updates in a few minutes.`, 'ok');
+        break;
+      }
+      if (jobDone === 'success') {
+        setNpStatus('The import job ran, but the data did not change: the files contain no new or corrected values.' + runLink(jobUrl), 'ok');
+        break;
+      }
+    } catch (e) { /* nettverksfeil: prøv igjen */ }
+  }
+  if (run === npWatchRun && Date.now() - t0 >= 8 * 60000)
+    setNpStatus(`Uploaded (commit ${short}), but the import job has not finished after 8 minutes. Check the Actions tab on GitHub.`, 'err');
+  npBusy = false; renderNp(); npListRepo();
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
