@@ -2858,6 +2858,7 @@ function stateToHash() {
     if (prF.sk && prF.sk !== 'eu') q.set('ps', prF.sk);
     if (prF.pw && prF.pw !== 'NO') q.set('pw', prF.pw);
     if (prF.pz && prF.pz !== '3y') q.set('pz', prF.pz);
+    if (prF.pe === 'ore') q.set('pe', 'ore');
     if (prF.lk && prF.lk !== 'eu') q.set('pl', prF.lk);
     US_PARAMS.forEach(([k, p, d]) => { if (prF[k] != null && prF[k] !== d) q.set(p, prF[k]); });
     if (prF.real) q.set('pr', '1');
@@ -3010,7 +3011,7 @@ function pageSources() {
     if (v === 'gas' || v === 'oilgas') add('ssb', 'imf', 'eia', 'nb');
     if (v === 'gas' && priceData && priceData.ttfd) add('eex');
     if (v === 'storage') add('gie', 'gie_lng');
-    if (v === 'power') add('nve', 'entsoe');
+    if (v === 'power') add('nve', 'entsoe', ...(prF.pe === 'ore' ? ['nb'] : []));
     if (v === 'us' || v === 'refining') add('eia');
     if (v === 'forex') add('nb');
     if (v === 'interest') add('nb_ir', 'fred', 'ecb', 'boe', 'riksbank', 'ssb', 'eurostat', 'ons', 'ustreas');
@@ -3147,6 +3148,7 @@ function applyHash() {
     prF.sk = ['de', 'it', 'nl', 'fr'].includes(q.get('ps')) ? q.get('ps') : 'eu';
     prF.pw = POWER_AREAS.some(a => a.key === q.get('pw')) ? q.get('pw') : 'NO';
     prF.pz = POWER_PERIODS.some(x => x[0] === q.get('pz')) ? q.get('pz') : '3y';
+    prF.pe = q.get('pe') === 'ore' ? 'ore' : 'eur';
     prF.lk = ['es', 'fr', 'it', 'nl'].includes(q.get('pl')) ? q.get('pl') : 'eu';
     US_PARAMS.forEach(([k, p, d, ok]) => { prF[k] = ok.includes(q.get(p)) ? q.get(p) : d; });
     prF.real = q.get('pr') === '1';
@@ -6506,15 +6508,49 @@ const POWER_AREAS = [{key: 'NO', label: 'Norway'}, {key: 'NO1', label: 'NO1 East
 const POWER_COLORS = {NO: '#1a2332', NO1: '#8e6bbf', NO2: '#2a6fa8', NO3: '#00b373', NO4: '#e3a73a', NO5: '#ce0f69', 'DE-LU': '#7a8594'};
 const POWER_PERIODS = [['1y', '1 year', 52], ['3y', '3 years', 156], ['5y', '5 years', 260], ['all', 'Since 2015', 1e9]];
 const POWER_HIST = 20;
-let powerData, powerLoading = null, powerPriceChart = null;
+let powerData, powerLoading = null, powerPriceChart = null, pwFxWeek = null;
+// Enhet for prisene: €/MWh (som i kilden) eller øre/kWh. Øre/kWh = €/MWh ×
+// EURNOK / 10, med Norges Banks kurs (data/fx.json, samme som Forex), snitt av
+// dagskursene i uken. Uker uten kurs (inneværende uke før første notering,
+// helligdager) får siste kjente ukesnitt.
+const pwOre = () => prF.pe === 'ore';
+const pwUnit = () => pwOre() ? 'øre/kWh' : '€/MWh';
+function pwEurNok() {
+  if (pwFxWeek || !fxData) return pwFxWeek;
+  const eur = fxData.rates.EUR || [], acc = {};
+  fxData.dates.forEach((d, i) => {
+    const v = eur[i];
+    if (v == null) return;
+    const t = new Date(d + 'T00:00:00Z'), day = (t.getUTCDay() + 6) % 7;
+    const thu = new Date(t.getTime() + (3 - day) * 864e5), y = thu.getUTCFullYear();
+    const w = 1 + Math.floor((thu - Date.UTC(y, 0, 1)) / 864e5 / 7);   // ISO-uke: torsdagen avgjør året
+    const a = acc[y * 100 + w] = acc[y * 100 + w] || [0, 0];
+    a[0] += v; a[1]++;
+  });
+  pwFxWeek = {map: Object.fromEntries(Object.entries(acc).map(([k, [t, n]]) => [k, t / n]))};
+  pwFxWeek.keys = Object.keys(pwFxWeek.map).map(Number).sort((a, b) => a - b);
+  pwFxWeek.at = k => {
+    if (pwFxWeek.map[k] != null) return pwFxWeek.map[k];
+    let best = null;
+    for (const x of pwFxWeek.keys) { if (x > k) break; best = x; }
+    return best != null ? pwFxWeek.map[best] : null;
+  };
+  return pwFxWeek;
+}
 const pwWeekStart = (y, w) => { const j4 = Date.UTC(y, 0, 4), dow = (new Date(j4).getUTCDay() + 6) % 7; return new Date(j4 - dow * 864e5 + (w - 1) * 7 * 864e5); };
 const pwMedian = a => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
 const pwSigned = (v, d = 1, u = '') => v == null ? '—' : +Math.abs(v).toFixed(d) === 0 ? `${(0).toFixed(d)}${u}` : `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(d)}${u}`;
 const pwCls = v => v == null ? '' : v >= 0 ? 'up' : 'down';
 // Ukepriser for et område: {år*100+uke: [pris, timer]}. Norge = snitt av NO1–NO5 i uker der alle har pris.
 function pwPrices(key) {
-  const A = powerData.prices.areas, map = {};
-  if (key !== 'NO') { (A[key] || []).forEach(([y, w, p, h]) => { map[y * 100 + w] = [p, h]; }); return map; }
+  const A = powerData.prices.areas, map = {}, fx = pwOre() ? pwEurNok() : null;
+  if (key !== 'NO') {
+    (A[key] || []).forEach(([y, w, p, h]) => {
+      const k = y * 100 + w, r = fx ? fx.at(k) : 1;
+      if (r != null) map[k] = [fx ? p * r / 10 : p, h];
+    });
+    return map;
+  }
   const parts = ['NO1', 'NO2', 'NO3', 'NO4', 'NO5'].map(pwPrices);
   Object.keys(parts[0]).forEach(k => {
     if (parts.every(m => m[k])) map[k] = [parts.reduce((t, m) => t + m[k][0], 0) / 5, Math.min(...parts.map(m => m[k][1]))];
@@ -6550,6 +6586,15 @@ function drawPricePower() {
     powerLoading.then(() => { if (topMode === 'prices' && priceSubView === 'power') drawChart(); });
     return;
   }
+  // Valutakursene trengs bare for øre/kWh, og lastes først da.
+  if (pwOre() && fxData === undefined) {
+    document.getElementById('chartArea').innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+    fxLoading = fxLoading || fetchBundle('fx').then(d => { fxData = d && d.dates && d.dates.length ? d : false; });
+    fxLoading.then(() => { if (topMode === 'prices' && priceSubView === 'power') drawChart(); });
+    return;
+  }
+  if (pwOre() && !fxData) prF.pe = 'eur';   // uten kurser: tilbake til €/MWh
+  const U = pwUnit();
   if (!powerData) { setChartEmpty('Could not load the power data.'); setInfo(''); return; }
   const key = prF.pw || 'NO', area = POWER_AREAS.find(a => a.key === key) || POWER_AREAS[0];
   const S = pwStats(key);
@@ -6564,22 +6609,24 @@ function drawPricePower() {
     kpi('Change from last week', `<span class="${pwCls(S.dw)}">${pwSigned(S.dw, 1, ' pp')}</span>`, 'percentage points'),
     kpi('Against normal', `<span class="${pwCls(S.vsMed)}">${pwSigned(S.vsMed, 1, ' pp')}</span>`, `normal ${f1(S.med)} % (median ${S.y - POWER_HIST}–${S.y - 1})`),
     kpi('Against last year', `<span class="${pwCls(S.vsLy)}">${pwSigned(S.vsLy, 1, ' pp')}</span>`, `same week ${S.y - 1}`),
-    kpi(`Price, week ${S.pw}`, `${eur(S.price)} <small style="display:inline">€/MWh</small>`, S.partial ? `week to date (${Math.round(S.hours / 24)} days)` : `${key === 'NO' ? 'average NO1–NO5' : area.label}`),
-    kpi('Price, last 4 weeks', `${eur(S.avg4)} <small style="display:inline">€/MWh</small>`, 'average of weekly prices'),
-    kpi(`Price ${S.py} so far`, `${eur(S.ytd)} <small style="display:inline">€/MWh</small>`,
+    kpi(`Price, week ${S.pw}`, `${eur(S.price)} <small style="display:inline">${U}</small>`, S.partial ? `week to date (${Math.round(S.hours / 24)} days)` : `${key === 'NO' ? 'average NO1–NO5' : area.label}`),
+    kpi('Price, last 4 weeks', `${eur(S.avg4)} <small style="display:inline">${U}</small>`, 'average of weekly prices'),
+    kpi(`Price ${S.py} so far`, `${eur(S.ytd)} <small style="display:inline">${U}</small>`,
       `${pwSigned(pctCh(S.ytd, S.ytdLy), 0, ' %')} vs same weeks ${S.py - 1}`),
-    kpi('Against Germany', `<span>${pwSigned(S.de, 1)}</span> <small style="display:inline">€/MWh</small>`, `week ${S.pw}, DE-LU`),
+    kpi('Against Germany', `<span>${pwSigned(S.de, 1)}</span> <small style="display:inline">${U}</small>`, `week ${S.pw}, DE-LU`),
   ].join('');
   const areaPills = `<div class="pill-group">${POWER_AREAS.map(a =>
     `<button class="pill-btn${key === a.key ? ' active' : ''}" onclick="priceSet('pw','${a.key}')">${a.label}</button>`).join('')}</div>`;
+  const unitPills = `<div class="pill-group">${[['eur', '€/MWh'], ['ore', 'øre/kWh']].map(([k, l]) =>
+    `<button class="pill-btn${(pwOre() ? 'ore' : 'eur') === k ? ' active' : ''}" onclick="priceSet('pe','${k}')">${l}</button>`).join('')}</div>`;
   const perPills = `<div class="pill-group">${POWER_PERIODS.map(([k, l]) =>
     `<button class="pill-btn${(prF.pz || '3y') === k ? ' active' : ''}" onclick="priceSet('pz','${k}')">${l}</button>`).join('')}</div>`;
-  document.getElementById('chartArea').innerHTML = `<div class="np-bar">${areaPills}</div>
+  document.getElementById('chartArea').innerHTML = `<div class="np-bar" style="display:flex;flex-wrap:wrap;gap:8px">${areaPills}${unitPills}</div>
     <div class="pw-kpis">${kpis}</div>
     <div class="pw-grid">
       <div><h3>Reservoir level · ${esc(area.label)} · % of capacity</h3>
         <div class="chart-container"><canvas id="prodChart"></canvas></div><div class="legend-row" id="pwResLegend"></div></div>
-      <div><h3><span>Day-ahead price, weekly average · €/MWh</span>${perPills}</h3>
+      <div><h3><span>Day-ahead price, weekly average · ${U}</span>${perPills}</h3>
         <div class="chart-container"><canvas id="pwPriceChart"></canvas></div><div class="legend-row" id="pwPriceLegend"></div></div>
     </div>`;
 
@@ -6635,10 +6682,10 @@ function drawPricePower() {
     options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
       plugins: {legend: {display: false}, tooltip: {itemSort: (a, b) => b.parsed.y - a.parsed.y, callbacks: {
         title: items => { const k = allKeys[items[0].dataIndex]; return `Week ${k % 100} ${Math.floor(k / 100)} (from ${pwWeekStart(Math.floor(k / 100), k % 100).toISOString().slice(0, 10)})`; },
-        label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(1)} €/MWh`}}},
+        label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(1)} ${U}`}}},
       scales: {x: {ticks: {maxTicksLimit: 10, maxRotation: 0, font: {size: 9}}, grid: {display: false}},
         y: {beginAtZero: true, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'},
-            title: {display: true, text: '€/MWh', color: '#4a5568', font: {size: 10}}}}},
+            title: {display: true, text: U, color: '#4a5568', font: {size: 10}}}}},
   });
   document.getElementById('pwPriceLegend').innerHTML = priceSets.map(d =>
     `<div class="legend-item"><div class="legend-dot" style="background:${d.borderDash.length ? `repeating-linear-gradient(90deg,${d.backgroundColor} 0 4px,transparent 4px 7px)` : d.backgroundColor};height:3px;border-radius:0"></div>${esc(d.label)}</div>`).join('');
@@ -6656,13 +6703,13 @@ function drawPricePower() {
   setChartTable(`<div class="pf-scroll"><table class="res-table">
     <caption>Key figures per price area · reservoir ${wk(S.y, S.w)}, price week ${S.pw} ${S.py}${S.partial ? ' (* week to date)' : ''}</caption>
     <thead><tr><th>Area</th><th>Reservoir</th><th>Δ week, pp</th><th>vs normal, pp</th><th>vs ${S.y - 1}, pp</th><th>Filling, TWh</th><th>Capacity, TWh</th>
-      <th>Price, €/MWh</th><th>Last 4 weeks</th><th>${S.py} so far</th><th>Same weeks ${S.py - 1}</th><th>vs Germany</th></tr></thead>
+      <th>Price, ${U}</th><th>Last 4 weeks</th><th>${S.py} so far</th><th>Same weeks ${S.py - 1}</th><th>vs Germany</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`);
 
   setChartTitle(`Power · ${area.label}`, `Hydro reservoir level and day-ahead prices · reservoir ${wk(S.y, S.w)}, price week ${S.pw} ${S.py}`);
   const next = powerData.reservoir.next;
   setInfo(`<strong>Reservoir:</strong> NVE reservoir statistics, weekly filling of the hydropower reservoirs as a share of capacity, for Norway and per price area (NO1–NO5)${next ? `; next update from NVE ${fmtShort(next)}` : ''}. Normal is the median for the same week in ${span}, and the band the lowest and highest &nbsp;|&nbsp; ` +
-    `<strong>Prices:</strong> ENTSO-E Transparency Platform, day-ahead prices, weekly average in €/MWh. Norway is the simple average of NO1–NO5; the latest week may be incomplete &nbsp;|&nbsp; ` +
+    `<strong>Prices:</strong> ENTSO-E Transparency Platform, day-ahead prices, weekly average in €/MWh${pwOre() ? `, converted to øre/kWh with Norges Bank's EURNOK (weekly average of the daily rates; latest known rate for weeks without one), excluding VAT and grid tariffs` : ''}. Norway is the simple average of NO1–NO5; the latest week may be incomplete &nbsp;|&nbsp; ` +
     `<strong>Via:</strong> <a href="https://github.com/sheffielddivided/nve" target="_blank" rel="noopener">the nve solution ↗</a>, updated daily`);
   lastLabels = weeks.map(w => 'W' + w); lastXTitle = 'Week';
   lastDatasets = [{label: `${S.y}, %`, data: curD.map(v => v ?? '')}, {label: `${S.y - 1}, %`, data: prevD.map(v => v ?? '')},
@@ -6677,7 +6724,7 @@ function drawPricePower() {
              {name: String(S.y - 1), type: 'line', color: pptHex('rgba(42,111,168,0.55)'), values: r2(prevD)},
              {name: String(S.y), type: 'line', color: pptHex('rgba(0,48,87,0.95)'), values: r2(curD)}]};
   pptExtra = [{id: 'power-price', spec: pptSpecFromChart(powerPriceChart),
-    meta: {title: 'Day-ahead power prices', subtitle: 'Weekly average, €/MWh', source: 'Source: ENTSO-E Transparency Platform (via nve)'}}];
+    meta: {title: 'Day-ahead power prices', subtitle: `Weekly average, ${U}`, source: 'Source: ENTSO-E Transparency Platform (via nve)'}}];
 }
 
 function drawPriceStorage() {
