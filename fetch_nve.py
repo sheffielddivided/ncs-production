@@ -15,6 +15,8 @@ selv.
       reservoir.next    neste publiseringsdato fra NVE
       prices.areas      NO1–NO5 og DE-LU: [år, ISO-uke, EUR/MWh, timer med pris]
                         (siste uke kan være ufullstendig: timer < 168)
+      flows.net         netto eksport per utenlandsforbindelse, «NO2>DE-LU»:
+                        [år, ISO-uke, MW (ut minus inn, ukesnitt), timer]
 
 Kjøres daglig av .github/workflows/update-sodir-data.yml, men kan også kjøres
 lokalt, mot GitHub eller mot en lokal kopi av nve-repoet:
@@ -36,7 +38,7 @@ import time
 
 NVE_REPO = 'sheffielddivided/nve'
 NVE_RAW = f'https://raw.githubusercontent.com/{NVE_REPO}/main/'
-FILES = {'reservoir': 'docs/data.json', 'prices': 'docs/prices.json'}
+FILES = {'reservoir': 'docs/data.json', 'prices': 'docs/prices.json', 'flows': 'docs/flows.json'}
 OUT = os.path.join('data', 'power.json')
 
 # Magasinfyllingen tas med for inneværende år og de 20 foregående. Appen
@@ -107,6 +109,33 @@ def build_prices(d):
     return {'areas': out, 'unit': 'EUR/MWh', 'source': d.get('kilde')}
 
 
+# Fysisk flyt (ENTSO-E A11) per retning blir netto eksport per forbindelse:
+# ut av Norge minus inn, i MW som ukesnitt. Mangler den ene retningen en uke,
+# regnes den som 0 (de nye kablene har bare data fra de startet).
+def build_flows(d):
+    if not isinstance(d, dict) or 'MW' not in (d.get('enhet') or ''):
+        raise ValueError('flytdata: ukjent format eller enhet')
+    conns = d.get('forbindelser') or []
+    ser = d.get('serier') or {}
+    if len(conns) < 5:
+        raise ValueError('flytdata: for få forbindelser')
+    out = {}
+    for c in conns:
+        no, ab = c['norsk'], c['utland']
+        ut = {(r['iso_aar'], r['iso_uke']): r for r in ser.get(f'{no}>{ab}', [])}
+        inn = {(r['iso_aar'], r['iso_uke']): r for r in ser.get(f'{ab}>{no}', [])}
+        rows = []
+        for k in sorted(set(ut) | set(inn)):
+            a, b = ut.get(k), inn.get(k)
+            h = min(x['timer'] for x in (a, b) if x)
+            rows.append([k[0], k[1], round((a['mw'] if a else 0) - (b['mw'] if b else 0)), round(h, 1)])
+        if rows:
+            out[f'{no}>{ab}'] = rows
+    if len(out) < 5:
+        raise ValueError('flytdata: for få forbindelser med data')
+    return {'net': out, 'unit': 'MW', 'source': d.get('kilde')}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--local', help='les fra en lokal kopi av nve-repoet')
@@ -115,6 +144,7 @@ def main():
         payload = {
             'reservoir': build_reservoir(load('reservoir', args.local)),
             'prices': build_prices(load('prices', args.local)),
+            'flows': build_flows(load('flows', args.local)),
             'source': f'https://github.com/{NVE_REPO}',
         }
     except Exception as exc:  # noqa: BLE001
