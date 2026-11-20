@@ -1389,8 +1389,26 @@ radene sammen i `loadFieldReserves`, kolonne for kolonne.
 
 Korreksjonen ligger i frontenden, ikke i innsamlingen: `data/*.json` skal
 speile Sodir uendret, slik at en retting fra kilden plukkes opp automatisk
-(§4). `SPLIT_RESERVE_ENTRIES` er oppslagstabellen, og den har i dag én
-oppføring.
+(§4). `SPLIT_RESERVE_ENTRIES` er oppslagstabellen, og den har i dag to
+oppføringer (Skarv og Vega, se under).
+
+**Vega Sør (4467609 → Vega 4467595).** Samme mønster: Vega Sør står som eget
+felt i reservelaget i årgangene 2007–2010, er nullet i 2011 da det ble slått
+inn i Vega, og finnes ikke i feltlaget (FactPages' tabell `field_reserves`
+gir navnet). Uten sammenslåingen sto ID-en som egen «hub» («Field 4467609»,
++24 %) i NCS → Hubs → Reserve change, og Vegas hopp i 2011 talte som en
+oppjustering (Vega +292,6 % i stedet for +109,5 %; Gjøa-huben +58,9 % i stedet
+for +42,7 %):
+
+| Årgang | Vega alene | Vega Sør | Sum |
+|---|---|---|---|
+| 2009 | 12,074 | 13,070 | 25,144 |
+| 2010 | 12,088 | 13,080 | 25,168 |
+| 2011 | 23,140 | 0,000 | 23,140 |
+| 2012 | 25,169 | — | 25,169 |
+
+Kontroll (2026-11-20): bare disse to ID-ene i `reserves_field.json` mangler i
+feltlaget.
 
 Bare årgangene 2018 og 2019 endres. 2 312 andre feltårganger er kontrollert
 uendret, og siste årgang (2025) er urørt, så reserve- og profilvisningenes
