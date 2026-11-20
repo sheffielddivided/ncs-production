@@ -6668,7 +6668,14 @@ function drawPricePower() {
   lastDatasets = [{label: `${S.y}, %`, data: curD.map(v => v ?? '')}, {label: `${S.y - 1}, %`, data: prevD.map(v => v ?? '')},
     {label: `Normal (median ${span}), %`, data: medD.map(v => v == null ? '' : +v.toFixed(2))},
     {label: `Min ${span}, %`, data: minD.map(v => v ?? '')}, {label: `Max ${span}, %`, data: maxD.map(v => v ?? '')}];
-  pptSpec = null;
+  // PPT: min–maks som bånd (som gasslagrene), ikke som to linjer.
+  const r2 = a => a.map(v => (v == null ? null : +(+v).toFixed(2)));
+  pptSpec = {kind: 'cat', dir: 'col', labels: weeks.map(w => 'W' + w), yTitle: '% of capacity', yMin: 0, yMax: 100, yFormat: '0"%"', catLabelSkip: 4,
+    subtitle: `Reservoir level, % of capacity · ${S.y} against ${S.y - 1}, normal and the ${span} range`,
+    series: [{name: `Range ${span}`, type: 'band', lo: r2(minD), hi: r2(maxD), color: pptHex('#2a6fa8'), opacity: 28, values: r2(maxD)},
+             {name: `Normal (median ${span})`, type: 'line', dash: true, color: pptHex('rgba(42,111,168,0.7)'), values: r2(medD)},
+             {name: String(S.y - 1), type: 'line', color: pptHex('rgba(42,111,168,0.55)'), values: r2(prevD)},
+             {name: String(S.y), type: 'line', color: pptHex('rgba(0,48,87,0.95)'), values: r2(curD)}]};
   pptExtra = [{id: 'power-price', spec: pptSpecFromChart(powerPriceChart),
     meta: {title: 'Day-ahead power prices', subtitle: 'Weekly average, €/MWh', source: 'Source: ENTSO-E Transparency Platform (via nve)'}}];
 }
@@ -15674,6 +15681,7 @@ function pptAddChart(pptx, slide, spec, box) {
     slide.addChart(types, {...common, ...axisTitle(spec.yTitle),
       ...(spec.dateAxis ? {catLabelFormatCode: 'mmm', catAxisBaseTimeUnit: 'days', catAxisMajorTimeUnit: 'months', catAxisMajorUnit: 1,
                            catAxisMajorTickMark: 'none'} : {}),
+      ...(spec.catLabelSkip ? {catAxisLabelFrequency: spec.catLabelSkip, catAxisLabelRotate: 0} : {}),
       ...(spec.yMin != null ? {valAxisMinVal: spec.yMin} : {}), ...(spec.yMax != null ? {valAxisMaxVal: spec.yMax} : {}),
       ...(spec.yFormat ? {valAxisLabelFormatCode: spec.yFormat} : {})});
     return;
