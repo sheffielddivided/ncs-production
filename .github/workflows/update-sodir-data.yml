@@ -55,7 +55,8 @@ jobs:
       # day-ahead-priser til prognosen i Gas-fanen, gasslagre og LNG send-out
       # til EU storage-fanen, og amerikanske lagre, LNG-eksport og
       # LNG-eksportpris til US supply og Gas, og ukentlige spotpriser (WTI,
-      # Brent, NY Harbor bensin og diesel) til 3-2-1-marginen i Refining.
+      # Brent, NY Harbor bensin og diesel) til 3-2-1-marginen i Refining, og
+      # STEO-oljebalansen (tabell 3a og 3c) til Oil market.
       - name: Hent TTF-priser, gasslagre og EIA-data fra eia-repoet
         continue-on-error: true
         timeout-minutes: 5

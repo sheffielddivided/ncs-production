@@ -21,6 +21,10 @@ og EIA-delen), til disse filene:
   (regular, USD/gallon) og NY Harbor nr. 2 fyringsolje/diesel (USD/gallon),
   samme serier som Refining-visningen i eia-repoet. Brent (RBRTE) er med til
   varianten mot Brent. Marginen regnes ut i appen.
+- data/steo.json: EIAs Short-Term Energy Outlook, tabell 3a og 3c (verdens
+  oljebalanse: produksjon, forbruk, lagertrekk og OECD-lagre; månedlig,
+  kvartalsvis og årlig, historikk og prognose). Kopieres uendret fra
+  data/eia/steo.json i eia-repoet, til Oil market-fanen i Market.
 
 Feiler en henting, beholdes forrige fil for den. Steget i arbeidsflyten er
 continue-on-error.
@@ -140,9 +144,21 @@ def refining():
     print(f'eugas: raffinering {", ".join(f"{k} {len(v)}" for k, v in out.items())}; siste {out["wti"][-1][0]}')
 
 
+def steo():
+    src = get('eia/steo.json')
+    d = (src or {}).get('data') or {}
+    if not ((d.get('quarterly') or {}).get('PAPR_WORLD') and src.get('lastHistMonth')):
+        print('eugas: ingen STEO-data i kilden; beholder forrige fil', file=sys.stderr)
+        return
+    src['source'] = 'U.S. Energy Information Administration (EIA), Short-Term Energy Outlook, via sheffielddivided/eia'
+    write('steo.json', src)
+    print(f'eugas: STEO {src.get("release")}, historikk til {src["lastHistMonth"]}, {len(src.get("meta") or {})} serier')
+
+
 if __name__ == '__main__':
     ttf()
     storage()
     lng()
     us_supply()
     refining()
+    steo()
