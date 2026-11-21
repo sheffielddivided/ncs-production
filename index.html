@@ -226,6 +226,7 @@
     .dual-charts .om-chart .om-csub{font-size:0.68rem;margin:2px 0 8px;}
     @media (min-width:900px){.dual-charts .om-chart .om-csub{min-height:2.6em;}}
     .dual-charts .pf-map-note{margin-top:6px;}
+    .us-charts .np-bar{margin-bottom:6px;}
     .om-chart{border:1px solid var(--border);border-radius:8px;padding:8px 10px 6px;min-width:0;}
     .om-chart h4{font-size:0.74rem;font-weight:700;color:var(--navy);margin:0;}
     .om-chart .om-csub{font-size:0.64rem;color:var(--muted);margin:1px 0 4px;}
@@ -7055,7 +7056,7 @@ function usStockBlock(id, list, sk, yk, mk, unitNote) {
   const html = `${bars}<div class="chart-container"><canvas id="${id}"></canvas></div><div class="legend-row" id="${id}Leg"></div>
     <div class="pf-map-note">${mode === 'seasonal' ? seasonalSummary(S, mb, diff) : lastRow ? `<strong>Latest:</strong> ${mb(lastRow[1] / 1000)} in the week to ${fmtShort(lastRow[0])}` : ''}
       &nbsp;|&nbsp; EIA Weekly Petroleum Status Report${lastRow ? `, latest week ${fmtShort(lastRow[0])}` : ''}.</div>
-    ${wow.length ? `<div style="margin:16px 0 6px;font-size:0.78rem;font-weight:700;color:var(--navy)">Week-over-week change · ${yr}</div>
+    ${wow.length ? `<h4 style="margin-top:16px">Week-over-week change · ${yr}</h4><div class="om-csub">${esc(name)}, change from the previous week, million bbl</div>
       <div class="chart-container" style="height:200px"><canvas id="${id}Wow"></canvas></div>
       <div class="pf-map-note">Change in ${esc(name.charAt(0).toLowerCase() + name.slice(1))} from the previous week, million bbl.
         ${lastW ? `<strong>Latest:</strong> ${sgn(lastW[1])} million bbl in the week to ${fmtShort(lastW[0])}; ${sgn(wow.reduce((t, x) => t + x[1], 0))} million bbl so far this year.` : ''}</div>` : ''}`;
@@ -7099,7 +7100,7 @@ function usStockBlock(id, list, sk, yk, mk, unitNote) {
     document.getElementById(id + 'Leg').innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:${C};height:3px;border-radius:0"></div>${esc(name)}</div>`;
     return {chart, spec: pptSpecFromChart(chart), sub};
   };
-  return {html, draw, drawWow, name};
+  return {html, draw, drawWow, name, sub};
 }
 
 // ── MARKET · REFINING ──
@@ -7575,19 +7576,25 @@ function drawPriceUs() {
   const lastW = pw[pw.length - 1], lastM = (cp.monthly || [])[(cp.monthly || []).length - 1];
   const mbd = v => `${(v / 1000).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})} million b/d`;
   const monthLbl = ym => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1)).toLocaleString('en', {month: 'long', year: 'numeric', timeZone: 'UTC'});
-  const prodCard = qLabels.length ? `<div class="pf-card pf-wide"><h3>US crude oil production</h3>
+  const prodCard = qLabels.length ? `<div class="om-chart"><h4>US crude oil production</h4>
+      <div class="om-csub">Million barrels per day · weekly estimate and monthly figures, last ${qy} years</div>
       <div class="np-bar">${usPills('uq', [['2', '2y'], ['5', '5y'], ['10', '10y'], ['20', '20y']], prF.uq)}</div>
       <div class="chart-container"><canvas id="usCrudeProdChart"></canvas></div><div class="legend-row" id="usCrudeProdLeg"></div>
       <div class="pf-map-note">${lastW ? `<strong>Latest week:</strong> ${mbd(lastW[1])} in the week to ${fmtShort(lastW[0])}` : ''}${lastW && lastM ? ' &nbsp;|&nbsp; ' : ''}${lastM ? `<strong>Latest month:</strong> ${mbd(lastM[1])} in ${monthLbl(lastM[0])}` : ''}
         &nbsp;|&nbsp; Field production of crude oil. The weekly figures are EIA's estimates in the Weekly Petroleum Status Report;
         the monthly figures (Petroleum Supply Monthly) are based on fuller data, come about two months later and are usually the better measure.</div></div>` : '';
-  document.getElementById('chartArea').innerHTML = crude.html;
-  setProfile(`${prodCard}<div class="pf-card pf-wide"><h3>US product stocks</h3>${prod.html}</div>
-    <div class="pf-card pf-wide"><h3>US LNG exports</h3>
+  // Fire kort i to kolonner på desktop (under hverandre på mobil): råolje- og
+  // produktlagre øverst, råoljeproduksjon og LNG-eksport under.
+  document.getElementById('chartArea').innerHTML = `<div class="dual-charts us-charts">
+    <div class="om-chart"><h4>US crude oil stocks · ${esc(US_CRUDE.find(x => x[0] === prF.uc)[1])}</h4><div class="om-csub">${crude.sub}</div>${crude.html}</div>
+    <div class="om-chart"><h4>US product stocks · ${esc(US_PROD.find(x => x[0] === prF.up)[1])}</h4><div class="om-csub">${prod.sub}</div>${prod.html}</div>
+    ${prodCard}
+    <div class="om-chart"><h4>US LNG exports</h4>
+      <div class="om-csub">Total LNG exports per month, million cubic feet (MMcf) · last ${ly} year${ly > 1 ? 's' : ''}</div>
       <div class="np-bar">${usPills('ul', [['1', '1y'], ['2', '2y'], ['5', '5y'], ['10', '10y'], ['20', '20y']], prF.ul)}</div>
       <div class="chart-container"><canvas id="usLngChart"></canvas></div>
       <div class="pf-map-note">${lastL ? `<strong>Latest:</strong> ${Math.round(lastL[1]).toLocaleString('en')} MMcf in ${lastL[0]} (about ${(lastL[1] / 1000 / new Date(Date.UTC(+lastL[0].slice(0, 4), +lastL[0].slice(5, 7), 0)).getUTCDate()).toFixed(1)} Bcf/d) &nbsp;|&nbsp; ` : ''}
-        Total US LNG exports per month, million cubic feet (MMcf). EIA, U.S. Natural Gas Exports and Re-Exports by Point of Exit.</div></div>`);
+        EIA, U.S. Natural Gas Exports and Re-Exports by Point of Exit.</div></div></div>`;
   if (chartInstance) chartInstance.destroy();
   const c1 = crude.draw(); chartInstance = c1.chart;
   const w1 = crude.drawWow(); if (w1) usCharts.push(w1.chart);
@@ -7610,6 +7617,8 @@ function drawPriceUs() {
     const qTick = qLabels.map((d, i) => {
       if (i && qKey(qLabels[i - 1]) === qKey(d)) return null;
       if (qy <= 2) return d.slice(5, 7) === '01' || i === 0 ? d.slice(0, 4) : STORAGE_MON[+d.slice(5, 7) - 1];
+      // Første punkt midt i et år: ingen årsetikett, ellers kolliderer den med neste års.
+      if (i === 0 && d.slice(5, 7) > '03') return null;
       return qy >= 20 && +d.slice(0, 4) % 2 ? null : d.slice(0, 4);
     });
     qch = new Chart(document.getElementById('usCrudeProdChart').getContext('2d'), {type: 'line',
@@ -7636,7 +7645,8 @@ function drawPriceUs() {
   lastLabels = c1.chart.data.labels; lastXTitle = prF.ucm === 'seasonal' ? 'Week starting' : 'Week';
   lastDatasets = ds.filter(d => !d.label.startsWith('_')).map(d => ({label: `${d.label.replace(/^Range/, 'Min')}, million bbl`, data: d.data.map(v => v ?? '')}))
     .concat(prF.ucm === 'seasonal' ? [{label: `Max ${ds[1].label.replace(/^Range /, '')}, million bbl`, data: ds[0].data.map(v => v ?? '')}] : []);
-  setChartTitle(`US crude oil stocks · ${crude.name}`, c1.sub);
+  setChartTitle('US oil and gas supply', 'Crude oil and product stocks, crude oil production and LNG exports · EIA');
+  pptMainMeta = {title: `US crude oil stocks · ${crude.name}`, subtitle: c1.sub, source: 'Source: U.S. Energy Information Administration (EIA)'};
   setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA): weekly stocks of crude oil and products (Weekly Petroleum Status Report),
     weekly and monthly crude oil production, and monthly LNG exports, collected daily by the eia solution${us.updated ? `, updated ${fmtShort(us.updated.slice(0, 10))}` : ''}`);
 }
