@@ -3491,7 +3491,31 @@ function ioView() {
 }
 const ioEvent = name => ioSend({k: 'e', e: name, p: ioPath()});
 
+// ── HOLD RULLEPOSISJONEN VED NY TEGNING ──
+// Når grafen tegnes på nytt (nytt felt, ny periode, en annen knapp), tømmes
+// grafen, tabellen og kortene under et øyeblikk. Siden blir da kortere, og
+// nettleseren ruller opp for å holde seg innenfor den. For å unngå det holdes
+// siden like høy mens det tegnes, så rulleposisjonen står. Bare når man blir
+// på samme visning: bytter man fane eller hovedside, oppfører siden seg som
+// før. Kan nøstes (refresh kaller drawChart); høyden slippes etter neste
+// bilde, når alt er tegnet.
+let holdDepth = 0, holdKey = null;
+const holdViewKey = () => topMode + '|' + currentSubView();
+function holdHeight() {
+  if (holdDepth++ === 0 && holdViewKey() === holdKey && window.scrollY > 0)
+    document.body.style.minHeight = document.documentElement.scrollHeight + 'px';
+}
+function releaseHeight() {
+  holdKey = holdViewKey();
+  if (--holdDepth > 0) return;
+  requestAnimationFrame(() => { if (!holdDepth) document.body.style.minHeight = ''; });
+}
+
 async function refresh() {
+  holdHeight();
+  try { await refreshView(); } finally { releaseHeight(); }
+}
+async function refreshView() {
   syncUrl();
   syncTitle();
   ioView();
@@ -3703,6 +3727,10 @@ function setChartNone() {
 }
 
 function drawChart() {
+  holdHeight();
+  try { return drawChartView(); } finally { releaseHeight(); }
+}
+function drawChartView() {
   pptSpec = null; pptExtra = []; pptMainMeta = null; xlsExtra = [];
   if (topMode === 'fields') {
     const sv = fieldSubView;
