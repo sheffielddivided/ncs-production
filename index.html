@@ -3651,7 +3651,7 @@ function setChartNone() {
 }
 
 function drawChart() {
-  pptSpec = null; pptExtra = [];
+  pptSpec = null; pptExtra = []; pptMainMeta = null;
   if (topMode === 'fields') {
     const sv = fieldSubView;
     if (sv === 'oilgas')          drawFieldsOilGas();
@@ -7411,7 +7411,6 @@ function omDrawCharts(S, cols) {
   cols = cols.filter(c => !c.ann);
   const labels = cols.map(c => c.freq === 'annual' ? c.p : c.freq === 'quarterly' ? `Q${c.label.slice(1)} ${c.year}` : `${c.label} ${c.year}`);
   const sgn = v => (v > 0 ? '+' : '') + v.toFixed(2);
-  const lastHist = omMonthLabel(S.lastHistMonth);
   const opts = (fmt, isLine) => ({responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
     plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null, callbacks: {
       label: it => ` ${fmt(it.parsed.y)} mb/d${cols[it.dataIndex].fc ? ' (forecast)' : ''}`}}},
@@ -7430,12 +7429,40 @@ function omDrawCharts(S, cols) {
   const ma = omCallMa(S), c = OM_CH[2];
   const endMonth = col => col.freq === 'monthly' ? col.p : col.freq === 'quarterly' ? `${col.year}-${String(+col.p.slice(-1) * 3).padStart(2, '0')}` : `${col.p}-12`;
   const vals = cols.map(col => { const v = ma[endMonth(col)]; return v == null ? null : +v.toFixed(3); });
-  usCharts.push(new Chart(document.getElementById(c.id).getContext('2d'), {type: 'line',
+  const call = new Chart(document.getElementById(c.id).getContext('2d'), {type: 'line',
     data: {labels, datasets: [{label: c.title, data: vals, borderColor: `rgb(${c.color})`, backgroundColor: `rgba(${c.color},0.08)`, fill: 'start',
       borderWidth: 2, pointRadius: cols.length > 40 ? 0 : 2, pointHoverRadius: 4, tension: cols[0].freq === 'monthly' ? 0.2 : 0, spanGaps: true,
       segment: {borderDash: ctx => cols[ctx.p1DataIndex].fc ? [5, 4] : undefined}}]},
-    options: opts(v => v.toFixed(2), true)}));
-  return lastHist;
+    options: opts(v => v.toFixed(2), true)});
+  usCharts.push(call);
+  return {charts: usCharts.slice(-3), cols};
+}
+
+// PPT: de tre grafene som hvert sitt lysbilde. Prognosestolpene blir blekere
+// av seg selv (pptEstimatePoints); linjen deles i historikk og stiplet prognose.
+function omPpt(S, {charts, cols}) {
+  const freqName = {quarterly: 'quarterly', monthly: 'monthly', annual: 'annual'}[cols[0].freq];
+  const span = `${freqName}, ${cols[0].year === 'Annual' ? cols[0].p : cols[0].year}–${cols[cols.length - 1].year === 'Annual' ? cols[cols.length - 1].p : cols[cols.length - 1].year}`;
+  const fcNote = `forecast after ${omMonthLabel(S.lastHistMonth)}`;
+  const rel = `${STORAGE_MON[+S.release.slice(5, 7) - 1]} ${S.release.slice(0, 4)}`;
+  const source = `Source: U.S. Energy Information Administration (EIA), Short-Term Energy Outlook ${rel}`;
+  const specs = charts.map(pptSpecFromChart);
+  const line = specs[2].series[0];
+  if (line) {
+    const firstFc = cols.findIndex(c => c.fc);
+    if (firstFc > 0) {
+      const all = line.values;
+      line.values = all.map((v, i) => i < firstFc ? v : null);
+      specs[2].series.push({...line, name: 'Forecast', dash: true, values: all.map((v, i) => i >= firstFc - 1 ? v : null)});
+    }
+  }
+  const meta = [
+    {title: 'Global oil demand growth, y/y', subtitle: `Million b/d, change vs. same period last year · ${span} · pale bars: ${fcNote}`, source},
+    {title: 'Non-OPEC supply growth, y/y', subtitle: `Million b/d, change vs. same period last year · ${span} · pale bars: ${fcNote}`, source},
+    {title: 'Call on OPEC, 12-month moving average', subtitle: `Million b/d, global demand minus non-OPEC supply · ${span} · dashed: ${fcNote}`, source},
+  ];
+  pptSpec = specs[0]; pptMainMeta = meta[0];
+  pptExtra = [{id: 'omsup', spec: specs[1], meta: meta[1]}, {id: 'omcall', spec: specs[2], meta: meta[2]}];
 }
 
 function drawPriceOilMarket() {
@@ -7487,7 +7514,7 @@ function drawPriceOilMarket() {
       <div class="legend-item"><div class="legend-dot" style="background:#f6f1f4;border:1px solid var(--border)"></div>Forecast (shaded, italic)</div>
       <div class="legend-item">Market balance = production − consumption (positive = implied stock build)</div>
       <div class="legend-item">OPEC country detail is published for historical months only</div></div>`;
-  omDrawCharts(S, cols);
+  omPpt(S, omDrawCharts(S, cols));
   // Ny frekvens eller periode: start rullet helt til høyre, så utsiktsårene
   // vises. Ellers (utfolding, nivå / endring) beholdes rulleposisjonen.
   const sc = document.getElementById('omScroll'), viewKey = freq + '|' + prF.omr;
@@ -15945,6 +15972,10 @@ let pptSpec = null;   // eksplisitt grafbeskrivelse for visninger uten Chart.js;
 // Brent): ekstra lysbilder, [{spec, meta}], som følger med hovedgrafen i
 // «Download PPT» og «Add to PPT». Nullstilles også i drawChart.
 let pptExtra = [];
+// Egen tittel og undertittel for hovedlysbildet når grafen ikke er det
+// sidetittelen beskriver (Oil market: sidetittelen gjelder tabellen).
+// Nullstilles i drawChart.
+let pptMainMeta = null;
 
 // ExcelJS is 1.1 MB and only needed for a download, so it is fetched then.
 const EXCEL_URL = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
@@ -16286,7 +16317,7 @@ async function downloadPpt() {
   btn.disabled = true; label.textContent = 'Preparing…';
   try {
     await loadPptx();
-    const meta = pptMeta();
+    const meta = pptMainMeta || pptMeta();
     const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';   // 13.33 × 7.5 tommer
     pptx.title = meta.title;
@@ -16345,7 +16376,7 @@ function pptAddCurrent() {
   ioEvent('ppt-add');
   const spec = pptSpec || (chartInstance ? pptSpecFromChart(chartInstance) : null);
   if (!spec) return;
-  pptBasket.push({kind: 'chart', spec, meta: pptMeta()});
+  pptBasket.push({kind: 'chart', spec, meta: pptMainMeta || pptMeta()});
   pptExtra.forEach(x => pptBasket.push({kind: 'chart', spec: x.spec, meta: x.meta}));
   pptBasketSave();
   pptToast(`Added ${1 + pptExtra.length} chart${pptExtra.length ? 's' : ''} to PPT basket (${pptBasket.length})`);
