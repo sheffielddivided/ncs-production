@@ -16605,7 +16605,14 @@ async function downloadExcel() {
   // Uten tidsakse er periode og årsutvalg irrelevant, og ville bare villedet
   // den som åpner arket.
   const categorical = !!lastXTitle;
-  const filename = categorical
+  // Market-fanene har egne tidsakser og valg; produksjonsperioden og
+  // årsutvalget gjelder ikke der, og filen får navn etter grafen.
+  const market = topMode === 'prices';
+  // Oil market: Data-arket er tabellen, så sidetittelen; ellers grafens tittel.
+  const viewTitle = ((priceSubView === 'oilmarket' ? null : pptMainMeta) || pptMeta()).title || '';
+  const filename = market
+    ? `${(viewTitle || 'Market').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
+    : categorical
     ? `${(pptMeta().title || 'NCS').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
     : `NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`;
 
@@ -16614,11 +16621,15 @@ async function downloadExcel() {
 
   const wsInfo = wb.addWorksheet('Info');
   wsInfo.columns = [{width:24},{width:80}];
-  const titleRow = wsInfo.addRow([categorical ? 'NCS Reserves Export' : 'NCS Production Export']);
+  const titleRow = wsInfo.addRow([market ? 'NCS Insight Market Export' : categorical ? 'NCS Reserves Export' : 'NCS Production Export']);
   titleRow.getCell(1).font = {bold:true, size:14};
   wsInfo.addRow([]);
   wsInfo.addRow(['Generated', new Date().toLocaleString()]);
-  if (!categorical) {
+  if (market) {
+    const tab = PRICE_TABS.find(t => t.id === priceSubView);
+    wsInfo.addRow(['View', `Market · ${tab ? tab.label : priceSubView}`]);
+    if (viewTitle) wsInfo.addRow(['Chart', viewTitle]);
+  } else if (!categorical) {
     wsInfo.addRow(['Period type', periodLabel]);
     wsInfo.addRow(['Year range', `${fy} – ${ty}`]);
   }
@@ -16626,17 +16637,24 @@ async function downloadExcel() {
   wsInfo.addRow(['Data description']).getCell(1).font = {bold:true};
   wsInfo.addRow([infoText]);
   wsInfo.addRow([]);
-  wsInfo.addRow(['Source']).getCell(1).font = {bold:true};
-  const srcRow = wsInfo.addRow(['Norwegian Offshore Directorate (Sodir) FactPages – https://factpages.sodir.no – License: NLOD 2.0']);
-  srcRow.getCell(1).font = {color:{argb:'FF0071B8'}};
+  // Kildene for visningen som vises, samme liste som kildelinjen nederst på
+  // siden og PPT-lysbildene (pageSources).
+  const srcKeys = pageSources().filter(k => SOURCES[k]);
+  wsInfo.addRow([srcKeys.length > 1 ? 'Sources' : 'Source']).getCell(1).font = {bold:true};
+  srcKeys.forEach(k => {
+    const [name, url, lic] = SOURCES[k];
+    const srcRow = wsInfo.addRow([`${name} – ${url}${lic ? ` – License: ${lic}` : ''}`]);
+    srcRow.getCell(1).font = {color:{argb:'FF0071B8'}};
+  });
 
   const wsData = wb.addWorksheet('Data');
-  const header = [lastXTitle || (period==='monthly'?'Period':period==='quarterly'?'Quarter':'Year'), ...lastDatasets.map(d=>d.label)];
+  const header = [lastXTitle || (market ? 'Period' : period==='monthly'?'Period':period==='quarterly'?'Quarter':'Year'), ...lastDatasets.map(d=>d.label)];
   wsData.columns = header.map((h,i) => ({header:h, width:i===0?(categorical?22:12):20}));
   wsData.getRow(1).font = {bold:true};
   wsData.getRow(1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}};
   lastLabels.forEach((lbl,i) => {
-    const row = wsData.addRow([lbl, ...lastDatasets.map(d => d.data[i] ?? 0)]);
+    // Markedsdata: manglende verdi er tom celle, ikke null.
+    const row = wsData.addRow([lbl, ...lastDatasets.map(d => d.data[i] ?? (market ? '' : 0))]);
     if (i % 2 === 1) row.eachCell(cell => {
       cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF7F9FC'}};
     });
