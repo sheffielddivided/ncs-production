@@ -1378,14 +1378,26 @@
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/680655",
    "d": "2026-08-25",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=680655&attachmentId=331834"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/680654",
    "d": "2026-08-25",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=680654&attachmentId=331835"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1517,14 +1529,26 @@
    "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/680160",
    "d": "2026-08-19",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinors aksjeprogram for ansatte - 19 august 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=680160&attachmentId=331434"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/680159",
    "d": "2026-08-19",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinor Employee share saving programme -19 August 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=680159&attachmentId=331435"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -1538,14 +1562,26 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/680047",
    "d": "2026-08-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=680047&attachmentId=331328"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/680046",
    "d": "2026-08-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=680046&attachmentId=331327"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -1624,14 +1660,26 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/679386",
    "d": "2026-08-11",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=679386&attachmentId=330739"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/679385",
    "d": "2026-08-11",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=679385&attachmentId=330741"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -1693,14 +1741,26 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/679000",
    "d": "2026-08-04",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=679000&attachmentId=330434"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/678999",
    "d": "2026-08-04",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678999&attachmentId=330432"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -1714,14 +1774,26 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/678730",
    "d": "2026-07-28",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678730&attachmentId=330182"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/678729",
    "d": "2026-07-28",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678729&attachmentId=330181"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1770,14 +1842,34 @@
    "t": "Equinors resultater for andre kvartal 2026",
    "u": "https://newsweb.oslobors.no/message/678526",
    "d": "2026-07-22",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Equinor Financial Statements and Review Second Quarter 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678526&attachmentId=330005"
+    },
+    {
+     "n": "CFO presentation Second quarter 2026 results.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678526&attachmentId=330007"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor second quarter 2026 results",
    "u": "https://newsweb.oslobors.no/message/678525",
    "d": "2026-07-22",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Equinor Financial Statements and Review Second Quarter 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678525&attachmentId=330006"
+    },
+    {
+     "n": "CFO presentation Second quarter 2026 results.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678525&attachmentId=330008"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -1812,28 +1904,52 @@
    "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/678403",
    "d": "2026-07-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinor Employee share saving programme - 15 July 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678403&attachmentId=329906"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/678402",
    "d": "2026-07-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinors aksjeprogram for ansatte - 15 juli 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678402&attachmentId=329907"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/678401",
    "d": "2026-07-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678401&attachmentId=329905"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - andre transje for 2026",
    "u": "https://newsweb.oslobors.no/message/678400",
    "d": "2026-07-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678400&attachmentId=329904"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -1934,14 +2050,26 @@
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/678140",
    "d": "2026-07-14",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678140&attachmentId=329650"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - andre transje for 2026",
    "u": "https://newsweb.oslobors.no/message/678139",
    "d": "2026-07-14",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678139&attachmentId=329649"
+    }
+   ]
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -1982,14 +2110,26 @@
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/677726",
    "d": "2026-07-07",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=677726&attachmentId=329310"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - andre transje for 2026",
    "u": "https://newsweb.oslobors.no/message/677725",
    "d": "2026-07-07",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=677725&attachmentId=329309"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -2052,14 +2192,26 @@
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/677304",
    "d": "2026-06-30",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=677304&attachmentId=329030"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - andre transje for 2026",
    "u": "https://newsweb.oslobors.no/message/677303",
    "d": "2026-06-30",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=677303&attachmentId=329031"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -2114,14 +2266,26 @@
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/676790",
    "d": "2026-06-23",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676790&attachmentId=328691"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - andre transje for 2026",
    "u": "https://newsweb.oslobors.no/message/676789",
    "d": "2026-06-23",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676789&attachmentId=328690"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2163,14 +2327,26 @@
    "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/676455",
    "d": "2026-06-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinor Employee share saving programme - 18 June 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676455&attachmentId=328410"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/676454",
    "d": "2026-06-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinors aksjeprogram for ansatte - 18 juni 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676454&attachmentId=328409"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2198,28 +2374,52 @@
    "t": "Equinors kapitalmarkedsdag 2026",
    "u": "https://newsweb.oslobors.no/message/676289",
    "d": "2026-06-16",
-   "s": "Inside information"
+   "s": "Inside information",
+   "a": [
+    {
+     "n": "Equinor Capital Markets Day 2026 - all presentations.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676289&attachmentId=328275"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor's Capital Markets Day 2026",
    "u": "https://newsweb.oslobors.no/message/676288",
    "d": "2026-06-16",
-   "s": "Inside information"
+   "s": "Inside information",
+   "a": [
+    {
+     "n": "Equinor Capital Markets Day 2026 - all presentations.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676288&attachmentId=328276"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - andre transje for 2026",
    "u": "https://newsweb.oslobors.no/message/676268",
    "d": "2026-06-16",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676268&attachmentId=328265"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/676266",
    "d": "2026-06-16",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=676266&attachmentId=328264"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -2261,14 +2461,26 @@
    "t": "Equinor ASA: Share buy-back - second tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/675688",
    "d": "2026-06-09",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=675688&attachmentId=327812"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - andre transje for 2026",
    "u": "https://newsweb.oslobors.no/message/675686",
    "d": "2026-06-09",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=675686&attachmentId=327813"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -3226,6 +3438,13 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Er GL-5-girkasseolje bakoverkompatibel med GL-4-girkasseolje? - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxOSzdhc0JyenEzQkMwMGhIYUVhSzlucTF2UkkzR1IycTlFODhNSGtmNTRRV3dxMEczSHNFNThIZ2tHSE82cGtfRy1USFFQOVBZbF9EQ0JEY2hyem9GTkMwbXJSc1lxdFF0TmN5aXZab2VCSTltQnFGMDRBSTdSVkJrZzRhNXdacnEzRzkyazBpZ2hLMUFwRWtud2U4Um9XblRUa05ocHFTcXM?oc=5",
+   "d": "2026-01-30",
+   "s": "Er GL-5-girkasseolje bakoverkompatibel med GL-4-girkasseolje? TotalEnergies Nordic"
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
    "t": "Er det nødvendig å skifte oljefilter når man skifter olje? - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQSkFpTmlEMHRRdVlkT0hQVUM5b0ljaktrdl83enNxOXR4NWpWODlIblFIdUlRZm1BR3JUSFNrckNWaTlPcC1ieENiLVZVV000RXVzd1JhRnJTUnRGQ2pyXzZTSmVGbktjUWFhV2lTaks4ZUlhVEVxbGZPc2tTNjJJVU1MRFNna2pIMTlQZG1EdmMtQXBldnBUMllWbk03UTJPbXc?oc=5",
    "d": "2026-01-30",
@@ -3796,6 +4015,13 @@
    "u": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv/2025/northern-lights-har-startet-co2-injeksjon.html",
    "d": "2025-08-25",
    "s": "Northern Lights har startet første injeksjon av CO₂ fanget fra Heidelbergs sementfabrikk i Brevik."
+  },
+  {
+   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
+   "t": "Ford-godkännande - TotalEnergies Nordic",
+   "u": "https://news.google.com/rss/articles/CBMiugFBVV95cUxNVlJ2V2tJbF9iWVVkeG8zTm5lRkpaeUI2RW44Rk1uT0JrdmFKY1hrbFhGQk82Y0pHaEp0akN2b3hhemFiYnVtMXVaSm9fZW1KTFFHUEYzRWo0cXdrRDlTYk9xT2ZKZVZpcXd3TVRUNjdwVzluV1ZaTjJsYUd6d2UwTmJxTWdaVHhmeEtTaTc5R0Qtd0R4QnRNNHctZkdOSm9IWTVsalNmLW83Q09xbXY0cmRZZ1NSY2ZHeHc?oc=5",
+   "d": "2025-08-25",
+   "s": "Ford-godkännande TotalEnergies Nordic"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -4373,10 +4599,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO VGM 2024 CBL (For_Imod).xlsx - dno.no",
+   "t": "DNO VGM 2024 CBL (For_Imod).xlsx - DNO ASA",
    "u": "https://news.google.com/rss/articles/CBMihAFBVV95cUxQV0o4cUN6bVJtdEF3ZUlhWUNXNUJ2dXlVS0tPaUhnMDFuZFFZNUdhQ3EtbXUxZHA5TWFuMENqSnNnbnNTc0xvdllES1JTWlpocG13UGx0REwweE84VGlraFJfM2gzNGRJSmt0anRiU1pGd0xoM19MODJ2UDR4dlFHRWJoU1U?oc=5",
    "d": "2024-06-07",
-   "s": "DNO VGM 2024 CBL (For_Imod).xlsx dno.no"
+   "s": "DNO VGM 2024 CBL (For_Imod).xlsx DNO ASA"
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -5224,20 +5450,6 @@
    "u": "https://news.google.com/rss/articles/CBMihwFBVV95cUxNLWo0RnlRSXVpMkNGNTBBMDZTeTRlZlhOelZGU0pzMHVrNnEwSkllaENIblJGTWhvUzFDMUFEMU1hV1FXTWVBVV9CU05jQTFqSFZ2eGlWclU4ZU4xeXBHcXlpTGY1U0JYREJTeXJhT2hFZzFfanVEVWFLdWN0aDh4WDZJN3FYWG8?oc=5",
    "d": "2021-06-10",
    "s": "Andre smøremidler for industri | TotalEnergies TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Kontakt: teknisk støtte - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiakFVX3lxTE1VdU1QcjBqZWdIOEpLZW9UN21LSDFFR3JneHZ3UUdSdnBpMnRGWVRNa09ibDQyRXM3M1RUdnhXYlVLYXUtTTdnNVBJVF9SRGUybUhGdnlkUlVSbEdzOG5PNXVGMkVZZGo4eFE?oc=5",
-   "d": "2021-06-10",
-   "s": "Kontakt: teknisk støtte TotalEnergies Nordic"
-  },
-  {
-   "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "LubAnac - TotalEnergies Nordic",
-   "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTFBxeFZoYUFrRE1OVU9yZThSSUd6M0ZacW9qUDRodVl6QTRKVzB6NmJXOGNLQXMyRk9iY2dvZHloSDJYZ0s0WWtKTjB2clFPZ01xMGVkaF9wbnZoOFdIM0JzelJsNzQydkdj?oc=5",
-   "d": "2021-06-10",
-   "s": "LubAnac TotalEnergies Nordic"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:www.conocophillips.no&hl=no&gl=NO&ceid=NO:no",
