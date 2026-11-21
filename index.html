@@ -5966,9 +5966,9 @@ function priceBar(extra = '') {
     ${years.map(y => `<option value="${y}"${y === prF[k] ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
   const bm = priceSubView === 'brent' ? `<div class="pill-group">
       <button class="pill-btn${prF.bm || prF.bq || prF.ba ? '' : ' active'}" onclick="priceRes('d')">Daily</button>
-      <button class="pill-btn${prF.bm && !prF.ba && !prF.bq ? ' active' : ''}" onclick="priceRes('m')">Monthly average</button>
-      <button class="pill-btn${prF.bq && !prF.ba ? ' active' : ''}" onclick="priceRes('q')">Quarterly average</button>
-      <button class="pill-btn${prF.ba ? ' active' : ''}" onclick="priceRes('y')">Annual average</button></div>
+      <button class="pill-btn${prF.bm && !prF.ba && !prF.bq ? ' active' : ''}" onclick="priceRes('m')">Monthly</button>
+      <button class="pill-btn${prF.bq && !prF.ba ? ' active' : ''}" onclick="priceRes('q')">Quarterly</button>
+      <button class="pill-btn${prF.ba ? ' active' : ''}" onclick="priceRes('y')">Annual</button></div>
     <div class="pill-group"><button class="pill-btn${prF.avg ? ' active' : ''}" onclick="priceSet('avg', !prF.avg)"
       title="Dashed line at the average of the values shown in the chart">Average line</button></div>` : '';
   const real = ['brent', 'gas', 'oilgas'].includes(priceSubView) && priceData.cpi ? `<div class="pill-group">
