@@ -12485,9 +12485,12 @@ function companyNewsItems(name) {
   ((companyNewsData && companyNewsData.items) || []).forEach(it => {
     const st = feeds[it.f];
     if (!st || concernKey(st.company) !== key || !httpUrl(it.u)) return;
+    // Vedlegg fra NewsWeb (fetch_company_news.py → read_newsweb): bare lenker til Oslo Børs.
+    const att = (Array.isArray(it.a) ? it.a : []).filter(a => a && /^https:\/\/[\w.-]+\.oslobors\.no\//.test(a.u || ''))
+      .map(a => ` · <a href="${esc(a.u)}" target="_blank" rel="noopener">📎 ${esc(a.n || 'Attachment')}</a>`).join('');
     out.push({d: it.d, src: 'company', cls: 'press', label: 'Company',
       html: `<a href="${esc(it.u)}" target="_blank" rel="noopener">${esc(it.t)} ↗</a>
-        ${it.s ? `<span class="nw-sum">${esc(it.s)}</span>` : ''}<span class="nw-why">${esc(label[it.f] || st.title || 'Company feed')}</span>`});
+        ${it.s ? `<span class="nw-sum">${esc(it.s)}</span>` : ''}<span class="nw-why">${esc(label[it.f] || st.title || 'Company feed')}${att}</span>`});
   });
 
   return out.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));

@@ -269,16 +269,64 @@ def parse(body):
 #   https://newsweb.oslobors.no/search?category=&issuer=1015&...
 # Filtrene i adressen (issuer, category, market, messageTitle, fromDate,
 # toDate) sendes videre til API-et. Uten fromDate gir API-et omtrent siste år.
+#
+# Vedlegg (rapporter, presentasjoner): lista oppgir bare antallet
+# (numbAttachments). For meldinger med vedlegg hentes selve meldingen
+# (/v1/newsreader/message), som har id og filnavn, én gang; lenkene lagres i
+# saken som «a»: [{"n": filnavn, "u": lenke}] og hentes ikke på nytt senere.
+# Lenken går rett til fila hos Oslo Børs (/v1/newsreader/attachment), vi
+# lagrer ikke PDF-ene selv. Høyst NEWSWEB_DETAILS slike oppslag per feed og
+# kjøring; resten tas neste kjøring.
 NEWSWEB = 'newsweb.oslobors.no'
 NEWSWEB_API = 'https://api3.oslo.oslobors.no'
 NEWSWEB_PARAMS = ('issuer', 'category', 'market', 'messageTitle', 'fromDate', 'toDate')
+NEWSWEB_DETAILS = 40
 
 
 def is_newsweb(url):
     return urlparse(url).hostname == NEWSWEB
 
 
-def read_newsweb(url):
+def newsweb_post(api, path, params):
+    """JSON-svarets «data» fra NewsWeb-API-et, med nye forsøk ved nettverksfeil."""
+    last = None
+    for attempt in range(RETRIES):
+        try:
+            r = requests.post(f'{api}{path}?{urlencode(params)}', timeout=30,
+                              headers={'User-Agent': UA, 'Accept': 'application/json', 'Content-Type': 'application/json'})
+            if r.status_code >= 400:
+                raise FeedError(http_message(r.status_code))
+            return r.json().get('data') or {}
+        except FeedError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if attempt < RETRIES - 1:
+                time.sleep(2 ** (attempt + 1))
+    raise FeedError(f'Could not read NewsWeb ({type(last).__name__}).')
+
+
+def newsweb_attachments(api, mid):
+    """[{n, u}] for meldingens vedlegg, eller None hvis meldingen ikke kunne leses."""
+    try:
+        msg = newsweb_post(api, '/v1/newsreader/message', {'messageId': mid}).get('message') or {}
+    except FeedError as exc:
+        print(f'    ! vedlegg for melding {mid}: {exc}')
+        return None
+    out = []
+    for a in msg.get('attachments') or []:
+        try:
+            aid = int(a.get('id'))
+        except (TypeError, ValueError):
+            continue
+        out.append({'n': clean(a.get('name') or f'Attachment {len(out) + 1}', 120),
+                    'u': f'{api}/v1/newsreader/attachment?' + urlencode({'messageId': mid, 'attachmentId': aid})})
+    return out
+
+
+def read_newsweb(url, known=None):
+    """known: {saksadresse: vedlegg} fra tidligere kjøringer, så vedlegg bare slås opp én gang."""
+    known = known or {}
     q = parse_qs(urlparse(url).query)
     params = {k: q[k][0] for k in NEWSWEB_PARAMS if q.get(k) and q[k][0]}
     if not params.get('issuer'):
@@ -290,34 +338,27 @@ def read_newsweb(url):
         pass
     if not re.match(r'^https://[\w.-]+\.oslobors\.no$', api):
         api = NEWSWEB_API
-    last = None
-    for attempt in range(RETRIES):
-        try:
-            r = requests.post(f'{api}/v1/newsreader/list?{urlencode(params)}', timeout=30,
-                              headers={'User-Agent': UA, 'Accept': 'application/json', 'Content-Type': 'application/json'})
-            if r.status_code >= 400:
-                raise FeedError(http_message(r.status_code))
-            data = r.json().get('data') or {}
-            break
-        except FeedError:
-            raise
-        except Exception as exc:  # noqa: BLE001
-            last = exc
-            if attempt < RETRIES - 1:
-                time.sleep(2 ** (attempt + 1))
-    else:
-        raise FeedError(f'Could not read NewsWeb ({type(last).__name__}).')
+    data = newsweb_post(api, '/v1/newsreader/list', params)
     msgs = [m for m in data.get('messages') or [] if not m.get('test') and m.get('messageId')]
     if not msgs:
         raise FeedError('NewsWeb has no messages for this search.')
     issuer = msgs[0].get('issuerName') or ''
-    items = []
+    items, lookups = [], 0
     for m in msgs:
         cat = ((m.get('category') or [{}])[0].get('category_en') or '').capitalize()
         corr = ' (correction)' if m.get('correctionForMessageId') else ''
-        items.append({'t': clean(m.get('title', ''), 300) + corr,
-                      'u': f'https://{NEWSWEB}/message/{int(m["messageId"])}',
-                      'd': iso_date(m.get('publishedTime', '')), 's': clean(cat, SUMMARY)})
+        mid = int(m['messageId'])
+        it = {'t': clean(m.get('title', ''), 300) + corr, 'u': f'https://{NEWSWEB}/message/{mid}',
+              'd': iso_date(m.get('publishedTime', '')), 's': clean(cat, SUMMARY)}
+        if (m.get('numbAttachments') or 0) > 0:
+            if it['u'] in known:
+                it['a'] = known[it['u']]
+            elif lookups < NEWSWEB_DETAILS:
+                lookups += 1
+                att = newsweb_attachments(api, mid)
+                if att is not None:
+                    it['a'] = att
+        items.append(it)
     return url, clean(f'NewsWeb · {issuer}', 120), items
 
 
@@ -429,10 +470,10 @@ def page_title(page):
     return clean(m.group(1).decode('utf-8', 'replace'), 120) if m else ''
 
 
-def read_feed(url):
+def read_feed(url, known=None):
     """(endelig feedadresse, kanalnavn, saker). Nettsider slås opp til feeden sin."""
     if is_newsweb(url):
-        return read_newsweb(url)
+        return read_newsweb(url, known)
     body, ctype, final = get(url)
     if not is_feed(body):
         found = discover(body, final)
@@ -558,8 +599,9 @@ def update_companies(only_new=False):
             continue
         st = dict(status.get(url) or {})
         st['company'] = f.get('company', '')
+        mine = {it['u']: it for it in items if it['f'] == url}
         try:
-            final, title, got = read_feed(url)
+            final, title, got = read_feed(url, {u: it['a'] for u, it in mine.items() if 'a' in it})
         except Exception as exc:  # noqa: BLE001
             msg = clean(str(exc) if isinstance(exc, FeedError) else f'Could not read the feed: {exc}', 400)
             if st.get('error') != msg:
@@ -574,10 +616,12 @@ def update_companies(only_new=False):
             st['feed'] = final
         else:
             st.pop('feed', None)
-        mine = {it['u']: it for it in items if it['f'] == url}
         for it in got:
             prev = mine.get(it['u'], {})
             mine[it['u']] = {'f': url, 't': it['t'], 'u': it['u'], 'd': it['d'] or prev.get('d') or today(), 's': it['s']}
+            att = it.get('a', prev.get('a'))
+            if att is not None:
+                mine[it['u']]['a'] = att
         keep = sorted(mine.values(), key=lambda x: (x['d'], x['u']), reverse=True)[:MAX_PER_FEED]
         items = [it for it in items if it['f'] != url] + keep
         st['n'] = len(keep)
