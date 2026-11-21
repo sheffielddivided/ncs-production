@@ -216,6 +216,14 @@
     table.om .pos{color:#00875a;} table.om .neg{color:#c62828;}
     .om-charts{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px;}
     @media (min-width:900px){.om-charts{grid-template-columns:repeat(3,minmax(0,1fr));}}
+    /* To grafkort side om side fra 900 px (EU storage: gasslagre og LNG). */
+    .dual-charts{display:grid;grid-template-columns:1fr;gap:12px;}
+    @media (min-width:900px){.dual-charts{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    .dual-charts .om-chart{padding:10px 12px 8px;}
+    .dual-charts .om-chart h4{font-size:0.82rem;}
+    .dual-charts .om-chart .om-csub{font-size:0.68rem;margin:2px 0 8px;}
+    @media (min-width:900px){.dual-charts .om-chart .om-csub{min-height:2.6em;}}
+    .dual-charts .pf-map-note{margin-top:6px;}
     .om-chart{border:1px solid var(--border);border-radius:8px;padding:8px 10px 6px;min-width:0;}
     .om-chart h4{font-size:0.74rem;font-weight:700;color:var(--navy);margin:0;}
     .om-chart .om-csub{font-size:0.64rem;color:var(--muted);margin:1px 0 4px;}
@@ -6900,9 +6908,15 @@ function drawPriceStorage() {
   const S = seasonalSeries(st.full[sk] || {}, false);
   const pills = `<div class="pill-group">${STORAGE_SEL.map(([k, l]) =>
     `<button class="pill-btn${sk === k ? ' active' : ''}" onclick="priceSet('sk','${k}')">${l}</button>`).join('')}</div>`;
-  document.getElementById('chartArea').innerHTML = `<div class="np-bar">${pills}</div>
-    <div class="chart-container"><canvas id="prodChart"></canvas></div><div class="legend-row" id="storageLegend"></div>
-    <div class="pf-map-note" id="storageNote"></div>`;
+  const name = STORAGE_SEL.find(x => x[0] === sk)[1];
+  // Gasslagre og LNG som to like kort, side om side på desktop.
+  document.getElementById('chartArea').innerHTML = `<div class="dual-charts">
+    <div class="om-chart"><h4>Gas storage · ${esc(name)}</h4>
+      <div class="om-csub">Filling level, % of capacity · ${S.cur} against ${S.cur - 1} and the ${S.span} range</div>
+      <div class="np-bar">${pills}</div>
+      <div class="chart-container"><canvas id="prodChart"></canvas></div><div class="legend-row" id="storageLegend"></div>
+      <div class="pf-map-note" id="storageNote"></div></div>
+    <div class="om-chart" id="lngCard"></div></div>`;
   if (chartInstance) chartInstance.destroy();
   const pct = x => x == null ? '—' : x.toFixed(1) + ' %';
   const ppDiff = (a, b) => a == null || b == null ? '' : ` (${a - b >= 0 ? '+' : '−'}${Math.abs(a - b).toFixed(1)} pp)`;
@@ -6911,24 +6925,27 @@ function drawPriceStorage() {
   const sc = seasonalChart(document.getElementById('prodChart'), S, so);
   chartInstance = sc.chart;
   pptSpec = seasonalPptSpec(S, so);
+  pptMainMeta = {title: `Gas storage · ${name}`, subtitle: `Filling level, % of capacity · ${S.cur} against ${S.cur - 1} and the ${S.span} range`,
+                 source: 'Source: AGSI+, Gas Infrastructure Europe (via eugas)'};
   document.getElementById('storageLegend').innerHTML = sc.legend;
   lastLabels = STORAGE_DAYS; lastXTitle = 'Day (MM-DD)';
   lastDatasets = [{label: `${S.cur}, %`, data: S.curD.map(v => v ?? '')}, {label: `${S.cur - 1}, %`, data: S.prevD.map(v => v ?? '')},
     {label: `Min ${S.span}, %`, data: S.minD.map(v => v ?? '')}, {label: `Average ${S.span}, %`, data: S.avgD.map(v => v ?? '')},
     {label: `Max ${S.span}, %`, data: S.maxD.map(v => v ?? '')}];
-  const name = STORAGE_SEL.find(x => x[0] === sk)[1];
-  setChartTitle(`Gas storage · ${name}`, `Filling level, % of capacity · ${S.cur} against ${S.cur - 1} and the ${S.span} range`);
+  setChartTitle('EU gas storage and LNG send-out', 'Daily data from Gas Infrastructure Europe (AGSI+ and ALSI+)');
   const upd = st.updated ? fmtShort(st.updated.slice(0, 10)) : '';
   document.getElementById('storageNote').innerHTML = seasonalSummary(S, pct, ppDiff);
   setInfo(`<strong>Sources:</strong> AGSI+, Gas Infrastructure Europe; filling level of the storage facilities that report to AGSI+; ALSI+, Gas Infrastructure Europe; send-out of the LNG terminals that report to ALSI+. Both collected daily by eugas${upd ? `, updated ${upd}` : ''}`);
   drawLngCard();
 }
 
-// LNG-kortet under lagergrafen, med eget landvalg (prF.lk).
+// LNG-kortet ved siden av lagergrafen (under på mobil), med eget landvalg (prF.lk).
 function drawLngCard() {
   if (lngChart) { lngChart.destroy(); lngChart = null; }
   const L = priceData.lng;
-  if (!L) { setProfile(''); return; }
+  const box = document.getElementById('lngCard');
+  if (!box) return;
+  if (!L) { box.innerHTML = '<h4>LNG send-out</h4><div class="om-csub">Could not load the LNG data.</div>'; return; }
   const lk = prF.lk || 'eu', S = seasonalSeries(L.sendOut[lk] || {}, true);
   const gwh = x => x == null ? '—' : Math.round(x).toLocaleString('en') + ' GWh/d';
   const pctDiff = (a, b) => a == null || !b ? '' : ` (${a - b >= 0 ? '+' : '−'}${Math.abs((a - b) / b * 100).toFixed(0)} %)`;
@@ -6936,11 +6953,11 @@ function drawLngCard() {
     `<button class="pill-btn${lk === k ? ' active' : ''}" onclick="priceSet('lk','${k}')">${l}</button>`).join('')}</div>`;
   const name = LNG_SEL.find(x => x[0] === lk)[1];
   const upd = L.updated ? fmtShort(L.updated.slice(0, 10)) : '';
-  setProfile(`<div class="pf-card pf-wide"><h3>LNG send-out · ${esc(name)}</h3>
-    <div class="pf-map-note" style="margin:0 0 8px">Regasification from LNG terminals, GWh per day, 14-day centred moving average · ${S.cur} against ${S.cur - 1} and the ${S.span} range</div>
+  box.innerHTML = `<h4>LNG send-out · ${esc(name)}</h4>
+    <div class="om-csub">Regasification, GWh/d, 14-day centred average · ${S.cur} against ${S.cur - 1} and the ${S.span} range</div>
     <div class="np-bar">${pills}</div>
     <div class="chart-container"><canvas id="lngChart"></canvas></div><div class="legend-row" id="lngLegend"></div>
-    <div class="pf-map-note">${seasonalSummary(S, gwh, pctDiff)}${upd ? ` &nbsp;|&nbsp; ALSI+ data updated ${upd}` : ''}</div></div>`);
+    <div class="pf-map-note">${seasonalSummary(S, gwh, pctDiff)}${upd ? ` &nbsp;|&nbsp; ALSI+ data updated ${upd}` : ''}</div>`;
   const lo = {band: 'rgba(227,167,58,0.22)', bandSolid: '#e3a73a', avg: 'rgba(190,130,20,0.7)',
     prev: 'rgba(227,167,58,0.6)', cur: 'rgba(176,112,0,0.95)', fmt: gwh, yTitle: 'GWh/d', y: {beginAtZero: true}, tick: v => v.toLocaleString('en'), yFormat: '#,##0'};
   const sc = seasonalChart(document.getElementById('lngChart'), S, lo);
