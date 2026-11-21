@@ -347,6 +347,7 @@
     .nw-rig{background:#dbe7f1;color:#2f5f82;border-color:#b8c4d2;}
     .nw-havtil{background:#e6e4f6;color:#45399a;border-color:#c9c3ec;}
     .nw-contract{background:#e0f1f4;color:#1d6370;border-color:#b3dbe2;}
+    .rc-news-h{margin:14px 0 2px;font-size:0.78rem;color:var(--navy);}
     .nw-from{color:var(--muted);}
     .nw-permit{background:#e3f0e8;color:#2e6b45;border-color:#b9d9c5;}
     .nw-result{background:#fbe0ee;color:#8e0a48;border-color:#eeabcb;}
@@ -19697,7 +19698,13 @@ function fleetContractCell(name) {
 function rigContractCard(name) {
   const list = contractsFor(name);
   const meta = rigContracts && rigContracts.rigs[String(name).toUpperCase()];
-  if (!list.length && !meta) return '';
+  // Kontraktnyheter fra import_fleet_report.py (changes.json, type contract), nyeste først.
+  const key = String(name).toUpperCase();
+  const news = (changesData || []).filter(e => e.t === 'contract' && String(rigCanon(e.r) || '').toUpperCase() === key);
+  if (!list.length && !meta && !news.length) return '';
+  const newsHtml = news.length ? `<h4 class="rc-news-h">Contract news</h4>${news.map(e => `
+    <div class="nw-row"><span class="nw-t nw-contract">${esc(fmtShort(e.d))}</span><span class="nw-txt">${contractLine(e)}<span class="nw-why">${
+      esc(e.src ? e.src + ' report' : 'Contractor report')}${e.x === 'gone' ? ' · changed or cancelled' : ''}</span></span></div>`).join('')}` : '';
   const today = new Date().toISOString().slice(0, 10);
   const st = contractStatus(name, today);
   const srcIds = [...new Set(list.map(c => c.source).concat(meta ? [meta.source] : []))]
@@ -19728,7 +19735,8 @@ function rigContractCard(name) {
     ${list.length ? `<div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Client</th><th class="ex-l">Location</th><th class="ex-l">Period</th><th>Dayrate</th><th class="ex-l">Comment</th>
       </tr></thead><tbody>${rows}</tbody></table></div>` : ''}
-    <div class="pf-map-note">Source: ${srcIds.length ? srcIds.map(k => esc(srcLabel(k, rigContracts.sources[k]))).join('; ') : 'data/rig_contracts.json'}.
+    ${newsHtml}
+    <div class="pf-map-note">${news.length ? 'Contract news: changes found when the contractor published a new report or updated its fleet timeline. ' : ''}Source: ${srcIds.length ? srcIds.map(k => esc(srcLabel(k, rigContracts.sources[k]))).join('; ') : 'data/rig_contracts.json'}.
       Dates are the contractor's estimates, often only a month or a quarter; dates marked ~ are read from a timeline chart
       (the report's, or the contractor's website for Odfjell and COSL, which show only the current client).
       Completed contracts are kept from earlier reports (greyed). Dayrates exclude mobilisation and other fees.</div></div>`;
@@ -20200,7 +20208,7 @@ const RG_PERIODS = [[90, 'Last 3 months'], [180, 'Last 6 months'], [365, 'Last 1
 
 async function openRigProfile(name, quiet, seekMin) {
   name = rigCanon(name);
-  await Promise.all([loadRigAis(), loadRigFacts(), loadRigContracts()]);
+  await Promise.all([loadRigAis(), loadRigFacts(), loadRigContracts(), loadChanges()]);
   await loadExploration();
   const data = rigData(name);
   const body = document.getElementById('wdBody');
