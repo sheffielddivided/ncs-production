@@ -92,56 +92,104 @@
    "t": "Equinor ASA: Notifiable trading",
    "u": "https://newsweb.oslobors.no/message/686783",
    "d": "2026-11-18",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "18 November 2026 - Allocation of shares.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686783&attachmentId=336709"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Meldepliktig handel",
    "u": "https://newsweb.oslobors.no/message/686782",
    "d": "2026-11-18",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "18 November 2026 - Allocation of shares.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686782&attachmentId=336708"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/686781",
    "d": "2026-11-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinor Employee share saving programme - 13 November 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686781&attachmentId=336707"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/686780",
    "d": "2026-11-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinors aksjeprogram for ansatte - 13 november 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686780&attachmentId=336706"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Correction: Equinor ASA: Share buy-back - fourth tranche for 2026 (correction)",
    "u": "https://newsweb.oslobors.no/message/686688",
    "d": "2026-11-17",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686688&attachmentId=336632"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Korreksjon: Equinor ASA: Tilbakekjøp av egne aksjer - fjerde transje for 2026 (correction)",
    "u": "https://newsweb.oslobors.no/message/686687",
    "d": "2026-11-17",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686687&attachmentId=336631"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - fjerde transje for 2026",
    "u": "https://newsweb.oslobors.no/message/686657",
    "d": "2026-11-17",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686657&attachmentId=336614"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - fourth tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/686656",
    "d": "2026-11-17",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686656&attachmentId=336613"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -155,7 +203,13 @@
    "t": "LTIP share awards completed and new grants issued",
    "u": "https://newsweb.oslobors.no/message/686601",
    "d": "2026-11-16",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "PDMR_notifications_AKRBP_20261116.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686601&attachmentId=336567"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -211,21 +265,39 @@
    "t": "Equinor ASA: Share buy-back - fourth tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/686081",
    "d": "2026-11-10",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686081&attachmentId=336154"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - fjerde transje for 2026",
    "u": "https://newsweb.oslobors.no/message/686080",
    "d": "2026-11-10",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=686080&attachmentId=336155"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Lapse of Offer for Capricorn Energy plc",
    "u": "https://newsweb.oslobors.no/message/685964",
    "d": "2026-11-09",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "DNO ASA Announcement Regarding Lapse of Offer for Capricorn Energy plc.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685964&attachmentId=336071"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -246,7 +318,13 @@
    "t": "Successful sale of existing shares in Aker BP ASA",
    "u": "https://newsweb.oslobors.no/message/685705",
    "d": "2026-11-05",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "Appendix.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685705&attachmentId=335839"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -274,14 +352,26 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - fjerde transje for 2026",
    "u": "https://newsweb.oslobors.no/message/685432",
    "d": "2026-11-03",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685432&attachmentId=335572"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - fourth tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/685431",
    "d": "2026-11-03",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685431&attachmentId=335571"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -365,7 +455,13 @@
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/685330",
    "d": "2026-11-02",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Form of Notification Cash Settlement Chris Spencer October 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685330&attachmentId=335479"
+    }
+   ]
   },
   {
    "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
@@ -379,7 +475,17 @@
    "t": "DNO Races Ahead on Stronger Production, Higher Prices",
    "u": "https://newsweb.oslobors.no/message/685061",
    "d": "2026-10-29",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Q3 2026 Interim Results Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685061&attachmentId=335250"
+    },
+    {
+     "n": "Q3 2026 Interim Results Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685061&attachmentId=335251"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -400,7 +506,17 @@
    "t": "Third quarter 2026 results",
    "u": "https://newsweb.oslobors.no/message/685038",
    "d": "2026-10-29",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Aker_BP_2026_Q3_Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685038&attachmentId=335242"
+    },
+    {
+     "n": "Aker_BP_2026_Q3_Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685038&attachmentId=335243"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -435,14 +551,26 @@
    "t": "Meldepliktig handel - Equinor ASA",
    "u": "https://newsweb.oslobors.no/message/685021",
    "d": "2026-10-28",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Notice of trade - Hilde Moellerstad.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685021&attachmentId=335200"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Notifiable trading - Equinor ASA",
    "u": "https://newsweb.oslobors.no/message/685020",
    "d": "2026-10-28",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Notice of trade - Hilde Moellerstad.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=685020&attachmentId=335201"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -477,14 +605,34 @@
    "t": "Equinor third quarter 2026 results",
    "u": "https://newsweb.oslobors.no/message/684945",
    "d": "2026-10-28",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Equinor Financial Statements and Review Third Quarter 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684945&attachmentId=335132"
+    },
+    {
+     "n": "CFO presentation Third quarter 2026 results.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684945&attachmentId=335135"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinors resultater for tredje kvartal 2026",
    "u": "https://newsweb.oslobors.no/message/684944",
    "d": "2026-10-28",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Equinor Financial Statements and Review Third Quarter 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684944&attachmentId=335133"
+    },
+    {
+     "n": "CFO presentation Third quarter 2026 results.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684944&attachmentId=335134"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -498,14 +646,26 @@
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/684874",
    "d": "2026-10-27",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684874&attachmentId=335064"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/684873",
    "d": "2026-10-27",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684873&attachmentId=335063"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -575,28 +735,52 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/684373",
    "d": "2026-10-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684373&attachmentId=334690"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/684372",
    "d": "2026-10-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684372&attachmentId=334691"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/684371",
    "d": "2026-10-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinors aksjeprogram for ansatte - 15 oktober 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684371&attachmentId=334689"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/684370",
    "d": "2026-10-20",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinor Employee share saving programme - 15 October 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=684370&attachmentId=334688"
+    }
+   ]
   },
   {
    "f": "https://akerbp.com/en/news/",
@@ -645,14 +829,26 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/683973",
    "d": "2026-10-13",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683973&attachmentId=334433"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/683972",
    "d": "2026-10-13",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683972&attachmentId=334432"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -673,14 +869,26 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/683617",
    "d": "2026-10-06",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683617&attachmentId=334203"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/683616",
    "d": "2026-10-06",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683616&attachmentId=334204"
+    }
+   ]
   },
   {
    "f": "https://akerbp.com/en/news/",
@@ -694,14 +902,26 @@
    "t": "Correction: Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/683510",
    "d": "2026-10-02",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinor Employee share saving programme - 18 September 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683510&attachmentId=334138"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Korreksjon: Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/683509",
    "d": "2026-10-02",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinors aksjeprogram for ansatte - 18 september.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683509&attachmentId=334137"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -757,28 +977,52 @@
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/683216",
    "d": "2026-09-29",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683216&attachmentId=333960"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/683215",
    "d": "2026-09-29",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683215&attachmentId=333961"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Employee share programme completed",
    "u": "https://newsweb.oslobors.no/message/683129",
    "d": "2026-09-28",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "20260928_PDMR_notifications.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683129&attachmentId=333907"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Statement Regarding Final Offer for Capricorn Energy plc",
    "u": "https://newsweb.oslobors.no/message/683114",
    "d": "2026-09-28",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "Statement Regarding Final Offer for Capricorn Energy plc.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=683114&attachmentId=333898"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -806,14 +1050,26 @@
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/682830",
    "d": "2026-09-22",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=682830&attachmentId=333695"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/682829",
    "d": "2026-09-22",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=682829&attachmentId=333694"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -834,21 +1090,39 @@
    "t": "Equinor ASA: Buy-back of shares to share programmes for employees",
    "u": "https://newsweb.oslobors.no/message/682661",
    "d": "2026-09-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinor Employee share saving programme - 18 September 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=682661&attachmentId=333563"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Kjøp av aksjer til aksjeprogram for ansatte",
    "u": "https://newsweb.oslobors.no/message/682660",
    "d": "2026-09-18",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Equinors aksjeprogram for ansatte - 18 september.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=682660&attachmentId=333562"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Recommended Revised All-Cash Offer for Capricorn Energy plc",
    "u": "https://newsweb.oslobors.no/message/682522",
    "d": "2026-09-17",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "Revised Offer Announcement.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=682522&attachmentId=333452"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -862,14 +1136,26 @@
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/682309",
    "d": "2026-09-15",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=682309&attachmentId=333254"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/682308",
    "d": "2026-09-15",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=682308&attachmentId=333255"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -911,21 +1197,39 @@
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/681807",
    "d": "2026-09-08",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681807&attachmentId=332850"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/681806",
    "d": "2026-09-08",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681806&attachmentId=332849"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Aker BP ASA: Notification of acquisition of own shares",
    "u": "https://newsweb.oslobors.no/message/681707",
    "d": "2026-09-07",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Buy_back_overview_2026_09_04.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681707&attachmentId=332779"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -960,35 +1264,65 @@
    "t": "No Intention to Make an Offer for Genel Energy plc",
    "u": "https://newsweb.oslobors.no/message/681653",
    "d": "2026-09-04",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "No intention to make an offer for Genel Energy plc.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681653&attachmentId=332741"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Recommended Cash Acquisition of Capricorn Energy plc",
    "u": "https://newsweb.oslobors.no/message/681349",
    "d": "2026-09-01",
-   "s": "Inside information"
+   "s": "Inside information",
+   "a": [
+    {
+     "n": "Announcement of Recommended Cash Acquisition of Capricorn Energy plc.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681349&attachmentId=332487"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Tilbakekjøp av egne aksjer - tredje transje for 2026",
    "u": "https://newsweb.oslobors.no/message/681348",
    "d": "2026-09-01",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detaljert oversikt over transaksjoner.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681348&attachmentId=332485"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
    "t": "Equinor ASA: Share buy-back - third tranche for 2026",
    "u": "https://newsweb.oslobors.no/message/681347",
    "d": "2026-09-01",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Detailed overview of transactions.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681347&attachmentId=332486"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Aker BP ASA: Notification of acquisition of own shares",
    "u": "https://newsweb.oslobors.no/message/681252",
    "d": "2026-08-31",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Buy_back_overview_2026_08_28.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=681252&attachmentId=332397"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -1086,7 +1420,13 @@
    "t": "Aker BP ASA: Notification of acquisition of own shares",
    "u": "https://newsweb.oslobors.no/message/680532",
    "d": "2026-08-24",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Buy_back_overview_2026_08_21.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=680532&attachmentId=331745"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -1212,7 +1552,13 @@
    "t": "Aker BP ASA: Notification of acquisition of own shares",
    "u": "https://newsweb.oslobors.no/message/679902",
    "d": "2026-08-17",
-   "s": "Acquisition or disposal of an issuer's own shares"
+   "s": "Acquisition or disposal of an issuer's own shares",
+   "a": [
+    {
+     "n": "Buy_back_overview_2026_08_14.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=679902&attachmentId=331208"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/var-energi-asa/ListItems?format=rss",
@@ -1254,7 +1600,17 @@
    "t": "DNO Reports Record Revenue as It Chases New Growth",
    "u": "https://newsweb.oslobors.no/message/679563",
    "d": "2026-08-13",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Q2 2026 Interim Results Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=679563&attachmentId=330916"
+    },
+    {
+     "n": "Q2 2026 Interim Results Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=679563&attachmentId=330917"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -1289,7 +1645,13 @@
    "t": "Statement Regarding Possible Offer for Genel Energy plc",
    "u": "https://newsweb.oslobors.no/message/679232",
    "d": "2026-08-07",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "Statement regarding possible offer for Genel Energy plc.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=679232&attachmentId=330607"
+    }
+   ]
   },
   {
    "f": "https://kommunikasjon.ntb.no/rss/releases/latest?publisherId=16387318",
@@ -1520,7 +1882,17 @@
    "t": "Second quarter 2026 results",
    "u": "https://newsweb.oslobors.no/message/678184",
    "d": "2026-07-15",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Aker_BP_2026_Q2_Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678184&attachmentId=329685"
+    },
+    {
+     "n": "Aker_BP_2026_Q2_Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=678184&attachmentId=329686"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -1597,7 +1969,13 @@
    "t": "Shareholder Disclosure Notification",
    "u": "https://newsweb.oslobors.no/message/677778",
    "d": "2026-07-07",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "AKER BP_2026-07-06_NOR-FSA.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=677778&attachmentId=329342"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1309",
@@ -1702,7 +2080,13 @@
    "t": "DNO Annual General Meeting Held; All Resolutions Passed by Shareholders",
    "u": "https://newsweb.oslobors.no/message/677132",
    "d": "2026-06-26",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "DNO ASA - Minutes AGM 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=677132&attachmentId=328901"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -1919,7 +2303,17 @@
    "t": "Notice of Annual General Meeting 2026",
    "u": "https://newsweb.oslobors.no/message/675489",
    "d": "2026-06-05",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "Notice of 2026 Annual General Meeting.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=675489&attachmentId=327650"
+    },
+    {
+     "n": "Guide for Online Participation DNO ASA 26 June 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=675489&attachmentId=327652"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -1940,21 +2334,39 @@
    "t": "Notice of transaction by PDMR",
    "u": "https://newsweb.oslobors.no/message/674235",
    "d": "2026-05-21",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "PDMR notification 260521 Torvestad.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=674235&attachmentId=326627"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "The Goldman Sachs Group, Inc. Disclosure in DNO ASA",
    "u": "https://newsweb.oslobors.no/message/674086",
    "d": "2026-05-21",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "DNO ASA 19 May 2026 - FORM.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=674086&attachmentId=326493"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Aker BP and Equinor to unlock additional value on the Norwegian Continental Shelf",
    "u": "https://newsweb.oslobors.no/message/674060",
    "d": "2026-05-21",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=674060&attachmentId=326460"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/aker-bp-asa/ListItems?format=rss",
@@ -1968,7 +2380,13 @@
    "t": "The Goldman Sachs Group, Inc. Disclosure in DNO ASA",
    "u": "https://newsweb.oslobors.no/message/673927",
    "d": "2026-05-20",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "DNO ASA 18 May 2026 - FORM.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=673927&attachmentId=326339"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -1982,7 +2400,13 @@
    "t": "Shareholder Disclosure Notification",
    "u": "https://newsweb.oslobors.no/message/673875",
    "d": "2026-05-19",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "AKER BP_2026-05-18_NOR-FSA.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=673875&attachmentId=326288"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2017,7 +2441,25 @@
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/673040",
    "d": "2026-05-11",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Form of Notification Cash Settlement Sameh Hanna May 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=673040&attachmentId=325513"
+    },
+    {
+     "n": "Form of Notification Cash Settlement Geir Arne Skau May 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=673040&attachmentId=325514"
+    },
+    {
+     "n": "Form of Notification Cash Settlement Tonje Pareli Gormley May 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=673040&attachmentId=325515"
+    },
+    {
+     "n": "Form of Notification Cash Settlement Chris Spencer May 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=673040&attachmentId=325516"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -2045,7 +2487,17 @@
    "t": "North Sea Performance Lifts DNO Profits",
    "u": "https://newsweb.oslobors.no/message/672614",
    "d": "2026-05-07",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Q1 2026 Interim Results Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=672614&attachmentId=325200"
+    },
+    {
+     "n": "Q1 2026 Interim Results Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=672614&attachmentId=325203"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -2066,7 +2518,17 @@
    "t": "First Quarter 2026 Results",
    "u": "https://newsweb.oslobors.no/message/672593",
    "d": "2026-05-07",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Aker_BP_2026_Q1_Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=672593&attachmentId=325190"
+    },
+    {
+     "n": "Aker_BP_2026_Q1_Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=672593&attachmentId=325193"
+    }
+   ]
   },
   {
    "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
@@ -2087,7 +2549,13 @@
    "t": "Shareholder Disclosure Notification",
    "u": "https://newsweb.oslobors.no/message/672231",
    "d": "2026-05-04",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "AKER BP ASA_2026-04-30_NOR-FSA.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=672231&attachmentId=324859"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -2108,7 +2576,13 @@
    "t": "Minutes from Annual General Meeting 2026",
    "u": "https://newsweb.oslobors.no/message/671040",
    "d": "2026-04-21",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "2026_AGM_Minutes.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=671040&attachmentId=323690"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2227,7 +2701,13 @@
    "t": "Shareholding Disclosures on DNO ASA",
    "u": "https://newsweb.oslobors.no/message/670303",
    "d": "2026-04-09",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "TR1 DNO ASA 08 04 2026 Signed.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=670303&attachmentId=323084"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2241,21 +2721,39 @@
    "t": "Symra on stream",
    "u": "https://newsweb.oslobors.no/message/670011",
    "d": "2026-04-07",
-   "s": "Non-regulatory press releases"
+   "s": "Non-regulatory press releases",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=670011&attachmentId=322834"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "Shareholding Disclosures on DNO ASA",
    "u": "https://newsweb.oslobors.no/message/669770",
    "d": "2026-03-30",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "TR1 DNO ASA 27 03 2026 SIgned.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=669770&attachmentId=322614"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Notice of transactions by PDMR",
    "u": "https://newsweb.oslobors.no/message/669742",
    "d": "2026-03-30",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "PDMR notification Vik.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=669742&attachmentId=322590"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -2269,21 +2767,47 @@
    "t": "Notice of transaction by PDMR",
    "u": "https://newsweb.oslobors.no/message/669684",
    "d": "2026-03-27",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "PDMR notification Berg.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=669684&attachmentId=322542"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Notice of annual general meeting in Aker BP",
    "u": "https://newsweb.oslobors.no/message/669590",
    "d": "2026-03-27",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "Aker_BP_Call_for_Annual_General_meeting_2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=669590&attachmentId=322433"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Aker BP publishes Annual Report for 2025",
    "u": "https://newsweb.oslobors.no/message/669589",
    "d": "2026-03-27",
-   "s": "Annual financial report"
+   "s": "Annual financial report",
+   "a": [
+    {
+     "n": "AkerBP_annual_report_2025.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=669589&attachmentId=322430"
+    },
+    {
+     "n": "akerbpasa20251231en.zip",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=669589&attachmentId=322431"
+    },
+    {
+     "n": "AkerBP_Annual_statement_of_reserves_2025.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=669589&attachmentId=322432"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2367,7 +2891,13 @@
    "t": "Notice of transaction by PDMR",
    "u": "https://newsweb.oslobors.no/message/668721",
    "d": "2026-03-18",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "260318 PDMR notification Teien.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668721&attachmentId=321545"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -2381,14 +2911,26 @@
    "t": "Notice of transaction by PDMR (correction)",
    "u": "https://newsweb.oslobors.no/message/668629",
    "d": "2026-03-17",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "PDMR notification Vik (corrected).pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668629&attachmentId=321488"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Notice of transaction by PDMR",
    "u": "https://newsweb.oslobors.no/message/668613",
    "d": "2026-03-17",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "PDMR notification Vik.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668613&attachmentId=321467"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2402,14 +2944,38 @@
    "t": "NOTIFICATION OF MAJOR HOLDINGS",
    "u": "https://newsweb.oslobors.no/message/668326",
    "d": "2026-03-13",
-   "s": "Major shareholdings notification"
+   "s": "Major shareholdings notification",
+   "a": [
+    {
+     "n": "AKER BP ASA_2026-03-12_NOR-FSA.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668326&attachmentId=321235"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Releases 2025 Annual Report",
    "u": "https://newsweb.oslobors.no/message/668073",
    "d": "2026-03-12",
-   "s": "Annual financial report"
+   "s": "Annual financial report",
+   "a": [
+    {
+     "n": "2025 Annual Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668073&attachmentId=321006"
+    },
+    {
+     "n": "2025 Remuneration Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668073&attachmentId=321008"
+    },
+    {
+     "n": "2025 Annual Statement of Reserves and Resources.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668073&attachmentId=321009"
+    },
+    {
+     "n": "5967007LIEEXZXH3K072-2025-12-31-1-en.zip",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=668073&attachmentId=321010"
+    }
+   ]
   },
   {
    "f": "https://www.orlen.pl/en/about-the-company/media/press-releases-categories/upstream",
@@ -2423,14 +2989,26 @@
    "t": "Notice of transaction by PDMR",
    "u": "https://newsweb.oslobors.no/message/667945",
    "d": "2026-03-10",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "PDMR notification Torvestad.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=667945&attachmentId=320918"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Notice of transaction by PDMR",
    "u": "https://newsweb.oslobors.no/message/667749",
    "d": "2026-03-06",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "AKRBP PDMR notification 2026-03-06.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=667749&attachmentId=320759"
+    }
+   ]
   },
   {
    "f": "https://www.harbourenergy.com/news-and-media/announcements-and-latest-news/",
@@ -2451,7 +3029,21 @@
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/667307",
    "d": "2026-03-02",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Form of Notification Settlement of Synthetic Shares for Tax Purposes Tonje Gormley February 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=667307&attachmentId=320316"
+    },
+    {
+     "n": "Form of Notification Settlement of Synthetic Shares for Tax Purposes Chris Spencer February 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=667307&attachmentId=320317"
+    },
+    {
+     "n": "Form of Notification Settlement of Synthetic Shares for Tax Purposes Geir Arne Skau February 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=667307&attachmentId=320318"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -2514,7 +3106,21 @@
    "t": "Fourth Quarter 2025 Results and Strategy Update",
    "u": "https://newsweb.oslobors.no/message/665323",
    "d": "2026-02-11",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "Aker_BP_2025_Q4_Press_Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=665323&attachmentId=318574"
+    },
+    {
+     "n": "Aker_BP_2025_Q4_Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=665323&attachmentId=318575"
+    },
+    {
+     "n": "Aker_BP_2025_Q4_Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=665323&attachmentId=318576"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
@@ -2528,14 +3134,34 @@
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/665163",
    "d": "2026-02-09",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Form of Notification Cash Settlement Erlend Einum February 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=665163&attachmentId=318444"
+    },
+    {
+     "n": "Form of Notification Cash Settlement Linn Hoel February 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=665163&attachmentId=318445"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
    "t": "DNO Exits Landmark Year Prepped for a Nervous and Frisky Market in 2026",
    "u": "https://newsweb.oslobors.no/message/664880",
    "d": "2026-02-05",
-   "s": "Half year financial report"
+   "s": "Half year financial report",
+   "a": [
+    {
+     "n": "2025 Interim Results Presentation.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=664880&attachmentId=318235"
+    },
+    {
+     "n": "2025 Interim Results Report.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=664880&attachmentId=318236"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2549,7 +3175,13 @@
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/664731",
    "d": "2026-02-03",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Form of Notification Settlement of Synthetic Shares for Tax Purposes Erlend Einum February 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=664731&attachmentId=318113"
+    }
+   ]
   },
   {
    "f": "https://news.cision.com/okea/ListItems?format=rss",
@@ -2563,7 +3195,13 @@
    "t": "Solveig Phase 2 on stream",
    "u": "https://newsweb.oslobors.no/message/664571",
    "d": "2026-02-02",
-   "s": "Non-regulatory press releases"
+   "s": "Non-regulatory press releases",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=664571&attachmentId=318033"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2759,7 +3397,13 @@
    "t": "Mandatory Notification of Trade",
    "u": "https://newsweb.oslobors.no/message/663860",
    "d": "2026-01-19",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Form of Notification Settlement of Synthetic Shares for Tax Purposes Linn Hoel January 2026.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=663860&attachmentId=317562"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -2773,14 +3417,26 @@
    "t": "Aker BP - Fourth quarter 2025 trading update",
    "u": "https://newsweb.oslobors.no/message/663736",
    "d": "2026-01-16",
-   "s": "Additional regulated information required to be disclosed under the laws of a member state"
+   "s": "Additional regulated information required to be disclosed under the laws of a member state",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=663736&attachmentId=317492"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Mandatory notification of trade for close associate",
    "u": "https://newsweb.oslobors.no/message/663578",
    "d": "2026-01-14",
-   "s": "Managers’ transaction"
+   "s": "Managers’ transaction",
+   "a": [
+    {
+     "n": "Notification.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=663578&attachmentId=317400"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -2815,14 +3471,26 @@
    "t": "Aker BP awarded 22 licenses in APA 2025",
    "u": "https://newsweb.oslobors.no/message/663548",
    "d": "2026-01-13",
-   "s": "Non-regulatory press releases"
+   "s": "Non-regulatory press releases",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=663548&attachmentId=317379"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Aker BP tildelt 22 lisenser i TFO 2025",
    "u": "https://newsweb.oslobors.no/message/663547",
    "d": "2026-01-13",
-   "s": "Non-regulatory press releases"
+   "s": "Non-regulatory press releases",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=663547&attachmentId=317378"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -2913,7 +3581,13 @@
    "t": "Nytt funn i Nordsjøen avslutter et sterkt leteår for Aker BP",
    "u": "https://newsweb.oslobors.no/message/661336",
    "d": "2025-12-05",
-   "s": "Non-regulatory press releases"
+   "s": "Non-regulatory press releases",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=661336&attachmentId=315949"
+    }
+   ]
   },
   {
    "f": "https://www.shell.no/nyheter-og-media/nyhetsoversikt-artikler-og-nyhetsarkiv.html",
@@ -2948,14 +3622,26 @@
    "t": "Ti år med Edvard Grieg - Verdiskaping, teknologiutvikling og ny identitet",
    "u": "https://newsweb.oslobors.no/message/660839",
    "d": "2025-11-28",
-   "s": "Non-regulatory press releases"
+   "s": "Non-regulatory press releases",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=660839&attachmentId=315560"
+    }
+   ]
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=8376",
    "t": "Ten years of Edvard Grieg - Value creation, technological innovation, and a new identity",
    "u": "https://newsweb.oslobors.no/message/660838",
    "d": "2025-11-28",
-   "s": "Non-regulatory press releases"
+   "s": "Non-regulatory press releases",
+   "a": [
+    {
+     "n": "Release.pdf",
+     "u": "https://api3.oslo.oslobors.no/v1/newsreader/attachment?messageId=660838&attachmentId=315559"
+    }
+   ]
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -2987,10 +3673,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
-   "t": "Quartz EV3R 10W-40: 100 % ydeevne. 100 % regenereret olie. - TotalEnergies Nordic",
+   "t": "Quartz EV3R: Resirkulert olje med mindre karbonavtrykk - TotalEnergies Nordic",
    "u": "https://news.google.com/rss/articles/CBMinwFBVV95cUxPSk5YQjhwQjJVT0ZQeWh0ZDRHd2hqdGY5bndmN0lrVFpoQkl0c1BSZ3NSRWZ5SlhMNG9zaXpNN0NndDZNeUp3T0pCekw5MF8wNEtKR004ZVJLdmtkN1cwbmYwY0xkM3pPZ05kZGVraVBBNlVaUHdlNW0xZ3ZXRFh1dTFEeEt3cEMzQkhXQ1BkZVhnOVFpVGtIZFpoQUg0SjA?oc=5",
    "d": "2025-11-25",
-   "s": "Quartz EV3R 10W-40: 100 % ydeevne. 100 % regenereret olie. TotalEnergies Nordic"
+   "s": "Quartz EV3R: Resirkulert olje med mindre karbonavtrykk TotalEnergies Nordic"
   },
   {
    "f": "https://newsweb.oslobors.no/search?category=&issuer=1015&fromDate=&toDate=&market=&messageTitle=",
@@ -3316,10 +4002,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors - DNO ASA",
+   "t": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMisAFBVV95cUxOYUxfdllWVW5nNk1KLS1QSTlMb21zSkIzeWdORVczaDVvQkhnenJUSmZ2OVpuc0tTVnF3ckotRzg3NkhyZDBXRXFRT0k5TjY3eWlpOTJfMzk4Mk5kS29PZ3hkR1pza2V3eHg0WlN3VTd5QXNzUk5COVp6dW5nWDhrdFFSM1B2RXJSRjZKTmJKbko3RTZ6ZTRNTkx3emlmbHc3Ty1pamsxVTA5eUtreVZKSA?oc=5",
    "d": "2025-01-14",
-   "s": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors DNO ASA"
+   "s": "DNO Receives 13 Awards in Norway's APA Licensing Round-2025-01-14 | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:https://nordic.totalenergies.com/nb&hl=no&gl=NO&ceid=NO:no",
@@ -3470,17 +4156,17 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Delårsrapport pr. 3. kvartal og 3. kvartal 2003 - DNO ASA",
+   "t": "Delårsrapport pr. 3. kvartal og 3. kvartal 2003 - dno.no",
    "u": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQZFlJOFV6TFpaQXRKQTNrVERublVKTWl5S01EbFF6VXJnY0RhaTI0RUEwa1hDM0V2N1I5dXZWRUR4b2NGNlBRaUp5V0M1UUpaYWlCeUdxYmNBZ0lTei1UMXUtMjZCV2NhVDE1OHk0dkJ2bkhHYVBCSHYwN1FJOHJpbkhTbkZOVFNjaEdQNW9USUtnNi1LOUphV180S0s0aEtpQUE?oc=5",
    "d": "2024-08-28",
-   "s": "Delårsrapport pr. 3. kvartal og 3. kvartal 2003 DNO ASA"
+   "s": "Delårsrapport pr. 3. kvartal og 3. kvartal 2003 dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Presentasjon av resultat for 1. halvår 2001 - dno.no",
+   "t": "DNO ASA - Presentasjon av resultat for 1. halvår 2001 | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNNWFzS2FHLXhYMkY4MnMzR1hGTElubTlwVmhKZzljd0Nrbl9LdjFGZkdkeUxBTjV5cTN2RE16TGN5UmJFcXJSTUdJSDhaWUplQld4cnk4Y0h1M0Vvek9IbG1NM1EzaWhlRlkyU0RsRFl4blpqOVl2M2hnZ3dJRERLcGk1OUNPVElhVEprNEc1Y0pxbDFCWUpERXZCVG9GRU0?oc=5",
    "d": "2024-08-28",
-   "s": "Presentasjon av resultat for 1. halvår 2001 dno.no"
+   "s": "DNO ASA - Presentasjon av resultat for 1. halvår 2001 | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -3596,10 +4282,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "KJØP AV EGNE AKSJER - dno.no",
+   "t": "DNO ASA - KJØP AV EGNE AKSJER | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMigAFBVV95cUxNal9LRV9LVnJ6TG12RGkyLTVXLWxWcFVyN1VvbEVQUEpVaDllbHIyVURPakg1bUNXd2U1WFNNak9DeEJOVDEtbmg0NTlyckVpNTZmVm9lVWNLZVA1NnpHQjNKRmJzd3RRTlVaUGNpcGNsWml4ZTJ6SUR1V3pFQzBCVw?oc=5",
    "d": "2024-08-28",
-   "s": "KJØP AV EGNE AKSJER dno.no"
+   "s": "DNO ASA - KJØP AV EGNE AKSJER | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4625,10 +5311,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "Fisjon av Offshore & Services - dno.no",
+   "t": "DNO ASA - Fisjon av Offshore & Services | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQdkxXWjk5Z2ctLTJwbEFFMkVrOTlIdFdNOWUxMkxLWFF4cV9wLTVmaXhCa1hNaHdIRFdwRl9zVHhnNVJ1a3BBM3k2ZmFUalQ3MFZfSWlQUllST2VBQXh3NFZ6ZEUwRkpxYUhVMDc0T1FYNWRJeDFRaXlWb2dvWFFsUkZ4bFJxTWVveGc?oc=5",
    "d": "2020-12-09",
-   "s": "Fisjon av Offshore & Services dno.no"
+   "s": "DNO ASA - Fisjon av Offshore & Services | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4765,10 +5451,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "DNA ASA - Status fisjonsprosess og regnskapsmessige disposisjoner | Announcements | Investors - DNO ASA",
+   "t": "DNA ASA - Status fisjonsprosess og regnskapsmessige disposisjoner | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQdVZlelNzOVlWaFo0aGdYU29TeGdjazUxcDg2Q1VlQlNZVnVVN2JVU0pHclhDTW9jdjViVXdBRk9kQTE0UzdPa2N2aURWSkE5cGJHcExhVUVzNkJRa2NzYnBBOV93LURlb1M1b21sVmxTUy1BOEtLZnBWSW9FTWhOMlJvNnhzbHRpbktDRjZHSVRDaHoxQU80N2M0VzBJSVpnN3c3UklBTW1wMzBGVkpN?oc=5",
    "d": "2020-11-16",
-   "s": "DNA ASA - Status fisjonsprosess og regnskapsmessige disposisjoner | Announcements | Investors DNO ASA"
+   "s": "DNA ASA - Status fisjonsprosess og regnskapsmessige disposisjoner | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
@@ -4982,10 +5668,10 @@
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
-   "t": "NAME CHANGE TO DNO ASA - DNO ASA",
+   "t": "NAME CHANGE TO DNO ASA | Announcements | Investors - dno.no",
    "u": "https://news.google.com/rss/articles/CBMieEFVX3lxTE93R2lJb0Q4OTB5N2NqcEo5Mm83QTFKLUl2b0l3cGljNUZmNDFjaHZlbkxIVHdXQUZpVnNlb2FNS3VxV1Q1eU5ZVkhfajFiS0NwRlIyWk42Nl9WeERuVDkxaGl1dkV3T3hqcWNGTkhPWVg4UlNIdFN3eQ?oc=5",
    "d": "2014-06-06",
-   "s": "NAME CHANGE TO DNO ASA DNO ASA"
+   "s": "NAME CHANGE TO DNO ASA | Announcements | Investors dno.no"
   },
   {
    "f": "https://news.google.com/rss/search?q=site:dno.no&hl=no&gl=NO&ceid=NO:no",
