@@ -1480,9 +1480,11 @@ function isValidRow(a) {
   return (period === 'monthly' || period === 'quarterly') ? a.prfMonth > 0 : a.prfMonth === 0;
 }
 function days(a) {
-  return (period === 'monthly' || period === 'quarterly')
-    ? daysInMonth(a.prfYear, a.prfMonth)
-    : daysInYear(a.prfYear);
+  if (period === 'monthly' || period === 'quarterly') return daysInMonth(a.prfYear, a.prfMonth);
+  // Årsraden for inneværende år er summen hittil i år: del på dagene i
+  // månedene med tall, så verdien blir snitt hittil i år.
+  if (a.prfYear === currentYear) { const m = ncsYtdMonth(); if (m) return ytdDays(currentYear, m); }
+  return daysInYear(a.prfYear);
 }
 function oeBoed(oeMillSm3, d)              { return (oeMillSm3 * 1e6 * BBL_PER_SM3) / d; }
 function oilBoed(oilMillSm3, gasBillSm3, oeMillSm3, d) {
@@ -1584,6 +1586,19 @@ const YTD_SWATCH = 'rgba(130,140,155,0.35)';
 const ytdSpan = lastMonth => lastMonth === 1 ? MONTH_ABBR[0] : `${MONTH_ABBR[0]}–${MONTH_ABBR[lastMonth - 1]}`;
 // Gjør søylen for inneværende år blek og merker den «år*». Returnerer
 // forklaringen til legenden, eller null når året ikke er med.
+// Siste måned med tall i inneværende år i Sodirs produksjonsdata (0 = ingen).
+let ncsYtdMonthMemo;
+function ncsYtdMonth() {
+  if (ncsYtdMonthMemo !== undefined) return ncsYtdMonthMemo;
+  const P = bundle.production && bundle.production.fields;
+  if (!P) return 0;
+  let m = 0;
+  Object.values(P).forEach(rows => rows.forEach(r => { if (r[0] === currentYear && r[1] > m && r[4]) m = r[1]; }));
+  return (ncsYtdMonthMemo = m);
+}
+// Felt-, hub- og selskapsvisningene (unionLabels): inneværende år er med i
+// årsvisningen når Sodir har tall for minst én måned i år.
+const isYtdLabel = k => period === 'annual' && k === String(currentYear) && ncsYtdMonth() > 0;
 function ytdFinish(labels, datasets, lastMonth) {
   const i = labels.indexOf(String(currentYear));
   if (i < 0 || !lastMonth) return null;
@@ -1610,7 +1625,7 @@ function unionLabels(fieldIds) {
   fieldIds.forEach(id => {
     (fieldProdCache[id]||[]).forEach(f => {
       const a = f.attributes;
-      if (isValidRow(a) && a.prfYear >= fy && a.prfYear <= ty && isCompletePeriod(periodKey(a))) s.add(periodKey(a));
+      if (isValidRow(a) && a.prfYear >= fy && a.prfYear <= ty && (isCompletePeriod(periodKey(a)) || isYtdLabel(periodKey(a)))) s.add(periodKey(a));
     });
   });
   return [...s].sort();
@@ -10746,7 +10761,7 @@ function drawCompaniesOperated() {
   renderChart(labels,
     [{label: 'Operated', data: dOp, backgroundColor: OP_C, borderWidth: 0, stack: 's'},
      {label: 'Partner', data: dPart, backgroundColor: PART_C, borderWidth: 0, stack: 's'}],
-    [{label: 'Operated', color: OP_C}, {label: 'Partner', color: PART_C}], 'boe/day');
+    [{label: 'Operated', color: OP_C}, {label: 'Partner', color: PART_C}], 'boe/day', {ytd: ncsYtdMonth()});
   const sum = a => a.reduce((t, v) => t + v, 0), totOp = sum(dOp), tot = totOp + sum(dPart);
   const last = labels[labels.length - 1];
   setChartTitle(`${cmp} · Production, operated vs partner`, `Net production · equity-adjusted · boe/day`);
@@ -11133,7 +11148,7 @@ function drawFieldsOilGas(opts = {}) {
     setChartTitle(`${scope ? scope.label : `${ids.length} fields`} · Production, oil & gas`, `${fnames} · boe/day`);
     setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? scope.label : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
   }
-  renderChart(labels, datasets, legend, 'boe/day');
+  renderChart(labels, datasets, legend, 'boe/day', {ytd: ncsYtdMonth()});
 }
 
 // ── FIELDS: OE PER FIELD ─────────────────────────────────────────────────────
@@ -11158,7 +11173,7 @@ function drawFieldsOePerField(opts = {}) {
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
   setChartTitle(`${scope ? scope.label : 'Net production'} · Production per field`, `${fnames} · boe/day`);
   setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? scope.label : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Gross field production`);
-  renderChart(labels, datasets, legend, 'boe/day');
+  renderChart(labels, datasets, legend, 'boe/day', {ytd: ncsYtdMonth()});
 }
 
 // ── FIELDS: RESERVES ─────────────────────────────────────────────────────────
@@ -14272,7 +14287,7 @@ function drawFieldsOePerCompany(opts = {}) {
   const fnames = ids.map(id=>allFields.find(f=>f.id===id)?.name).filter(Boolean).join(', ');
   setChartTitle(`${scope ? scope.label : fnames} · Production per company`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>${scope ? scope.noun : 'Fields'}:</strong> ${scope ? `${scope.label} (${fnames})` : fnames} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per company &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
-  renderChart(labels, datasets, legend, 'boe/day');
+  renderChart(labels, datasets, legend, 'boe/day', {ytd: ncsYtdMonth()});
 }
 
 // ── COMPANIES: OIL & GAS ─────────────────────────────────────────────────────
@@ -14341,7 +14356,7 @@ function drawCompaniesOilGas() {
     setChartTitle(`${companies.length} companies · Production, oil & gas`, `${companies.join(', ')} · boe/day`);
     setInfo(`<strong>Companies:</strong> ${companies.join(', ')} &nbsp;|&nbsp; <strong>Series:</strong> Oil, Gas (summed) &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted, all fields`);
   }
-  renderChart(labels, datasets, legend, 'boe/day');
+  renderChart(labels, datasets, legend, 'boe/day', {ytd: ncsYtdMonth()});
   // lastLabels er trimmet av renderChart, så tabellen viser de periodene
   // grafen faktisk tegner.
   const ids = [...new Set(companies.flatMap(c => getFieldsForCompany(c)))];
@@ -14414,7 +14429,7 @@ function groupedFieldTableHtml(periods, headLabel, groups) {
       <caption>Net production per field, last ${periods.length} ${
         period === 'monthly' ? 'months' : period === 'quarterly' ? 'quarters' : 'years'} · boe/day · equity-adjusted ·
         largest contributors in the latest period first</caption>
-      <thead><tr><th>${headLabel}</th>${periods.map(p => `<th>${p}</th>`).join('')}</tr></thead>
+      <thead><tr><th>${headLabel}</th>${periods.map(p => `<th>${isYtdLabel(p) ? `${p}*` : p}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr class="total-row"><td>Total</td>${cells(total)}</tr></tfoot>
     </table>`;
@@ -14461,7 +14476,7 @@ function drawCompaniesOePerField() {
   const cmpStr = companies.join(', ');
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Production per field`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per field &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
-  renderChart(labels, datasets, legend, 'boe/day');
+  renderChart(labels, datasets, legend, 'boe/day', {ytd: ncsYtdMonth()});
 }
 
 // ── COMPANIES: OE PER HUB ────────────────────────────────────────────────────
@@ -14503,7 +14518,7 @@ function drawCompaniesOePerHub() {
   const cmpStr = companies.join(', ');
   setChartTitle(`${companies.length === 1 ? companies[0] : companies.length + ' companies'} · Production per hub`, `Equity-adjusted · boe/day`);
   setInfo(`<strong>Companies:</strong> ${cmpStr} &nbsp;|&nbsp; <strong>Series:</strong> Net OE per hub &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Equity-adjusted production`);
-  renderChart(labels, datasets, legend, 'boe/day');
+  renderChart(labels, datasets, legend, 'boe/day', {ytd: ncsYtdMonth()});
   // lastLabels er trimmet av renderChart, så tabellen viser nøyaktig de
   // periodene grafen faktisk tegner.
   renderHubPeriodTable(series, companies, qMap, lastLabels.slice(-5));
@@ -15584,7 +15599,7 @@ function periodTableHtml(groups, periods, headLabel, caption, decimals = 0, opts
   return `${foldBar}
     <table class="res-table">
       <caption>${caption}</caption>
-      <thead><tr><th>${headLabel}</th>${periods.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
+      <thead><tr><th>${headLabel}</th>${periods.map(p=>`<th>${isYtdLabel(p) ? `${p}*` : p}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr class="total-row"><td>Total</td>${cells(totals)}</tr></tfoot>
     </table>`;
@@ -15993,6 +16008,13 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
   // samme seriene som grafen. Settes den i tegnefunksjonene i stedet, blir
   // labels og data forskjøvet i forhold til hverandre når trimming skjer.
   lastDatasets = datasets.map(d => ({label: d.label, data: d.data}));
+  // opts.ytd: siste måned med tall i inneværende år. Søylen for året blir
+  // blek og vises som «år*», med forklaring i legenden. Bare visningen
+  // endres: lastLabels beholder nøklene, som tabellene under slår opp med.
+  if (opts.ytd) {
+    const shown = [...labels], leg = ytdFinish(shown, datasets, opts.ytd);
+    if (leg) { labels = shown; legend = legend.concat([leg]); }
+  }
   document.getElementById('chartArea').innerHTML = `
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(l=>`
