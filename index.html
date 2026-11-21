@@ -217,6 +217,8 @@
     .om-charts{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px;}
     @media (min-width:900px){.om-charts{grid-template-columns:repeat(3,minmax(0,1fr));}}
     /* To grafkort side om side fra 900 px (EU storage: gasslagre og LNG). */
+    .pw-charts .chart-container{height:240px;}
+    @media (min-width:900px){.pw-charts .om-csub{min-height:2.6em;}}
     .dual-charts{display:grid;grid-template-columns:1fr;gap:12px;}
     @media (min-width:900px){.dual-charts{grid-template-columns:repeat(2,minmax(0,1fr));}}
     .dual-charts .om-chart{padding:10px 12px 8px;}
@@ -6705,19 +6707,13 @@ function drawPricePower() {
   if (!S) { setChartEmpty('No reservoir data for the selected area.'); setInfo(''); return; }
   const f1 = v => v == null ? '—' : v.toFixed(1);
   const eur = v => v == null ? '—' : v.toFixed(1);
-  const pctCh = (a, b) => a == null || !b ? null : (a - b) / b * 100;
   const wk = (y, w) => `week ${w} ${y}`;
   const kpi = (label, val, sub) => `<div class="pw-kpi"><span>${label}</span><strong>${val}</strong>${sub ? `<small>${sub}</small>` : ''}</div>`;
   const kpis = [
     kpi('Reservoir level', `${f1(S.pct)} %`, `${f1(S.twh)} of ${f1(S.cap)} TWh · ${wk(S.y, S.w)}`),
     kpi('Change from last week', `<span class="${pwCls(S.dw)}">${pwSigned(S.dw, 1, ' pp')}</span>`, 'percentage points'),
     kpi('Against normal', `<span class="${pwCls(S.vsMed)}">${pwSigned(S.vsMed, 1, ' pp')}</span>`, `normal ${f1(S.med)} % (median ${S.y - POWER_HIST}–${S.y - 1})`),
-    kpi('Against last year', `<span class="${pwCls(S.vsLy)}">${pwSigned(S.vsLy, 1, ' pp')}</span>`, `same week ${S.y - 1}`),
     kpi(`Price, week ${S.pw}`, `${eur(S.price)} <small style="display:inline">${U}</small>`, S.partial ? `week to date (${Math.round(S.hours / 24)} days)` : `${key === 'NO' ? 'average NO1–NO5' : area.label}`),
-    kpi('Price, last 4 weeks', `${eur(S.avg4)} <small style="display:inline">${U}</small>`, 'average of weekly prices'),
-    kpi(`Price ${S.py} so far`, `${eur(S.ytd)} <small style="display:inline">${U}</small>`,
-      `${pwSigned(pctCh(S.ytd, S.ytdLy), 0, ' %')} vs same weeks ${S.py - 1}`),
-    kpi('Against Germany', `<span>${pwSigned(S.de, 1)}</span> <small style="display:inline">${U}</small>`, `week ${S.pw}, DE-LU`),
   ];
   // Utveksling: netto eksport siste uke og hittil i år.
   const FW = pwFlowWeeks(key), fKeys = Object.keys(FW.total).map(Number).sort((a, b) => a - b);
@@ -6725,11 +6721,8 @@ function drawPricePower() {
   const fNow = fk ? FW.total[fk] : null;
   const fYtd = fk ? pwTwh(FW.total, k => Math.floor(k / 100) === fy) : null;
   const fLy = fk ? pwTwh(FW.total, k => Math.floor(k / 100) === fy - 1 && k % 100 <= fw) : null;
-  const exim = v => v == null ? '' : v >= 0 ? 'net export' : 'net import';
   if (!fk) kpis.push(kpi('Exchange', '—', `${esc(area.label)} has no direct connections abroad`));
   else kpis.push(
-    kpi(`Net export, week ${fw}`, `${pwSigned(fNow[0], 0)} <small style="display:inline">MW</small>`,
-      `${exim(fNow[0])}${fNow[1] < 168 ? ', week to date' : ''}`),
     kpi(`Net export ${fy} so far`, `${pwSigned(fYtd, 1)} <small style="display:inline">TWh</small>`, `same weeks ${fy - 1}: ${pwSigned(fLy, 1)} TWh`));
   const kpiHtml = kpis.join('');
   const areaPills = `<div class="pill-group">${POWER_AREAS.map(a =>
@@ -6738,16 +6731,17 @@ function drawPricePower() {
     `<button class="pill-btn${(pwOre() ? 'ore' : 'eur') === k ? ' active' : ''}" onclick="priceSet('pe','${k}')">${l}</button>`).join('')}</div>`;
   const perPills = `<div class="pill-group">${POWER_PERIODS.map(([k, l]) =>
     `<button class="pill-btn${(prF.pz || '3y') === k ? ' active' : ''}" onclick="priceSet('pz','${k}')">${l}</button>`).join('')}</div>`;
-  document.getElementById('chartArea').innerHTML = `<div class="np-bar" style="display:flex;flex-wrap:wrap;gap:8px">${areaPills}${unitPills}</div>
+  document.getElementById('chartArea').innerHTML = `<div class="np-bar" style="display:flex;flex-wrap:wrap;gap:8px">${areaPills}${unitPills}${perPills}</div>
     <div class="pw-kpis">${kpiHtml}</div>
-    <div class="pw-grid">
-      <div><h3>Reservoir level · ${esc(area.label)} · % of capacity</h3>
+    <div class="om-charts pw-charts">
+      <div class="om-chart"><h4>Reservoir level · ${esc(area.label)}</h4>
+        <div class="om-csub">% of capacity, weekly · ${S.y} against ${S.y - 1} and the ${S.y - POWER_HIST}–${S.y - 1} range</div>
         <div class="chart-container"><canvas id="prodChart"></canvas></div><div class="legend-row" id="pwResLegend"></div></div>
-      <div><h3><span>Day-ahead price, weekly average · ${U}</span>${perPills}</h3>
+      <div class="om-chart"><h4>Day-ahead price</h4>
+        <div class="om-csub">Weekly average, ${U} · price areas and Germany</div>
         <div class="chart-container"><canvas id="pwPriceChart"></canvas></div><div class="legend-row" id="pwPriceLegend"></div></div>
-    </div>
-    <div class="pw-grid" style="grid-template-columns:minmax(0,1fr);margin-top:18px">
-      <div><h3><span>Exchange with other countries · net export by connection, MW, weekly average (+ export, − import)</span></h3>
+      <div class="om-chart"><h4>Exchange with other countries</h4>
+        <div class="om-csub">Net export by connection, MW, weekly average · + export, − import</div>
         ${fk ? `<div class="chart-container"><canvas id="pwFlowChart"></canvas></div><div class="legend-row" id="pwFlowLegend"></div>`
              : `<div class="pf-map-note">${esc(area.label)} has no direct connections abroad; its exchange goes through the other Norwegian price areas.</div>`}</div>
     </div>`;
@@ -6777,7 +6771,7 @@ function drawPricePower() {
         title: items => `Week ${items[0].dataIndex + 1}`,
         label: c => ` ${c.dataset.label.startsWith('Range') ? `Min ${span}` : c.dataset.label}: ${c.parsed.y.toFixed(1)} %`,
         afterBody: items => { const i = items[0] && items[0].dataIndex; return maxD[i] != null ? ` Max ${span}: ${maxD[i].toFixed(1)} %` : ''; }}}},
-      scales: {x: {ticks: {maxTicksLimit: 13, font: {size: 9}}, grid: {display: false}},
+      scales: {x: {ticks: {maxTicksLimit: 9, maxRotation: 0, autoSkipPadding: 8, font: {size: 9}}, grid: {display: false}},
         y: {min: 0, max: 100, ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {color: 'rgba(0,0,0,0.05)'},
             title: {display: true, text: '% of capacity', color: '#4a5568', font: {size: 10}}}}},
   });
@@ -6805,7 +6799,7 @@ function drawPricePower() {
       plugins: {legend: {display: false}, tooltip: {itemSort: (a, b) => b.parsed.y - a.parsed.y, callbacks: {
         title: items => { const k = allKeys[items[0].dataIndex]; return `Week ${k % 100} ${Math.floor(k / 100)} (from ${pwWeekStart(Math.floor(k / 100), k % 100).toISOString().slice(0, 10)})`; },
         label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(1)} ${U}`}}},
-      scales: {x: {ticks: {maxTicksLimit: 10, maxRotation: 0, font: {size: 9}}, grid: {display: false}},
+      scales: {x: {ticks: {maxTicksLimit: 6, maxRotation: 0, autoSkipPadding: 12, font: {size: 9}}, grid: {display: false}},
         y: {beginAtZero: true, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'},
             title: {display: true, text: U, color: '#4a5568', font: {size: 10}}}}},
   });
@@ -6827,7 +6821,7 @@ function drawPricePower() {
         plugins: {legend: {display: false}, tooltip: {filter: c => c.parsed.y != null && Math.abs(c.parsed.y) > 0.5, callbacks: {
           title: items => { const k = flowKeys[items[0].dataIndex]; return `Week ${k % 100} ${Math.floor(k / 100)}`; },
           label: c => ` ${c.dataset.label}: ${pwSigned(c.parsed.y, 0)} MW`}}},
-        scales: {x: {stacked: true, ticks: {maxTicksLimit: 12, maxRotation: 0, font: {size: 9}}, grid: {display: false}},
+        scales: {x: {stacked: true, ticks: {maxTicksLimit: 6, maxRotation: 0, autoSkipPadding: 12, font: {size: 9}}, grid: {display: false}},
           y: {stacked: true, ticks: {font: {size: 9}, callback: v => v.toLocaleString('en')},
               grid: {color: c => c.tick.value === 0 ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.05)'},
               title: {display: true, text: 'MW · export above zero, import below', color: '#4a5568', font: {size: 10}}}}},
