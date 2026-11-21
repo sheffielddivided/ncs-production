@@ -187,6 +187,35 @@
     .lc-two > .pf-card{margin-bottom:10px;min-width:0;}
     @media (max-width:800px){.lc-two{grid-template-columns:1fr;}}
     .np-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;}
+    /* Market → Oil market: STEO-balansen som tabell, samme oppsett som i eia-løsningen. */
+    .om-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px;}
+    table.om{border-collapse:separate;border-spacing:0;width:100%;font-size:0.72rem;font-variant-numeric:tabular-nums;background:var(--card);}
+    table.om th,table.om td{padding:4px 7px;white-space:nowrap;text-align:right;}
+    table.om thead th{background:#e8eef5;color:var(--navy);font-weight:700;font-size:0.68rem;border-bottom:1px solid var(--border);}
+    table.om thead tr.yr th{border-bottom:none;padding-bottom:0;}
+    table.om th:first-child,table.om td:first-child{position:sticky;left:0;z-index:1;text-align:left;background:var(--card);min-width:200px;border-right:1px solid var(--border);}
+    table.om thead th:first-child{background:#e8eef5;z-index:2;}
+    table.om tbody tr:hover td{background:#f7f9fc;}
+    table.om td.fc{background:#f6f1f4;color:#5b6475;font-style:italic;}
+    table.om tbody tr:hover td.fc{background:#efe6eb;}
+    table.om .ys{border-left:1px solid var(--border);}
+    table.om .ann{border-left:2px solid var(--blue);}
+    table.om tr.sec td{background:var(--light) !important;color:var(--navy);font-weight:700;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;padding-top:7px;border-top:1px solid var(--border);}
+    table.om tr.grp td:first-child{color:var(--muted);font-size:0.66rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;padding-top:6px;}
+    table.om tr.tot td{font-weight:700;color:#1a2332;}
+    table.om tr.l1 td:first-child{padding-left:18px;}
+    table.om tr.l2 td:first-child{padding-left:30px;color:#4a5568;}
+    table.om tr.l3 td:first-child{padding-left:42px;color:#4a5568;}
+    table.om tr.l2 td,table.om tr.l3 td{color:#4a5568;}
+    table.om tr.hl td{background:#fdf2f7;}
+    table.om tr.hidden{display:none;}
+    table.om .tw{cursor:pointer;user-select:none;}
+    table.om .tw::before{content:'▸';display:inline-block;width:12px;color:var(--blue);transition:transform 0.15s;}
+    table.om .tw.open::before{transform:rotate(90deg);}
+    table.om .src{font-size:0.6rem;color:var(--muted);margin-left:5px;font-weight:500;text-transform:none;letter-spacing:0;}
+    table.om .pos{color:#00875a;} table.om .neg{color:#c62828;}
+    .om-kv.pos{color:#00875a !important;} .om-kv.neg{color:#c62828 !important;}
+    @media (max-width:640px){table.om th:first-child,table.om td:first-child{min-width:150px;max-width:150px;overflow:hidden;text-overflow:ellipsis;}}
     .np-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
     .np-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;background:#fff;
       color:var(--muted);font:inherit;font-size:0.72rem;padding:4px 10px;cursor:pointer;}
@@ -2621,7 +2650,7 @@ const HOME_SECTIONS = [
     '<path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><path d="M5 22h14M8 22l4-6 4 6"/>'],
   ['drilling', 'Drilling', 'Where the drilling rigs are, what they are doing and how they perform.',
     '<path d="M12 2l4 9H8z"/><path d="M10 11l-3 11M14 11l3 11M8.5 17h7"/>'],
-  ['prices', 'Market', 'Brent and gas prices, EU storage, US supply, exchange and interest rates.',
+  ['prices', 'Market', 'Brent and gas prices, the world oil balance, EU storage, US supply, exchange and interest rates.',
     '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'],
   ['dcs', 'DCS', 'Production, fields, companies, reserves and drilling on the Danish Continental Shelf.',
     '<path d="M4 21V4"/><path d="M4 4h13l-3 4 3 4H4"/>'],
@@ -3047,7 +3076,7 @@ function pageSources() {
     if (v === 'gas' && priceData && priceData.ttfd) add('eex');
     if (v === 'storage') add('gie', 'gie_lng');
     if (v === 'power') add('nve', 'entsoe', ...(prF.pe === 'ore' ? ['nb'] : []));
-    if (v === 'us' || v === 'refining') add('eia');
+    if (v === 'us' || v === 'refining' || v === 'oilmarket') add('eia');
     if (v === 'forex') add('nb');
     if (v === 'interest') add('nb_ir', 'fred', 'ecb', 'boe', 'riksbank', 'ssb', 'eurostat', 'ons', 'ustreas');
     if (prF.real) {
@@ -5696,6 +5725,7 @@ const PRICE_TABS = [
   {id: 'brent',   label: 'Brent'},
   {id: 'gas',     label: 'Gas'},
   {id: 'oilgas',  label: 'Oil vs gas'},
+  {id: 'oilmarket', label: 'Oil market'},
   {id: 'storage', label: 'EU storage'},
   {id: 'power',   label: 'Power'},
   {id: 'us',      label: 'US supply'},
@@ -5716,8 +5746,8 @@ let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: true};
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily'), fetchBundle('us_supply'), fetchBundle('refining')]).then(([b, d, e, g, c, , t, us, ref]) => {
-    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t, us, ref} : {};
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily'), fetchBundle('us_supply'), fetchBundle('refining'), fetchBundle('steo')]).then(([b, d, e, g, c, , t, us, ref, steo]) => {
+    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t, us, ref, steo} : {};
     if (!priceData.diff) return;
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
@@ -5887,6 +5917,7 @@ function drawPrices() {
   if (powerFlowChart) { powerFlowChart.destroy(); powerFlowChart = null; }
   if (priceSubView === 'gas') drawPriceGas();
   else if (priceSubView === 'oilgas') drawPriceOilGas();
+  else if (priceSubView === 'oilmarket') drawPriceOilMarket();
   else if (priceSubView === 'storage') drawPriceStorage();
   else if (priceSubView === 'power') drawPricePower();
   else if (priceSubView === 'us') drawPriceUs();
@@ -6938,7 +6969,10 @@ const US_PARAMS = [['uc', 'uc', 'WCRSTUS1', US_CRUDE.map(x => x[0])], ['ucy', 'u
                    ['ul', 'ul', '10', ['1', '2', '5', '10', '20']], ['uq', 'uq', '5', ['2', '5', '10', '20']],
                    // Refining-fanen: visning, råolje og periode.
                    ['rfm', 'kr', 'spread', ['spread', 'crude', 'annual']], ['rfc', 'kc', 'wti', ['wti', 'brent']],
-                   ['rfy', 'kp', '2', ['1', '2', '5', '10', '20', 'all']]];
+                   ['rfy', 'kp', '2', ['1', '2', '5', '10', '20', 'all']],
+                   // Oil market-fanen: frekvens, periode og nivå / endring.
+                   ['omf', 'of', 'quarterly', ['quarterly', 'monthly', 'annual']], ['omr', 'or', '3', ['3', '5', '10', 'all']],
+                   ['omm', 'om', 'level', ['level', 'yoy']]];
 let usCharts = [];
 
 function usWeekly(rows, yearsBack) {
@@ -7165,6 +7199,244 @@ function drawPriceRefining() {
     `<strong>Prices:</strong> EIA weekly spot prices — NY Harbor conventional regular gasoline and NY Harbor No. 2 heating oil (diesel), converted from $/gallon at 42 gallons per barrel, and ${crudeName === 'WTI' ? 'WTI Cushing' : 'Brent (Europe Brent spot FOB)'}; weeks where all three have a price &nbsp;|&nbsp; ` +
     `A simple indicator of refining profitability on the US East Coast, before refinery operating costs; it is not a European margin. ${crudeName === 'Brent' ? 'Brent is shown because it is the benchmark for Norwegian crude; the eia solution uses WTI. ' : ''}` +
     `Latest data: week to ${fmtShort(last.date)}`);
+}
+
+// ── MARKET · OIL MARKET ──
+// Verdens oljebalanse fra EIAs Short-Term Energy Outlook (STEO): tabell 3a
+// (produksjon, forbruk, lagertrekk og OECD-lagre) beriket med tabell 3c
+// (OPEC+, OPEC-land og USA). Samme tabell, rader og nøkkeltall som Oil
+// Market-visningen i eia-repoet; data/steo.json er en kopi av eia-repoets
+// data/eia/steo.json (fetch_eugas.py). Prognosemåneder er skyggelagt.
+// kind: sec = seksjon, grp = undergruppe, tot = sum i fet skrift. lvl = innrykk,
+// tw = raden kan foldes ut, parent = raden hører til den utfoldbare raden.
+// calc = avledet serie; fmt 0 = heltall (lagernivå).
+const OM_ROWS = [
+  {kind: 'sec', label: 'Production', note: 'million b/d'},
+  {kind: 'grp', label: 'By type', src: '3a'},
+  {id: 'PAPR_WORLD',   label: 'World total', kind: 'tot'},
+  {id: 'COPR_WORLD',   label: 'Crude oil', lvl: 1},
+  {id: 'WORLD_NC',     label: 'Other liquids', lvl: 1},
+  {id: 'PAPR_OPEC',    label: 'OPEC total', lvl: 1, tw: 'opecType'},
+  {id: 'COPR_OPEC',    label: 'Crude oil', lvl: 2, parent: 'opecType'},
+  {id: 'OPEC_NC',      label: 'Other liquids', lvl: 2, parent: 'opecType'},
+  {id: 'PAPR_NONOPEC', label: 'Non-OPEC total', lvl: 1, tw: 'nonopecType'},
+  {id: 'COPR_NONOPEC', label: 'Crude oil', lvl: 2, parent: 'nonopecType'},
+  {id: 'NONOPEC_NC',   label: 'Other liquids', lvl: 2, parent: 'nonopecType'},
+
+  {kind: 'grp', label: 'By producer group', src: '3c'},
+  {id: 'PAPR_OPECPLUS',       label: 'OPEC+ total', kind: 'tot', lvl: 1},
+  {id: 'PAPR_OPECPLUS_OPEC',  label: 'OPEC members in OPEC+ quotas', lvl: 2},
+  {id: 'PAPR_OPECPLUS_OTHER', label: 'Non-OPEC participants', lvl: 2, tw: 'opecPlusOther'},
+  {id: 'PAPR_RS', label: 'Russia',      lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_KZ', label: 'Kazakhstan',  lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_MX', label: 'Mexico',      lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_MU', label: 'Oman',        lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_AJ', label: 'Azerbaijan',  lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_MY', label: 'Malaysia',    lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_BA', label: 'Bahrain',     lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_OD', label: 'South Sudan', lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_BX', label: 'Brunei',      lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_SU', label: 'Sudan',       lvl: 3, parent: 'opecPlusOther'},
+  {id: 'PAPR_US',              label: 'United States', lvl: 1},
+  {id: 'PAPR_NONOPECPLUS_XUS', label: 'Non-OPEC+ excl. United States', lvl: 1},
+
+  {kind: 'grp', label: 'OPEC by country', src: '3c'},
+  {id: 'PAPR_OPEC', label: 'OPEC total', lvl: 1, tw: 'opecCountry'},
+  {id: 'PAPR_SA', label: 'Saudi Arabia',        lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_IZ', label: 'Iraq',                lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_IR', label: 'Iran',                lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_KU', label: 'Kuwait',              lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_NI', label: 'Nigeria',             lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_AG', label: 'Algeria',             lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_LY', label: 'Libya',               lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_VE', label: 'Venezuela',           lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_CF', label: 'Congo (Brazzaville)', lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_GB', label: 'Gabon',               lvl: 2, parent: 'opecCountry'},
+  {id: 'PAPR_EK', label: 'Equatorial Guinea',   lvl: 2, parent: 'opecCountry'},
+
+  {kind: 'sec', label: 'Consumption', note: 'million b/d', src: '3a'},
+  {id: 'PATC_WORLD', label: 'World total', kind: 'tot'},
+  {id: 'PATC_OECD',  label: 'OECD total', lvl: 1, tw: 'oecd'},
+  {id: 'PATC_US',          label: 'United States', lvl: 2, parent: 'oecd'},
+  {id: 'PATC_OECD_EUROPE', label: 'Europe', lvl: 2, parent: 'oecd'},
+  {id: 'PATC_JA',          label: 'Japan', lvl: 2, parent: 'oecd'},
+  {id: 'PATC_CA',          label: 'Canada', lvl: 2, parent: 'oecd'},
+  {id: 'PATC_UST',         label: 'U.S. Territories', lvl: 2, parent: 'oecd'},
+  {id: 'PATC_OTHER_OECD',  label: 'Other OECD', lvl: 2, parent: 'oecd'},
+  {id: 'PATC_NON_OECD', label: 'Non-OECD total', lvl: 1, tw: 'nonoecd'},
+  {id: 'PATC_CH',             label: 'China', lvl: 2, parent: 'nonoecd'},
+  {id: 'PATC_OTHER_ASIA',     label: 'Other Asia', lvl: 2, parent: 'nonoecd'},
+  {id: 'PATC_FSU',            label: 'Eurasia', lvl: 2, parent: 'nonoecd'},
+  {id: 'PATC_NONOECD_EUROPE', label: 'Europe', lvl: 2, parent: 'nonoecd'},
+  {id: 'PATC_OTHER_NONOECD',  label: 'Other non-OECD', lvl: 2, parent: 'nonoecd'},
+
+  {kind: 'sec', label: 'Balance', note: 'million b/d'},
+  {id: 'BAL', label: 'Market balance (prod. − cons.)', kind: 'tot', hl: true, signed: true,
+   calc: get => (get('PAPR_WORLD') == null || get('PATC_WORLD') == null) ? null : get('PAPR_WORLD') - get('PATC_WORLD')},
+  {kind: 'grp', label: 'Inventory net withdrawals', src: '3a'},
+  {id: 'T3_STCHANGE_WORLD', label: 'World total', lvl: 1, signed: true},
+  {id: 'T3_STCHANGE_US',    label: 'United States', lvl: 2, signed: true},
+  {id: 'T3_STCHANGE_OOECD', label: 'Other OECD', lvl: 2, signed: true},
+  {id: 'T3_STCHANGE_NOECD', label: 'Other draws & balance', lvl: 2, signed: true},
+
+  {kind: 'sec', label: 'Commercial inventories', note: 'million barrels, end of period', src: '3a'},
+  {id: 'PASC_OECD_T3',  label: 'OECD total', kind: 'tot', fmt: 0},
+  {id: 'PASC_US',       label: 'United States', lvl: 1, fmt: 0},
+  {id: 'PASC_OOECD_T3', label: 'Other OECD', lvl: 1, fmt: 0},
+];
+const omOpen = new Set();
+let omLastView = null;
+
+// Kolonnene for valgt frekvens og periode, og om hver inneholder prognosemåneder.
+// Perioden slutter med siste prognoseår; kvartals- og månedsvisningen får i
+// tillegg årssnitt for de tre utsiktsårene til slutt.
+function omColumns(S, freq, range) {
+  const lastHist = S.lastHistMonth, ly = +lastHist.slice(0, 4), endY = ly + 1;
+  const d = S.data[freq] || {};
+  const periods = [...new Set([...Object.keys(d.PAPR_WORLD || {}), ...Object.keys(d.PATC_WORLD || {})])].sort();
+  const firstY = +(periods[0] || String(endY)).slice(0, 4);
+  const startY = range === 'all' ? firstY : Math.max(firstY, endY - +range + 1);
+  const inRange = periods.filter(p => { const y = +p.slice(0, 4); return y >= startY && y <= endY; });
+  const cols = [];
+  if (freq === 'annual') {
+    inRange.forEach(p => cols.push({p, freq, year: 'Annual', label: p, fc: `${p}-12` > lastHist}));
+    return cols;
+  }
+  inRange.forEach(p => {
+    const y = +p.slice(0, 4);
+    if (freq === 'quarterly') {
+      const qn = +p.slice(-1);
+      cols.push({p, freq, year: y, label: `Q${qn}`, fc: `${y}-${String(qn * 3).padStart(2, '0')}` > lastHist});
+    } else {
+      const m = +p.slice(5, 7);
+      cols.push({p, freq, year: y, label: STORAGE_MON[m - 1], fc: p > lastHist});
+    }
+  });
+  for (let y = Math.max(startY, ly - 1); y <= endY; y++)
+    cols.push({p: String(y), freq: 'annual', year: y, label: String(y), ann: true, fc: `${y}-12` > lastHist});
+  return cols;
+}
+const omPrev = c => c.freq === 'annual' ? String(+c.p - 1) : `${+c.p.slice(0, 4) - 1}${c.p.slice(4)}`;
+function omValue(S, row, freq, p) {
+  const get = id => S.data[freq]?.[id]?.[p];
+  const v = row.calc ? row.calc(get) : get(row.id);
+  return v == null ? null : v;
+}
+function omCell(S, r, c, yoy) {
+  let v = omValue(S, r, c.freq, c.p);
+  if (yoy && v != null) { const pv = omValue(S, r, c.freq, omPrev(c)); v = pv == null ? null : v - pv; }
+  return v;
+}
+function omFmt(v, dec, signed) {
+  if (v == null) return '–';
+  const s = v.toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+  return signed && v > 0 ? '+' + s : s;
+}
+function omColClass(cols, i) {
+  const c = cols[i], prev = cols[i - 1];
+  return [c.fc ? 'fc' : '', c.ann && !(prev && prev.ann) ? 'ann' : (!c.ann && prev && prev.year !== c.year ? 'ys' : '')].filter(Boolean).join(' ');
+}
+const omMonthLabel = ym => `${STORAGE_MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
+function omIsVisible(r) {
+  if (!r.parent) return true;
+  if (!omOpen.has(r.parent)) return false;
+  const owner = OM_ROWS.find(x => x.tw === r.parent);
+  return owner ? omIsVisible(owner) : true;
+}
+function omToggle(key) { omOpen.has(key) ? omOpen.delete(key) : omOpen.add(key); drawChart(); }
+function omExpandAll(open) { OM_ROWS.forEach(r => { if (r.tw) open ? omOpen.add(r.tw) : omOpen.delete(r.tw); }); drawChart(); }
+
+// Nøkkeltall: inneværende kvartal (kvartalet etter siste historiske måned) og neste år.
+function omFacts(S) {
+  const [ly, lm] = S.lastHistMonth.split('-').map(Number);
+  const cy = lm === 12 ? ly + 1 : ly, cq = lm === 12 ? 1 : Math.ceil((lm + 1) / 3);
+  const qp = `${cy}-Q${cq}`, qpPrev = `${cy - 1}-Q${cq}`;
+  const Q = (id, p) => S.data.quarterly?.[id]?.[p], A = (id, y) => S.data.annual?.[id]?.[String(y)];
+  const sgn = (v, d = 2) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : '') + v.toFixed(d);
+  const tone = v => v == null ? '' : v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+  const prod = Q('PAPR_WORLD', qp), cons = Q('PATC_WORLD', qp);
+  const bal = prod != null && cons != null ? prod - cons : null;
+  const balNext = A('PAPR_WORLD', cy + 1) != null && A('PATC_WORLD', cy + 1) != null ? A('PAPR_WORLD', cy + 1) - A('PATC_WORLD', cy + 1) : null;
+  const stocks = Q('PASC_OECD_T3', qp), stocksPrev = Q('PASC_OECD_T3', qpPrev);
+  const opp = Q('PAPR_OPECPLUS', qp), oppPrev = Q('PAPR_OPECPLUS', qpPrev);
+  const dDem = A('PATC_WORLD', cy + 1) != null && A('PATC_WORLD', cy) != null ? A('PATC_WORLD', cy + 1) - A('PATC_WORLD', cy) : null;
+  const ql = `Q${cq} ${cy}`, d = (a, b) => a == null || b == null ? null : a - b;
+  return [
+    ['World production', `${prod?.toFixed(2) ?? '–'} mb/d`, `${ql} · y/y ${sgn(d(prod, Q('PAPR_WORLD', qpPrev)))}`],
+    ['World consumption', `${cons?.toFixed(2) ?? '–'} mb/d`, `${ql} · y/y ${sgn(d(cons, Q('PATC_WORLD', qpPrev)))}`],
+    ['Market balance', `${sgn(bal)} mb/d`, `${ql} · ${cy + 1} avg ${sgn(balNext)}`, tone(bal)],
+    ['OPEC+ production', `${opp?.toFixed(2) ?? '–'} mb/d`, `${ql} · y/y ${sgn(d(opp, oppPrev))}`],
+    ['OECD comm. stocks', `${stocks?.toLocaleString('en-US', {maximumFractionDigits: 0}) ?? '–'} mb`, `end ${ql} · y/y ${sgn(d(stocks, stocksPrev), 0)}`],
+    [`Demand growth ${cy + 1}`, `${sgn(dDem)} mb/d`, `${A('PATC_WORLD', cy + 1)?.toFixed(2) ?? '–'} mb/d avg`, tone(dDem)],
+  ];
+}
+
+function drawPriceOilMarket() {
+  US_PARAMS.forEach(([k, , d]) => { if (prF[k] == null) prF[k] = d; });
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const S = priceData.steo;
+  if (!S || !S.data || !S.lastHistMonth) { setChartTitle('', ''); setChartEmpty('Could not load the STEO data.'); setInfo(''); return; }
+  const freq = prF.omf, yoy = prF.omm === 'yoy', cols = omColumns(S, freq, prF.omr);
+
+  const yearSpans = [];
+  cols.forEach(c => {
+    const key = c.ann ? 'Year' : c.year, last = yearSpans[yearSpans.length - 1];
+    if (last && last.key === key) last.n++; else yearSpans.push({key, n: 1, ann: c.ann});
+  });
+  let html = '<table class="om"><thead><tr class="yr"><th></th>' + yearSpans.map((sp, i) =>
+    `<th colspan="${sp.n}" class="${sp.ann ? 'ann' : (i ? 'ys' : '')}" style="text-align:center">${sp.key}</th>`).join('') + '</tr>';
+  html += `<tr><th>${yoy ? 'Change vs. same period last year' : ''}</th>` + cols.map((c, i) =>
+    `<th class="${omColClass(cols, i)}">${c.label}</th>`).join('') + '</tr></thead><tbody>';
+  OM_ROWS.forEach(r => {
+    if (r.kind === 'sec' || r.kind === 'grp') {
+      html += `<tr class="${r.kind}"><td>${r.label}${r.note ? `<span class="src">${r.note}</span>` : ''}${r.src ? `<span class="src">Table ${r.src}</span>` : ''}</td><td colspan="${cols.length}"></td></tr>`;
+      return;
+    }
+    const cls = [r.kind === 'tot' ? 'tot' : '', r.lvl ? 'l' + r.lvl : '', r.hl ? 'hl' : '', r.parent && !omIsVisible(r) ? 'hidden' : ''].filter(Boolean).join(' ');
+    const dec = yoy ? (r.fmt === 0 ? 0 : 2) : (r.fmt ?? 2), signed = yoy || r.signed;
+    const label = r.tw ? `<span class="tw${omOpen.has(r.tw) ? ' open' : ''}" onclick="omToggle('${r.tw}')">${r.label}</span>` : r.label;
+    html += `<tr class="${cls}"><td title="${esc((S.meta?.[r.id]?.name || r.label) + (r.calc ? '' : ` (${r.id})`))}">${label}</td>`;
+    cols.forEach((c, i) => {
+      const v = omCell(S, r, c, yoy);
+      const tone = (signed && v != null && Math.abs(v) >= (dec ? 0.005 : 0.5)) ? (v > 0 ? 'pos' : 'neg') : '';
+      html += `<td class="${[omColClass(cols, i), (r.hl || yoy) ? tone : ''].filter(Boolean).join(' ')}">${omFmt(v, dec, signed)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  const pills = usPills('omf', [['quarterly', 'Quarterly'], ['monthly', 'Monthly'], ['annual', 'Annual']], freq)
+    + usPills('omr', [['3', '3y'], ['5', '5y'], ['10', '10y'], ['all', 'All']], prF.omr)
+    + usPills('omm', [['level', 'Level'], ['yoy', 'Δ y/y']], prF.omm)
+    + `<div class="pill-group"><button class="pill-btn" onclick="omExpandAll(true)">Expand all</button><button class="pill-btn" onclick="omExpandAll(false)">Collapse</button></div>`;
+  const prevSc = document.getElementById('omScroll'), prevLeft = prevSc ? prevSc.scrollLeft : 0;
+  document.getElementById('chartArea').innerHTML = `
+    <div class="np-bar">${pills}</div>
+    <div class="pf-facts" style="margin-bottom:12px">${omFacts(S).map(([l, v, sub, cls]) =>
+      `<div class="pf-fact"><span>${l}</span><strong class="om-kv ${cls || ''}">${v}</strong><small style="display:block;font-size:0.68rem;color:var(--muted)">${sub}</small></div>`).join('')}</div>
+    <div class="om-scroll" id="omScroll">${html}</div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:#f6f1f4;border:1px solid var(--border)"></div>Forecast (shaded, italic)</div>
+      <div class="legend-item">Market balance = production − consumption (positive = implied stock build)</div>
+      <div class="legend-item">OPEC country detail is published for historical months only</div></div>`;
+  // Ny frekvens eller periode: start rullet helt til høyre, så utsiktsårene
+  // vises. Ellers (utfolding, nivå / endring) beholdes rulleposisjonen.
+  const sc = document.getElementById('omScroll'), viewKey = freq + '|' + prF.omr;
+  if (viewKey !== omLastView || !prevSc) { sc.scrollLeft = sc.scrollWidth; omLastView = viewKey; } else sc.scrollLeft = prevLeft;
+
+  // Excel: én rad per serie, én kolonne per periode i tabellen.
+  const dataRows = OM_ROWS.filter(r => r.kind !== 'sec' && r.kind !== 'grp');
+  let sec = '';
+  lastLabels = []; OM_ROWS.forEach(r => { if (r.kind === 'sec') sec = r.label; else if (r.kind !== 'grp') lastLabels.push(`${sec} · ${'  '.repeat(r.lvl || 0)}${r.label}`); });
+  lastDatasets = cols.map(c => ({label: `${c.ann ? `${c.p} (annual)` : c.freq === 'annual' ? c.p : `${c.year} ${c.label}`}${c.fc ? ' (forecast)' : ''}`,
+    data: dataRows.map(r => { const v = omCell(S, r, c, yoy); return v == null ? '' : +v.toFixed(r.fmt === 0 ? 1 : 3); })}));
+  lastXTitle = yoy ? 'Series (change vs. same period last year)' : 'Series (million b/d; inventories million barrels)';
+
+  const rel = `${STORAGE_MON[+S.release.slice(5, 7) - 1]} ${S.release.slice(0, 4)}`;
+  setChartTitle('World liquid fuels balance', `EIA Short-Term Energy Outlook ${rel} · Table 3a enriched with Table 3c · history through ${omMonthLabel(S.lastHistMonth)}`);
+  setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA), Short-Term Energy Outlook (STEO), Table 3a (World Petroleum and Other Liquid Fuels Production, Consumption, and Inventories) and Table 3c (OPEC+ and other producers), monthly, quarterly and annual series from the EIA API, collected daily by the eia solution${S.updatedAt ? `, updated ${fmtShort(S.updatedAt.slice(0, 10))}` : ''} &nbsp;|&nbsp; ` +
+    `Production and consumption in million barrels per day; inventories in million barrels at the end of the period. Shaded columns are EIA's forecast. Quarterly and monthly views end with annual averages for the outlook years &nbsp;|&nbsp; ` +
+    `Click a row with ▸ to show its breakdown.`);
 }
 
 function drawPriceUs() {
