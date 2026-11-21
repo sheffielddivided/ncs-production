@@ -122,6 +122,7 @@ def build_production(combined, slugs):
     """Årlig og månedlig produksjon per felt.
 
     Rader: [periode, olje mill Sm³, gass mrd Sm³, vann mill m³, foreløpig 0/1].
+    Foreløpig = olje eller gass er foreløpig (vann teller ikke, se under).
     Perioden er 'YYYY' (årlig) eller 'YYYY-MM' (månedlig).
     """
     check_schema('combined.json', combined)
@@ -145,7 +146,13 @@ def build_production(combined, slugs):
                     need(v is None or isinstance(v, (int, float)), f'combined.json: {slug}/{res}/{t}: ugyldig verdi {v!r}')
                     row = rows.setdefault(t, {'p': False})
                     row[m] = v
-                    row['p'] = row['p'] or bool(p.get('p'))
+                    # Foreløpig-flagget følger olje og gass, som er det appen
+                    # tegner og merker. ENS' årsfil mangler vann for enkelte
+                    # felt (f.eks. Solsort 2025); da kommer vannet fra
+                    # månedsrapportene og er foreløpig, men olje og gass er
+                    # endelige, og året skal ikke vises som foreløpig.
+                    if m != 'water':
+                        row['p'] = row['p'] or bool(p.get('p'))
             out[res][slug] = [
                 [t,
                  r6((r.get('oil') or 0) / 1000),
