@@ -16602,20 +16602,24 @@ async function downloadExcel() {
   // Market-fanene har egne tidsakser og valg; produksjonsperioden og
   // årsutvalget gjelder ikke der, og filen får navn etter grafen.
   const market = topMode === 'prices';
+  // Sokkelen eksporten gjelder: DCS (Danmark) og UKCS (Storbritannia) har
+  // egne faner, alt annet er norsk sokkel.
+  const shelf = topMode === 'dcs' ? 'DCS' : topMode === 'ukcs' ? 'UKCS' : 'NCS';
   // Oil market: Data-arket er tabellen, så sidetittelen; ellers grafens tittel.
   const viewTitle = ((priceSubView === 'oilmarket' ? null : pptMainMeta) || pptMeta()).title || '';
   const filename = market
     ? `${(viewTitle || 'Market').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
     : categorical
-    ? `${(pptMeta().title || 'NCS').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
-    : `NCS_Production_${periodLabel}_${fy}-${ty}.xlsx`;
+    ? `${(pptMeta().title || shelf).replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
+    : `${shelf}_Production_${periodLabel}_${fy}-${ty}.xlsx`;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'NCS Insight'; wb.created = new Date();
 
   const wsInfo = wb.addWorksheet('Info');
   wsInfo.columns = [{width:24},{width:80}];
-  const titleRow = wsInfo.addRow([market ? 'NCS Insight Market Export' : categorical ? 'NCS Reserves Export' : 'NCS Production Export']);
+  const titleRow = wsInfo.addRow([market ? 'NCS Insight Market Export'
+    : categorical ? (shelf === 'NCS' ? 'NCS Reserves Export' : `${shelf} Export`) : `${shelf} Production Export`]);
   titleRow.getCell(1).font = {bold:true, size:14};
   wsInfo.addRow([]);
   wsInfo.addRow(['Generated', new Date().toLocaleString()]);
