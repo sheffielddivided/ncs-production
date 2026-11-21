@@ -346,6 +346,7 @@
     .nw-cancelled{background:#f3e8e8;color:#8a3030;border-color:#e2c4c4;}
     .nw-rig{background:#dbe7f1;color:#2f5f82;border-color:#b8c4d2;}
     .nw-havtil{background:#e6e4f6;color:#45399a;border-color:#c9c3ec;}
+    .nw-contract{background:#e0f1f4;color:#1d6370;border-color:#b3dbe2;}
     .nw-from{color:var(--muted);}
     .nw-permit{background:#e3f0e8;color:#2e6b45;border-color:#b9d9c5;}
     .nw-result{background:#fbe0ee;color:#8e0a48;border-color:#eeabcb;}
@@ -3074,7 +3075,8 @@ function pageSources() {
   }
   if (m === 'drilling') {
     if (v === 'fleet') add('ne');
-    if (['rigs', 'fleet'].includes(v)) add('ais');
+    if (['rigs', 'fleet', 'rignews'].includes(v)) add('ais');
+    if (v === 'rignews') add('havtil');
   }
   if (m === 'licences' && ['company', 'map', 'overlap', 'licence'].includes(v)) add('ne');
   return out;
@@ -12438,7 +12440,14 @@ function companyNewsItems(name) {
   });
 
   (changesData || []).forEach(e => {
-    if (e.t === 'rig' || e.t === 'havtil' || !NEWS_TYPES[e.t]) return;
+    if (e.t !== 'contract' || !(e.cmp || []).some(x => concernKey(x) === key)) return;
+    out.push({d: e.d, src: 'rigs', cls: 'contract', label: 'Contract',
+      click: `openRigProfile(${esc(JSON.stringify(e.r))})`,
+      html: `${contractLine(e)}<span class="nw-why">Client · ${esc(e.src || 'rig contractor')}</span>`});
+  });
+
+  (changesData || []).forEach(e => {
+    if (e.t === 'rig' || e.t === 'havtil' || e.t === 'contract' || !NEWS_TYPES[e.t]) return;
     const g = e.w != null ? explById[e.w] : null;
     const role = g ? concernWellRole(g, key) : (e.op && concernKey(e.op) === key ? 'operator' : '');
     if (!role) return;
@@ -16999,6 +17008,7 @@ const DRILL_TABS = [
   {id:'perf',  label:'Performance'},
   {id:'trends', label:'Trends'},
   {id:'activity', label:'Activity'},
+  {id:'rignews', label:'News'},
 ];
 const explMode = () => topMode === 'exploration' || topMode === 'drilling';
 let explSubView = 'wells';
@@ -17217,6 +17227,12 @@ function explRenderBar() {
   if (explSubView === 'perf') return drillRenderBar();
   if (explSubView === 'trends' || explSubView === 'activity') return setBar('explBar', '');
   if (explSubView === 'success') return epRenderBar();
+  if (explSubView === 'rignews') return setBar('explBar', `
+    <div class="ex-bar">
+      <input class="ex-in ex-q" type="search" placeholder="Search rig, client, place…" value="${esc(explF.q)}"
+             oninput="explSet('q', this.value)" aria-label="Search"/>
+      <button class="grp-btn" onclick="explReset()">Reset</button>
+    </div>`);
   const f = explF, wells = explSubView === 'wells', map = explSubView === 'map';
   const opt = (v, cur, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
   const years = [''].concat(Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i)));
@@ -18006,6 +18022,7 @@ async function refreshExploration() {
   if (explSubView === 'success') await Promise.all([loadDiscoveries(), loadFieldReserves()]);
   if (explSubView === 'rigs') await Promise.all([loadRigWells(), loadRigContracts(), loadRigFacts()]);
   if (explSubView === 'fleet') await loadRigContracts();
+  if (explSubView === 'rignews') await Promise.all([loadChanges(), loadRigContracts(), loadHavtil()]);
   if (explSubView === 'rigs' || explSubView === 'fleet' || explF.rig) await loadRigAis();
   if (!explWells.length) {
     setBar('explBar', '');
@@ -18028,6 +18045,7 @@ function explRenderBody() {
   if (explSubView === 'rigs') return explRenderRigs();
   if (explSubView === 'fleet') return explRenderFleet();
   if (explSubView === 'news') return explRenderNews();
+  if (explSubView === 'rignews') return drillRenderNews();
   explRenderList();
 }
 
@@ -20004,8 +20022,26 @@ const NEWS_TYPES = {
   done: {label: 'Completed', group: 'wells'}, plan: {label: 'Planned', group: 'wells'},
   postponed: {label: 'Postponed', group: 'wells'}, cancelled: {label: 'Removed', group: 'wells'},
   rig: {label: 'Rig', group: 'rigs'},
+  contract: {label: 'Contract', group: 'rigs'},
   havtil: {label: 'Havtil', group: 'havtil'},
 };
+// Kontraktnyheter (import_fleet_report.py): x = new, ext, cut, moved, exercised, gone.
+const conMon = d => { if (!d) return ''; const [y, m] = d.split('-'); return `${MONTH_ABBR[+m - 1]} ${y}`; };
+function contractLine(e) {
+  const what = e.ck === 'option' ? 'option' : 'contract', cl = esc(e.cl || 'undisclosed client');
+  const per = `${conMon(e.s)} – ${conMon(e.e)}`, rate = e.rate ? ' · ' + esc(fmtRate(e.rate)) : '';
+  const from = (a, b) => a && a !== b ? ` <span class="nw-from">from ${esc(conMon(a))}</span>` : '';
+  const r = `<strong>${rigLink(e.r)}</strong>`;
+  switch (e.x) {
+    case 'new': return `${r} new ${what} with ${cl} · ${per}${rate}`;
+    case 'ext': return `${r} ${what} with ${cl} extended to ${esc(conMon(e.e))}${from(e.oe, e.e)}`;
+    case 'cut': return `${r} ${what} with ${cl} shortened to ${esc(conMon(e.e))}${from(e.oe, e.e)}`;
+    case 'moved': return `${r} ${what} with ${cl} now starts ${esc(conMon(e.s))}${from(e.os, e.s)}`;
+    case 'exercised': return `${r} option exercised by ${cl} · ${per}${rate}`;
+    case 'gone': return `${r} ${what} with ${cl} (${per}) is no longer in the contractor's report`;
+  }
+  return `${r} contract update · ${cl}`;
+}
 
 function newsLine(e) {
   const g = e.w != null ? explById[e.w] : null;
@@ -20024,6 +20060,7 @@ function newsLine(e) {
     case 'cancelled': return `<strong>${esc(title)}</strong> is no longer in Sodir's plans`;
     case 'havtil': return `<strong>${esc(e.n)}</strong> · ${bit(esc(HV_KIND[e.k] || e.k),
       e.nc != null && `${e.nc} ${e.nc === 1 ? 'nonconformity' : 'nonconformities'}`)}`;
+    case 'contract': return contractLine(e);
     case 'rig': return `<strong>${rigLink(e.r)}</strong> ${e.k === 'port' ? 'arrived in' : 'moved to'} ${esc(stayName(e.k, e.p))}${
       e.pp && e.pp !== e.p ? ` <span class="nw-from">from ${esc(stayName(e.pk, e.pp))}</span>` : ''}`;
   }
@@ -20042,6 +20079,7 @@ async function explRenderNews() {
     if (c) {
       const g = e.w != null ? explById[e.w] : null;
       if (e.t === 'rig') return false;                       // rigger har ikke selskap
+      if (e.t === 'contract') return (e.cmp || []).some(x => x.toLowerCase().includes(c));
       if (g ? !explCompanyMatch(g, f.company.trim(), f.role) : !(e.op || '').toLowerCase().includes(c)) return false;
     }
     return !q || (e.n + ' ' + (e.dn || '') + ' ' + (e.r || '') + ' ' + (e.p || '') + ' ' + (e.op || '') + ' ' + (e.rig || '')).toLowerCase().includes(q);
@@ -20052,6 +20090,7 @@ async function explRenderNews() {
   shown.forEach(e => {
     if (e.d !== day) { day = e.d; html += `<div class="nw-day">${fmtShort(day)}</div>`; }
     const click = e.t === 'rig' ? `openRigProfile(${esc(JSON.stringify(e.r))}, false, ${e.f})`
+                : e.t === 'contract' ? `openRigProfile(${esc(JSON.stringify(e.r))})`
                 : e.t === 'havtil' && /^\/[\w\-\/]+\/$/.test(e.u || '') ? `window.open('https://www.havtil.no${e.u}', '_blank', 'noopener')`
                 : e.w != null && explById[e.w] ? `openWell(${e.w})` : '';
     html += `<div class="nw-row${click ? ' nw-click' : ''}"${click ? ` onclick="${click}"` : ''}>
@@ -20066,6 +20105,90 @@ async function explRenderNews() {
       <div class="pf-map-note">Detected by comparing each daily data run with the previous one; the first entries are dated from the wells' own start
         and completion dates. Rig moves come from AIS stays. Havtil entries are new consents from the Norwegian Ocean Industry
         Authority (inspections, investigations and orders are left out); they open on havtil.no.</div></div>`;
+  dockBar('explBody');
+}
+
+// ── DRILLING · NEWS ──────────────────────────────────────────────────────────
+// Alt om riggene på ett sted, nyeste først:
+//  · Rig moves: riggen er kommet til et nytt sted (AIS-opphold, changes.json).
+//  · Contracts: kontraktnyheter fra riggselskapenes rapporter og nettsider
+//    (changes.json, type contract, fra import_fleet_report.py), og kontrakter
+//    som starter eller slutter, utledet av datoene i rig_contracts.json. En
+//    start rett etter en kontrakt for samme kunde (forlengelse, utøvd opsjon)
+//    og en slutt med en ny kontrakt rett etter, regnes ikke som nyhet.
+//    Kommende starter og slutter de neste DN_AHEAD dagene står øverst.
+//  · Havtil: alle saker (tilsyn, samtykker, granskinger, pålegg) som er koblet
+//    til en rigg ved navn (havtil.json, rigs).
+let rnType = 'all', rnShown = 50;
+const DN_BACK = 365, DN_AHEAD = 90, DN_GAP = 7;
+function drillNewsItems() {
+  const today = new Date().toISOString().slice(0, 10);
+  const back = addDays(today, -DN_BACK), ahead = addDays(today, DN_AHEAD);
+  const out = [];
+  const rigClick = (r, f) => `openRigProfile(${esc(JSON.stringify(r))}${f ? `, false, ${+f}` : ''})`;
+  (changesData || []).forEach(e => {
+    if (e.t === 'rig') out.push({d: e.d, g: 'moves', t: 'rig', label: 'Rig move', click: rigClick(e.r, e.f),
+      txt: [e.r, e.p, e.pp].join(' '), html: newsLine(e)});
+    else if (e.t === 'contract') out.push({d: e.d, g: 'contracts', t: 'contract', label: 'Contract', click: rigClick(e.r),
+      txt: [e.r, e.cl, e.src, ...(e.cmp || [])].join(' '),
+      html: `${contractLine(e)}<span class="nw-why">${esc(e.src ? e.src + ' report' : 'Contractor report')}${e.x === 'gone' ? ' · changed or cancelled' : ''}</span>`});
+  });
+  Object.values((rigContracts && rigContracts.byRig) || {}).forEach(list => list.forEach(c => {
+    if (c.kind !== 'firm') return;
+    const firm = list.filter(o => o !== c && o.kind === 'firm');
+    const approx = c.precision === 'chart' ? '≈ ' : '';
+    const meta = `${esc(conSource(c))}${c.dayrate ? ' · ' + esc(fmtRate(c.dayrate)) : ''}${conLoc(c) ? ' · ' + esc(c.location) : ''}`;
+    const txt = [c.rig, c.client, c.location, c.contractor, ...(c.companies || [])].join(' ');
+    // Start: ikke en fortsettelse hos samme kunde.
+    if (!c.startOpen && c.start >= back && c.start <= ahead
+        && !firm.some(o => o.client === c.client && o.start < c.start && o.end >= addDays(c.start, -DN_GAP))) {
+      out.push({d: c.start, g: 'contracts', t: 'contract', label: 'Contract', click: rigClick(c.rig), txt, ahead: c.start > today,
+        html: `<strong>${rigLink(c.rig)}</strong> ${c.start > today ? 'starts' : 'started'} ${approx}contract with ${esc(c.client)} · until ${esc(conWhen(c, 'end'))}<span class="nw-why">${meta}</span>`});
+    }
+    // Slutt: ingen ny fast kontrakt rett etter.
+    if (c.end >= back && c.end <= ahead && !firm.some(o => o.start > c.start && o.start <= addDays(c.end, DN_GAP) && o.end > c.end)) {
+      out.push({d: c.end, g: 'contracts', t: 'contract', label: 'Contract', click: rigClick(c.rig), txt, ahead: c.end > today,
+        html: `<strong>${rigLink(c.rig)}</strong> ${approx}contract with ${esc(c.client)} ${c.end > today ? 'ends' : 'ended'} · no follow-on firm contract listed<span class="nw-why">${meta}</span>`});
+    }
+  }));
+  const safe = u => /^https:\/\/www\.havtil\.no\//.test(u || '');
+  ((havtilData && havtilData.items) || []).forEach(it => {
+    if (!it.date || !(it.rigs || []).length) return;
+    const res = [];
+    if (it.nonconf != null) res.push(`${it.nonconf} ${it.nonconf === 1 ? 'nonconformity' : 'nonconformities'}`);
+    if (it.improve != null) res.push(`${it.improve} improvement ${it.improve === 1 ? 'point' : 'points'}`);
+    out.push({d: it.date, g: 'havtil', t: 'havtil', label: 'Havtil', txt: [it.title, ...it.rigs].join(' '),
+      html: `<a href="https://www.havtil.no${esc(it.id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(it.title)} ↗</a>
+        <span class="nw-why">${esc(HV_KIND[it.kind] || it.kind)} · ${it.rigs.map(rigLink).join(', ')}${res.length ? ' · ' + res.join(' · ') : ''}${
+          safe(it.pdf) ? ` · <a href="${esc(it.pdf)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Report (PDF)</a>` : ''}</span>`});
+  });
+  return out.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+}
+
+function drillRenderNews() {
+  const box = document.getElementById('explBody');
+  const q = explF.q.trim().toLowerCase();
+  const all = drillNewsItems().filter(x => !q || x.txt.toLowerCase().includes(q));
+  const n = g => all.filter(x => x.g === g).length;
+  const list = all.filter(x => rnType === 'all' || x.g === rnType);
+  const soon = list.filter(x => x.ahead).reverse(), past = list.filter(x => !x.ahead);
+  const chip = (t, label, k) => `<button class="grp-btn${rnType === t ? ' active' : ''}" onclick="rnType='${t}';rnShown=50;drillRenderNews()">${label} (${k})</button>`;
+  const row = x => `<div class="nw-row${x.click ? ' nw-click' : ''}"${x.click ? ` onclick="${x.click}"` : ''}>
+      <span class="nw-t nw-${x.t}">${x.label}</span><span class="nw-txt">${x.html}</span></div>`;
+  const days = rows => { let day = '', h = ''; rows.forEach(x => { if (x.d !== day) { day = x.d; h += `<div class="nw-day">${fmtShort(day)}</div>`; } h += row(x); }); return h; };
+  box.innerHTML = `
+    ${soon.length ? `<div class="pf-card"><h3>Coming up · next ${DN_AHEAD} days</h3>${days(soon)}</div>` : ''}
+    <div class="pf-card"><h3>Rig news</h3><div class="ex-slot"></div>
+      <div class="ex-sum"><strong>${past.length}</strong> items${soon.length ? ` (and ${soon.length} coming up)` : ''} · rig moves, contracts and Havtil cases linked to a rig</div>
+      <div class="grp-row">${chip('all', 'All', all.length)}${chip('moves', 'Rig moves', n('moves'))}${chip('contracts', 'Contracts', n('contracts'))}${chip('havtil', 'Havtil', n('havtil'))}</div>
+      ${days(past.slice(0, rnShown)) || '<div class="pf-map-note">Nothing matches the filters.</div>'}
+      ${past.length > rnShown ? `<button class="grp-btn ex-more" onclick="rnShown+=100;drillRenderNews()">Show more (${past.length - rnShown} older)</button>` : ''}
+      <div class="pf-map-note"><strong>Rig moves</strong> come from AIS stays: a rig arriving at a new well, field, port or position (the last 180 days).
+        <strong>Contracts</strong>: changes found when a contractor publishes a new fleet status report or updates its fleet timeline
+        (new contracts, extensions, exercised options, contracts dropped from the report), and firm contracts starting or ending in the
+        last ${DN_BACK} days by their dates in Drilling → Rigs (≈ = read from a graphical timeline, so the date is approximate). A start straight after a contract
+        for the same client and an end followed by a new contract are not listed. <strong>Havtil</strong>: every case from the Norwegian Ocean Industry
+        Authority (inspections, consents, investigations and orders) that names a rig. Click a row for the rig's profile.</div></div>`;
   dockBar('explBody');
 }
 

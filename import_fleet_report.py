@@ -21,6 +21,19 @@ som var avsluttet før den nyeste rapporten fra samme selskap.
 Fila kan også rettes og fylles på for hånd (kontrakter fra pressemeldinger,
 selskaper uten rapport). Rader med en kilde som begynner med "manual" (f.eks.
 "manual-saipem", beskrevet i sources) røres aldri av skriptet.
+
+Kontraktnyheter: endringer fra en ny rapport (eller en endret tidslinje på
+nettsidene) skrives også til data/changes.json som hendelser av typen
+"contract", som Drilling → News viser:
+    {"id": "contract|new|…", "d": rapportdato, "t": "contract", "x": "new",
+     "r": rigg, "cl": kunde, "ck": "firm"/"option", "s": start, "e": slutt,
+     "os"/"oe": forrige start/slutt (ved endring), "rate": dagrate,
+     "src": riggselskap, "cmp": [Sodirs selskaper]}
+x er new (ny kontrakt), ext (forlenget), cut (forkortet), moved (startdatoen
+flyttet), exercised (opsjon gjort om til fast kontrakt) eller gone (kommende
+kontrakt borte fra rapporten: endret eller kansellert). Endringer under
+CHANGE_DAYS dager (avlesningsstøy fra tidslinjene) og eldre rapporter som bare
+fyller på historikk gir ingen hendelser.
 """
 
 import argparse
@@ -34,6 +47,7 @@ from datetime import date, timedelta
 PATH = os.path.join('data', 'rig_contracts.json')
 FACTS = os.path.join('data', 'rig_facts.json')
 MATCH_DAYS = 150    # samme rigg, kunde og type, og start innenfor så mange dager: samme kontrakt
+CHANGE_DAYS = 14    # mindre flytt av start eller slutt blir ikke kontraktnyhet
 
 MONTHS = {m.lower(): i for i, m in enumerate(calendar.month_abbr) if m}
 
@@ -585,6 +599,21 @@ def clean_client(c):
     return c or 'Undisclosed'
 
 
+def _days(a, b):
+    return abs((date.fromisoformat(a) - date.fromisoformat(b)).days)
+
+
+def _event(x, as_of, c, old=None):
+    e = {'id': '|'.join(['contract', x, c['rig'], c['client'], c['kind'], c['start'], c['end'], as_of]),
+         'd': as_of, 't': 'contract', 'x': x, 'r': c['rig'], 'cl': c['client'], 'ck': c['kind'],
+         's': c['start'], 'e': c['end'], 'src': c.get('contractor', '')}
+    if c.get('dayrate'):
+        e['rate'] = c['dayrate']
+    if old:
+        e['os'], e['oe'] = old['start'], old['end']
+    return e
+
+
 def merge(db, contractor, as_of, rows, rigs, src_id, title):
     known = sodir_rigs()
     keep_rows = []
@@ -600,6 +629,8 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
     log = []
     result = []
     used = set()
+    fresh = not newest or as_of >= newest    # bare nye rapporter gir kontraktnyheter
+    events, gone = [], []
     for c in mine:
         c_date = db['sources'].get(c['source'], {}).get('date', '')
         hit = next((i for i, n in enumerate(keep_rows) if i not in used and same(c, n)), None)
@@ -611,11 +642,16 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
                     n['start'] = c['start']    # tidligere kjent start; grafen har flyttet seg
                 if any(n.get(k) != c.get(k) for k in ('start', 'end', 'dayrate', 'location', 'note')):
                     log.append(f'  ~ {n["rig"]}: {n["client"]} {c["start"]}–{c["end"]} → {n["start"]}–{n["end"]}')
+                if fresh and _days(n['end'], c['end']) >= CHANGE_DAYS:
+                    events.append(_event('ext' if n['end'] > c['end'] else 'cut', as_of, n, c))
+                elif fresh and not n.get('startOpen') and _days(n['start'], c['start']) >= CHANGE_DAYS:
+                    events.append(_event('moved', as_of, n, c))
                 result.append(n)
             else:
                 result.append(c)
         elif as_of >= c_date and c['end'] >= as_of:
             log.append(f'  - {c["rig"]}: {c["client"]} {c["start"]}–{c["end"]} ({c["kind"]}) er borte fra rapporten, fjernet')
+            gone.append(c)
         else:
             result.append(c)    # avsluttet før rapporten: historikk
     for i, n in enumerate(keep_rows):
@@ -625,6 +661,19 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
             continue    # eldre rapport: bare det som var avsluttet før den nyeste
         log.append(f'  + {n["rig"]}: {n["client"]} {n["start"]}–{n["end"]} ({n["kind"]}{", $" + format(n["dayrate"], ",") if n["dayrate"] else ""})')
         result.append(n)
+        if not fresh:
+            continue
+        # En opsjon som er borte, og en ny fast kontrakt for samme kunde over samme
+        # periode: opsjonen er utøvd.
+        opt = next((g for g in gone if g['kind'] == 'option' and n['kind'] == 'firm' and g['rig'] == n['rig']
+                    and g['client'].lower() == n['client'].lower() and g['start'] <= n['end'] and n['start'] <= g['end']), None)
+        if opt:
+            gone.remove(opt)
+            events.append(_event('exercised', as_of, n, opt))
+        else:
+            events.append(_event('new', as_of, n))
+    if fresh:
+        events += [_event('gone', as_of, g) | {'cmp': g.get('companies') or []} for g in gone]
     db['contracts'] = sorted(others + result, key=lambda c: (c['rig'], c['start'], c['kind']))
     db['sources'][src_id] = {'contractor': contractor, 'title': title, 'date': as_of}
     if not newest or as_of >= newest:
@@ -633,7 +682,7 @@ def merge(db, contractor, as_of, rows, rigs, src_id, title):
             if s:
                 db['rigs'][s] = {'contractor': contractor, **{k: v for k, v in meta.items() if v}, 'source': src_id}
     db['note'] = NOTE
-    return log
+    return log, events
 
 
 # ── Kobling til Sodirs selskaper ─────────────────────────────────────────────
@@ -698,13 +747,13 @@ def prune_sources(db):
 
 def run(db, contractor, as_of, rows, rigs, title, url=None):
     src_id = f'{contractor.lower()}-{as_of}'
-    log = merge(db, contractor, as_of, rows, rigs, src_id, title)
+    log, events = merge(db, contractor, as_of, rows, rigs, src_id, title)
     if url:
         db['sources'][src_id]['url'] = url
     print(f'{contractor} {as_of}: {len(rows)} rader, '
           f'{sum(1 for c in db["contracts"] if c.get("source") == src_id)} på rigger Sodir kjenner')
     print('\n'.join(log) or '  ingen endringer')
-    return log
+    return log, events
 
 
 def main():
@@ -715,6 +764,7 @@ def main():
     a = ap.parse_args()
     db = load()
     changed = False
+    events = []
     for path in a.pdf:
         import pdfplumber
         with pdfplumber.open(path) as pdf:
@@ -723,7 +773,9 @@ def main():
             if not reader:
                 sys.exit('Kjenner ikke igjen rapporten. Lesere finnes for: ' + ', '.join(k for k, _ in READERS))
             contractor, as_of, rows, rigs = reader(pdf, text)
-        changed |= bool(run(db, contractor, as_of, rows, rigs, f'{contractor} Fleet Status Report {as_of}'))
+        log, ev = run(db, contractor, as_of, rows, rigs, f'{contractor} Fleet Status Report {as_of}')
+        changed |= bool(log)
+        events += ev
     if a.web is not None:
         for name in (a.web or sorted(WEB)):
             # Nettsidene leses daglig. Uten endringer skrives ingenting, så kilden
@@ -734,13 +786,25 @@ def main():
             except Exception as e:  # nettsiden endret eller nede: behold forrige datasett
                 print(f'{name}: feilet ({e}); beholder forrige datasett', file=sys.stderr)
                 continue
-            if run(trial, contractor, as_of, rows, rigs, f'{contractor} website (fleet timeline) {as_of}', url):
+            log, ev = run(trial, contractor, as_of, rows, rigs, f'{contractor} website (fleet timeline) {as_of}', url)
+            if log:
                 db = trial
                 changed = True
+                events += ev
     prune_sources(db)
     changed |= link_companies(db)
+    for e in events:    # selskapene står på kontrakten etter link_companies
+        if 'cmp' not in e:
+            c = next((c for c in db['contracts'] if c['rig'] == e['r'] and c['client'] == e['cl']
+                      and c['kind'] == e['ck'] and c['start'] == e['s']), {})
+            e['cmp'] = c.get('companies') or []
+    if events:
+        print(f'  {len(events)} kontraktnyheter')
     if a.dry_run or not changed:
         return
+    if events:
+        import changes
+        changes.merge(events)
     with open(PATH, 'w', encoding='utf-8') as fh:
         json.dump(db, fh, ensure_ascii=False, indent=1)
         fh.write('\n')
