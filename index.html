@@ -3651,7 +3651,7 @@ function setChartNone() {
 }
 
 function drawChart() {
-  pptSpec = null; pptExtra = []; pptMainMeta = null;
+  pptSpec = null; pptExtra = []; pptMainMeta = null; xlsExtra = [];
   if (topMode === 'fields') {
     const sv = fieldSubView;
     if (sv === 'oilgas')          drawFieldsOilGas();
@@ -7462,6 +7462,13 @@ function omPpt(S, {charts, cols}) {
     {title: 'Call on OPEC, 12-month moving average', subtitle: `Million b/d, global demand minus non-OPEC supply · ${span} · dashed: ${fcNote}`, source},
   ];
   pptSpec = specs[0]; pptMainMeta = meta[0];
+  // Excel: grafdataene i eget ark, én rad per periode.
+  const val = (ch, i) => { const v = ch.data.datasets[0].data[i]; return v == null ? '' : v; };
+  xlsExtra = [{name: 'Charts',
+    header: ['Period', 'Forecast', 'Global demand growth y/y, million b/d', 'Non-OPEC supply growth y/y, million b/d',
+             'Call on OPEC (global demand − non-OPEC supply), 12-month moving average, million b/d'],
+    widths: [12, 10, 22, 22, 30],
+    rows: charts[0].data.labels.map((l, i) => [l, cols[i].fc ? 'yes' : '', val(charts[0], i), val(charts[1], i), val(charts[2], i)])}];
   pptExtra = [{id: 'omsup', spec: specs[1], meta: meta[1]}, {id: 'omcall', spec: specs[2], meta: meta[2]}];
 }
 
@@ -15976,6 +15983,10 @@ let pptExtra = [];
 // sidetittelen beskriver (Oil market: sidetittelen gjelder tabellen).
 // Nullstilles i drawChart.
 let pptMainMeta = null;
+// Ekstra ark i Excel-eksporten, etter Data-arket: [{name, header, rows}].
+// Brukes når siden har grafer ved siden av det Data-arket inneholder
+// (Oil market: tabellen i Data, de tre grafene i Charts). Nullstilles i drawChart.
+let xlsExtra = [];
 
 // ExcelJS is 1.1 MB and only needed for a download, so it is fetched then.
 const EXCEL_URL = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
@@ -16611,6 +16622,17 @@ async function downloadExcel() {
     const row = wsData.addRow([lbl, ...lastDatasets.map(d => d.data[i] ?? 0)]);
     if (i % 2 === 1) row.eachCell(cell => {
       cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF7F9FC'}};
+    });
+  });
+  xlsExtra.forEach(sh => {
+    const ws = wb.addWorksheet(sh.name);
+    ws.columns = sh.header.map((h, i) => ({header: h, width: (sh.widths && sh.widths[i]) || 20}));
+    ws.getRow(1).font = {bold:true};
+    ws.getRow(1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}};
+    ws.getRow(1).alignment = {wrapText:true, vertical:'top'};
+    sh.rows.forEach((r, i) => {
+      const row = ws.addRow(r);
+      if (i % 2 === 1) row.eachCell(cell => { cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF7F9FC'}}; });
     });
   });
 
