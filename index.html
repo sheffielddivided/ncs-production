@@ -214,6 +214,12 @@
     table.om .tw.open::before{transform:rotate(90deg);}
     table.om .src{font-size:0.6rem;color:var(--muted);margin-left:5px;font-weight:500;text-transform:none;letter-spacing:0;}
     table.om .pos{color:#00875a;} table.om .neg{color:#c62828;}
+    .om-charts{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px;}
+    @media (min-width:900px){.om-charts{grid-template-columns:repeat(3,minmax(0,1fr));}}
+    .om-chart{border:1px solid var(--border);border-radius:8px;padding:8px 10px 6px;min-width:0;}
+    .om-chart h4{font-size:0.74rem;font-weight:700;color:var(--navy);margin:0;}
+    .om-chart .om-csub{font-size:0.64rem;color:var(--muted);margin:1px 0 4px;}
+    .om-chart .chart-container{height:210px;}
     .om-kv.pos{color:#00875a !important;} .om-kv.neg{color:#c62828 !important;}
     @media (max-width:640px){table.om th:first-child,table.om td:first-child{min-width:150px;max-width:150px;overflow:hidden;text-overflow:ellipsis;}}
     .np-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
@@ -7371,6 +7377,67 @@ function omFacts(S) {
   ];
 }
 
+// Tre grafer over tabellen, på samme tidsakse som tabellen (frekvens og
+// periode, uten årskolonnene til slutt): vekst i globalt forbruk og i
+// non-OPEC-produksjon mot samme periode året før, og «call on OPEC» —
+// globalt forbruk minus non-OPEC-produksjon — som glidende 12 måneders snitt
+// av månedstallene, lest av ved periodens siste måned. Prognose er blekere
+// (stolper) eller stiplet (linjen).
+const OM_CH = [
+  {id: 'omDemChart', title: 'Global demand growth, y/y', series: 'PATC_WORLD', color: '206,15,105'},
+  {id: 'omSupChart', title: 'Non-OPEC supply growth, y/y', series: 'PAPR_NONOPEC', color: '42,111,168'},
+  {id: 'omCallChart', title: 'Call on OPEC, 12-month moving average', color: '125,34,72'},
+];
+function omCallMa(S) {
+  const dem = S.data.monthly?.PATC_WORLD || {}, sup = S.data.monthly?.PAPR_NONOPEC || {};
+  const months = Object.keys(dem).filter(m => sup[m] != null).sort(), out = {};
+  months.forEach((m, i) => {
+    if (i < 11) return;
+    const win = months.slice(i - 11, i + 1);
+    // Bare sammenhengende 12 måneder.
+    const [y0, m0] = win[0].split('-').map(Number), [y1, m1] = m.split('-').map(Number);
+    if ((y1 - y0) * 12 + m1 - m0 !== 11) return;
+    out[m] = win.reduce((t, k) => t + dem[k] - sup[k], 0) / 12;
+  });
+  return out;
+}
+function omChartsHtml() {
+  const sub = ['million b/d, change vs. same period last year', 'million b/d, change vs. same period last year',
+               'million b/d · global demand minus non-OPEC supply'];
+  return `<div class="om-charts">${OM_CH.map((c, i) => `<div class="om-chart"><h4>${c.title}</h4><div class="om-csub">${sub[i]}</div>
+    <div class="chart-container"><canvas id="${c.id}"></canvas></div></div>`).join('')}</div>`;
+}
+function omDrawCharts(S, cols) {
+  cols = cols.filter(c => !c.ann);
+  const labels = cols.map(c => c.freq === 'annual' ? c.p : c.freq === 'quarterly' ? `Q${c.label.slice(1)} ${c.year}` : `${c.label} ${c.year}`);
+  const sgn = v => (v > 0 ? '+' : '') + v.toFixed(2);
+  const lastHist = omMonthLabel(S.lastHistMonth);
+  const opts = (fmt, isLine) => ({responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+    plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null, callbacks: {
+      label: it => ` ${fmt(it.parsed.y)} mb/d${cols[it.dataIndex].fc ? ' (forecast)' : ''}`}}},
+    scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 14, font: {size: 9},
+               callback: function (v) { const l = this.getLabelForValue(v); return cols[0].freq === 'annual' ? l : l.replace(/^(\S+) (\d{4})$/, (_, a, y) => cols[0].freq === 'quarterly' && a !== 'Q1' ? a : `${a} ${y}`); }},
+               grid: {display: false}},
+             y: {beginAtZero: !isLine, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}});
+  OM_CH.slice(0, 2).forEach(c => {
+    const vals = cols.map(col => { const v = omValue(S, {id: c.series}, col.freq, col.p), pv = omValue(S, {id: c.series}, col.freq, omPrev(col));
+      return v == null || pv == null ? null : +(v - pv).toFixed(3); });
+    usCharts.push(new Chart(document.getElementById(c.id).getContext('2d'), {type: 'bar',
+      data: {labels, datasets: [{label: c.title, data: vals, borderWidth: 0, maxBarThickness: 28,
+        backgroundColor: cols.map(col => `rgba(${c.color},${col.fc ? 0.35 : 0.9})`)}]},
+      options: opts(sgn, false)}));
+  });
+  const ma = omCallMa(S), c = OM_CH[2];
+  const endMonth = col => col.freq === 'monthly' ? col.p : col.freq === 'quarterly' ? `${col.year}-${String(+col.p.slice(-1) * 3).padStart(2, '0')}` : `${col.p}-12`;
+  const vals = cols.map(col => { const v = ma[endMonth(col)]; return v == null ? null : +v.toFixed(3); });
+  usCharts.push(new Chart(document.getElementById(c.id).getContext('2d'), {type: 'line',
+    data: {labels, datasets: [{label: c.title, data: vals, borderColor: `rgb(${c.color})`, backgroundColor: `rgba(${c.color},0.08)`, fill: 'start',
+      borderWidth: 2, pointRadius: cols.length > 40 ? 0 : 2, pointHoverRadius: 4, tension: cols[0].freq === 'monthly' ? 0.2 : 0, spanGaps: true,
+      segment: {borderDash: ctx => cols[ctx.p1DataIndex].fc ? [5, 4] : undefined}}]},
+    options: opts(v => v.toFixed(2), true)}));
+  return lastHist;
+}
+
 function drawPriceOilMarket() {
   US_PARAMS.forEach(([k, , d]) => { if (prF[k] == null) prF[k] = d; });
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -7412,6 +7479,7 @@ function drawPriceOilMarket() {
   const prevSc = document.getElementById('omScroll'), prevLeft = prevSc ? prevSc.scrollLeft : 0;
   document.getElementById('chartArea').innerHTML = `
     <div class="np-bar">${pills}</div>
+    ${omChartsHtml()}
     <div class="pf-facts" style="margin-bottom:12px">${omFacts(S).map(([l, v, sub, cls]) =>
       `<div class="pf-fact"><span>${l}</span><strong class="om-kv ${cls || ''}">${v}</strong><small style="display:block;font-size:0.68rem;color:var(--muted)">${sub}</small></div>`).join('')}</div>
     <div class="om-scroll" id="omScroll">${html}</div>
@@ -7419,6 +7487,7 @@ function drawPriceOilMarket() {
       <div class="legend-item"><div class="legend-dot" style="background:#f6f1f4;border:1px solid var(--border)"></div>Forecast (shaded, italic)</div>
       <div class="legend-item">Market balance = production − consumption (positive = implied stock build)</div>
       <div class="legend-item">OPEC country detail is published for historical months only</div></div>`;
+  omDrawCharts(S, cols);
   // Ny frekvens eller periode: start rullet helt til høyre, så utsiktsårene
   // vises. Ellers (utfolding, nivå / endring) beholdes rulleposisjonen.
   const sc = document.getElementById('omScroll'), viewKey = freq + '|' + prF.omr;
@@ -7436,6 +7505,7 @@ function drawPriceOilMarket() {
   setChartTitle('World liquid fuels balance', `EIA Short-Term Energy Outlook ${rel} · Table 3a enriched with Table 3c · history through ${omMonthLabel(S.lastHistMonth)}`);
   setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA), Short-Term Energy Outlook (STEO), Table 3a (World Petroleum and Other Liquid Fuels Production, Consumption, and Inventories) and Table 3c (OPEC+ and other producers), monthly, quarterly and annual series from the EIA API, collected daily by the eia solution${S.updatedAt ? `, updated ${fmtShort(S.updatedAt.slice(0, 10))}` : ''} &nbsp;|&nbsp; ` +
     `Production and consumption in million barrels per day; inventories in million barrels at the end of the period. Shaded columns are EIA's forecast. Quarterly and monthly views end with annual averages for the outlook years &nbsp;|&nbsp; ` +
+    `<strong>Charts:</strong> growth is the change from the same period a year earlier; call on OPEC is global consumption minus non-OPEC production (crude and other liquids), a 12-month moving average of the monthly figures read at the last month of each period. The charts follow the table's frequency and period; lighter bars and the dashed line are forecast &nbsp;|&nbsp; ` +
     `Click a row with ▸ to show its breakdown.`);
 }
 
