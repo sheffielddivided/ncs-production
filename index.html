@@ -12308,7 +12308,7 @@ function drawFieldHavtil() {
 // vært der minst to timer; skip som bare passerer, er ikke med. Tankskip er
 // AIS-type 80–89, eller ukjent type over 220 m. «From» og «To» er skipets
 // siste stopp før og første stopp etter anløpet (havn, annet felt eller
-// posisjon på sjøen), innenfor fire dager.
+// posisjon på sjøen), innenfor sju dager.
 let shippingData = null, shippingLoading = null;
 let shipMeasure = 'calls', shipShown = 50;
 function loadShipping() {
@@ -12435,7 +12435,7 @@ function drawShipping(ids, name, kind) {
     `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours; tankers passing through are left out. Calls by the same tanker less than 72 hours apart count as one (it moved off and came back to load), so the time at the field can include waiting nearby &nbsp;|&nbsp; ` +
     `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
     `<strong>Est. cargo:</strong> from the highest draught the tanker reported on AIS after leaving (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Rough, about ±15 %; missing when no draught was sampled before the next call &nbsp;|&nbsp; ` +
-    `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within four days &nbsp;|&nbsp; ` +
+    `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within seven days &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
   if (!datasets.length) setChartEmpty('No tanker calls in the period.');
   else renderChart(months, datasets, datasets.map(d => ({label: d.label, color: d.backgroundColor})),
