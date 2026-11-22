@@ -41,6 +41,7 @@ som statiske JSON-filer i dette repoet.
 | `data/pipelines.json` | Transportrørledninger (lag 6100) med attributter og forenklet trasé, til NCS → Gas exports → Infrastructure. Bygges av `fetch_sodir.py` |
 | `data/facilities.json` | Innretninger per felt (lag 6000) — til hubprofilen |
 | `data/exploration_wells.json` | Letebrønner (lag 5000) — planlagte, pågående og avsluttede, med eierskap per spud-dato. Lastes først når Exploration åpnes |
+| `fetch_news.py` | Henter Sodirs RSS-feed «Production figures» til `data/sodir_news.json`: de seks siste meldingene (lenke i NCS → Production og på startsiden) og `prelim`, et arkiv over Sodirs foreløpige månedstall for olje, NGL og kondensat (fat per dag) som bare vokser. Vises som markører i NCS → Production (Monthly, Oil & Gas), også for måneden feltdataene ennå ikke har. Gass og Sodirs prognose står bare i artikkelen, som er bak Cloudflare |
 | `fetch_prospects.py` | Henter prospektnavn til letebrønner fra Sodirs RSS-feed «Exploration drilling results» (brønn fra tittelen, prospekt fra beskrivelsen) og bygger `data/exploration_prospects.json` — et arkiv som bare vokser. Brukes som navn på brønner uten funnnavn, typisk tørre |
 | `data/exploration_name_overrides.json` | Navn på letebrønner satt for hånd i appen (Exploration → brønn → «Edit name»). Skrives rett til GitHub med samme token som hub-innstillingene og gjelder for alle. Går foran både funnnavn og prospektnavn; tomt navn fjerner overstyringen |
 | `data/rig_wells.json` | Utviklingsbrønner (lag 5000, siste to år) til riggoversikten i Exploration |

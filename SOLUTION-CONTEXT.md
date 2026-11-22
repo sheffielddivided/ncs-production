@@ -311,6 +311,29 @@ forrige vannkolonne (`keep_previous_water()`), som før.
 > månedsrader og en aggregert årsrad per år i samme tabell. Koden skiller dem i
 > `isValidRow` (`index.html:791-793`). Blander man dem, dobbelttelles alt.
 
+### `data/sodir_news.json` — Sodirs produksjonsmeldinger og foreløpige tall
+
+Bygges av `fetch_news.py` fra RSS-feeden
+`https://www.sodir.no/en/whats-new/news/rss/production-figures/`.
+
+```json
+{"source":"…","items":[{"title":"Production figures October 2026","link":"…","description":"…","date":"2026-11-20"}],
+ "prelim":[{"month":"2026-10","liquids":2030000,"date":"2026-11-20","link":"…"}]}
+```
+
+- `items`: de seks siste meldingene, slik feeden har dem.
+- `prelim`: Sodirs foreløpige tall per måned, lest av ingressen («… show an average
+  daily production of 2 030 000 barrels of oil, NGL and condensate»). `liquids` er fat
+  per dag av olje, NGL og kondensat, altså samme innhold som oljeserien i appen.
+  Arkivet bare vokser; en ny melding for samme måned erstatter den gamle. Starter
+  april 2026 (eldre meldinger ble ikke tatt vare på).
+- Gass, total o.e. og Sodirs prognose står bare i selve artikkelen, som svarer 403
+  (Cloudflare) til automatiske klienter, og hentes derfor ikke.
+- NCS → Production, Monthly, Oil & Gas (ikke scenarioer, havområde eller operatør):
+  tallene tegnes som markører (◇, `NCS_PRELIM_LABEL`) over søylene, og aksen forlenges
+  til siste meldte måned, der bare markøren står. Tooltipens «Total» tar ikke med
+  markøren og utelates når måneden ikke har søyler.
+
 ### `data/licensees.json` — eierandeler over tid
 
 ```json
