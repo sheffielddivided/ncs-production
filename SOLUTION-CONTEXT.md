@@ -311,31 +311,34 @@ forrige vannkolonne (`keep_previous_water()`), som før.
 > månedsrader og en aggregert årsrad per år i samme tabell. Koden skiller dem i
 > `isValidRow` (`index.html:791-793`). Blander man dem, dobbelttelles alt.
 
-### `data/shipping.json` — skipstrafikk til felt (Field → Shipping)
+### `data/shipping.json` — tankskip som laster på felt (Field / Hub → Shipping)
 
 Bygges av `fetch_shipping.py` for feltene i `data/shipping_fields.json`
-(`{"fields": [{"name": "SKARV", "radiusKm": 3}]}`, feltnavn som i Sodir).
+(`{"fields": [{"name": "SKARV", "radiusKm": 3}]}`, feltnavn som i Sodir;
+foreløpig FPSO- og lastefeltene Skarv, Alvheim, Norne, Åsgard, Balder (med
+Jotun FPSO), Goliat, Johan Castberg, Njord, Kristin og Heidrun). Bare tankskip
+(skytteltankere) er med; andre skip hentes i boksen, men lagres ikke.
 Kilde: Kystverkets Kystdatahuset, åpne endepunkter uten innlogging:
 `ais/positions/within-bbox-time` (alle posisjoner i en boks som dekker
-feltets innretninger med radius + 1 km, `minSpeed: -1` så skip som ligger stille er med; foreløpig bare data fra
-2026-01-01), `ais/positions/for-mmsis-time` (skipets spor fire dager før og
-etter besøket) og `ais/static-messages` (navn, type, lengde; går bare til
+feltets innretninger med radius + 1 km, `minSpeed: -1` så skip som ligger
+stille er med; foreløpig bare data fra 2026-01-01; API-et kan ikke filtrere
+på skipstype), `ais/positions/for-mmsis-time` (skipets spor fire dager før og
+etter anløpet) og `ais/static-messages` (navn, type, lengde; går bare til
 starten av inneværende måned). `martraf-tracks/*` krever innlogging og brukes
 ikke.
 
-- **Senter:** feltets innretninger på overflaten i drift (Skarv: FPSO-en), ellers alle innretninger i drift. Ilandføringer og anlegg på land (typer med LAND/ONSHORE, f.eks. Goliats Hyggevannet) er ikke med. Jotun FPSO hører til feltet Balder i Sodirs data.
-- **Besøk:** skip som har vært minst 30 minutter innenfor radiusen (standard 3 km) rundt en av feltets innretninger i drift (også havbunnsrammer, så fartøy som jobber der er på feltet), og som enten stoppet der (< 3 knop) eller var der minst 2 timer. Skip som seiler gjennom feltet, er ikke med. Opphold med under 6 timers hull slås sammen. `open` = 1 når skipet var der ved siste henting.
-- **From / To:** første stopp på minst en time (< 3 knop) utenfor feltet før og etter besøket, navngitt som havn (Kystverkets havner, kaier og ankerplasser innen 3 km), felt (Sodirs innretninger innen 3 km) eller posisjon. Tomt navn = ingen stopp funnet innen fire dager; `null` = ikke slått opp ennå.
-- **Kategori:** AIS-type 80–89 eller ukjent type (0/90) over 180 m → tanker (skytteltankere), 30 fiske, 70–79 last, 60–69 passasjer, 31/32/52 slep, ellers offshore/forsyning.
-- **Loggen** (`data/shipping_log.json`) holder ikke posisjoner, bare oppholdene per felt: `open` (skip som er eller nylig var innenfor radiusen: `[start, slutt, nærmeste km, stoppet]`, minutter siden 1970) og `visits` (avsluttede besøk: `[mmsi, start, slutt, km]`), og `until`, så hver kjøring fortsetter der forrige slapp. Et åpent opphold avsluttes når skipet ikke har vært innenfor radiusen på 6 timer. Endres besøksregelen, må dataene hentes på nytt (slett feltet i loggen). `--rebuild` bygger `shipping.json` fra loggen uten nett, `--reroute` slår opp From/To på nytt. Tre felt hentes samtidig (`WORKERS`), og rute-oppslagene går også tre om gangen.
+- **Innretninger:** feltets innretninger i drift, også havbunnsrammer; ilandføringer og anlegg på land (typer med LAND/ONSHORE, f.eks. Goliats Hyggevannet) er ikke med. Jotun FPSO hører til feltet Balder i Sodirs data.
+- **Anløp:** et skip som har vært minst 30 minutter innenfor radiusen (standard 3 km) rundt en av innretningene, og som enten stoppet der (< 3 knop) eller var der minst 2 timer. Opphold med under 6 timers hull er ett anløp. `open` = 1 når skipet var der ved siste henting.
+- **Tankskip:** AIS-type 80–89, eller ukjent type (0/90) over 180 m. Skip uten registrering ennå (nye denne måneden) holdes i loggen til de kan slås opp.
+- **From / To:** første stopp på minst en time (< 3 knop) utenfor feltet før og etter anløpet, navngitt som havn (Kystverkets havner, kaier og ankerplasser innen 3 km; kaier får navnet på havnen de hører til), felt (Sodirs innretninger innen 3 km) eller posisjon. Bare norske havner har navn. Tomt navn = ingen stopp funnet innen fire dager; `null` = ikke slått opp ennå.
+- **Loggen** (`data/shipping_log.json`) holder ikke posisjoner, bare oppholdene per felt: `open` (`[start, slutt, nærmeste km, stoppet]`, minutter siden 1970) og `visits` (avsluttede anløp av tankskip og skip som ikke er slått opp: `[mmsi, start, slutt, km]`), `until`, og skipsregisteret for alle skip som har hatt et opphold (`ships`). Endres anløpsregelen, må feltet hentes på nytt (slett det i loggen). `--rebuild` bygger `shipping.json` fra loggen uten nett, `--reroute` slår opp From/To på nytt. Tre felt hentes samtidig (`WORKERS`), og rute-oppslagene går også tre om gangen.
 
-Frontend (`drawFieldShipping`): anløp eller fartøydøgn per uke stablet etter
-kategori, oppsummering per kategori og tabell over anløpene, nyeste først.
-Bare ett felt om gangen; felt uten data viser hvilke felt som har det.
-Hub → Shipping (`drawHubShipping`, samme `drawShipping`) samler anløpene til
-medlemsfeltene som har data. Et skip som går fra ett medlemsfelt til et annet
-med under 6 timer imellom (`SHIP_GAP_H`), regnes som ett anløp til huben, og
-tabellen viser feltene i rekkefølge. Infoboksen nevner medlemsfelt uten data.
+Frontend (`drawShipping`, brukt av `drawFieldShipping` og `drawHubShipping`):
+anløp eller dager ved feltet per måned stablet per tankskip (de åtte med flest
+anløp, resten som «Other tankers»), tabell per tankskip og tabell over
+anløpene, nyeste først. Huben samler medlemsfeltene som har data; et skip som
+går fra ett medlemsfelt til et annet med under 6 timer imellom
+(`SHIP_GAP_H`), er ett anløp til huben.
 
 ### `data/licensees.json` — eierandeler over tid
 

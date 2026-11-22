@@ -1,6 +1,7 @@
 """
-Skipstrafikk til og fra utvalgte felt, fra Kystverkets åpne AIS-API
-(Kystdatahuset), til Field → Shipping.
+Tankskip (skytteltankere) som laster på utvalgte felt, fra Kystverkets åpne
+AIS-API (Kystdatahuset), til Field → Shipping og Hub → Shipping. Andre skip
+(forsyning, standby, fiske, last) hentes med i boksen, men lagres ikke.
 
     pip install requests
     python fetch_shipping.py            # henter nye dager for feltene i shipping_fields.json
@@ -331,6 +332,7 @@ def main():
     fields, facs = load_fields_and_facilities()
     by_name = {v.upper(): k for k, v in fields.items()}
     log = load_json(LOG, {'fields': {}})
+    log.setdefault('ships', {})
     out = load_json(OUT, {'fields': {}})
     out_fields = {}
     ports = None
@@ -401,10 +403,16 @@ def main():
         visits = [{'m': m, 's': s_, 'e': e, 'd': d} for m, s_, e, d in flog['visits']]
         visits += [{'m': m, 's': g[0], 'e': g[1], 'd': g[2]} for m, g in flog['open'].items() if is_visit(g)]
         visits.sort(key=lambda v: v['s'])
-        st['visits'] = visits
-        st['ships'] = dict(st['prev'].get('ships') or {})
+        # Bare tankskip er med. Skipsregisteret slås opp for skip vi ikke
+        # kjenner (felles for alle felt, i loggen); besøk av andre skip fjernes
+        # fra loggen, mens skip uten registrering ennå (nye denne måneden)
+        # beholdes til de kan slås opp.
+        ships = log['ships']
         if not rebuild:
-            fetch_ships(sorted({v['m'] for v in visits}), st['ships'])
+            fetch_ships(sorted({v['m'] for v in visits} - set(ships)), ships)
+        flog['visits'] = [v for v in flog['visits'] if v[0] not in ships or category(ships[v[0]]) == 'tanker']
+        st['visits'] = [v for v in visits if v['m'] in ships and category(ships[v['m']]) == 'tanker']
+        st['ships'] = ships
         old_route = {} if reroute else {f"{r[0]}|{r[1]}": (r[5], r[6]) for r in st['prev'].get('visits') or []}
         for v in visits:
             v['open'] = st['until_min'] - v['e'] < 60   # skipet er (trolig) der ennå
@@ -446,7 +454,7 @@ def main():
             'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'],
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to'],
             'visits': rows_out,
-            'ships': {m: {**st['ships'].get(m, {}), 'cat': category(st['ships'].get(m))} for m in sorted(ship_ids)},
+            'ships': {m: st['ships'][m] for m in sorted(ship_ids)},
         }
         print(f'  {st["fc"]["name"]}: {len(rows_out)} besøk, {len(ship_ids)} skip, data til {st["flog"]["until"]}')
 
