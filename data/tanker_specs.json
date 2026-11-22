@@ -25,7 +25,8 @@
    "name": "MARAN NANSEN (ex NANSEN SPIRIT)",
    "dwt": 109239,
    "m3": 119250,
-   "source": "https://scheepvaartwest.be/CMS/index.php/tankers/12496-nansen-spirit-imo-9438860"
+   "source": "https://scheepvaartwest.be/CMS/index.php/tankers/12496-nansen-spirit-imo-9438860",
+   "note": "Altera oppgir 109 300 dwt (avrundet)"
   },
   "9649225": {
    "name": "INGRID KNUTSEN",
@@ -63,6 +64,60 @@
    "built": 2011,
    "source": "https://knutsenoas.com/ship/bodil-knutsen/",
    "m3": 175345
+  },
+  "9438858": {
+   "name": "MARAN AMUNDSEN (ex AMUNDSEN SPIRIT)",
+   "dwt": 109300,
+   "built": 2010,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9466130": {
+   "name": "MARAN PEARY (ex PEARY SPIRIT)",
+   "dwt": 106000,
+   "built": 2011,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9466142": {
+   "name": "MARAN SCOTT (ex SCOTT SPIRIT)",
+   "dwt": 109300,
+   "built": 2011,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9843912": {
+   "name": "MARAN TIDE (ex TIDE SPIRIT)",
+   "dwt": 130000,
+   "built": 2020,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9863558": {
+   "name": "MARAN WAVE (ex ALTERA WAVE)",
+   "dwt": 103000,
+   "built": 2021,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9863560": {
+   "name": "MARAN WIND (ex ALTERA WIND)",
+   "dwt": 103000,
+   "built": 2021,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9843924": {
+   "name": "MARAN CURRENT (ex CURRENT SPIRIT)",
+   "dwt": 130000,
+   "built": 2020,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9837171": {
+   "name": "RAINBOW SPIRIT",
+   "dwt": 130000,
+   "built": 2020,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
+  },
+  "9837169": {
+   "name": "AURORA SPIRIT",
+   "dwt": 130000,
+   "built": 2020,
+   "source": "Altera, «Shuttle Contract Backlog» (investorpresentasjon, skjermbilde fra brukeren; tidligere navn, avrundet dødvekt)"
   }
  }
 }
