@@ -139,7 +139,7 @@ def load_fields_and_facilities():
         fb = json.load(fh)
     c = {k: i for i, k in enumerate(fb['columns'])}
     facs = [{'name': r[c['name']], 'fieldId': r[c['fieldId']], 'field': fields.get(r[c['fieldId']], ''),
-             'surface': r[c['surface']], 'phase': r[c['phase']], 'kind': r[c['kind']], 'lon': r[c['lon']], 'lat': r[c['lat']]}
+             'surface': r[c['surface']], 'phase': r[c['phase']], 'kind': r[c['kind']], 'functions': r[c['functions']] or '', 'lon': r[c['lon']], 'lat': r[c['lat']]}
             for r in fb['rows'] if r[c['lat']] is not None and r[c['phase']] != 'REMOVED']
     return fields, facs
 
@@ -304,13 +304,14 @@ def fetch_ships(mmsis, ships):
                         'imo': r.get('imoNumber') or None}
 
 
-# Kategorier til visningen. AIS-typen er ofte 0 eller 90 for offshorefartøy, så
-# lange skip av ukjent type regnes som tankskip (skytteltankere er 200–300 m).
+# Kategorier. AIS-typen er ofte 0 eller 90, så lange skip av ukjent type regnes
+# som tankskip (skytteltankerne er 250–280 m; rørleggere og kranfartøy er
+# gjerne under 220 m).
 def category(ship):
     if not ship:
         return 'unknown'
     t, n = ship.get('type') or 0, ship.get('len') or 0
-    if 80 <= t <= 89 or (t in (0, 90) and n >= 180):
+    if 80 <= t <= 89 or (t in (0, 90) and n >= 220):
         return 'tanker'
     if t == 30:
         return 'fishing'
@@ -333,6 +334,7 @@ def main():
     by_name = {v.upper(): k for k, v in fields.items()}
     log = load_json(LOG, {'fields': {}})
     log.setdefault('ships', {})
+    excluded = {str(k) for k in (cfg.get('excludeShips') or {})}
     out = load_json(OUT, {'fields': {}})
     out_fields = {}
     ports = None
@@ -352,24 +354,30 @@ def main():
         if not surf:
             print(f"  ! {fc['name']}: ingen innretninger med posisjon", file=sys.stderr)
             continue
-        # Boksen sentreres på overflateinnretningene; besøk regnes mot alle
-        # innretningene, så fartøy som jobber ved havbunnsrammene er på feltet.
-        sc = [(f['lon'], f['lat']) for f in surf]
-        centre = (sum(c[0] for c in sc) / len(sc), sum(c[1] for c in sc) / len(sc))
-        centres = [(f['lon'], f['lat']) for f in own]
+        # Tankskip laster ved innretninger med lastefunksjon (Sodir: OFFLOADING,
+        # eller lastesystem/-bøye); uten slike, ved overflateinnretningene.
+        # Havbunnsrammene er ikke med: tankskip som venter i området, ligger
+        # ofte nær dem.
+        load = [f for f in own if 'OFFLOADING' in f['functions'] or 'LOADING' in (f['kind'] or '')] or surf
+        centres = [(f['lon'], f['lat']) for f in load]
+        centre = (sum(c[0] for c in centres) / len(centres), sum(c[1] for c in centres) / len(centres))
         radius = float(fc.get('radiusKm') or RADIUS_KM)
         # Boksen dekker alle innretningene med radius og litt margin.
         reach = max(km(centre[0], centre[1], c[0], c[1]) for c in centres) + radius + KEEP_MARGIN_KM
         box = bbox(centre, reach)
         key = str(fid)
-        flog = log['fields'].setdefault(key, {'until': None})
+        # Endres innretningene eller radiusen, hentes feltet på nytt.
+        sig = f"{radius}|" + ';'.join(f'{c[0]:.4f},{c[1]:.4f}' for c in sorted(centres))
+        if (log['fields'].get(key) or {}).get('sig') != sig:
+            log['fields'][key] = {'until': None, 'sig': sig}
+        flog = log['fields'][key]
         flog.setdefault('open', {})
         flog.setdefault('visits', [])
         # Eldre logger hadde posisjonene; de gjøres om til opphold én gang.
         if 'pts' in flog:
             for m, pts in flog.pop('pts').items():
                 feed(flog, m, pts, centres, radius)
-        setups.append({'fc': fc, 'fid': fid, 'key': key, 'own': own, 'surf': surf, 'centre': centre,
+        setups.append({'fc': fc, 'fid': fid, 'key': key, 'own': own, 'surf': surf, 'load': load, 'centre': centre,
                        'centres': centres, 'radius': radius, 'box': box, 'flog': flog})
 
     # 1. Nye posisjoner, flere felt samtidig.
@@ -411,7 +419,10 @@ def main():
         if not rebuild:
             fetch_ships(sorted({v['m'] for v in visits} - set(ships)), ships)
         flog['visits'] = [v for v in flog['visits'] if v[0] not in ships or category(ships[v[0]]) == 'tanker']
-        st['visits'] = [v for v in visits if v['m'] in ships and category(ships[v['m']]) == 'tanker']
+        # Lagerskip som ligger fast på feltet (Åsgard C, Njord Bravo, Heidrun FSU)
+        # og andre unntak står i shipping_fields.json → excludeShips.
+        st['visits'] = [v for v in visits if v['m'] in ships and category(ships[v['m']]) == 'tanker'
+                        and v['m'] not in excluded]
         st['ships'] = ships
         old_route = {} if reroute else {f"{r[0]}|{r[1]}": (r[5], r[6]) for r in st['prev'].get('visits') or []}
         for v in visits:
@@ -450,7 +461,7 @@ def main():
         ship_ids = {r[0] for r in rows_out}
         out_fields[st['key']] = {
             'name': fields[st['fid']], 'centre': [round(st['centre'][0], 5), round(st['centre'][1], 5)], 'radiusKm': st['radius'],
-            'facilities': [f['name'] for f in st['surf']], 'nFacilities': len(st['own']),
+            'facilities': [f['name'] for f in st['load']], 'nFacilities': len(st['load']),
             'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'],
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to'],
             'visits': rows_out,

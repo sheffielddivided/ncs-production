@@ -30,5 +30,12 @@
   {
    "name": "HEIDRUN"
   }
- ]
+ ],
+ "excludeShips": {
+  "259644000": "Åsgard C, lagerskip på Åsgard",
+  "257093000": "Njord Bravo, lagerskip på Njord",
+  "257804000": "Heidrun FSU, lagerskip på Heidrun",
+  "311036900": "Rørleggingsfartøy, ikke tankskip"
+ },
+ "note": "excludeShips: MMSI for skip som ikke er tankskip på besøk (lagerskip som ligger fast på feltet, feilklassifiserte fartøy). Redigeres for hånd."
 }

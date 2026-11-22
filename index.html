@@ -12306,7 +12306,7 @@ function drawFieldHavtil() {
 // data/shipping_fields.json). Et anløp er et tankskip som har vært minst en
 // halvtime innenfor radiusen rundt feltets innretninger og stoppet der eller
 // vært der minst to timer; skip som bare passerer, er ikke med. Tankskip er
-// AIS-type 80–89, eller ukjent type over 180 m. «From» og «To» er skipets
+// AIS-type 80–89, eller ukjent type over 220 m. «From» og «To» er skipets
 // siste stopp før og første stopp etter anløpet (havn, annet felt eller
 // posisjon på sjøen), innenfor fire dager.
 let shippingData = null, shippingLoading = null;
@@ -12430,8 +12430,8 @@ function drawShipping(ids, name, kind) {
       `. A tanker going from one of these fields to another with less than ${SHIP_GAP_H} hours between counts as one call &nbsp;|&nbsp; `
     : `<strong>Field:</strong> ${esc(tc(name))}, around ${Fs[0].facilities.map(x => esc(x)).join(', ')} &nbsp;|&nbsp; `) +
     `<strong>Period:</strong> ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))} &nbsp;|&nbsp; ` +
-    `<strong>Tankers:</strong> AIS ship type 80–89, or unknown type over 180 m (shuttle tankers); other vessels are not included &nbsp;|&nbsp; ` +
-    `<strong>Call:</strong> a tanker within ${radiusKm} km of one of the ${hub ? 'fields\'' : 'field\'s'} ${nFac || ''} installations for at least 30 minutes that stopped there or stayed at least 2 hours; tankers passing through are left out. Stays with less than 6 hours between them count as one &nbsp;|&nbsp; ` +
+    `<strong>Tankers:</strong> AIS ship type 80–89, or unknown type over 220 m (shuttle tankers); other vessels and the fields' own storage units are not included &nbsp;|&nbsp; ` +
+    `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours; tankers passing through are left out. Stays with less than 6 hours between them count as one &nbsp;|&nbsp; ` +
     `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within four days &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
   if (!datasets.length) setChartEmpty('No tanker calls in the period.');
