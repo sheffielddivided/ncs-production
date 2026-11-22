@@ -324,7 +324,7 @@ starten av inneværende måned). `martraf-tracks/*` krever innlogging og brukes
 ikke.
 
 - **Senter:** feltets innretninger på overflaten i drift (Skarv: FPSO-en), ellers alle innretninger i drift.
-- **Besøk:** skip som har vært minst 30 minutter innenfor radiusen (standard 3 km) rundt en av feltets innretninger i drift (også havbunnsrammer, så fartøy som jobber der er på feltet). Opphold med under 6 timers hull slås sammen. `open` = 1 når skipet var der ved siste henting.
+- **Besøk:** skip som har vært minst 30 minutter innenfor radiusen (standard 3 km) rundt en av feltets innretninger i drift (også havbunnsrammer, så fartøy som jobber der er på feltet), og som enten stoppet der (< 3 knop) eller var der minst 2 timer. Skip som seiler gjennom feltet, er ikke med. Boksen dekker alle innretningene med radius og 2 km margin, minst ±12 km. Opphold med under 6 timers hull slås sammen. `open` = 1 når skipet var der ved siste henting.
 - **From / To:** første stopp på minst en time (< 3 knop) utenfor feltet før og etter besøket, navngitt som havn (Kystverkets havner, kaier og ankerplasser innen 3 km), felt (Sodirs innretninger innen 3 km) eller posisjon. Tomt navn = ingen stopp funnet innen fire dager; `null` = ikke slått opp ennå.
 - **Kategori:** AIS-type 80–89 eller ukjent type (0/90) over 180 m → tanker (skytteltankere), 30 fiske, 70–79 last, 60–69 passasjer, 31/32/52 slep, ellers offshore/forsyning.
 - **Loggen** (`data/shipping_log.json`) har tynnede posisjoner (nytt punkt ved 300 m flytting, stopp/start eller hver time) og `until`, så hver kjøring fortsetter der forrige slapp. `--rebuild` regner besøkene om fra loggen.
@@ -332,6 +332,10 @@ ikke.
 Frontend (`drawFieldShipping`): anløp eller fartøydøgn per uke stablet etter
 kategori, oppsummering per kategori og tabell over anløpene, nyeste først.
 Bare ett felt om gangen; felt uten data viser hvilke felt som har det.
+Hub → Shipping (`drawHubShipping`, samme `drawShipping`) samler anløpene til
+medlemsfeltene som har data. Et skip som går fra ett medlemsfelt til et annet
+med under 6 timer imellom (`SHIP_GAP_H`), regnes som ett anløp til huben, og
+tabellen viser feltene i rekkefølge. Infoboksen nevner medlemsfelt uten data.
 
 ### `data/licensees.json` — eierandeler over tid
 

@@ -22,7 +22,8 @@ radius). Senteret er feltets innretninger på overflaten (FPSO, plattform),
 ellers alle innretninger i drift.
 
 Et besøk er et skip som har vært minst MIN_VISIT_MIN minutter innenfor
-radiusen rundt en av feltets innretninger. Skip som bare passerer, er ikke
+radiusen rundt en av feltets innretninger, og enten stoppet der (fart under
+STOP_KNOTS) eller vært der minst LONG_VISIT_MIN minutter. Skip som bare passerer, er ikke
 besøk. Opphold med hull under GAP_HOURS slås sammen.
 """
 
@@ -47,6 +48,7 @@ BOX_KM = 12            # boksen rundt senteret; større enn radiusen, så innsei
 RADIUS_KM = 3.0        # standard radius for et besøk
 STOP_KNOTS = 3.0
 MIN_VISIT_MIN = 30
+LONG_VISIT_MIN = 120   # uten stopp må skipet ha vært så lenge innenfor radiusen
 GAP_HOURS = 6
 THIN_KM = 0.3          # nytt punkt i loggen når skipet har flyttet seg så langt ...
 THIN_MIN = 60          # ... eller etter så mange minutter
@@ -243,10 +245,11 @@ def visits_from(pts, centres, radius):
             cur = {'start': q[0], 'end': q[0], 'min': d, 'stop': q[3] is not None and q[3] < STOP_KNOTS}
     if cur:
         out.append(cur)
-    # Minst MIN_VISIT_MIN minutter innenfor radiusen. Ett enkelt punkt (skip i
-    # kanten av radiusen, eller som passerer) er ikke et besøk.
+    # Minst MIN_VISIT_MIN minutter innenfor radiusen, og enten et stopp eller
+    # minst LONG_VISIT_MIN minutter. Ett enkelt punkt (skip i kanten av
+    # radiusen) eller et skip som seiler gjennom feltet, er ikke et besøk.
     return [[v['start'], v['end'], round(v['min'], 2)] for v in out
-            if v['end'] - v['start'] >= MIN_VISIT_MIN]
+            if v['end'] - v['start'] >= MIN_VISIT_MIN and (v['stop'] or v['end'] - v['start'] >= LONG_VISIT_MIN)]
 
 
 def last_stop(rows, before, after, away_from, radius):
@@ -348,7 +351,9 @@ def main():
         centre = (sum(c[0] for c in sc) / len(sc), sum(c[1] for c in sc) / len(sc))
         centres = [(f['lon'], f['lat']) for f in own]
         radius = float(fc.get('radiusKm') or RADIUS_KM)
-        box = bbox(centre, BOX_KM)
+        # Boksen dekker alle innretningene med radius og litt margin.
+        reach = max(km(centre[0], centre[1], c[0], c[1]) for c in centres) + radius + 2
+        box = bbox(centre, max(BOX_KM, reach))
         key = str(fid)
         flog = log['fields'].setdefault(key, {'until': None, 'pts': {}})
         prev = (out.get('fields') or {}).get(key) or {}
