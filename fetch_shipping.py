@@ -4,12 +4,13 @@ Skipstrafikk til og fra utvalgte felt, fra Kystverkets åpne AIS-API
 
     pip install requests
     python fetch_shipping.py            # henter nye dager for feltene i shipping_fields.json
-    python fetch_shipping.py --rebuild  # bygger besøkene på nytt fra loggen, uten nett for posisjonene
+    python fetch_shipping.py --rebuild  # bygger shipping.json fra loggen, uten nett
 
 Kilder, åpne uten innlogging:
   · ais/positions/within-bbox-time — alle posisjoner i en boks rundt feltets
     innretninger (radius + 1 km). Bare posisjoner så nær en innretning lagres.
-    Utledet av AIS-sporene; data finnes foreløpig fra 1. januar 2026.
+    Utledet av AIS-sporene; data finnes foreløpig fra 1. januar 2026. Bare
+    oppholdene lagres (data/shipping_log.json), ikke posisjonene.
     Hentes i biter på CHUNK_DAYS dager, og arbeidet lagres i
     data/shipping_log.json, så neste kjøring fortsetter der forrige slapp.
   · ais/positions/for-mmsis-time — skipets posisjoner før og etter besøket,
@@ -54,8 +55,6 @@ STOP_KNOTS = 3.0
 MIN_VISIT_MIN = 30
 LONG_VISIT_MIN = 120   # uten stopp må skipet ha vært så lenge innenfor radiusen
 GAP_HOURS = 6
-THIN_KM = 0.3          # nytt punkt i loggen når skipet har flyttet seg så langt ...
-THIN_MIN = 60          # ... eller etter så mange minutter
 ROUTE_DAYS = 4         # hvor langt før og etter besøket det letes etter forrige og neste stopp
 STAY_MIN = 60          # et stopp underveis varer minst så lenge
 MAX_SECONDS = int(os.environ.get("SHIPPING_SECONDS", 300))   # tidsbudsjett per kjøring; resten tas neste gang
@@ -210,54 +209,48 @@ def fetch_box(box, start, end):
     return out
 
 
-def near(q, centres, radius):
-    return any(km(q[1], q[2], c[0], c[1]) <= radius + KEEP_MARGIN_KM for c in centres)
-
-
-def thin_into(log_pts, rows):
-    """Legger radene til loggen, tynnet: nytt punkt ved flytting, stopp/start
-    eller etter THIN_MIN minutter."""
-    rows.sort(key=lambda q: q[0])
-    last = log_pts[-1] if log_pts else None
-    for q in rows:
-        if last and q[0] <= last[0]:
-            continue
-        if last:
-            moved = km(last[1], last[2], q[1], q[2])
-            slow_a = last[3] is not None and last[3] < STOP_KNOTS
-            slow_b = q[3] is not None and q[3] < STOP_KNOTS
-            if moved < THIN_KM and q[0] - last[0] < THIN_MIN and slow_a == slow_b:
-                continue
-        log_pts.append(q)
-        last = q
-
-
 # ── BESØK ────────────────────────────────────────────────────────────────────
-def visits_from(pts, centres, radius):
-    """[[start, slutt, nærmeste km], ...] for ett skip. pts: [min, lon, lat, sog]."""
-    inside = []
-    for q in pts:
+# Loggen holder ikke posisjoner, bare oppholdene: per felt «open» (skip som
+# er, eller nylig var, innenfor radiusen: [start, slutt, nærmeste km, stoppet])
+# og «visits» (avsluttede opphold som er besøk: [mmsi, start, slutt, km]).
+# Hver ny posisjon innenfor radiusen forlenger skipets åpne opphold, eller
+# starter et nytt når det er gått mer enn GAP_HOURS siden forrige.
+
+def is_visit(seg):
+    """Minst MIN_VISIT_MIN minutter innenfor radiusen, og enten et stopp eller
+    minst LONG_VISIT_MIN minutter. Ett enkelt punkt (skip i kanten av
+    radiusen) eller et skip som seiler gjennom feltet, er ikke et besøk."""
+    return seg[1] - seg[0] >= MIN_VISIT_MIN and (seg[3] or seg[1] - seg[0] >= LONG_VISIT_MIN)
+
+
+def feed(flog, m, rows, centres, radius):
+    """Legger skipets posisjoner [min, lon, lat, sog] inn i oppholdene."""
+    opened, closed = flog['open'], flog['visits']
+    for q in sorted(rows, key=lambda r: r[0]):
         d = min(km(q[1], q[2], c[0], c[1]) for c in centres)
-        if d <= radius:
-            inside.append((q, d))
-    out = []
-    cur = None
-    for q, d in inside:
-        if cur and q[0] - cur['end'] <= GAP_HOURS * 60:
-            cur['end'] = q[0]
-            cur['min'] = min(cur['min'], d)
-            cur['stop'] = cur['stop'] or (q[3] is not None and q[3] < STOP_KNOTS)
+        if d > radius:
+            continue
+        slow = q[3] is not None and q[3] < STOP_KNOTS
+        seg = opened.get(m)
+        if seg and q[0] <= seg[1]:
+            continue
+        if seg and q[0] - seg[1] <= GAP_HOURS * 60:
+            seg[1] = q[0]
+            seg[2] = min(seg[2], round(d, 2))
+            seg[3] = seg[3] or slow
         else:
-            if cur:
-                out.append(cur)
-            cur = {'start': q[0], 'end': q[0], 'min': d, 'stop': q[3] is not None and q[3] < STOP_KNOTS}
-    if cur:
-        out.append(cur)
-    # Minst MIN_VISIT_MIN minutter innenfor radiusen, og enten et stopp eller
-    # minst LONG_VISIT_MIN minutter. Ett enkelt punkt (skip i kanten av
-    # radiusen) eller et skip som seiler gjennom feltet, er ikke et besøk.
-    return [[v['start'], v['end'], round(v['min'], 2)] for v in out
-            if v['end'] - v['start'] >= MIN_VISIT_MIN and (v['stop'] or v['end'] - v['start'] >= LONG_VISIT_MIN)]
+            if seg and is_visit(seg):
+                closed.append([m, seg[0], seg[1], seg[2]])
+            opened[m] = [q[0], q[0], round(d, 2), slow]
+
+
+def close_stale(flog, until_min):
+    """Avslutter opphold der skipet ikke har vært innenfor radiusen på GAP_HOURS."""
+    for m, seg in list(flog['open'].items()):
+        if until_min - seg[1] > GAP_HOURS * 60:
+            if is_visit(seg):
+                flog['visits'].append([m, seg[0], seg[1], seg[2]])
+            del flog['open'][m]
 
 
 def last_stop(rows, before, after, away_from, radius):
@@ -367,13 +360,13 @@ def main():
         reach = max(km(centre[0], centre[1], c[0], c[1]) for c in centres) + radius + KEEP_MARGIN_KM
         box = bbox(centre, reach)
         key = str(fid)
-        flog = log['fields'].setdefault(key, {'until': None, 'pts': {}})
-        # Loggen holder bare posisjoner nær innretningene; resten av boksen
-        # trengs ikke til besøkene, og fila holdes liten.
-        for m in list(flog['pts']):
-            flog['pts'][m] = [q for q in flog['pts'][m] if near(q, centres, radius)]
-            if not flog['pts'][m]:
-                del flog['pts'][m]
+        flog = log['fields'].setdefault(key, {'until': None})
+        flog.setdefault('open', {})
+        flog.setdefault('visits', [])
+        # Eldre logger hadde posisjonene; de gjøres om til opphold én gang.
+        if 'pts' in flog:
+            for m, pts in flog.pop('pts').items():
+                feed(flog, m, pts, centres, radius)
         setups.append({'fc': fc, 'fid': fid, 'key': key, 'own': own, 'surf': surf, 'centre': centre,
                        'centres': centres, 'radius': radius, 'box': box, 'flog': flog})
 
@@ -388,31 +381,27 @@ def main():
             except Busy as exc:
                 print(f'  ! {fc["name"]} {t:%Y-%m-%d}: {exc}', file=sys.stderr)
                 return
-            kept = 0
             for m, rows in got.items():
-                rows = [q for q in rows if near(q, st['centres'], st['radius'])]
-                if rows:
-                    thin_into(flog['pts'].setdefault(m, []), rows)
-                    kept += 1
+                feed(flog, m, rows, st['centres'], st['radius'])
             flog['until'] = t1.strftime('%Y-%m-%dT%H:%M:%SZ')
-            print(f'  {fc["name"]}: {t:%Y-%m-%d}–{t1:%Y-%m-%d}, {sum(len(v) for v in got.values())} posisjoner, {kept} skip nær feltet', flush=True)
+            print(f'  {fc["name"]}: {t:%Y-%m-%d}–{t1:%Y-%m-%d}, {sum(len(v) for v in got.values())} posisjoner, {len(got)} skip', flush=True)
             t = t1
     if not rebuild:
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
             list(pool.map(fetch_field, setups))
-        write_json(LOG, log)
+        write_json(LOG, log, indent=0)
 
     # 2. Besøk og 3. skip per felt.
     for st in setups:
         flog = st['flog']
         st['prev'] = (out.get('fields') or {}).get(st['key']) or {}
-        visits = []
-        for m, pts in flog['pts'].items():
-            for s_, e, d in visits_from(pts, st['centres'], st['radius']):
-                visits.append({'m': m, 's': s_, 'e': e, 'd': d})
+        st['until_min'] = minutes(parse_iso(flog['until'])) if flog['until'] else 0
+        close_stale(flog, st['until_min'])
+        flog['visits'].sort(key=lambda v: v[1])
+        visits = [{'m': m, 's': s_, 'e': e, 'd': d} for m, s_, e, d in flog['visits']]
+        visits += [{'m': m, 's': g[0], 'e': g[1], 'd': g[2]} for m, g in flog['open'].items() if is_visit(g)]
         visits.sort(key=lambda v: v['s'])
         st['visits'] = visits
-        st['until_min'] = minutes(parse_iso(flog['until'])) if flog['until'] else 0
         st['ships'] = dict(st['prev'].get('ships') or {})
         if not rebuild:
             fetch_ships(sorted({v['m'] for v in visits}), st['ships'])
@@ -461,7 +450,7 @@ def main():
         }
         print(f'  {st["fc"]["name"]}: {len(rows_out)} besøk, {len(ship_ids)} skip, data til {st["flog"]["until"]}')
 
-    write_json(LOG, log)
+    write_json(LOG, log, indent=0)
     write_json(OUT, {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                      'source': 'Kystverket, Kystdatahuset AIS (NLOD 2.0)', 'fields': out_fields})
 
