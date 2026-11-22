@@ -46,6 +46,8 @@ DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 CFG = os.path.join(DIR, 'shipping_fields.json')
 LOG = os.path.join(DIR, 'shipping_log.json')
 OUT = os.path.join(DIR, 'shipping.json')
+SPECS = os.path.join(DIR, 'tanker_specs.json')
+OBS = os.path.join(DIR, 'tanker_obs.json')
 
 DATA_START = datetime(2026, 1, 1)   # API-et har foreløpig bare data fra denne datoen
 CHUNK_DAYS = 3
@@ -56,6 +58,21 @@ STOP_KNOTS = 3.0
 MIN_VISIT_MIN = 30
 LONG_VISIT_MIN = 120   # uten stopp må skipet ha vært så lenge innenfor radiusen
 GAP_HOURS = 6
+SAME_SHIP_HOURS = 72   # anløp av samme skip på samme felt med kortere mellomrom er ett anløp
+# Kapasitet og last. Dødvekt anslås som DWT_K × lengde × bredde × største
+# dypgang (AIS-registeret) når tanker_specs.json ikke har oppgitt tall;
+# DWT_K er kalibrert mot AETs oppgitte tall for Eagle Balder, Blane og Bergen
+# (0,63–0,66). Lastekapasiteten er lastedødvekten (CARGO_SHARE av dødvekten)
+# delt på råoljens tetthet. Lasten per anløp anslås fra dypgangen etter
+# avgang: full last minus det skipet ligger høyere enn største dypgang,
+# med vannlinjeareal WP_K × lengde × bredde.
+DWT_K = 0.648
+CARGO_SHARE = 0.95
+OIL_DENSITY = 0.87     # tonn per m³, typisk råolje på sokkelen
+BBL_PER_M3 = 6.2898
+WP_K = 0.88
+SEAWATER = 1.025
+OBS_DAYS = 120         # så lenge dypgangsobservasjonene beholdes
 ROUTE_DAYS = 4         # hvor langt før og etter besøket det letes etter forrige og neste stopp
 STAY_MIN = 60          # et stopp underveis varer minst så lenge
 MAX_SECONDS = int(os.environ.get("SHIPPING_SECONDS", 300))   # tidsbudsjett per kjøring; resten tas neste gang
@@ -283,7 +300,7 @@ def ship_rows(mmsi, start, end):
 def fetch_ships(mmsis, ships):
     """Navn, type og lengde fra static-messages; siste gyldige registrering vinner."""
     end = datetime.now(timezone.utc).replace(tzinfo=None, day=1, hour=0, minute=0, second=0, microsecond=0)
-    todo = [m for m in mmsis if m not in ships]
+    todo = list(mmsis)
     for i in range(0, len(todo), 40):
         part = todo[i:i + 40]
         params = [('start', DATA_START.strftime('%Y-%m-%dT00:00:00Z')), ('end', end.strftime('%Y-%m-%dT00:00:00Z'))]
@@ -300,8 +317,9 @@ def fetch_ships(mmsis, ships):
                 best[k] = r
         for k, r in best.items():
             length = (r.get('dimensionToBow') or 0) + (r.get('dimensionToStern') or 0)
+            beam = (r.get('dimensionToPort') or 0) + (r.get('dimensionToStarboard') or 0)
             ships[k] = {'name': (r.get('name') or '').strip(), 'type': r.get('shipType'), 'len': length or None,
-                        'imo': r.get('imoNumber') or None}
+                        'beam': beam or None, 'draught': r.get('draught') or None, 'imo': r.get('imoNumber') or None}
 
 
 # Kategorier. AIS-typen er ofte 0 eller 90, så lange skip av ukjent type regnes
@@ -324,8 +342,72 @@ def category(ship):
     return 'offshore'
 
 
+# ── KAPASITET OG LAST ────────────────────────────────────────────────────────
+def tanker_spec(ship, specs):
+    """{dwt, dwtSrc, cap} for et tankskip: oppgitt dødvekt fra tanker_specs.json,
+    ellers anslått fra målene. cap = lastekapasitet i fat."""
+    given = specs.get(str(ship.get('imo') or '')) or {}
+    dwt, src = given.get('dwt'), 'stated'
+    if not dwt and ship.get('len') and ship.get('beam') and ship.get('draught'):
+        dwt, src = round(DWT_K * ship['len'] * ship['beam'] * ship['draught'], -2), 'estimated'
+    if not dwt:
+        return {}
+    cap = given.get('bbl') or round(dwt * CARGO_SHARE / OIL_DENSITY * BBL_PER_M3, -3)
+    return {'dwt': dwt, 'dwtSrc': src, 'cap': cap, **({'source': given['source']} if given.get('source') else {})}
+
+
+def cargo_bbl(ship, spec, draught):
+    """Anslått last i fat ved en gitt dypgang, eller None."""
+    if not (spec.get('dwt') and draught and ship.get('draught') and ship.get('len') and ship.get('beam')):
+        return None
+    tonnes = CARGO_SHARE * spec['dwt'] - max(0.0, ship['draught'] - draught) * WP_K * ship['len'] * ship['beam'] * SEAWATER
+    return max(0, round(tonnes / OIL_DENSITY * BBL_PER_M3, -3))
+
+
+def realtime(log, cfg):
+    """Dypgang og destinasjon for de kjente tankskipene fra sanntidsdataene,
+    lagret i tanker_obs.json når de endres. Kjøres hver tredje time."""
+    excluded = {str(k) for k in (cfg.get('excludeShips') or {})}
+    want = {m for m, sh in (log.get('ships') or {}).items() if category(sh) == 'tanker' and m not in excluded}
+    feats = call('GET', '/ais/realtime/geojson')['features']
+    obs = load_json(OBS, {'ships': {}})
+    cut = (datetime.now(timezone.utc) - timedelta(days=OBS_DAYS)).strftime('%Y-%m-%dT%H:%M')
+    changed = 0
+    for f in feats:
+        p = f.get('properties') or {}
+        m = str(p.get('mmsi'))
+        if m not in want or not p.get('draught'):
+            continue
+        t = (p.get('date_time_utc') or '')[:16]
+        dest = ' '.join(str(p.get('destination') or '').split())
+        rows = obs['ships'].setdefault(m, [])
+        if rows and rows[-1][1] == p['draught'] and rows[-1][2] == dest:
+            continue
+        rows.append([t, p['draught'], dest])
+        changed += 1
+    for m in list(obs['ships']):
+        obs['ships'][m] = [r for r in obs['ships'][m] if r[0] >= cut]
+    obs['updated'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+    if changed:
+        write_json(OBS, obs, indent=0)
+    print(f'  sanntid: {len(want)} tankskip følges, {changed} nye observasjoner')
+
+
+def laden_after(obs_rows, end, until):
+    """Største dypgang og første destinasjon observert etter avgang (end) og
+    før neste anløp eller fire dager (until), som 'YYYY-MM-DDTHH:MM'."""
+    rows = [r for r in obs_rows if end <= r[0] <= until]
+    if not rows:
+        return None, None
+    best = max(rows, key=lambda r: r[1])
+    return best[1], next((r[2] for r in rows if r[2]), None)
+
+
 # ── HOVEDLØP ─────────────────────────────────────────────────────────────────
 def main():
+    if '--realtime' in sys.argv:
+        realtime(load_json(LOG, {'fields': {}}), load_json(CFG, {}))
+        return
     rebuild = '--rebuild' in sys.argv
     reroute = '--reroute' in sys.argv   # slår opp From/To på nytt for alle besøk
     deadline = time.time() + MAX_SECONDS
@@ -417,17 +499,33 @@ def main():
         # beholdes til de kan slås opp.
         ships = log['ships']
         if not rebuild:
-            fetch_ships(sorted({v['m'] for v in visits} - set(ships)), ships)
+            # Tankskip registrert før bredde og dypgang ble lagret, slås opp igjen.
+            stale = {m for m in ships if category(ships[m]) == 'tanker' and 'beam' not in ships[m]}
+            fetch_ships(sorted(({v['m'] for v in visits} - set(ships)) | stale), ships)
         flog['visits'] = [v for v in flog['visits'] if v[0] not in ships or category(ships[v[0]]) == 'tanker']
         # Lagerskip som ligger fast på feltet (Åsgard C, Njord Bravo, Heidrun FSU)
         # og andre unntak står i shipping_fields.json → excludeShips.
         st['visits'] = [v for v in visits if v['m'] in ships and category(ships[v['m']]) == 'tanker'
                         and v['m'] not in excluded]
+        # Samme skip på samme felt med under SAME_SHIP_HOURS timer imellom er ett
+        # anløp: tankskipet går til side og venter, og kommer tilbake for å laste.
+        merged = []
+        for v in sorted(st['visits'], key=lambda v: (v['m'], v['s'])):
+            cur = merged[-1] if merged else None
+            if cur and cur['m'] == v['m'] and v['s'] - cur['e'] <= SAME_SHIP_HOURS * 60:
+                cur['e'] = max(cur['e'], v['e'])
+                cur['d'] = min(cur['d'], v['d'])
+            else:
+                merged.append(dict(v))
+        st['visits'] = sorted(merged, key=lambda v: v['s'])
         st['ships'] = ships
-        old_route = {} if reroute else {f"{r[0]}|{r[1]}": (r[5], r[6]) for r in st['prev'].get('visits') or []}
-        for v in visits:
+        prev_rows = [] if reroute else st['prev'].get('visits') or []
+        old_from = {f"{r[0]}|{r[1]}": r[5] for r in prev_rows}
+        old_to = {f"{r[0]}|{r[2]}": r[6] for r in prev_rows if not r[4]}
+        for v in st['visits']:
             v['open'] = st['until_min'] - v['e'] < 60   # skipet er (trolig) der ennå
-            v['from'], v['to'] = old_route.get(f"{v['m']}|{iso(v['s'])}", (None, None))
+            v['from'] = old_from.get(f"{v['m']}|{iso(v['s'])}")
+            v['to'] = old_to.get(f"{v['m']}|{iso(v['e'])}")
 
     # 4. Hvor skipet kom fra og dro til, for besøkene som mangler det.
     # Gjenbrukes fra forrige kjøring; slås opp for flere skip samtidig.
@@ -456,16 +554,28 @@ def main():
             list(pool.map(route, jobs))
         print(f'  ruter: {len(jobs)} besøk manglet fra/til, {sum(1 for _, v in jobs if v["from"] is None or (v["to"] is None and not v["open"]))} mangler fortsatt')
 
+    specs = (load_json(SPECS, {}).get('ships') or {})
+    obs = load_json(OBS, {'ships': {}})['ships']
     for st in setups:
-        rows_out = [[v['m'], iso(v['s']), iso(v['e']), v['d'], 1 if v['open'] else 0, v['from'], v['to']] for v in st['visits']]
+        rows_out = []
+        by_ship = {}
+        for v in st['visits']:
+            by_ship.setdefault(v['m'], []).append(v)
+        for v in st['visits']:
+            sh = st['ships'].get(v['m']) or {}
+            nxt = [w['s'] for w in by_ship[v['m']] if w['s'] > v['e']]
+            until = iso(min([v['e'] + ROUTE_DAYS * 1440] + nxt))[:16]
+            dr, dest = (None, None) if v['open'] else laden_after(obs.get(v['m'], []), iso(v['e'])[:16], until)
+            rows_out.append([v['m'], iso(v['s']), iso(v['e']), v['d'], 1 if v['open'] else 0, v['from'], v['to'],
+                             dr, cargo_bbl(sh, tanker_spec(sh, specs), dr), dest])
         ship_ids = {r[0] for r in rows_out}
         out_fields[st['key']] = {
             'name': fields[st['fid']], 'centre': [round(st['centre'][0], 5), round(st['centre'][1], 5)], 'radiusKm': st['radius'],
             'facilities': [f['name'] for f in st['load']], 'nFacilities': len(st['load']),
             'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'],
-            'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to'],
+            'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest'],
             'visits': rows_out,
-            'ships': {m: st['ships'][m] for m in sorted(ship_ids)},
+            'ships': {m: {**st['ships'][m], **tanker_spec(st['ships'][m], specs)} for m in sorted(ship_ids)},
         }
         print(f'  {st["fc"]["name"]}: {len(rows_out)} besøk, {len(ship_ids)} skip, data til {st["flog"]["until"]}')
 

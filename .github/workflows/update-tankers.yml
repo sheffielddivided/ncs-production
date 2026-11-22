@@ -1,0 +1,51 @@
+name: Oppdater tankskip (dypgang)
+
+# Dypgang og destinasjon for de kjente tankskipene fra Kystverkets
+# sanntids-AIS (data/tanker_obs.json), til anslått last per anløp i
+# Field/Hub → Shipping. Sanntidsdataene har bare øyeblikket, så de leses hver
+# tredje time; lastede skip er normalt underveis lenger enn det. Én forespørsel
+# per kjøring, og commit bare når noe er endret.
+on:
+  schedule:
+    - cron: '23 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tankers
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: pip install requests
+
+      - name: Hent dypgang for tankskipene
+        run: python fetch_shipping.py --realtime
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/tanker_obs.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Oppdater tankskip ($(date -u +%Y-%m-%dT%H:%MZ))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1
