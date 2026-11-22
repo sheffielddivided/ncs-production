@@ -73,7 +73,11 @@ BBL_PER_M3 = 6.2898
 WP_K = 0.88
 SEAWATER = 1.025
 OBS_DAYS = 120         # så lenge dypgangsobservasjonene beholdes
-ROUTE_DAYS = 7         # hvor langt før og etter besøket det letes etter forrige og neste stopp
+ROUTE_DAYS = 7         # hvor langt før besøket det letes etter forrige stopp
+TO_DAYS = 10           # hvor langt etter besøket det letes etter neste stopp
+TO_VERSION = 3         # øk når regelen for «to» endres, så alle slås opp på nytt
+EXIT_GAP_MIN = 12 * 60 # hull i sporet: stopp (samme sted etterpå) eller utseiling av AIS-dekningen
+GAP_SAME_KM = 5        # så nær er skipet før og etter hullet når det har ligget stille
 STAY_MIN = 60          # et stopp underveis varer minst så lenge
 MAX_SECONDS = int(os.environ.get("SHIPPING_SECONDS", 300))   # tidsbudsjett per kjøring; resten tas neste gang
 TIMEOUT = 150
@@ -166,7 +170,7 @@ def load_ports():
     navnet på havnen de hører til (quayportlocationid), ellers kommunen."""
     ports = []
     try:
-        feats = call('GET', '/location/norway/all/geojson', retries=2)['features']
+        feats = call('GET', '/location/norway/all/geojson', retries=5)['features']
         names = {str(f['properties'].get('locationid')): f['properties'].get('locationnamenor') for f in feats}
         for f in feats:
             p = f['properties']
@@ -290,6 +294,59 @@ def last_stop(rows, before, after, away_from, radius):
     return None
 
 
+COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+
+
+def sea_area(lon, lat):
+    """Grovt farvann for et punkt, til teksten der skipet forlot dekningen."""
+    if lat < 59.5 and lon > 7:
+        return 'Skagerrak'
+    if lat < 62:
+        return 'North Sea'
+    if lat < 70.5:
+        return 'Norwegian Sea'
+    return 'Barents Sea'
+
+
+def next_stop_or_exit(rows, away_from, radius, end_min):
+    """Første stopp etter avgang, eller stedet der skipet forlot Kystverkets
+    AIS-dekning. Posisjonene kommer fra AIS-sporene, og et skip som ligger
+    stille gir ingen spor, så et hull på over EXIT_GAP_MIN minutter er et
+    stopp når skipet er på samme sted etterpå (under GAP_SAME_KM), og et
+    utseiling av dekningen når det er langt unna, eller når sporet slutter i
+    fart. Etter et utseiling er et stopp trolig på returen, så det regnes ikke.
+    ('stop', lon, lat) | ('exit', lon, lat, retning) | None."""
+    if not rows:
+        return None
+    upto, gap_stop = len(rows), None
+    for i in range(1, len(rows)):
+        a, b = rows[i - 1], rows[i]
+        if b[0] - a[0] > EXIT_GAP_MIN:
+            upto = i
+            if km(a[1], a[2], b[1], b[2]) < GAP_SAME_KM and \
+                    min(km(a[1], a[2], c[0], c[1]) for c in away_from) > radius + 2:
+                gap_stop = (a[1], a[2])
+            break
+    stop = last_stop(rows[:upto], False, True, away_from, radius)
+    if stop:
+        return ('stop', stop[0], stop[1])
+    if gap_stop:
+        return ('stop', gap_stop[0], gap_stop[1])
+    q = rows[upto - 1]
+    ended = upto == len(rows) and end_min - q[0] > EXIT_GAP_MIN
+    if ended and q[3] is not None and q[3] < STOP_KNOTS and \
+            min(km(q[1], q[2], c[0], c[1]) for c in away_from) > radius + 2:
+        return ('stop', q[1], q[2])   # sporet slutter mens skipet ligger stille
+    gone = upto < len(rows) or ended
+    if not gone:
+        return None
+    q = rows[upto - 1]
+    p = next((r for r in reversed(rows[:upto - 1]) if q[0] - r[0] >= 120), rows[0])
+    dy, dx = q[2] - p[2], (q[1] - p[1]) * math.cos(math.radians(q[2]))
+    heading = COMPASS[round(math.degrees(math.atan2(dx, dy)) % 360 / 45) % 8] if (dx or dy) else ''
+    return ('exit', q[1], q[2], heading)
+
+
 def ship_rows(mmsi, start, end):
     """Skipets posisjoner [min, lon, lat, sog]. Databasen tåler bare korte
     vinduer, så lengre perioder hentes i biter på CHUNK_DAYS dager."""
@@ -403,7 +460,7 @@ def realtime(log, cfg):
 
 def laden_after(obs_rows, end, until):
     """Største dypgang og første destinasjon observert etter avgang (end) og
-    før neste anløp eller ROUTE_DAYS (until), som 'YYYY-MM-DDTHH:MM'."""
+    før neste anløp eller TO_DAYS (until), som 'YYYY-MM-DDTHH:MM'."""
     rows = [r for r in obs_rows if end <= r[0] <= until]
     if not rows:
         return None, None
@@ -532,7 +589,8 @@ def main():
         retry = (st['prev'].get('routeDays') or 4) < ROUTE_DAYS
         keep = lambda p: p if not (retry and p and not p[1]) else None
         old_from = {f"{r[0]}|{r[1]}": keep(r[5]) for r in prev_rows}
-        old_to = {f"{r[0]}|{r[2]}": keep(r[6]) for r in prev_rows if not r[4]}
+        redo_to = (st['prev'].get('toVersion') or 1) < TO_VERSION   # ny regel for «to»: slå opp alle på nytt
+        old_to = {} if redo_to else {f"{r[0]}|{r[2]}": keep(r[6]) for r in prev_rows if not r[4]}
         for v in st['visits']:
             v['open'] = st['until_min'] - v['e'] < 60   # skipet er (trolig) der ennå
             v['from'] = old_from.get(f"{v['m']}|{iso(v['s'])}")
@@ -544,6 +602,9 @@ def main():
             if v['from'] is None or (v['to'] is None and not v['open'])]
     if jobs and not rebuild and time.time() < deadline:
         ports = load_ports()
+        if not ports:
+            print('  ! uten havnelista slås ikke fra/til opp denne gangen', file=sys.stderr)
+            jobs = []
 
         def route(job):
             st, v = job
@@ -557,8 +618,14 @@ def main():
                 if v['to'] is None and not v['open']:
                     b = from_minutes(v['e'])
                     if (now - b).days >= 1:
-                        stop = last_stop(ship_rows(v['m'], b, min(b + timedelta(days=ROUTE_DAYS), now)), False, True, st['centres'], st['radius'])
-                        v['to'] = place_name(stop[0], stop[1], facs, ports) if stop else (['', ''] if (now - b).days >= ROUTE_DAYS else None)
+                        end = min(b + timedelta(days=TO_DAYS), now)
+                        res = next_stop_or_exit(ship_rows(v['m'], b, end), st['centres'], st['radius'], minutes(end))
+                        if res and res[0] == 'stop':
+                            v['to'] = place_name(res[1], res[2], facs, ports)
+                        elif res:
+                            v['to'] = ['exit', f"{res[2]:.2f}°N {abs(res[1]):.2f}°{'E' if res[1] >= 0 else 'W'}", res[3], sea_area(res[1], res[2])]
+                        else:
+                            v['to'] = ['', ''] if (now - b).days >= TO_DAYS else None
             except Busy as exc:
                 print(f'  ! rute {v["m"]}: {exc}', file=sys.stderr)
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
@@ -575,7 +642,7 @@ def main():
         for v in st['visits']:
             sh = st['ships'].get(v['m']) or {}
             nxt = [w['s'] for w in by_ship[v['m']] if w['s'] > v['e']]
-            until = iso(min([v['e'] + ROUTE_DAYS * 1440] + nxt))[:16]
+            until = iso(min([v['e'] + TO_DAYS * 1440] + nxt))[:16]
             dr, dest = (None, None) if v['open'] else laden_after(obs.get(v['m'], []), iso(v['e'])[:16], until)
             rows_out.append([v['m'], iso(v['s']), iso(v['e']), v['d'], 1 if v['open'] else 0, v['from'], v['to'],
                              dr, cargo_bbl(sh, tanker_spec(sh, specs), dr), dest])
@@ -583,7 +650,7 @@ def main():
         out_fields[st['key']] = {
             'name': fields[st['fid']], 'centre': [round(st['centre'][0], 5), round(st['centre'][1], 5)], 'radiusKm': st['radius'],
             'facilities': [f['name'] for f in st['load']], 'nFacilities': len(st['load']),
-            'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'], 'routeDays': ROUTE_DAYS,
+            'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'], 'routeDays': ROUTE_DAYS, 'toVersion': TO_VERSION,
             'storage': st['fc'].get('storage') or [],
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest'],
             'visits': rows_out,
