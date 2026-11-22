@@ -2915,6 +2915,12 @@ igjen innlastingen) er ikke nyheter. Loggen beholder 180 dager og høyst 800
 hendelser. Klienten setter teksten sammen (`newsLine`), så funnnavn og tittel
 følger resten av visningen; klikk åpner brønnen eller riggprofilen ved oppholdet.
 Selskapsfilteret treffer brønnhendelser (ikke rigger).
+Exploration → News tar i tillegg med Sodirs boretillatelser (RSS-feeden
+`drilling-permits`, `k = 'permit'` i `data/sodir_press.json`, samme arkiv som
+Companies → News) for samme periode som loggen, med egen knapp «Permits»
+(`explPermitEvents`, `permitLine`, `loadSodirPress`). Tittelen lenker til saken på
+sodir.no, og raden åpner brønnen når brønnbanen finnes i letedataene; ellers treffer
+selskapsfilteret selskapene nevnt i meldingen.
 
 **Driftsrapport for AIS-steget (`health_report` i `fetch_rigs.py`):** hver kjøring
 skriver `data/rig_health.json` og, i Actions, en oppsummering (`GITHUB_STEP_SUMMARY`)
