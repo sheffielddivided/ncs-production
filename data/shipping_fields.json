@@ -1,12 +1,55 @@
 {
  "fields": [
-  {"name": "SKARV"},
-  {"name": "ALVHEIM"},
-  {"name": "NORNE"},
-  {"name": "ÅSGARD"},
-  {"name": "BALDER"},
-  {"name": "GOLIAT"},
-  {"name": "JOHAN CASTBERG"},
-  {"name": "NJORD"}
+  {
+   "name": "SKARV"
+  },
+  {
+   "name": "ÆRFUGL NORD"
+  },
+  {
+   "name": "IDUN NORD"
+  },
+  {
+   "name": "ALVE NORD"
+  },
+  {
+   "name": "ØRN"
+  },
+  {
+   "name": "ALVHEIM"
+  },
+  {
+   "name": "VILJE"
+  },
+  {
+   "name": "VOLUND"
+  },
+  {
+   "name": "BØYLA"
+  },
+  {
+   "name": "SKOGUL"
+  },
+  {
+   "name": "TYRVING"
+  },
+  {
+   "name": "NORNE"
+  },
+  {
+   "name": "ÅSGARD"
+  },
+  {
+   "name": "BALDER"
+  },
+  {
+   "name": "GOLIAT"
+  },
+  {
+   "name": "JOHAN CASTBERG"
+  },
+  {
+   "name": "NJORD"
+  }
  ]
 }
