@@ -20578,7 +20578,33 @@ const NEWS_TYPES = {
   rig: {label: 'Rig', group: 'rigs'},
   contract: {label: 'Contract', group: 'rigs'},
   havtil: {label: 'Havtil', group: 'havtil'},
+  permit: {label: 'Permit', group: 'permits'},
 };
+// Boretillatelser fra Sodirs RSS-feed «Drilling permits» (data/sodir_press.json,
+// k = 'permit', samme arkiv som Companies → News, via fetch_company_news.py).
+// Lastes uten resten av selskapsnyhetene; loadCompanyNews bruker samme fil.
+let sodirPressLoading = null;
+function loadSodirPress() {
+  if (sodirPress) return Promise.resolve();
+  if (!sodirPressLoading) sodirPressLoading = fetchBundle('sodir_press')
+    .then(p => { if (!sodirPress) sodirPress = (p && p.items) || []; })
+    .catch(() => { sodirPressLoading = null; });
+  return sodirPressLoading;
+}
+// Tillatelsene som hendelser i samme form som changes.json: n = tittel, s =
+// ingress, u = Sodirs sak, w = brønnbane-id når brønnen finnes i letedataene.
+function explPermitEvents(since) {
+  const byName = {};
+  explWells.forEach(g => {
+    [[g.well, g.branches[0]], [g.name, g.branches[0]], ...g.branches.map(b => [b.name, b])]
+      .forEach(([n, b]) => { if (n && b && !(hvWellKey(n) in byName)) byName[hvWellKey(n)] = b.id; });
+  });
+  return (sodirPress || []).filter(it => it.k === 'permit' && it.d >= since && /^https:\/\/www\.sodir\.no\//.test(it.u || ''))
+    .map(it => {
+      const w = (it.wells || []).map(n => byName[hvWellKey(n)]).find(id => id != null);
+      return {t: 'permit', d: it.d, n: it.t, s: it.s || '', u: it.u, cmp: it.cmp || [], wells: it.wells || [], w: w ?? null};
+    });
+}
 // Kontraktnyheter (import_fleet_report.py): x = new, ext, cut, moved, exercised, gone.
 const conMon = d => { if (!d) return ''; const [y, m] = d.split('-'); return `${MONTH_ABBR[+m - 1]} ${y}`; };
 function contractLine(e) {
@@ -20595,6 +20621,11 @@ function contractLine(e) {
     case 'gone': return `${r} ${what} with ${cl} (${per}) is no longer in the contractor's report`;
   }
   return `${r} contract update · ${cl}`;
+}
+
+function permitLine(e) {
+  return `<a href="${esc(e.u)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(e.n)} ↗</a>${
+    e.s ? `<span class="nw-sum">${esc(e.s)}</span>` : ''}`;
 }
 
 function newsLine(e) {
@@ -20624,18 +20655,24 @@ function newsLine(e) {
 async function explRenderNews() {
   const box = document.getElementById('explBody');
   if (!changesData) box.innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>'; dockBar('explBody');
-  await Promise.all([loadExploration(), loadChanges(), loadRigAis()]);
+  await Promise.all([loadExploration(), loadChanges(), loadRigAis(), loadSodirPress()]);
   if (explSubView !== 'news') return;
   const f = explF, c = f.company.trim().toLowerCase(), q = f.q.trim().toLowerCase();
-  const list = changesData.filter(e => {
+  // Tillatelsene tas med for samme periode som endringsloggen.
+  const since = changesData.length ? changesData[changesData.length - 1].d : '';
+  const events = changesData.concat(explPermitEvents(since))
+    .sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+  const list = events.filter(e => {
     if (e.t === 'havtil' && e.k !== 'consent') return false;   // bare samtykker fra Havtil her
     if (newsType !== 'all' && NEWS_TYPES[e.t].group !== newsType) return false;
     if (c) {
       const g = e.w != null ? explById[e.w] : null;
       if (e.t === 'rig') return false;                       // rigger har ikke selskap
       if (e.t === 'contract') return (e.cmp || []).some(x => x.toLowerCase().includes(c));
+      if (e.t === 'permit' && !g) return e.cmp.some(x => x.toLowerCase().includes(c));
       if (g ? !explCompanyMatch(g, f.company.trim(), f.role) : !(e.op || '').toLowerCase().includes(c)) return false;
     }
+    if (e.t === 'permit') return !q || [e.n, e.s, ...e.wells, ...e.cmp].join(' ').toLowerCase().includes(q);
     return !q || (e.n + ' ' + (e.dn || '') + ' ' + (e.r || '') + ' ' + (e.p || '') + ' ' + (e.op || '') + ' ' + (e.rig || '')).toLowerCase().includes(q);
   });
   const chip = (t, label) => `<button class="grp-btn${newsType === t ? ' active' : ''}" onclick="newsType='${t}';newsShown=40;explRenderNews()">${label}</button>`;
@@ -20648,17 +20685,18 @@ async function explRenderNews() {
                 : e.t === 'havtil' && /^\/[\w\-\/]+\/$/.test(e.u || '') ? `window.open('https://www.havtil.no${e.u}', '_blank', 'noopener')`
                 : e.w != null && explById[e.w] ? `openWell(${e.w})` : '';
     html += `<div class="nw-row${click ? ' nw-click' : ''}"${click ? ` onclick="${click}"` : ''}>
-      <span class="nw-t nw-${e.t}">${NEWS_TYPES[e.t].label}</span><span class="nw-txt">${newsLine(e)}</span></div>`;
+      <span class="nw-t nw-${e.t}">${NEWS_TYPES[e.t].label}</span><span class="nw-txt">${e.t === 'permit' ? permitLine(e) : newsLine(e)}</span></div>`;
   });
   box.innerHTML = `
     <div class="pf-card"><h3>Latest changes</h3><div class="ex-slot"></div>
       <div class="ex-sum"><strong>${list.length}</strong> changes${changesData.length ? ` since ${fmtShort(changesData[changesData.length - 1].d)}` : ''}</div>
-    <div class="grp-row">${chip('all', 'All')}${chip('discoveries', 'Discoveries')}${chip('wells', 'Wells')}${chip('rigs', 'Rigs')}${chip('havtil', 'Havtil')}</div>
+    <div class="grp-row">${chip('all', 'All')}${chip('discoveries', 'Discoveries')}${chip('wells', 'Wells')}${chip('permits', 'Permits')}${chip('rigs', 'Rigs')}${chip('havtil', 'Havtil')}</div>
       ${html || '<div class="pf-map-note">Nothing new matches the filters yet. The log is filled by the daily data run.</div>'}
       ${list.length > newsShown ? `<button class="grp-btn ex-more" onclick="newsShown+=60;explRenderNews()">Show more (${list.length - newsShown} older)</button>` : ''}
       <div class="pf-map-note">Detected by comparing each daily data run with the previous one; the first entries are dated from the wells' own start
         and completion dates. Rig moves come from AIS stays. Havtil entries are new consents from the Norwegian Ocean Industry
-        Authority (inspections, investigations and orders are left out); they open on havtil.no.</div></div>`;
+        Authority (inspections, investigations and orders are left out); they open on havtil.no. Permits are Sodir's drilling permits
+        from its news feed, for the same period; the title opens the announcement on sodir.no and the row opens the well when it is in the data.</div></div>`;
   dockBar('explBody');
 }
 
