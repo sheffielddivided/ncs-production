@@ -654,6 +654,7 @@
 
     .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
     .info-box strong{color:#1a2332;}
+    .res-table .muted{color:var(--muted);font-size:0.9em;}
     .ncs-news{margin-left:auto;align-self:center;font-size:12px;color:#7a1f4f;text-decoration:none;}
     .ncs-news:hover{text-decoration:underline;}
 
@@ -1989,6 +1990,7 @@ const FIELD_TABS   = [
   {id:'profile',        label:'Factsheet'},
   {id:'havtil',         label:'Havtil'},
   {id:'downtime',       label:'Gas outage'},
+  {id:'shipping',       label:'Shipping'},
 ];
 const HUB_TABS     = [
   {id:'production',     label:'Production'},
@@ -3154,6 +3156,7 @@ function pageSources() {
   }
   if (m === 'fields' && v === 'map') add('ne');
   if (m === 'fields' && v === 'havtil') add('havtil');
+  if (m === 'fields' && v === 'shipping') add('ais');
   if ((m === 'fields' || m === 'hubs') && v === 'downtime') add('gassco');
   if (m === 'ncs' && v === 'outage' && ncsF.gx === 'infra') add('ne');
   else if ((m === 'ncs' && v === 'outage') || (m === 'companies' && v === 'downtime')) add('gassco');
@@ -3607,6 +3610,7 @@ async function refreshFields() {
   if (fieldSubView === 'map') { drawChart(); return; }
   if (fieldSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
   if (fieldSubView === 'downtime') { await loadGassco(); drawChart(); return; }
+  if (fieldSubView === 'shipping') { await loadShipping(); drawChart(); return; }
   await loadProdForFields(ids);
   if (fieldSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -3743,6 +3747,7 @@ function drawChartView() {
     else if (sv === 'map')             drawFieldMap();
     else if (sv === 'havtil')          drawFieldHavtil();
     else if (sv === 'downtime')        drawFieldDowntime();
+    else if (sv === 'shipping')        drawFieldShipping();
     if (isProdView(sv)) ncsToggleAbove(prodPills());
   } else if (topMode === 'hubs') {
     // Gjenbruker feltvisningene med hubens medlemsfelt.
@@ -11226,6 +11231,7 @@ function isReservesView() {
       || (topMode === 'fields'    && fieldSubView   === 'map')
       || (topMode === 'fields'    && fieldSubView   === 'havtil')
       || (topMode === 'fields'    && fieldSubView   === 'downtime')
+      || (topMode === 'fields'    && fieldSubView   === 'shipping')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'installations')
@@ -12289,6 +12295,129 @@ function drawFieldHavtil() {
   setProfile(card ? card.replace('class="pf-card"', 'class="pf-card pf-wide"')
     : '<div class="pf-card pf-wide"><div class="pf-map-note">No Havtil cases are linked to this field.</div></div>');
 }
+
+// ── FIELD: SHIPPING ──────────────────────────────────────────────────────────
+// Skip som har besøkt feltet, fra Kystverkets AIS (data/shipping.json, bygd av
+// fetch_shipping.py for feltene i data/shipping_fields.json). Et besøk er et
+// skip som har stoppet eller vært minst en halvtime innenfor radiusen rundt
+// feltets innretninger på overflaten; skip som bare passerer, er ikke med.
+// «From» og «To» er skipets siste stopp før og første stopp etter besøket
+// (havn, annet felt eller posisjon på sjøen), innenfor fire dager.
+let shippingData = null, shippingLoading = null;
+let shipCat = 'all', shipMeasure = 'calls', shipShown = 50;
+function loadShipping() {
+  if (shippingData) return Promise.resolve();
+  if (!shippingLoading) shippingLoading = fetchBundle('shipping')
+    .then(b => { shippingData = b || {fields: {}}; })
+    .catch(() => { shippingLoading = null; shippingData = {fields: {}}; });
+  return shippingLoading;
+}
+const SHIP_CATS = [
+  ['tanker', 'Shuttle tankers', '#7d2248'],
+  ['offshore', 'Offshore & supply', '#2a6fa8'],
+  ['fishing', 'Fishing', '#3fa7a0'],
+  ['cargo', 'Cargo', '#b07d2b'],
+  ['other', 'Other', '#9aa5b1'],
+];
+const shipCatOf = sh => ['tanker', 'offshore', 'fishing', 'cargo'].includes(sh && sh.cat) ? sh.cat : 'other';
+const shipCatLabel = k => (SHIP_CATS.find(c => c[0] === k) || SHIP_CATS[4])[1];
+// Mandagen i uken (UTC) for et tidspunkt i ms, som 'YYYY-MM-DD'.
+const weekStart = t => { const d = new Date(t); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.getTime(); };
+const isoDay = t => new Date(t).toISOString().slice(0, 10);
+function fmtStay(h) { return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1)} days`; }
+function shipPlace(p) {
+  if (!p) return '<span class="muted">…</span>';
+  if (!p[1]) return '<span class="muted">—</span>';
+  return esc(p[0] === 'field' ? tc(p[1]) : p[0] === 'port' ? p[1] : p[1]) + (p[0] === 'field' ? ' <span class="muted">(field)</span>' : '');
+}
+
+function drawFieldShipping() {
+  const ids = [...selectedFieldIds];
+  const tracked = Object.entries((shippingData && shippingData.fields) || {});
+  const trackedNote = tracked.length ? `Shipping is collected for: ${tracked.map(([, f]) => esc(tc(f.name))).join(', ')}.` : '';
+  if (ids.length !== 1) {
+    setChartEmpty(ids.length ? `Select a single field to see its shipping. ${trackedNote}` : 'Tap the button below to select a field.');
+    setInfo('');
+    return;
+  }
+  const id = ids[0], name = fieldNameOf(id), F = shippingData.fields[String(id)];
+  setChartTitle(name, 'Shipping · vessel calls at the field');
+  if (!F) {
+    setChartEmpty(`No shipping data for ${esc(tc(name))} yet. ${trackedNote}`);
+    setInfo('<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), AIS. Fields are added in data/shipping_fields.json');
+    return;
+  }
+  const ships = F.ships || {};
+  const now = Date.now();
+  const visits = F.visits.map(([m, s, e, d, open, from, to]) => {
+    const t0 = Date.parse(s), t1 = open ? Math.max(Date.parse(e), Date.parse(F.until)) : Date.parse(e);
+    return {m, s, e, t0, t1, d, open, from, to, sh: ships[m] || {}, cat: shipCatOf(ships[m])};
+  });
+  // Ukene fra første dag med data til siste.
+  const w0 = weekStart(Date.parse(F.from)), w1 = weekStart(Date.parse(F.until));
+  const weeks = [];
+  for (let w = w0; w <= w1; w += 7 * 864e5) weeks.push(w);
+  const val = {};
+  SHIP_CATS.forEach(([k]) => { val[k] = weeks.map(() => 0); });
+  visits.forEach(v => {
+    if (shipMeasure === 'calls') {
+      const i = weeks.indexOf(weekStart(v.t0));
+      if (i >= 0) val[v.cat][i] += 1;
+    } else {
+      weeks.forEach((w, i) => {
+        const h = (Math.min(v.t1, w + 7 * 864e5) - Math.max(v.t0, w)) / 36e5;
+        if (h > 0) val[v.cat][i] += h / 24;
+      });
+    }
+  });
+  const unit = shipMeasure === 'calls' ? 'calls per week' : 'vessel-days per week';
+  const datasets = SHIP_CATS.map(([k, label, color]) => ({label, data: val[k].map(x => +x.toFixed(shipMeasure === 'calls' ? 0 : 1)),
+    backgroundColor: color, borderWidth: 0, stack: 's'})).filter(d => d.data.some(x => x));
+  const labels = weeks.map(isoDay);
+  setInfo(`<strong>Field:</strong> ${esc(tc(name))}, around ${(F.facilities || []).map(x => esc(x)).join(', ')} &nbsp;|&nbsp; ` +
+    `<strong>Period:</strong> ${fmtShort(F.from)} – ${fmtShort(F.until.slice(0, 10))} &nbsp;|&nbsp; ` +
+    `<strong>Call:</strong> a vessel within ${F.radiusKm} km of one of the field's ${F.nFacilities || ''} installations for at least 30 minutes; vessels passing through are left out. Stays with less than 6 hours between them count as one &nbsp;|&nbsp; ` +
+    `<strong>From / To:</strong> the vessel's last stop before and first stop after the call (port, another field or a position at sea), within four days &nbsp;|&nbsp; ` +
+    `<strong>Type:</strong> from the AIS ship register; vessels of unknown type over 180 m are counted as tankers &nbsp;|&nbsp; ` +
+    `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
+  if (!datasets.length) setChartEmpty('No vessel calls in the period.');
+  else renderChart(labels, datasets, SHIP_CATS.filter(c => datasets.some(d => d.label === c[1])).map(([, label, color]) => ({label, color})),
+    shipMeasure === 'calls' ? 'calls' : 'vessel-days', {xTitle: 'Week starting', dec: shipMeasure === 'calls' ? 0 : 1});
+  const pill = (k, label, cur, fn) => `<button class="grp-btn${cur === k ? ' active' : ''}" onclick="${fn}('${k}')">${label}</button>`;
+  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start"><div class="grp-row">${
+    pill('calls', 'Calls', shipMeasure, 'shipSetMeasure')}${pill('days', 'Days at field', shipMeasure, 'shipSetMeasure')}</div></div>`);
+
+  // Oppsummering per kategori og tabell over besøkene, nyeste først.
+  const d30 = now - 30 * 864e5;
+  const sum = SHIP_CATS.map(([k, label, color]) => {
+    const vs = visits.filter(v => v.cat === k);
+    return {k, label, color, n: vs.length, n30: vs.filter(v => v.t0 >= d30).length,
+      days: vs.reduce((t, v) => t + (v.t1 - v.t0) / 864e5, 0), ships: new Set(vs.map(v => v.m)).size};
+  }).filter(x => x.n);
+  const list = visits.filter(v => shipCat === 'all' || v.cat === shipCat).sort((a, b) => b.t0 - a.t0);
+  const chip = (k, label, n) => `<button class="grp-btn${shipCat === k ? ' active' : ''}" onclick="shipSetCat('${k}')">${label} (${n})</button>`;
+  const fmtT = t => `${fmtShort(isoDay(t))} ${new Date(t).toISOString().slice(11, 16)}`;
+  setChartTable(`
+    <table class="res-table">
+      <caption>Vessel calls by type · ${fmtShort(F.from)} – ${fmtShort(F.until.slice(0, 10))}</caption>
+      <thead><tr><th>Type</th><th>Calls</th><th>Last 30 days</th><th>Vessels</th><th>Days at field</th></tr></thead>
+      <tbody>${sum.map(x => `<tr><td><span class="ex-dot" style="background:${x.color}"></span>${esc(x.label)}</td><td>${x.n}</td><td>${x.n30}</td><td>${x.ships}</td><td>${x.days.toFixed(1)}</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="grp-row" style="margin:10px 12px 6px">${chip('all', 'All', visits.length)}${sum.map(x => chip(x.k, x.label, x.n)).join('')}</div>
+    <table class="res-table">
+      <caption>Calls, newest first · times in UTC</caption>
+      <thead><tr><th>Arrived</th><th>Left</th><th>Time at field</th><th>Vessel</th><th>Type</th><th>From</th><th>To</th></tr></thead>
+      <tbody>${list.slice(0, shipShown).map(v => {
+        const sh = v.sh, nm = sh.name ? esc(sh.name) : `MMSI ${esc(v.m)}`;
+        return `<tr><td>${fmtT(v.t0)}</td><td>${v.open ? '<em>at the field</em>' : fmtT(v.t1)}</td><td>${fmtStay((v.t1 - v.t0) / 36e5)}</td>
+          <td><span class="ex-dot" style="background:${(SHIP_CATS.find(c => c[0] === v.cat) || SHIP_CATS[4])[2]}"></span>${nm}${sh.len ? ` <span class="muted">${sh.len} m</span>` : ''}</td>
+          <td>${esc(shipCatLabel(v.cat))}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+    ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`);
+}
+function shipSetMeasure(k) { shipMeasure = k; drawChart(); }
+function shipSetCat(k) { shipCat = k; shipShown = 50; drawChart(); }
 
 // ── GASSCO: NEDETID ──────────────────────────────────────────────────────────
 // Dager med tapt produksjon per felt og måned, regnet ut av Gasscos hendelser

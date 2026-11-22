@@ -129,6 +129,15 @@ jobs:
         timeout-minutes: 10
         run: python fetch_company_news.py --sodir
 
+      # Skipstrafikk til feltene i data/shipping_fields.json (Field → Shipping),
+      # fra Kystverkets åpne AIS-API. Fortsetter der forrige kjøring slapp
+      # (data/shipping_log.json) innenfor et tidsbudsjett på 5 minutter; et nytt
+      # felt fylles bakover over noen kjøringer.
+      - name: Hent skipstrafikk (Kystverket AIS)
+        continue-on-error: true
+        timeout-minutes: 8
+        run: python fetch_shipping.py
+
       # Danske felt til DCS-seksjonen: leser de publiserte JSON-filene fra
       # ENS-løsningen (sheffielddivided/ens), som selv henter fra
       # Energistyrelsen. Feiler steget eller har ENS endret formatet, beholdes
