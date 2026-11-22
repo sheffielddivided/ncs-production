@@ -12304,7 +12304,7 @@ function drawFieldHavtil() {
 // «From» og «To» er skipets siste stopp før og første stopp etter besøket
 // (havn, annet felt eller posisjon på sjøen), innenfor fire dager.
 let shippingData = null, shippingLoading = null;
-let shipCat = 'all', shipMeasure = 'calls';
+let shipCat = 'all', shipMeasure = 'calls', shipShown = 50;
 function loadShipping() {
   if (shippingData) return Promise.resolve();
   if (!shippingLoading) shippingLoading = fetchBundle('shipping')
@@ -12374,9 +12374,9 @@ function drawFieldShipping() {
   const datasets = SHIP_CATS.map(([k, label, color]) => ({label, data: val[k].map(x => +x.toFixed(shipMeasure === 'calls' ? 0 : 1)),
     backgroundColor: color, borderWidth: 0, stack: 's'})).filter(d => d.data.some(x => x));
   const labels = weeks.map(isoDay);
-  setInfo(`<strong>Field:</strong> ${esc(tc(name))}, within ${F.radiusKm} km of ${(F.facilities || []).map(x => esc(x)).join(', ')} &nbsp;|&nbsp; ` +
+  setInfo(`<strong>Field:</strong> ${esc(tc(name))}, around ${(F.facilities || []).map(x => esc(x)).join(', ')} &nbsp;|&nbsp; ` +
     `<strong>Period:</strong> ${fmtShort(F.from)} – ${fmtShort(F.until.slice(0, 10))} &nbsp;|&nbsp; ` +
-    `<strong>Call:</strong> a vessel that stopped, or stayed at least 30 minutes, within the radius; vessels passing through are left out. Stays with less than 6 hours between them count as one &nbsp;|&nbsp; ` +
+    `<strong>Call:</strong> a vessel within ${F.radiusKm} km of one of the field's ${F.nFacilities || ''} installations for at least 30 minutes; vessels passing through are left out. Stays with less than 6 hours between them count as one &nbsp;|&nbsp; ` +
     `<strong>From / To:</strong> the vessel's last stop before and first stop after the call (port, another field or a position at sea), within four days &nbsp;|&nbsp; ` +
     `<strong>Type:</strong> from the AIS ship register; vessels of unknown type over 180 m are counted as tankers &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
@@ -12407,16 +12407,17 @@ function drawFieldShipping() {
     <table class="res-table">
       <caption>Calls, newest first · times in UTC</caption>
       <thead><tr><th>Arrived</th><th>Left</th><th>Time at field</th><th>Vessel</th><th>Type</th><th>From</th><th>To</th></tr></thead>
-      <tbody>${list.map(v => {
+      <tbody>${list.slice(0, shipShown).map(v => {
         const sh = v.sh, nm = sh.name ? esc(sh.name) : `MMSI ${esc(v.m)}`;
         return `<tr><td>${fmtT(v.t0)}</td><td>${v.open ? '<em>at the field</em>' : fmtT(v.t1)}</td><td>${fmtStay((v.t1 - v.t0) / 36e5)}</td>
           <td><span class="ex-dot" style="background:${(SHIP_CATS.find(c => c[0] === v.cat) || SHIP_CATS[4])[2]}"></span>${nm}${sh.len ? ` <span class="muted">${sh.len} m</span>` : ''}</td>
           <td>${esc(shipCatLabel(v.cat))}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}</td></tr>`;
       }).join('')}</tbody>
-    </table>`);
+    </table>
+    ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`);
 }
 function shipSetMeasure(k) { shipMeasure = k; drawChart(); }
-function shipSetCat(k) { shipCat = k; drawChart(); }
+function shipSetCat(k) { shipCat = k; shipShown = 50; drawChart(); }
 
 // ── GASSCO: NEDETID ──────────────────────────────────────────────────────────
 // Dager med tapt produksjon per felt og måned, regnet ut av Gasscos hendelser

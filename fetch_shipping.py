@@ -21,9 +21,9 @@ Feltene velges i data/shipping_fields.json (feltnavn som i Sodir, valgfri
 radius). Senteret er feltets innretninger på overflaten (FPSO, plattform),
 ellers alle innretninger i drift.
 
-Et besøk er et skip som har vært innenfor radiusen og enten stoppet der
-(fart under STOP_KNOTS) eller vært der minst MIN_VISIT_MIN minutter. Skip som
-bare passerer, er ikke besøk. Opphold med hull under GAP_HOURS slås sammen.
+Et besøk er et skip som har vært minst MIN_VISIT_MIN minutter innenfor
+radiusen rundt en av feltets innretninger. Skip som bare passerer, er ikke
+besøk. Opphold med hull under GAP_HOURS slås sammen.
 """
 
 import json
@@ -139,15 +139,22 @@ def load_fields_and_facilities():
 
 
 def load_ports():
+    """Havner, kaier og ankerplasser. Kaier heter ofte bare «Kai 1», så de får
+    navnet på havnen de hører til (quayportlocationid), ellers kommunen."""
     ports = []
     try:
         feats = call('GET', '/location/norway/all/geojson', retries=2)['features']
+        names = {str(f['properties'].get('locationid')): f['properties'].get('locationnamenor') for f in feats}
         for f in feats:
             p = f['properties']
             if p.get('systemname') in ('HARBOUR', 'PORT_FACILITY', 'QUAY', 'ANCHORAGE') and f.get('geometry'):
                 lon, lat = f['geometry']['coordinates'][:2]
-                if lon or lat:
-                    ports.append({'name': p.get('locationnamenor') or p.get('locationname') or '', 'lon': lon, 'lat': lat})
+                if not (lon or lat):
+                    continue
+                name = p.get('locationnamenor') or ''
+                if p.get('systemname') != 'HARBOUR':
+                    name = names.get(str(p.get('quayportlocationid') or '')) or p.get('councilname') or name
+                ports.append({'name': name, 'lon': lon, 'lat': lat})
     except Exception as exc:  # noqa: BLE001
         print(f'  ! kunne ikke hente havner: {exc}', file=sys.stderr)
     return ports
@@ -236,8 +243,10 @@ def visits_from(pts, centres, radius):
             cur = {'start': q[0], 'end': q[0], 'min': d, 'stop': q[3] is not None and q[3] < STOP_KNOTS}
     if cur:
         out.append(cur)
+    # Minst MIN_VISIT_MIN minutter innenfor radiusen. Ett enkelt punkt (skip i
+    # kanten av radiusen, eller som passerer) er ikke et besøk.
     return [[v['start'], v['end'], round(v['min'], 2)] for v in out
-            if v['stop'] or v['end'] - v['start'] >= MIN_VISIT_MIN]
+            if v['end'] - v['start'] >= MIN_VISIT_MIN]
 
 
 def last_stop(rows, before, after, away_from, radius):
@@ -268,7 +277,7 @@ def ship_rows(mmsi, start, end):
 
 def fetch_ships(mmsis, ships):
     """Navn, type og lengde fra static-messages; siste gyldige registrering vinner."""
-    end = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end = datetime.now(timezone.utc).replace(tzinfo=None, day=1, hour=0, minute=0, second=0, microsecond=0)
     todo = [m for m in mmsis if m not in ships]
     for i in range(0, len(todo), 40):
         part = todo[i:i + 40]
@@ -312,6 +321,7 @@ def category(ship):
 # ── HOVEDLØP ─────────────────────────────────────────────────────────────────
 def main():
     rebuild = '--rebuild' in sys.argv
+    reroute = '--reroute' in sys.argv   # slår opp From/To på nytt for alle besøk
     deadline = time.time() + MAX_SECONDS
     cfg = load_json(CFG, {'fields': []})
     fields, facs = load_fields_and_facilities()
@@ -320,7 +330,7 @@ def main():
     out = load_json(OUT, {'fields': {}})
     out_fields = {}
     ports = None
-    now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    now = datetime.now(timezone.utc).replace(tzinfo=None, minute=0, second=0, microsecond=0)
 
     for fc in cfg.get('fields', []):
         fid = by_name.get(str(fc['name']).upper())
@@ -332,8 +342,11 @@ def main():
         if not surf:
             print(f"  ! {fc['name']}: ingen innretninger med posisjon", file=sys.stderr)
             continue
-        centres = [(f['lon'], f['lat']) for f in surf]
-        centre = (sum(c[0] for c in centres) / len(centres), sum(c[1] for c in centres) / len(centres))
+        # Boksen sentreres på overflateinnretningene; besøk regnes mot alle
+        # innretningene, så fartøy som jobber ved havbunnsrammene er på feltet.
+        sc = [(f['lon'], f['lat']) for f in surf]
+        centre = (sum(c[0] for c in sc) / len(sc), sum(c[1] for c in sc) / len(sc))
+        centres = [(f['lon'], f['lat']) for f in own]
         radius = float(fc.get('radiusKm') or RADIUS_KM)
         box = bbox(centre, BOX_KM)
         key = str(fid)
@@ -369,7 +382,7 @@ def main():
             fetch_ships(sorted({v['m'] for v in visits}), ships)
 
         # 4. Hvor skipet kom fra og dro til. Gjenbrukes fra forrige kjøring.
-        old_route = {f"{r[0]}|{r[1]}": (r[5], r[6]) for r in prev.get('visits') or []}
+        old_route = {} if reroute else {f"{r[0]}|{r[1]}": (r[5], r[6]) for r in prev.get('visits') or []}
         rows_out = []
         for v in visits:
             start, end = iso(v['s']), iso(v['e'])
@@ -395,7 +408,7 @@ def main():
         ship_ids = {r[0] for r in rows_out}
         out_fields[key] = {
             'name': fields[fid], 'centre': [round(centre[0], 5), round(centre[1], 5)], 'radiusKm': radius,
-            'facilities': [f['name'] for f in surf],
+            'facilities': [f['name'] for f in surf], 'nFacilities': len(own),
             'from': DATA_START.strftime('%Y-%m-%d'), 'until': flog['until'],
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to'],
             'visits': rows_out,
