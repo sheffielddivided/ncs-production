@@ -75,8 +75,9 @@ SEAWATER = 1.025
 OBS_DAYS = 120         # så lenge dypgangsobservasjonene beholdes
 ROUTE_DAYS = 7         # hvor langt før besøket det letes etter forrige stopp
 TO_DAYS = 10           # hvor langt etter besøket det letes etter neste stopp
-TO_VERSION = 2         # øk når regelen for «to» endres, så alle slås opp på nytt
-EXIT_GAP_MIN = 12 * 60 # hull i sporet som betyr at skipet har forlatt AIS-dekningen
+TO_VERSION = 3         # øk når regelen for «to» endres, så alle slås opp på nytt
+EXIT_GAP_MIN = 12 * 60 # hull i sporet: stopp (samme sted etterpå) eller utseiling av AIS-dekningen
+GAP_SAME_KM = 5        # så nær er skipet før og etter hullet når det har ligget stille
 STAY_MIN = 60          # et stopp underveis varer minst så lenge
 MAX_SECONDS = int(os.environ.get("SHIPPING_SECONDS", 300))   # tidsbudsjett per kjøring; resten tas neste gang
 TIMEOUT = 150
@@ -169,7 +170,7 @@ def load_ports():
     navnet på havnen de hører til (quayportlocationid), ellers kommunen."""
     ports = []
     try:
-        feats = call('GET', '/location/norway/all/geojson', retries=2)['features']
+        feats = call('GET', '/location/norway/all/geojson', retries=5)['features']
         names = {str(f['properties'].get('locationid')): f['properties'].get('locationnamenor') for f in feats}
         for f in feats:
             p = f['properties']
@@ -296,22 +297,47 @@ def last_stop(rows, before, after, away_from, radius):
 COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 
 
+def sea_area(lon, lat):
+    """Grovt farvann for et punkt, til teksten der skipet forlot dekningen."""
+    if lat < 59.5 and lon > 7:
+        return 'Skagerrak'
+    if lat < 62:
+        return 'North Sea'
+    if lat < 70.5:
+        return 'Norwegian Sea'
+    return 'Barents Sea'
+
+
 def next_stop_or_exit(rows, away_from, radius, end_min):
     """Første stopp etter avgang, eller stedet der skipet forlot Kystverkets
-    AIS-dekning (sporet tar slutt eller har et hull på over EXIT_GAP_MIN
-    minutter). Etter et slikt hull er et stopp trolig på returen, så det
-    regnes ikke. ('stop', lon, lat) | ('exit', lon, lat, retning) | None."""
+    AIS-dekning. Posisjonene kommer fra AIS-sporene, og et skip som ligger
+    stille gir ingen spor, så et hull på over EXIT_GAP_MIN minutter er et
+    stopp når skipet er på samme sted etterpå (under GAP_SAME_KM), og et
+    utseiling av dekningen når det er langt unna, eller når sporet slutter i
+    fart. Etter et utseiling er et stopp trolig på returen, så det regnes ikke.
+    ('stop', lon, lat) | ('exit', lon, lat, retning) | None."""
     if not rows:
         return None
-    upto = len(rows)
+    upto, gap_stop = len(rows), None
     for i in range(1, len(rows)):
-        if rows[i][0] - rows[i - 1][0] > EXIT_GAP_MIN:
+        a, b = rows[i - 1], rows[i]
+        if b[0] - a[0] > EXIT_GAP_MIN:
             upto = i
+            if km(a[1], a[2], b[1], b[2]) < GAP_SAME_KM and \
+                    min(km(a[1], a[2], c[0], c[1]) for c in away_from) > radius + 2:
+                gap_stop = (a[1], a[2])
             break
     stop = last_stop(rows[:upto], False, True, away_from, radius)
     if stop:
         return ('stop', stop[0], stop[1])
-    gone = upto < len(rows) or end_min - rows[-1][0] > EXIT_GAP_MIN
+    if gap_stop:
+        return ('stop', gap_stop[0], gap_stop[1])
+    q = rows[upto - 1]
+    ended = upto == len(rows) and end_min - q[0] > EXIT_GAP_MIN
+    if ended and q[3] is not None and q[3] < STOP_KNOTS and \
+            min(km(q[1], q[2], c[0], c[1]) for c in away_from) > radius + 2:
+        return ('stop', q[1], q[2])   # sporet slutter mens skipet ligger stille
+    gone = upto < len(rows) or ended
     if not gone:
         return None
     q = rows[upto - 1]
@@ -576,6 +602,9 @@ def main():
             if v['from'] is None or (v['to'] is None and not v['open'])]
     if jobs and not rebuild and time.time() < deadline:
         ports = load_ports()
+        if not ports:
+            print('  ! uten havnelista slås ikke fra/til opp denne gangen', file=sys.stderr)
+            jobs = []
 
         def route(job):
             st, v = job
@@ -594,7 +623,7 @@ def main():
                         if res and res[0] == 'stop':
                             v['to'] = place_name(res[1], res[2], facs, ports)
                         elif res:
-                            v['to'] = ['exit', f"{res[2]:.2f}°N {abs(res[1]):.2f}°{'E' if res[1] >= 0 else 'W'}", res[3]]
+                            v['to'] = ['exit', f"{res[2]:.2f}°N {abs(res[1]):.2f}°{'E' if res[1] >= 0 else 'W'}", res[3], sea_area(res[1], res[2])]
                         else:
                             v['to'] = ['', ''] if (now - b).days >= TO_DAYS else None
             except Busy as exc:

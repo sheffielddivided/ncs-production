@@ -12328,7 +12328,10 @@ function shipPlace(p) {
   if (!p) return '<span class="muted">…</span>';
   if (!p[1]) return '<span class="muted">—</span>';
   // Skipet forlot Kystverkets AIS-dekning før det stoppet: stedet og retningen.
-  if (p[0] === 'exit') return `<span title="Left AIS coverage here">↗ ${esc(p[2] ? p[2] + ' from ' : 'from ')}${esc(p[1])}</span> <span class="muted">(left coverage)</span>`;
+  if (p[0] === 'exit') {
+    const dir = {N: 'north', NE: 'north-east', E: 'east', SE: 'south-east', S: 'south', SW: 'south-west', W: 'west', NW: 'north-west'}[p[2]] || '';
+    return `<span title="Left Norwegian AIS coverage at ${esc(p[1])}">${esc(p[3] || '')}${dir ? ', ' + dir + 'bound' : ''}</span> <span class="muted">(left coverage)</span>`;
+  }
   return esc(p[0] === 'field' ? tc(p[1]) : p[1]) + (p[0] === 'field' ? ' <span class="muted">(field)</span>' : '');
 }
 const shipName = (m, sh) => sh && sh.name ? tc(sh.name) : `MMSI ${m}`;
