@@ -62,7 +62,7 @@ SAME_SHIP_HOURS = 72   # anløp av samme skip på samme felt med kortere mellomr
 # Kapasitet og last. Dødvekt anslås som DWT_K × lengde × bredde × største
 # dypgang (AIS-registeret) når tanker_specs.json ikke har oppgitt tall;
 # DWT_K er kalibrert mot AETs oppgitte tall for Eagle Balder, Blane og Bergen
-# (0,63–0,66). Lastekapasiteten er lastedødvekten (CARGO_SHARE av dødvekten)
+# (0,63–0,66), og stemmer med de ti oppgitte i tanker_specs.json (snitt 0,647). Lastekapasiteten er lastedødvekten (CARGO_SHARE av dødvekten)
 # delt på råoljens tetthet. Lasten per anløp anslås fra dypgangen etter
 # avgang: full last minus det skipet ligger høyere enn største dypgang,
 # med vannlinjeareal WP_K × lengde × bredde.
@@ -352,7 +352,8 @@ def tanker_spec(ship, specs):
         dwt, src = round(DWT_K * ship['len'] * ship['beam'] * ship['draught'], -2), 'estimated'
     if not dwt:
         return {}
-    cap = given.get('bbl') or round(dwt * CARGO_SHARE / OIL_DENSITY * BBL_PER_M3, -3)
+    cap = given.get('bbl') or (round(given['m3'] * BBL_PER_M3, -3) if given.get('m3') else None) \
+        or round(dwt * CARGO_SHARE / OIL_DENSITY * BBL_PER_M3, -3)
     return {'dwt': dwt, 'dwtSrc': src, 'cap': cap, **({'source': given['source']} if given.get('source') else {})}
 
 
