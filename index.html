@@ -12433,6 +12433,13 @@ function drawShipping(ids, name, kind) {
     `<strong>Period:</strong> ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))} &nbsp;|&nbsp; ` +
     `<strong>Tankers:</strong> AIS ship type 80–89, or unknown type over 220 m (shuttle tankers); other vessels and the fields' own storage units are not included &nbsp;|&nbsp; ` +
     `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours; tankers passing through are left out. Calls by the same tanker less than 72 hours apart count as one (it moved off and came back to load), so the time at the field can include waiting nearby &nbsp;|&nbsp; ` +
+    (() => {
+      const st = Fs.flatMap(f => f.storage || []);
+      if (!st.length) return '';
+      const one = x => `${esc(tc(x.facility))} ${x.bbl ? Math.round(x.bbl).toLocaleString('en') + ' bbl' : 'not known'}` +
+        (/^https:\/\//.test(x.source || '') ? ` (<a href="${esc(x.source)}" target="_blank" rel="noopener">source</a>)` : '');
+      return `<strong>Storage:</strong> ${st.map(one).join(', ')}; a lifting cannot be larger than the storage it is loaded from &nbsp;|&nbsp; `;
+    })() +
     `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
     `<strong>Est. cargo:</strong> from the highest draught the tanker reported on AIS after leaving (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Rough, about ±15 %; missing when no draught was sampled before the next call &nbsp;|&nbsp; ` +
     `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within seven days &nbsp;|&nbsp; ` +

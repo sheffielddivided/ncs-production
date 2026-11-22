@@ -584,6 +584,7 @@ def main():
             'name': fields[st['fid']], 'centre': [round(st['centre'][0], 5), round(st['centre'][1], 5)], 'radiusKm': st['radius'],
             'facilities': [f['name'] for f in st['load']], 'nFacilities': len(st['load']),
             'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'], 'routeDays': ROUTE_DAYS,
+            'storage': st['fc'].get('storage') or [],
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest'],
             'visits': rows_out,
             'ships': {m: {**st['ships'][m], **tanker_spec(st['ships'][m], specs)} for m in sorted(ship_ids)},
