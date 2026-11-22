@@ -12327,6 +12327,8 @@ function fmtStay(h) { return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h 
 function shipPlace(p) {
   if (!p) return '<span class="muted">…</span>';
   if (!p[1]) return '<span class="muted">—</span>';
+  // Skipet forlot Kystverkets AIS-dekning før det stoppet: stedet og retningen.
+  if (p[0] === 'exit') return `<span title="Left AIS coverage here">↗ ${esc(p[2] ? p[2] + ' from ' : 'from ')}${esc(p[1])}</span> <span class="muted">(left coverage)</span>`;
   return esc(p[0] === 'field' ? tc(p[1]) : p[1]) + (p[0] === 'field' ? ' <span class="muted">(field)</span>' : '');
 }
 const shipName = (m, sh) => sh && sh.name ? tc(sh.name) : `MMSI ${m}`;
@@ -12442,7 +12444,7 @@ function drawShipping(ids, name, kind) {
     })() +
     `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
     `<strong>Est. cargo:</strong> from the highest draught the tanker reported on AIS after leaving (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Rough, about ±15 %; missing when no draught was sampled before the next call &nbsp;|&nbsp; ` +
-    `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within seven days &nbsp;|&nbsp; ` +
+    `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within seven days before and ten days after. Norwegian AIS (Kystverket) covers Norwegian waters only, so a tanker bound for a foreign terminal usually leaves coverage before it stops: «To» then shows where and in which direction it left (↗), and the AIS destination is shown from 23 Nov 2026 &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
   if (!datasets.length) setChartEmpty('No tanker calls in the period.');
   else renderChart(months, datasets, datasets.map(d => ({label: d.label, color: d.backgroundColor})),
