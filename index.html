@@ -12436,7 +12436,7 @@ function drawShipping(ids, name, kind) {
     (() => {
       const st = Fs.flatMap(f => f.storage || []);
       if (!st.length) return '';
-      const one = x => `${esc(tc(x.facility))} ${x.bbl ? Math.round(x.bbl).toLocaleString('en') + ' bbl' : 'not known'}` +
+      const one = x => `${esc(tc(x.facility).replace(/\b(Fpso|Fpu|Fsu|Fso|Stl)\b/g, w => w.toUpperCase()))} ${x.bbl ? Math.round(x.bbl).toLocaleString('en') + ' bbl' : 'not known'}` +
         (/^https:\/\//.test(x.source || '') ? ` (<a href="${esc(x.source)}" target="_blank" rel="noopener">source</a>)` : '');
       return `<strong>Storage:</strong> ${st.map(one).join(', ')}; a lifting cannot be larger than the storage it is loaded from &nbsp;|&nbsp; `;
     })() +
