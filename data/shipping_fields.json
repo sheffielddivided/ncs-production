@@ -26,8 +26,10 @@
    "storage": [
     {
      "facility": "NORNE FPSO",
-     "source": "https://equinor.industriminne.no/en/pioneering-production-in-the-north/",
-     "note": "Kilden sier «717 000 tonnes», som er umulig for et skip på 250 m; trolig 717 000 fat. Ikke bekreftet"
+     "bbl": 719000,
+     "m3": 114000,
+     "source": "Norsk Oljemuseum, feltoversikt (oppgitt av bruker)",
+     "note": "Equinors historieside skriver «717 000 tonnes», trolig fat"
     }
    ]
   },
