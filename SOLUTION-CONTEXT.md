@@ -2917,7 +2917,7 @@ følger resten av visningen; klikk åpner brønnen eller riggprofilen ved opphol
 Selskapsfilteret treffer brønnhendelser (ikke rigger).
 Exploration → News tar i tillegg med Sodirs boretillatelser (RSS-feeden
 `drilling-permits`, `k = 'permit'` i `data/sodir_press.json`, samme arkiv som
-Companies → News) for samme periode som loggen, med egen knapp «Permits»
+Companies → News) for samme periode som loggen under «All», og hele arkivet (fra 2019) under «Permits»
 (`explPermitEvents`, `permitLine`, `loadSodirPress`). Tittelen lenker til saken på
 sodir.no, og raden åpner brønnen når brønnbanen finnes i letedataene; ellers treffer
 selskapsfilteret selskapene nevnt i meldingen.
