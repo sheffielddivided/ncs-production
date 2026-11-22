@@ -8,7 +8,7 @@ Skipstrafikk til og fra utvalgte felt, fra Kystverkets åpne AIS-API
 
 Kilder, åpne uten innlogging:
   · ais/positions/within-bbox-time — alle posisjoner i en boks rundt feltets
-    innretninger (radius + 1 km). Bare posisjoner så nær en innretning lagres.
+    innretninger (radius + 1 km).
     Utledet av AIS-sporene; data finnes foreløpig fra 1. januar 2026. Bare
     oppholdene lagres (data/shipping_log.json), ikke posisjonene.
     Hentes i biter på CHUNK_DAYS dager, og arbeidet lagres i
