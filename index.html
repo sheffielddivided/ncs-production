@@ -12368,17 +12368,18 @@ function drawShipping(ids, name, kind) {
   }
   const hub = kind === 'hub';
   const now = Date.now();
-  let visits = Fs.flatMap(F => F.visits.map(([m, s, e, d, open, from, to]) => {
+  let visits = Fs.flatMap(F => F.visits.map(([m, s, e, d, open, from, to, draught, cargo, dest]) => {
     const t0 = Date.parse(s), t1 = open ? Math.max(Date.parse(e), Date.parse(F.until)) : Date.parse(e);
     const sh = (F.ships || {})[m] || {};
-    return {m, t0, t1, d, open, from, to, sh, name: shipName(m, sh), fields: [tc(F.name)]};
+    return {m, t0, t1, d, open, from, to, draught, cargo, dest, sh, name: shipName(m, sh), fields: [tc(F.name)]};
   }));
   if (Fs.length > 1) {
     const merged = [];
     visits.sort((a, b) => a.m < b.m ? -1 : a.m > b.m ? 1 : a.t0 - b.t0).forEach(v => {
       const cur = merged[merged.length - 1];
       if (cur && cur.m === v.m && v.t0 <= cur.t1 + SHIP_GAP_H * 36e5) {
-        if (v.t1 >= cur.t1) { cur.to = v.to; cur.open = v.open; }
+        if (v.t1 >= cur.t1) { cur.to = v.to; cur.open = v.open; cur.dest = v.dest; }
+        if (v.cargo != null) cur.cargo = Math.max(cur.cargo || 0, v.cargo);
         cur.t1 = Math.max(cur.t1, v.t1);
         if (!cur.fields.includes(v.fields[0])) cur.fields.push(v.fields[0]);
       } else merged.push({...v, fields: [...v.fields]});
@@ -12391,7 +12392,7 @@ function drawShipping(ids, name, kind) {
   // Skipene, rangert etter antall anløp; de største får egen serie.
   const byShip = {};
   visits.forEach(v => {
-    const o = byShip[v.m] = byShip[v.m] || {m: v.m, name: v.name, len: v.sh.len, n: 0, days: 0, last: 0};
+    const o = byShip[v.m] = byShip[v.m] || {m: v.m, name: v.name, len: v.sh.len, dwt: v.sh.dwt, est: v.sh.dwtSrc === 'estimated', cap: v.sh.cap, n: 0, days: 0, last: 0};
     o.n++; o.days += (v.t1 - v.t0) / 864e5; o.last = Math.max(o.last, v.t0);
   });
   const ranked = Object.values(byShip).sort((a, b) => b.n - a.n || b.days - a.days);
@@ -12431,7 +12432,9 @@ function drawShipping(ids, name, kind) {
     : `<strong>Field:</strong> ${esc(tc(name))}, around ${Fs[0].facilities.map(x => esc(x)).join(', ')} &nbsp;|&nbsp; `) +
     `<strong>Period:</strong> ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))} &nbsp;|&nbsp; ` +
     `<strong>Tankers:</strong> AIS ship type 80–89, or unknown type over 220 m (shuttle tankers); other vessels and the fields' own storage units are not included &nbsp;|&nbsp; ` +
-    `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours; tankers passing through are left out. Stays with less than 6 hours between them count as one &nbsp;|&nbsp; ` +
+    `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours; tankers passing through are left out. Calls by the same tanker less than 72 hours apart count as one (it moved off and came back to load), so the time at the field can include waiting nearby &nbsp;|&nbsp; ` +
+    `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
+    `<strong>Est. cargo:</strong> from the highest draught the tanker reported on AIS after leaving (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Rough, about ±15 %; missing when no draught was sampled before the next call &nbsp;|&nbsp; ` +
     `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within four days &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
   if (!datasets.length) setChartEmpty('No tanker calls in the period.');
@@ -12450,15 +12453,15 @@ function drawShipping(ids, name, kind) {
   setChartTable(`
     <table class="res-table">
       <caption>Tankers · ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))}</caption>
-      <thead><tr><th>Tanker</th><th>Length</th><th>Calls</th><th>Last 30 days</th><th>Days at ${kind}</th><th>Last call</th></tr></thead>
-      <tbody>${ranked.map(o => `<tr><td>${dot(o.m)}${esc(o.name)}</td><td>${o.len ? o.len + ' m' : '—'}</td><td>${o.n}</td><td>${n30(o.m)}</td><td>${o.days.toFixed(1)}</td><td>${fmtShort(new Date(o.last).toISOString().slice(0, 10))}</td></tr>`).join('')}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td></td><td>${visits.length}</td><td>${visits.filter(v => v.t0 >= d30).length}</td><td>${ranked.reduce((t, o) => t + o.days, 0).toFixed(1)}</td><td></td></tr></tfoot>
+      <thead><tr><th>Tanker</th><th>Length</th><th>Deadweight</th><th>Capacity, bbl</th><th>Calls</th><th>Last 30 days</th><th>Days at ${kind}</th><th>Last call</th></tr></thead>
+      <tbody>${ranked.map(o => `<tr><td>${dot(o.m)}${esc(o.name)}</td><td>${o.len ? o.len + ' m' : '—'}</td><td>${o.dwt ? (o.est ? '≈ ' : '') + Math.round(o.dwt).toLocaleString('en') + ' t' : '—'}</td><td>${o.cap ? (o.est ? '≈ ' : '') + Math.round(o.cap / 1000).toLocaleString('en') + 'k' : '—'}</td><td>${o.n}</td><td>${n30(o.m)}</td><td>${o.days.toFixed(1)}</td><td>${fmtShort(new Date(o.last).toISOString().slice(0, 10))}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td>${visits.length}</td><td>${visits.filter(v => v.t0 >= d30).length}</td><td>${ranked.reduce((t, o) => t + o.days, 0).toFixed(1)}</td><td></td></tr></tfoot>
     </table>
     <table class="res-table">
       <caption>Calls, newest first · times in UTC</caption>
-      <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}<th>From</th><th>To</th></tr></thead>
+      <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}<th>Est. cargo, bbl</th><th>From</th><th>To</th></tr></thead>
       <tbody>${list.slice(0, shipShown).map(v => `<tr><td>${fmtT(v.t0)}</td><td>${v.open ? `<em>at the ${kind}</em>` : fmtT(v.t1)}</td><td>${fmtStay((v.t1 - v.t0) / 36e5)}</td>
-          <td>${dot(v.m)}${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}<td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}</td></tr>`).join('')}</tbody>
+          <td>${dot(v.m)}${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}<td>${v.cargo != null ? '≈ ' + Math.round(v.cargo / 1000).toLocaleString('en') + 'k' : '<span class="muted">—</span>'}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
     </table>
     ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`);
 }

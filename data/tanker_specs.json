@@ -1,0 +1,23 @@
+{
+ "note": "Oppgitt dødvekt (tonn) og eventuelt lastekapasitet i fat (bbl) per tankskip, nøkkel IMO-nummer, med kilde. Redigeres for hånd. Skip som ikke står her, får dødvekten anslått fra målene i AIS-registeret (fetch_shipping.py, DWT_K).",
+ "ships": {
+  "9833113": {
+   "name": "EAGLE BALDER",
+   "dwt": 128442,
+   "built": 2020,
+   "source": "https://www.aet-tankers.com/solutions/dynamic-positioning-shuttle-tankers"
+  },
+  "9833101": {
+   "name": "EAGLE BLANE",
+   "dwt": 128427,
+   "built": 2020,
+   "source": "https://www.aet-tankers.com/solutions/dynamic-positioning-shuttle-tankers"
+  },
+  "9676137": {
+   "name": "EAGLE BERGEN",
+   "dwt": 120657,
+   "built": 2015,
+   "source": "https://www.aet-tankers.com/solutions/dynamic-positioning-shuttle-tankers"
+  }
+ }
+}

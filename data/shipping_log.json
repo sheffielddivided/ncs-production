@@ -3861,6 +3861,8 @@ true
 "name": "BODIL KNUTSEN",
 "type": 89,
 "len": 285,
+"beam": 50,
+"draught": 16.52,
 "imo": 9472529
 },
 "258169000": {
@@ -3915,12 +3917,16 @@ true
 "name": "EAGLE BERGEN",
 "type": 80,
 "len": 276,
+"beam": 46,
+"draught": 15.12,
 "imo": 9676137
 },
 "311000974": {
 "name": "MARAN WIND",
 "type": 80,
 "len": 245,
+"beam": 44,
+"draught": 15.02,
 "imo": 9863560
 },
 "311001327": {
@@ -3939,18 +3945,24 @@ true
 "name": "MARAN TIDE",
 "type": 80,
 "len": 277,
+"beam": 46,
+"draught": 15.421,
 "imo": 9843912
 },
 "311027500": {
 "name": "MARAN NANSEN",
 "type": 80,
 "len": 249,
+"beam": 44,
+"draught": 15,
 "imo": 9438860
 },
 "311027600": {
 "name": "MARAN PEARY",
 "type": 80,
 "len": 249,
+"beam": 44,
+"draught": 15.02,
 "imo": 9466130
 },
 "219009000": {
@@ -4287,6 +4299,8 @@ true
 "name": "SINDRE KNUTSEN",
 "type": 80,
 "len": 277,
+"beam": 46,
+"draught": 14.9,
 "imo": 9905928
 },
 "257997000": {
@@ -4419,6 +4433,8 @@ true
 "name": "MARAN WAVE",
 "type": 80,
 "len": 245,
+"beam": 44,
+"draught": 15.02,
 "imo": 9863558
 },
 "311001262": {
@@ -4431,12 +4447,16 @@ true
 "name": "MARAN SCOTT",
 "type": 80,
 "len": 248,
+"beam": 44,
+"draught": 15.02,
 "imo": 9466142
 },
 "311027700": {
 "name": "MARAN AMUNDSEN",
 "type": 80,
 "len": 249,
+"beam": 44,
+"draught": 15.02,
 "imo": 9438858
 },
 "354742000": {
@@ -4461,6 +4481,8 @@ true
 "name": "EAGLE BALDER",
 "type": 81,
 "len": 277,
+"beam": 46,
+"draught": 15.342,
 "imo": 9833113
 },
 "257089550": {
@@ -4515,18 +4537,24 @@ true
 "name": "AURORA SPIRIT",
 "type": 80,
 "len": 277,
+"beam": 46,
+"draught": 15.421,
 "imo": 9837169
 },
 "311001591": {
 "name": "RAINBOW SPIRIT",
 "type": 81,
 "len": 277,
+"beam": 46,
+"draught": 15.421,
 "imo": 9837171
 },
 "311001594": {
 "name": "MARAN CURRENT",
 "type": 80,
 "len": 277,
+"beam": 46,
+"draught": 15.42,
 "imo": 9843924
 },
 "219822000": {
@@ -4563,6 +4591,8 @@ true
 "name": "INGRID KNUTSEN",
 "type": 81,
 "len": 257,
+"beam": 43,
+"draught": 15,
 "imo": 9649225
 },
 "246695000": {
@@ -4575,6 +4605,8 @@ true
 "name": "EAGLE BLANE",
 "type": 80,
 "len": 277,
+"beam": 46,
+"draught": 15.342,
 "imo": 9833101
 },
 "257129000": {
@@ -4629,12 +4661,16 @@ true
 "name": "HILDA KNUTSEN",
 "type": 83,
 "len": 276,
+"beam": 46,
+"draught": 15.5,
 "imo": 9628300
 },
 "257896000": {
 "name": "TORILL KNUTSEN",
 "type": 0,
 "len": 275,
+"beam": 46,
+"draught": 15.5,
 "imo": 9630030
 },
 "257954000": {
@@ -4647,6 +4683,8 @@ true
 "name": "FRIDA KNUTSEN",
 "type": 80,
 "len": 277,
+"beam": 46,
+"draught": 14.9,
 "imo": 9905916
 },
 "258132000": {
@@ -4713,6 +4751,8 @@ true
 "name": "JORUNN KNUTSEN/ASG C",
 "type": 80,
 "len": 265,
+"beam": 42,
+"draught": 15.677,
 "imo": 9181065
 },
 "259690000": {
@@ -5235,6 +5275,8 @@ true
 "name": "NJORD BRAVO",
 "type": 89,
 "len": 232,
+"beam": 42,
+"draught": 15.52,
 "imo": 8766181
 },
 "257492750": {
@@ -5271,6 +5313,8 @@ true
 "name": "HEIDRUN B",
 "type": 80,
 "len": 250,
+"beam": 46,
+"draught": 18.2,
 "imo": 9678123
 },
 "258060000": {
