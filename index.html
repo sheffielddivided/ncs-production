@@ -20658,8 +20658,10 @@ async function explRenderNews() {
   await Promise.all([loadExploration(), loadChanges(), loadRigAis(), loadSodirPress()]);
   if (explSubView !== 'news') return;
   const f = explF, c = f.company.trim().toLowerCase(), q = f.q.trim().toLowerCase();
-  // Tillatelsene tas med for samme periode som endringsloggen.
-  const since = changesData.length ? changesData[changesData.length - 1].d : '';
+  // Tillatelsene tas med for samme periode som endringsloggen; med «Permits»
+  // valgt vises hele arkivet bakover.
+  const allPermits = newsType === 'permits';
+  const since = !allPermits && changesData.length ? changesData[changesData.length - 1].d : '';
   const events = changesData.concat(explPermitEvents(since))
     .sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
   const list = events.filter(e => {
@@ -20689,14 +20691,16 @@ async function explRenderNews() {
   });
   box.innerHTML = `
     <div class="pf-card"><h3>Latest changes</h3><div class="ex-slot"></div>
-      <div class="ex-sum"><strong>${list.length}</strong> changes${changesData.length ? ` since ${fmtShort(changesData[changesData.length - 1].d)}` : ''}</div>
+      <div class="ex-sum">${allPermits
+        ? `<strong>${list.length}</strong> drilling permits${list.length ? ` since ${fmtShort(list[list.length - 1].d)}` : ''}`
+        : `<strong>${list.length}</strong> changes${changesData.length ? ` since ${fmtShort(changesData[changesData.length - 1].d)}` : ''}`}</div>
     <div class="grp-row">${chip('all', 'All')}${chip('discoveries', 'Discoveries')}${chip('wells', 'Wells')}${chip('permits', 'Permits')}${chip('rigs', 'Rigs')}${chip('havtil', 'Havtil')}</div>
       ${html || '<div class="pf-map-note">Nothing new matches the filters yet. The log is filled by the daily data run.</div>'}
       ${list.length > newsShown ? `<button class="grp-btn ex-more" onclick="newsShown+=60;explRenderNews()">Show more (${list.length - newsShown} older)</button>` : ''}
       <div class="pf-map-note">Detected by comparing each daily data run with the previous one; the first entries are dated from the wells' own start
         and completion dates. Rig moves come from AIS stays. Havtil entries are new consents from the Norwegian Ocean Industry
         Authority (inspections, investigations and orders are left out); they open on havtil.no. Permits are Sodir's drilling permits
-        from its news feed, for the same period; the title opens the announcement on sodir.no and the row opens the well when it is in the data.</div></div>`;
+        from its news feed, for the same period under All and the whole archive under Permits; the title opens the announcement on sodir.no and the row opens the well when it is in the data.</div></div>`;
   dockBar('explBody');
 }
 
