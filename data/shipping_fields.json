@@ -1,6 +1,12 @@
 {
  "fields": [
   {"name": "SKARV"},
-  {"name": "ALVHEIM"}
+  {"name": "ALVHEIM"},
+  {"name": "NORNE"},
+  {"name": "ÅSGARD"},
+  {"name": "BALDER"},
+  {"name": "GOLIAT"},
+  {"name": "JOHAN CASTBERG"},
+  {"name": "NJORD"}
  ]
 }
