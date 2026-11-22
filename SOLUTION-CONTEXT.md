@@ -311,6 +311,28 @@ forrige vannkolonne (`keep_previous_water()`), som før.
 > månedsrader og en aggregert årsrad per år i samme tabell. Koden skiller dem i
 > `isValidRow` (`index.html:791-793`). Blander man dem, dobbelttelles alt.
 
+### `data/shipping.json` — skipstrafikk til felt (Field → Shipping)
+
+Bygges av `fetch_shipping.py` for feltene i `data/shipping_fields.json`
+(`{"fields": [{"name": "SKARV", "radiusKm": 3}]}`, feltnavn som i Sodir).
+Kilde: Kystverkets Kystdatahuset, åpne endepunkter uten innlogging:
+`ais/positions/within-bbox-time` (alle posisjoner i en boks på ±12 km rundt
+feltet, `minSpeed: -1` så skip som ligger stille er med; foreløpig bare data fra
+2026-01-01), `ais/positions/for-mmsis-time` (skipets spor fire dager før og
+etter besøket) og `ais/static-messages` (navn, type, lengde; går bare til
+starten av inneværende måned). `martraf-tracks/*` krever innlogging og brukes
+ikke.
+
+- **Senter:** feltets innretninger på overflaten i drift (Skarv: FPSO-en), ellers alle innretninger i drift.
+- **Besøk:** skip innenfor radiusen (standard 3 km) som har stoppet (< 3 knop) eller vært der minst 30 minutter. Opphold med under 6 timers hull slås sammen. `open` = 1 når skipet var der ved siste henting.
+- **From / To:** første stopp på minst en time (< 3 knop) utenfor feltet før og etter besøket, navngitt som havn (Kystverkets havner, kaier og ankerplasser innen 3 km), felt (Sodirs innretninger innen 3 km) eller posisjon. Tomt navn = ingen stopp funnet innen fire dager; `null` = ikke slått opp ennå.
+- **Kategori:** AIS-type 80–89 eller ukjent type (0/90) over 180 m → tanker (skytteltankere), 30 fiske, 70–79 last, 60–69 passasjer, 31/32/52 slep, ellers offshore/forsyning.
+- **Loggen** (`data/shipping_log.json`) har tynnede posisjoner (nytt punkt ved 300 m flytting, stopp/start eller hver time) og `until`, så hver kjøring fortsetter der forrige slapp. `--rebuild` regner besøkene om fra loggen.
+
+Frontend (`drawFieldShipping`): anløp eller fartøydøgn per uke stablet etter
+kategori, oppsummering per kategori og tabell over anløpene, nyeste først.
+Bare ett felt om gangen; felt uten data viser hvilke felt som har det.
+
 ### `data/licensees.json` — eierandeler over tid
 
 ```json
