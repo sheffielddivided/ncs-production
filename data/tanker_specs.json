@@ -26,6 +26,43 @@
    "dwt": 109239,
    "m3": 119250,
    "source": "https://scheepvaartwest.be/CMS/index.php/tankers/12496-nansen-spirit-imo-9438860"
+  },
+  "9649225": {
+   "name": "INGRID KNUTSEN",
+   "dwt": 111634,
+   "built": 2013,
+   "source": "https://knutsenoas.com/ship/ingrid-knutsen/"
+  },
+  "9630030": {
+   "name": "TORILL KNUTSEN",
+   "dwt": 122842,
+   "built": 2013,
+   "source": "https://knutsenoas.com/ship/torill-knutsen/"
+  },
+  "9905928": {
+   "name": "SINDRE KNUTSEN",
+   "dwt": 123602.5,
+   "built": 2022,
+   "source": "https://knutsenoas.com/ship/sindre-knutsen/"
+  },
+  "9628300": {
+   "name": "HILDA KNUTSEN",
+   "dwt": 122842,
+   "built": 2013,
+   "source": "https://knutsenoas.com/ship/hilda-knutsen/"
+  },
+  "9905916": {
+   "name": "FRIDA KNUTSEN",
+   "dwt": 123602.5,
+   "built": 2022,
+   "source": "https://knutsenoas.com/ship/frida-knutsen/"
+  },
+  "9472529": {
+   "name": "BODIL KNUTSEN",
+   "dwt": 149999,
+   "built": 2011,
+   "source": "https://knutsenoas.com/ship/bodil-knutsen/",
+   "m3": 175345
   }
  }
 }

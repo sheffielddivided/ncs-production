@@ -62,7 +62,7 @@ SAME_SHIP_HOURS = 72   # anløp av samme skip på samme felt med kortere mellomr
 # Kapasitet og last. Dødvekt anslås som DWT_K × lengde × bredde × største
 # dypgang (AIS-registeret) når tanker_specs.json ikke har oppgitt tall;
 # DWT_K er kalibrert mot AETs oppgitte tall for Eagle Balder, Blane og Bergen
-# (0,63–0,66). Lastekapasiteten er lastedødvekten (CARGO_SHARE av dødvekten)
+# (0,63–0,66), og stemmer med de ti oppgitte i tanker_specs.json (snitt 0,647). Lastekapasiteten er lastedødvekten (CARGO_SHARE av dødvekten)
 # delt på råoljens tetthet. Lasten per anløp anslås fra dypgangen etter
 # avgang: full last minus det skipet ligger høyere enn største dypgang,
 # med vannlinjeareal WP_K × lengde × bredde.
