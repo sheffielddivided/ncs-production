@@ -1,5 +1,5 @@
 {
- "note": "Oppgitt dødvekt (tonn) og eventuelt lastekapasitet i fat (bbl) per tankskip, nøkkel IMO-nummer, med kilde. Redigeres for hånd. Skip som ikke står her, får dødvekten anslått fra målene i AIS-registeret (fetch_shipping.py, DWT_K).",
+ "note": "Oppgitt dødvekt (tonn) og eventuelt lastetankenes volum (m3) eller kapasitet i fat (bbl) per tankskip, nøkkel IMO-nummer, med kilde. Redigeres for hånd. Skip som ikke står her, får dødvekten anslått fra målene i AIS-registeret (fetch_shipping.py, DWT_K).",
  "ships": {
   "9833113": {
    "name": "EAGLE BALDER",
@@ -17,7 +17,15 @@
    "name": "EAGLE BERGEN",
    "dwt": 120657,
    "built": 2015,
-   "source": "https://www.aet-tankers.com/solutions/dynamic-positioning-shuttle-tankers"
+   "source": "https://www.aet-tankers.com/solutions/dynamic-positioning-shuttle-tankers",
+   "m3": 130000,
+   "source2": "https://scheepvaartwest.be/CMS/index.php/tankers/11238-eagle-bergen-imo-9676137"
+  },
+  "9438860": {
+   "name": "MARAN NANSEN (ex NANSEN SPIRIT)",
+   "dwt": 109239,
+   "m3": 119250,
+   "source": "https://scheepvaartwest.be/CMS/index.php/tankers/12496-nansen-spirit-imo-9438860"
   }
  }
 }

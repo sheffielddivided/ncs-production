@@ -352,7 +352,8 @@ def tanker_spec(ship, specs):
         dwt, src = round(DWT_K * ship['len'] * ship['beam'] * ship['draught'], -2), 'estimated'
     if not dwt:
         return {}
-    cap = given.get('bbl') or round(dwt * CARGO_SHARE / OIL_DENSITY * BBL_PER_M3, -3)
+    cap = given.get('bbl') or (round(given['m3'] * BBL_PER_M3, -3) if given.get('m3') else None) \
+        or round(dwt * CARGO_SHARE / OIL_DENSITY * BBL_PER_M3, -3)
     return {'dwt': dwt, 'dwtSrc': src, 'cap': cap, **({'source': given['source']} if given.get('source') else {})}
 
 
