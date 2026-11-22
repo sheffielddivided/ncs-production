@@ -1,34 +1,113 @@
 {
  "fields": [
   {
-   "name": "SKARV"
+   "name": "SKARV",
+   "storage": [
+    {
+     "facility": "SKARV FPSO",
+     "bbl": 875000,
+     "source": "https://www.offshore-technology.com/projects/skarv-satellite-project-norway/"
+    }
+   ]
   },
   {
-   "name": "ALVHEIM"
+   "name": "ALVHEIM",
+   "storage": [
+    {
+     "facility": "ALVHEIM FPSO",
+     "bbl": 560000,
+     "source": "https://en.wikipedia.org/wiki/Alvheim_FPSO",
+     "note": "Utvidet fra 530 000 fat (Norsk Oljemuseum)"
+    }
+   ]
   },
   {
-   "name": "NORNE"
+   "name": "NORNE",
+   "storage": [
+    {
+     "facility": "NORNE FPSO",
+     "source": "https://equinor.industriminne.no/en/pioneering-production-in-the-north/",
+     "note": "Kilden sier «717 000 tonnes», som er umulig for et skip på 250 m; trolig 717 000 fat. Ikke bekreftet"
+    }
+   ]
   },
   {
-   "name": "ÅSGARD"
+   "name": "ÅSGARD",
+   "storage": [
+    {
+     "facility": "ÅSGARD A",
+     "bbl": 907000,
+     "source": "https://www.offshore-technology.com/projects/asgard/",
+     "note": "Norsk Oljemuseum oppgir 920 000 fat"
+    },
+    {
+     "facility": "ÅSGARD C",
+     "bbl": 868000,
+     "source": "https://www.equinor.com/news/archive/2000/05/23/AasgardCEnRoute",
+     "note": "Kondensat"
+    }
+   ]
   },
   {
-   "name": "BALDER"
+   "name": "BALDER",
+   "storage": [
+    {
+     "facility": "BALDER FPU",
+     "bbl": 380000,
+     "source": "https://www.offshore-technology.com/projects/balder/",
+     "note": "Planlagt tatt ut av drift 2028"
+    },
+    {
+     "facility": "JOTUN FPSO",
+     "bbl": 580000,
+     "source": "https://www.offshore-technology.com/projects/jotun/"
+    }
+   ]
   },
   {
-   "name": "GOLIAT"
+   "name": "GOLIAT",
+   "storage": [
+    {
+     "facility": "GOLIAT FPSO",
+     "bbl": 950000,
+     "source": "https://www.offshore-technology.com/projects/goliat/"
+    }
+   ]
   },
   {
-   "name": "JOHAN CASTBERG"
+   "name": "JOHAN CASTBERG",
+   "storage": [
+    {
+     "facility": "JOHAN CASTBERG FPSO",
+     "bbl": 1100000,
+     "source": "https://www.offshore-technology.com/projects/skrugard-field-development-project-norway/"
+    }
+   ]
   },
   {
-   "name": "NJORD"
+   "name": "NJORD",
+   "storage": [
+    {
+     "facility": "NJORD BRAVO",
+     "m3": 110000,
+     "bbl": 692000.0,
+     "source": "https://offshore-energy.biz/2012/08/15/norway-bergen-wins-njord-bravo-fso-job",
+     "note": "Equinor oppgir 700 000 fat (2022)"
+    }
+   ]
   },
   {
    "name": "KRISTIN"
   },
   {
-   "name": "HEIDRUN"
+   "name": "HEIDRUN",
+   "storage": [
+    {
+     "facility": "HEIDRUN FSU",
+     "bbl": 850000,
+     "source": "https://gcaptain.com/video-fsu-heidrun-b-departs-samsung-heavy-industries"
+    }
+   ]
   }
  ],
  "excludeShips": {
@@ -37,5 +116,5 @@
   "257804000": "Heidrun FSU, lagerskip på Heidrun",
   "311036900": "Rørleggingsfartøy, ikke tankskip"
  },
- "note": "excludeShips: MMSI for skip som ikke er tankskip på besøk (lagerskip som ligger fast på feltet, feilklassifiserte fartøy). Redigeres for hånd."
+ "note": "excludeShips: MMSI for skip som ikke er tankskip på besøk (lagerskip som ligger fast på feltet, feilklassifiserte fartøy). Redigeres for hånd. storage: oljelageret på lasteinnretningene (fat, eventuelt m3), med kilde; et løft kan ikke være større enn lageret."
 }

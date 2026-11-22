@@ -73,7 +73,7 @@ BBL_PER_M3 = 6.2898
 WP_K = 0.88
 SEAWATER = 1.025
 OBS_DAYS = 120         # så lenge dypgangsobservasjonene beholdes
-ROUTE_DAYS = 4         # hvor langt før og etter besøket det letes etter forrige og neste stopp
+ROUTE_DAYS = 7         # hvor langt før og etter besøket det letes etter forrige og neste stopp
 STAY_MIN = 60          # et stopp underveis varer minst så lenge
 MAX_SECONDS = int(os.environ.get("SHIPPING_SECONDS", 300))   # tidsbudsjett per kjøring; resten tas neste gang
 TIMEOUT = 150
@@ -291,10 +291,17 @@ def last_stop(rows, before, after, away_from, radius):
 
 
 def ship_rows(mmsi, start, end):
-    data = call('POST', '/ais/positions/for-mmsis-time', {
-        'mmsiIds': [int(mmsi)], 'start': start.strftime('%Y%m%d%H%M'), 'end': end.strftime('%Y%m%d%H%M'),
-    })['data'] or []
-    return [[minutes(parse_iso(r[1])), r[2], r[3], r[5]] for r in data if r[2] is not None and r[3] is not None]
+    """Skipets posisjoner [min, lon, lat, sog]. Databasen tåler bare korte
+    vinduer, så lengre perioder hentes i biter på CHUNK_DAYS dager."""
+    out, t = [], start
+    while t < end:
+        t1 = min(t + timedelta(days=CHUNK_DAYS), end)
+        data = call('POST', '/ais/positions/for-mmsis-time', {
+            'mmsiIds': [int(mmsi)], 'start': t.strftime('%Y%m%d%H%M'), 'end': t1.strftime('%Y%m%d%H%M'),
+        })['data'] or []
+        out += [[minutes(parse_iso(r[1])), r[2], r[3], r[5]] for r in data if r[2] is not None and r[3] is not None]
+        t = t1
+    return sorted(out, key=lambda r: r[0])
 
 
 def fetch_ships(mmsis, ships):
@@ -396,7 +403,7 @@ def realtime(log, cfg):
 
 def laden_after(obs_rows, end, until):
     """Største dypgang og første destinasjon observert etter avgang (end) og
-    før neste anløp eller fire dager (until), som 'YYYY-MM-DDTHH:MM'."""
+    før neste anløp eller ROUTE_DAYS (until), som 'YYYY-MM-DDTHH:MM'."""
     rows = [r for r in obs_rows if end <= r[0] <= until]
     if not rows:
         return None, None
@@ -521,8 +528,11 @@ def main():
         st['visits'] = sorted(merged, key=lambda v: v['s'])
         st['ships'] = ships
         prev_rows = [] if reroute else st['prev'].get('visits') or []
-        old_from = {f"{r[0]}|{r[1]}": r[5] for r in prev_rows}
-        old_to = {f"{r[0]}|{r[2]}": r[6] for r in prev_rows if not r[4]}
+        # Tomme fra/til funnet med et kortere vindu slås opp på nytt.
+        retry = (st['prev'].get('routeDays') or 4) < ROUTE_DAYS
+        keep = lambda p: p if not (retry and p and not p[1]) else None
+        old_from = {f"{r[0]}|{r[1]}": keep(r[5]) for r in prev_rows}
+        old_to = {f"{r[0]}|{r[2]}": keep(r[6]) for r in prev_rows if not r[4]}
         for v in st['visits']:
             v['open'] = st['until_min'] - v['e'] < 60   # skipet er (trolig) der ennå
             v['from'] = old_from.get(f"{v['m']}|{iso(v['s'])}")
@@ -573,7 +583,8 @@ def main():
         out_fields[st['key']] = {
             'name': fields[st['fid']], 'centre': [round(st['centre'][0], 5), round(st['centre'][1], 5)], 'radiusKm': st['radius'],
             'facilities': [f['name'] for f in st['load']], 'nFacilities': len(st['load']),
-            'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'],
+            'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'], 'routeDays': ROUTE_DAYS,
+            'storage': st['fc'].get('storage') or [],
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest'],
             'visits': rows_out,
             'ships': {m: {**st['ships'][m], **tanker_spec(st['ships'][m], specs)} for m in sorted(ship_ids)},
