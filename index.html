@@ -654,7 +654,8 @@
 
     .info-box{margin:0 12px 8px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
     .info-box strong{color:#1a2332;}
-    .info-box .news{display:block;margin-top:6px;padding-top:6px;border-top:1px solid #eeabcb;}
+    .ncs-news{margin-left:auto;align-self:center;font-size:12px;color:#7a1f4f;text-decoration:none;}
+    .ncs-news:hover{text-decoration:underline;}
 
     .dl-row{padding:0 12px 8px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
     .share-btn{border-color:var(--blue);color:var(--blue);}
@@ -8471,7 +8472,7 @@ function drawNcsProductionTotal() {
   setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Period:</strong> ${span || '—'}, the selected years From–To, with the current year to the latest month reported &nbsp;|&nbsp; <strong>Unit:</strong> million boe (net OE, 1 Sm³ = 6.29 bbl)` +
     (byOp ? ` &nbsp;|&nbsp; <strong>Operator:</strong> each month's gross field production (100 %) goes to the field's operator that month (Sodir's operator history), the ${NCS_OP_TOP} largest shown and the rest as «Other operators». Successor companies are shown under today's name (Statoil, StatoilHydro → Equinor; Det norske → Aker BP; Phillips → ConocoPhillips); Norsk Hydro, Saga and Amoco keep their own share until the merger` : '') +
     (!byArea && !byOp ? ' &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate; produced water is not included' : '') +
-    ' &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields is not included' + ncsNewsLink());
+    ' &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields is not included');
   if (!total) { setChartEmpty('No data for the selected period.'); return; }
   setChartTable(''); setProfile('');
   const n = v => v.toLocaleString('en', {maximumFractionDigits: v < 100 ? 1 : 0});
@@ -8505,7 +8506,7 @@ function drawNcsProductionTotal() {
   pptSpec = {kind: 'pie', labels: lastLabels, values: series.map(z => +z.v.toFixed(1)), colors: series.map(z => pptHex(z.color)),
     subtitle: `Cumulative ${what}, ${span} · million boe`};
   document.getElementById('downloadBtn').disabled = false;
-  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area'], ['operator', 'By operator']])}</div>`);
+  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area'], ['operator', 'By operator']])}${ncsNewsLink()}</div>`);
 }
 
 function drawNcsProduction() {
@@ -8586,22 +8587,22 @@ function drawNcsProduction() {
   setInfo(`<strong>Scope:</strong> All fields on the NCS (${ids.length}) &nbsp;|&nbsp; <strong>Series:</strong> ${byArea ? 'Net OE per sea area' : byOp ? `Net OE per operator, the ${NCS_OP_TOP} largest in the period and the rest as «Other operators». Gross field production (100 %) is attributed to the field's operator at the time (Sodir's operator history, mid-period date), not equity-adjusted. Successor companies are shown together under today's name (Statoil, StatoilHydro → Equinor; Det norske → Aker BP; Phillips → ConocoPhillips), while companies that merged into others (Norsk Hydro, Saga, Amoco) keep their own series until the merger` : 'Oil (incl. NGL and condensate), Gas' + (showWater ? ', Water' : '')} &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Basis:</strong> Sum of field production reported to Sodir. Production reported outside fields (e.g. test production from discoveries) is not included` +
     (sc ? ` &nbsp;|&nbsp; <strong>Sodir scenarios (dashed):</strong> the Norwegian Offshore Directorate's three possibility scenarios for total NCS production (Resource Report 2026), total OE converted from million Sm³ o.e. per year. They are not forecasts: the spread reflects exploration, technology, investment and how fast discoveries are developed. ` +
       (SODIR_SCENARIOS_EXACT ? '' : `<strong>Preliminary:</strong> the values are read off Sodir's chart, not taken from its data, so each year is uncertain by roughly ±2 million Sm³ o.e. (±35,000 boe/day). `) +
-      `With scenarios on, history is shown per year; ${currentYear}* is the year to date` : '') + ncsNewsLink());
+      `With scenarios on, history is shown per year; ${currentYear}* is the year to date` : ''));
   const ytdLeg = ytdFinish(labels, datasets, ytdM);
   if (!labels.length || !datasets.length) { setChartEmpty('No data for the selected period.'); }
   else renderChart(labels, datasets, series.filter(s => datasets.some(d => d.label === s.label)).concat(scLegend, ytdLeg ? [ytdLeg] : []), 'boe/day',
     sc ? {xTitle: 'Year'} : {});
   ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area'], ['operator', 'By operator']])}${
-    ncsPills('sc', [[false, 'Actual'], [true, 'With Sodir scenarios']])}</div>`);
+    ncsPills('sc', [[false, 'Actual'], [true, 'With Sodir scenarios']])}${ncsNewsLink()}</div>`);
 }
 
 // Lenke til Sodirs siste månedlige produksjonsmelding (data/sodir_news.json,
-// fra RSS-feeden via fetch_news.py). Foreløpige tall, ofte en måned foran
-// feltdataene i grafen.
+// fra RSS-feeden via fetch_news.py), i knapperaden over grafen. Foreløpige
+// tall, ofte en måned foran feltdataene i grafen; ingressen står i title.
 function ncsNewsLink() {
   const n = bundle.sodir_news && bundle.sodir_news.items && bundle.sodir_news.items[0];
   if (!n || !/^https:\/\/www\.sodir\.no\//.test(n.link)) return '';
-  return `<span class="news"><strong>Latest from Sodir (${esc(n.date)}):</strong> <a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)} ↗</a>${n.description ? ` — ${esc(n.description)}` : ''}</span>`;
+  return `<a class="ncs-news" href="${esc(n.link)}" target="_blank" rel="noopener" title="${esc(n.description || '')}">Latest from Sodir (${esc(n.date)}): ${esc(n.title)} ↗</a>`;
 }
 
 // ── NCS: RESERVES ──
