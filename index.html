@@ -4552,20 +4552,42 @@ function drawCompanyAnalytics() {
     borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false, order: 1,
     data: years.map(yy => +anSumAll(fromParts.map(p => p.prod(yy))).tot.toFixed(1))});
 
-  // Reservene per del i til-søylen, pluss summen.
-  const resCats = toParts.map(p => ({name: p.label, r: p.res()}));
-  if (toParts.length > 1) resCats.push({name: 'Pro forma', r: anSumAll(resCats.map(x => x.r))});
-  const resDs = (g === 'shelf' ? AN_SHELVES.filter(([s]) => s !== 'uk') : [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]])
-    .map(([k, l, c]) => ({label: l, backgroundColor: c, data: resCats.map(x => +x.r[k].toFixed(1)), stack: 's', borderWidth: 0}))
-    .filter(d => d.data.some(v => v > 0));
+  // Reservene som trappetrinn: fra-søylen, så hver endring (selskaper som kommer
+  // til eller faller fra, salg og kjøp), og pro forma til slutt.
+  const AN_WF_END = '#475569', AN_WF_NEG = '#c0392b';
+  const fromRes = anSumAll(fromParts.map(p => p.res())), toRes = anSumAll(toParts.map(p => p.res()));
+  const steps = [];
+  if (fromParts.length) steps.push({name: fromName, r: fromRes, color: AN_WF_END, total: true});
+  fromParts.filter(p => !to.includes(p.id)).forEach(p => steps.push({name: `− ${p.label}`, r: p.res(), sign: -1, color: AN_WF_NEG}));
+  toParts.forEach(p => {
+    const before = fromParts.find(q => q.id === p.id);
+    const r = p.res(), d = before ? r.tot - before.res().tot : r.tot;
+    if (Math.abs(d) < 0.05) return;
+    const diff = before ? anPlus(before.res(), r, -1) : r;   // salg: det som er trukket fra
+    steps.push(d > 0 ? {name: before ? `+ ${p.label}` : p.label, r: before ? anPlus(r, before.res(), -1) : r, sign: 1, color: p.color}
+      : {name: `${p.label}: sold`, r: diff, sign: -1, color: AN_WF_NEG});
+  });
+  steps.push({name: 'Pro forma', r: toRes, color: AN_WF_END, total: true});
+  let level = 0;
+  const wf = steps.map(st => {
+    const v = st.r.tot;
+    if (st.total) { level = v; return {...st, lo: 0, hi: v, v}; }
+    const lo = st.sign < 0 ? level - v : level, hi = st.sign < 0 ? level : level + v;
+    level = st.sign < 0 ? level - v : level + v;
+    return {...st, lo, hi, v: st.sign * v};
+  });
+  const resDs = wf.length ? [{label: 'Remaining reserves', data: wf.map(w => [+w.lo.toFixed(1), +w.hi.toFixed(1)]),
+    backgroundColor: wf.map(w => w.color), borderWidth: 0, barPercentage: 0.8, categoryPercentage: 0.9}] : [];
 
-  const charts = `<div class="pf-card pf-wide"><h3>Net production, pro forma · kboe/d</h3>
-      <div class="chart-container" style="height:320px"><canvas id="anProdCanvas"></canvas></div>
+  const charts = `<div class="pf-row2"><div class="pf-card"><h3>Net production, pro forma · kboe/d</h3>
+      <div class="chart-container" style="height:340px"><canvas id="anProdCanvas"></canvas></div>
       <div class="pf-map-note">${esc(toParts.map(p => p.label).join(' + ') || '—')}: equity share of production with the shares that applied each month
         (NCS, UKCS) or year (DCS); bought and sold shares apply to every year. ${from.length && !same ? 'Dashed line: the From companies.' : ''}
         Pale bar, ${estNote}</div></div>
-    <div class="pf-card pf-wide"><h3>Remaining reserves, end-${ry} · million boe</h3>
-      <div class="chart-container" style="height:300px"><canvas id="anResCanvas"></canvas></div></div>`;
+    <div class="pf-card"><h3>Remaining reserves, end-${ry} · from ${esc(fromName)} to pro forma · million boe</h3>
+      <div class="chart-container" style="height:340px"><canvas id="anResCanvas"></canvas></div>
+      <div class="pf-map-note">Grey: the From companies and the pro forma total. Steps: companies added (their colour), and companies,
+        sales and shelves taken out (red). Hover a bar for liquids and gas.</div></div></div>`;
 
   // Tabellen.
   const row = (name, p, r, c, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td>
@@ -4598,13 +4620,30 @@ function drawCompanyAnalytics() {
         tooltip: {callbacks: {label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString('en')} kboe/d`}}},
       scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, beginAtZero: true, ticks: tick, title: {display: true, text: 'kboe/d'}}}}}));
   const rEl = document.getElementById('anResCanvas');
-  if (rEl && resDs.length) anCharts.push(new Chart(rEl.getContext('2d'), {
-    type: 'bar', data: {labels: resCats.map(x => x.name), datasets: resDs},
+  const f1 = v => v.toLocaleString('en', {maximumFractionDigits: 1});
+  if (rEl && toRes.tot + fromRes.tot > 0) anCharts.push(new Chart(rEl.getContext('2d'), {
+    type: 'bar', data: {labels: wf.map(w => w.name), datasets: resDs},
     options: {responsive: true, maintainAspectRatio: false,
-      plugins: {legend: {position: 'bottom', labels: {boxWidth: 12}},
-        tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 1})} million boe`}}},
-      scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, beginAtZero: true, ticks: tick, title: {display: true, text: 'million boe'}}}}}));
-  else if (rEl) rEl.parentElement.innerHTML = '<div class="status">No reserves data for the To companies (UKCS has none).</div>';
+      plugins: {legend: {display: false},
+        tooltip: {callbacks: {label: c => {
+          const w = wf[c.dataIndex];
+          return [`${w.total ? '' : w.v > 0 ? '+' : '−'}${f1(Math.abs(w.v))} million boe`,
+                  `Liquids ${f1(w.r.liq)} · gas ${f1(w.r.gas)}`];
+        }}}},
+      scales: {x: {grid: {display: false}, ticks: {autoSkip: false, maxRotation: 40}},
+        y: {beginAtZero: true, grace: '8%', ticks: tick, title: {display: true, text: 'million boe'}}},
+      layout: {padding: {top: 14}}},
+    // Tallet over hvert trinn.
+    plugins: [{id: 'anWfLabels', afterDatasetsDraw(ch) {
+      const ctx = ch.ctx, meta = ch.getDatasetMeta(0);
+      ctx.save(); ctx.font = '600 11px sans-serif'; ctx.fillStyle = '#1a2332'; ctx.textAlign = 'center';
+      meta.data.forEach((bar, i) => {
+        const w = wf[i], top = Math.min(bar.y, bar.base);
+        ctx.fillText(`${w.total ? '' : w.v > 0 ? '+' : '−'}${Math.round(Math.abs(w.v)).toLocaleString('en')}`, bar.x, top - 5);
+      });
+      ctx.restore();
+    }}]}));
+  else if (rEl) rEl.parentElement.innerHTML = '<div class="status">No reserves data for these companies (UKCS has none).</div>';
 }
 
 // ── DCS (DANSK SOKKEL) ───────────────────────────────────────────────────────
