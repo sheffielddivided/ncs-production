@@ -4973,10 +4973,10 @@ function drawCompanyAnalytics() {
     ...(specVal ? [{id: 'anval', spec: specVal, meta: meta('Back-of-the-envelope valuation',
       `Indicative value after tax, USD bn · oil price USD ${anValRows.price} · as at 1 January ${currentYear} · beta, indicative only`)}] : []),
   ];
-  pptCardSpecs.anBridge = {...specBridges, subtitle: `${fromName} → pro forma (${toNames})`};
-  if (specHist) pptCardSpecs.anProd = {...specHist, subtitle: `${toNames} · net production, kboe/d`};
-  pptCardSpecs.anRes = {...specWf, subtitle: `${resWhat} · from ${fromName} to pro forma · million boe`};
-  if (specVal) pptCardSpecs.anVal = {...specVal, subtitle: `Indicative value after tax, USD bn · oil price USD ${anValRows.price}`};
+  pptCardSpecs.anBridge = {...specBridges, meta: pptMainMeta};
+  if (specHist) pptCardSpecs.anProd = {...specHist, meta: pptExtra.find(x => x.id === 'anhist').meta};
+  pptCardSpecs.anRes = {...specWf, meta: pptExtra.find(x => x.id === 'anwf').meta};
+  if (specVal) pptCardSpecs.anVal = {...specVal, meta: pptExtra.find(x => x.id === 'anval').meta};
   // Excel: produksjonen i Data-arket, resten i egne ark.
   lastLabels = years.map(estTxt); lastXTitle = 'Year';
   lastDatasets = ds.filter(d => d.type !== 'line').map(d => ({label: `${d.label}, kboe/d`, data: d.data}))
@@ -17729,9 +17729,11 @@ function pptAddChart(pptx, slide, spec, box) {
     // tegnes over dem som figurer, som på siden.
     const brk = spec.bracket && spec.totals.length === 2 && spec.totals[0] > 0 && spec.totals[1] != null;
     const L = {x: 0.04, y: 0.03, w: 0.92, h: 0.76}, top = max > 0 ? max * (brk ? 1.5 : 1.15) : 0;
-    slide.addChart([
-      {type: C.BAR, data: toData(bars), options: {...barOpts, showValue: true, dataLabelPosition: 'ctr', dataLabelColor: 'FFFFFF',
-        dataLabelFontSize: 9, dataLabelFormatCode: fmt}},
+    const barPart = {type: C.BAR, data: toData(bars), options: {...barOpts, showValue: true, dataLabelPosition: 'ctr', dataLabelColor: 'FFFFFF',
+        dataLabelFontSize: 9, dataLabelFormatCode: fmt}};
+    // Med kjent plass (klamme) står totalene som tekst over stolpene, så de ikke
+    // havner i forklaringen; ellers som en usynlig linjeserie med etiketter.
+    slide.addChart(brk ? [barPart] : [barPart,
       {type: C.LINE, data: [{name: 'Total', labels: spec.labels, values: spec.totals}], options: {chartColors: ['1A2332'], lineSize: 0,
         lineDataSymbol: 'none', showValue: true, dataLabelPosition: 't', dataLabelFontSize: 11, dataLabelFontBold: true,
         dataLabelColor: '1A2332', dataLabelFormatCode: fmt}},
@@ -17746,6 +17748,9 @@ function pptAddChart(pptx, slide, spec, box) {
       slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: 0, h: Math.max(0.01, t0 - by), line: ln});
       slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: cx[1] - cx[0], h: 0, line: ln});
       slide.addShape(pptx.ShapeType.line, {x: cx[1], y: by, w: 0, h: Math.max(0.01, t1 - by), line: {...ln, endArrowType: 'triangle'}});
+      const fmtTxt = v => spec.yFormat === '0.00' ? v.toFixed(2) : Math.round(v).toLocaleString('en');
+      spec.totals.forEach((v, i) => slide.addText(fmtTxt(v), {x: cx[i] - 0.7, y: yOf(v) - 0.3, w: 1.4, h: 0.26,
+        fontFace: 'Arial', fontSize: 12, bold: true, color: '1A2332', align: 'center', valign: 'bottom', margin: 0}));
       const pct = (spec.totals[1] - spec.totals[0]) / spec.totals[0] * 100;
       slide.addText(`${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`, {shape: pptx.ShapeType.roundRect, rectRadius: 0.08,
         x: (cx[0] + cx[1]) / 2 - 0.45, y: by - 0.17, w: 0.9, h: 0.34, fill: {color: 'EEF2F7'}, line: {color: 'EEF2F7'},
@@ -17955,7 +17960,8 @@ const pptCardSpecs = {};
 function pptAddCardSpec(btn) {
   const card = btn.closest('.pf-card'), spec = pptCardSpecs[card.dataset.pptSpec];
   if (!spec) return;
-  const m = pptSvgMeta(card);
+  // Et kort kan ha egen tittel og kilde (spec.meta), ellers tas de fra siden.
+  const m = spec.meta || pptSvgMeta(card);
   pptBasket.push({kind: 'chart', spec, meta: {title: m.title, subtitle: spec.subtitle || m.subtitle, source: m.source}});
   pptBasketSave();
   pptToast(`Added to PPT basket (${pptBasket.length})`);
