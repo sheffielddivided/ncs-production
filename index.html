@@ -4616,6 +4616,17 @@ function anValCard(fromParts, toParts, sells, fromName) {
     </div>`;
 }
 
+// Lysere, ugjennomsiktig variant av en farge (hex eller rgba), blandet mot hvitt:
+// de betingede ressursene i selskapets farge.
+function anLight(c, t = 0.55) {
+  let r, g, b;
+  const m = String(c).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (m) [r, g, b] = m.slice(1, 4).map(Number);
+  else { const h = String(c).replace('#', ''); [r, g, b] = [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); }
+  if ([r, g, b].some(isNaN)) return c;
+  return `rgb(${[r, g, b].map(x => Math.round(x * (1 - t) + 255 * t)).join(',')})`;
+}
+
 // Summer av {liq, gas, ncs, dcs, uk, tot}; sign −1 trekker fra (aldri under null).
 const AN_DIMS = ['liq', 'gas', 'ncs', 'dcs', 'uk', 'tot'];
 const anZero = () => ({liq: 0, gas: 0, ncs: 0, dcs: 0, uk: 0, tot: 0});
@@ -4769,8 +4780,8 @@ function drawCompanyAnalytics() {
   const resDs = !wf.length ? [] : comps.map(([src, k, l, c, pale], ci) => ({label: l, grouped: false,
     data: wf.map(w => w.seg[ci][1] - w.seg[ci][0] > 1e-6 ? [+w.seg[ci][0].toFixed(1), +w.seg[ci][1].toFixed(1)] : null),
     backgroundColor: wf.map(w => {
-      const col = c || w.color, light = pale || (c && !w.total && w.sign < 0);
-      return light ? paleColor(col) : col;
+      const col = c || w.color;
+      return pale ? anLight(col) : c && !w.total && w.sign < 0 ? paleColor(col) : col;
     }),
     borderColor: wf.map(w => !w.total && w.sign < 0 && c ? AN_WF_NEG : 'transparent'), borderWidth: c ? 1 : 0,
     barPercentage: 0.8, categoryPercentage: 0.9}));
@@ -4782,8 +4793,9 @@ function drawCompanyAnalytics() {
     resDs.forEach(d => { d.data = d.data.map((v, i) => wf[i].parts ? null : v); });
     const maxN = Math.max(...wf.map(w => (w.parts || []).length));
     const tops = wf.map(() => 0);
-    [['rr', useR, false], ['cc', useC, rm === 'both']].filter(([, on]) => on).forEach(([src, , pale]) => {
-      for (let j = 0; j < maxN; j++) {
+    // Selskap for selskap: reservene, så selskapets betingede ressurser rett over.
+    for (let j = 0; j < maxN; j++) [['rr', useR, false], ['cc', useC, rm === 'both']].filter(([, on]) => on).forEach(([src, , pale]) => {
+      {
         const names = [], data = wf.map((w, i) => {
           const p = w.parts && w.parts[j], v = p ? p.r[src].tot : 0;
           names.push(p ? `${p.label}${rm === 'both' ? (src === 'rr' ? ', reserves' : ', contingent') : ''}` : '');
@@ -4792,7 +4804,7 @@ function drawCompanyAnalytics() {
           return [+lo.toFixed(1), +tops[i].toFixed(1)];
         });
         if (data.some(Boolean)) resDs.push({label: `${src}${j}`, anNames: names, grouped: false, data, borderWidth: 0,
-          backgroundColor: wf.map(w => { const p = w.parts && w.parts[j]; return p ? (pale ? paleColor(p.color) : p.color) : 'transparent'; }),
+          backgroundColor: wf.map(w => { const p = w.parts && w.parts[j]; return p ? (pale ? anLight(p.color) : p.color) : 'transparent'; }),
           barPercentage: 0.8, categoryPercentage: 0.9});
       }
     });
@@ -4941,13 +4953,13 @@ function drawCompanyAnalytics() {
   const wfSeries = [{name: ' ', type: 'bar', color: 'transparent',
     values: wf.map(w => w.total ? 0 : +Math.min(...w.seg.map(x => x[0])).toFixed(1))}];
   if (stackTot) {
-    [['rr', useR, false], ['cc', useC, rm === 'both']].filter(([, on]) => on).forEach(([src2, , pale]) => {
-      const seen = new Map();
-      wf.forEach(w => (w.parts || []).forEach(p => { if (!seen.has(p.label)) seen.set(p.label, p.color); }));
-      seen.forEach((color, label) => wfSeries.push({name: rm === 'both' ? `${label}, ${src2 === 'rr' ? 'reserves' : 'contingent'}` : label,
+    // Selskap for selskap, som på siden: reservene og så de betingede ressursene i lysere farge.
+    const seen = new Map();
+    wf.forEach(w => (w.parts || []).forEach(p => { if (!seen.has(p.label)) seen.set(p.label, p.color); }));
+    seen.forEach((color, label) => [['rr', useR, false], ['cc', useC, rm === 'both']].filter(([, on]) => on).forEach(([src2, , pale]) =>
+      wfSeries.push({name: rm === 'both' ? `${label}, ${src2 === 'rr' ? 'reserves' : 'contingent'}` : label,
         type: 'bar', color: pale ? pptPale(pptHex(color)) : pptHex(color),
-        values: wf.map(w => { const p = (w.parts || []).find(q => q.label === label); return p && p.r[src2].tot > 0 ? +p.r[src2].tot.toFixed(1) : null; })}));
-    });
+        values: wf.map(w => { const p = (w.parts || []).find(q => q.label === label); return p && p.r[src2].tot > 0 ? +p.r[src2].tot.toFixed(1) : null; })})));
     wfSeries.push({name: 'Added', type: 'bar', color: '2A6FA8', values: wf.map(w => !w.total && w.sign > 0 ? +Math.abs(w.v).toFixed(1) : null)});
     wfSeries.push({name: 'Taken out', type: 'bar', color: 'C0392B', values: wf.map(w => !w.total && w.sign < 0 ? +Math.abs(w.v).toFixed(1) : null)});
   } else comps.forEach(([src2, k, l, c, pale], ci) => wfSeries.push({name: l, type: 'bar',
