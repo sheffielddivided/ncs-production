@@ -4903,8 +4903,10 @@ function drawCompanyAnalytics() {
         }}}},
       scales: {x: {grid: {display: false}, ticks: {autoSkip: false, maxRotation: 40}},
         // Ingen verdiakse: tallene står over trinnene og navnene i søylene.
-        y: {display: false, beginAtZero: true, grace: wfBrk ? '18%' : '8%'}},
-      layout: {padding: {top: wfBrk ? 30 : 14}}},
+        y: {display: false, beginAtZero: true, grace: '6%'}},
+      // Pilen ligger i en fast plass over det høyeste punktet i grafen (fra,
+      // pro forma eller et mellomtrinn), uansett skala.
+      layout: {padding: {top: wfBrk ? 56 : 18}}},
     // Tallet over hvert trinn.
     plugins: [{id: 'anWfLabels', afterDatasetsDraw(ch) {
       const ctx = ch.ctx, X = ch.scales.x, Y = ch.scales.y;
@@ -4917,7 +4919,7 @@ function drawCompanyAnalytics() {
       if (wfBrk) {
         const i1 = wf.length - 1, x0 = X.getPixelForValue(0), x1 = X.getPixelForValue(i1);
         const yTop = i => Y.getPixelForValue(wf[i].top) - 20;   // over tallet
-        const by = Math.max(ch.chartArea.top - 18, Math.min(...wf.map((_, i) => yTop(i))) - 18);
+        const by = Math.max(14, Math.min(...wf.map((_, i) => yTop(i))) - 20);   // over det høyeste tallet
         const pct = (wf[i1].v - wf[0].v) / wf[0].v * 100, txt = `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`;
         ctx.save();
         ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
@@ -17802,7 +17804,10 @@ function pptAddChart(pptx, slide, spec, box) {
   // søyle (prosentvis endring) kan legges som figurer, som på siden.
   if (spec.wf) {
     const W = spec.wf, n = spec.labels.length, L = {x: 0.03, y: 0.03, w: 0.94, h: 0.74};
-    const maxTop = Math.max(...W.tops, 0), top = maxTop > 0 ? maxTop * (W.pct != null ? 1.32 : 1.12) : 1;
+    // Aksen settes ut fra det høyeste punktet (også mellomtrinn) og fast plass
+    // over det: 0,8 tommer til tall og pil, 0,35 uten pil.
+    const ph0 = box.h * L.h, room = W.pct != null ? 0.8 : 0.35;
+    const maxTop = Math.max(...W.tops, 0), top = maxTop > 0 ? maxTop / Math.max(0.3, 1 - room / ph0) : 1;
     slide.addChart(C.BAR, toData(bars), {...common, ...barOpts, valAxisHidden: true, valGridLine: {style: 'none'},
       valAxisMinVal: 0, valAxisMaxVal: top, layout: L});
     const px = box.x + box.w * L.x, py = box.y + box.h * L.y, pw = box.w * L.w, ph = box.h * L.h;
@@ -17811,7 +17816,7 @@ function pptAddChart(pptx, slide, spec, box) {
       fontFace: 'Arial', fontSize: 11, bold: true, color: '1A2332', align: 'center', valign: 'bottom', margin: 0}));
     if (W.pct != null) {
       const i1 = n - 1, t0 = yOf(W.tops[0]) - 0.32, t1 = yOf(W.tops[i1]) - 0.34;
-      const by = Math.max(py + 0.2, Math.min(...W.tops.map(v => yOf(v) - 0.32)) - 0.3);
+      const by = Math.max(py + 0.17, Math.min(...W.tops.map(v => yOf(v) - 0.32)) - 0.3);   // over det høyeste tallet
       const ln = {color: '94A3B8', width: 1.5};
       slide.addShape(pptx.ShapeType.line, {x: cx(0), y: by, w: 0, h: Math.max(0.01, t0 - by), line: ln});
       slide.addShape(pptx.ShapeType.line, {x: cx(0), y: by, w: cx(i1) - cx(0), h: 0, line: ln});
@@ -17831,7 +17836,8 @@ function pptAddChart(pptx, slide, spec, box) {
     // stolpenes plass på lysbildet er kjent og pilen og prosentboksen kan
     // tegnes over dem som figurer, som på siden.
     const brk = spec.bracket && spec.totals.length === 2 && spec.totals[0] > 0 && spec.totals[1] != null;
-    const L = {x: 0.04, y: 0.03, w: 0.92, h: 0.76}, top = max > 0 ? max * (brk ? 1.5 : 1.15) : 0;
+    const L = {x: 0.04, y: 0.03, w: 0.92, h: 0.76};
+    const room = brk ? 0.8 : 0.35, top = max > 0 ? max / Math.max(0.3, 1 - room / (box.h * (brk ? L.h : 0.8))) : 0;
     const barPart = {type: C.BAR, data: toData(bars), options: {...barOpts, showValue: true, dataLabelPosition: 'ctr', dataLabelColor: 'FFFFFF',
         dataLabelFontSize: 9, dataLabelFormatCode: fmt}};
     // Med kjent plass (klamme) står totalene som tekst over stolpene, så de ikke
@@ -17846,7 +17852,7 @@ function pptAddChart(pptx, slide, spec, box) {
       const px = box.x + box.w * L.x, py = box.y + box.h * L.y, pw = box.w * L.w, ph = box.h * L.h;
       const cx = [px + pw * 0.25, px + pw * 0.75], yOf = v => py + ph * (1 - v / top);
       const t0 = yOf(spec.totals[0]) - 0.32, t1 = yOf(spec.totals[1]) - 0.34;   // over totaltallet
-      const by = Math.max(py + 0.2, Math.min(t0, t1) - 0.45);
+      const by = Math.max(py + 0.17, Math.min(t0, t1) - 0.3);
       const ln = {color: '94A3B8', width: 1.5};
       slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: 0, h: Math.max(0.01, t0 - by), line: ln});
       slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: cx[1] - cx[0], h: 0, line: ln});
