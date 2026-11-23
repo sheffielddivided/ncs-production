@@ -4014,12 +4014,43 @@ function anNcsShare(name, id, ts) {
   return s;
 }
 
+// Inneværende år er et anslag: månedene etter siste rapporterte måned på hver
+// sokkel antas like siste rapporterte måned (samme netto rate per dag for hvert
+// felt, med andelen da), og årssnittet regnes av det.
+const anMk = (y, m) => y * 12 + m - 1;
+const anDim = k => daysInMonth(Math.floor(k / 12), k % 12 + 1);
+let anLastMk = null;
+// Siste rapporterte måned (anMk) per sokkel: {ncs, dcs, uk}.
+function anLastMonths() {
+  if (anLastMk) return anLastMk;
+  let ncs = 0, dcs = 0, uk = 0;
+  Object.values((bundle.production && bundle.production.fields) || {}).forEach(rows => rows.forEach(([y, m, , , oe]) => {
+    if (m > 0 && y <= currentYear && oe > 0) ncs = Math.max(ncs, anMk(y, m));
+  }));
+  if (dcsReady()) Object.values(dcsData.production.monthly).forEach(rows => rows.forEach(r => {
+    const y = +r[0].slice(0, 4);
+    if (y <= currentYear && (r[1] || r[2])) dcs = Math.max(dcs, anMk(y, +r[0].slice(5)));
+  }));
+  if (ukReady() && ukLastMonth()) uk = anMk(+ukLastMonth().slice(0, 4), +ukLastMonth().slice(5));
+  return anLastMk = {ncs, dcs, uk};
+}
+const anMonthTxt = k => `${MONTH_ABBR[k % 12]} ${Math.floor(k / 12)}`;
+
 // Tallene for ett selskap, millioner boe:
 // prod: {år: {ncs|dcs|uk: {liq, gas}}} · res: {ncs|dcs: {liq, gas}} · c2: {liq, gas}
+// Inneværende år (currentYear) er rapporterte måneder pluss anslaget over.
 function anData(key) {
   if (anCache[key]) return anCache[key];
-  const e = anRegistry()[key], last = anLastYear();
+  const e = anRegistry()[key], last = currentYear, cy = currentYear, LM = anLastMonths();
   const prod = {}, res = {ncs: {liq: 0, gas: 0}, dcs: {liq: 0, gas: 0}};
+  // Resten av inneværende år etter siste rapporterte måned Lk, med feltets netto volum v i Lk.
+  const fill = (sh, Lk, v) => {
+    if (!v || !Lk) return;
+    for (let k = Math.max(Lk + 1, anMk(cy, 1)); k <= anMk(cy, 12); k++) {
+      const f = anDim(k) / anDim(Lk);
+      addP(cy, sh, v.liq * f, v.gas * f);
+    }
+  };
   const addP = (y, sh, liq, gas) => {
     if (y < AN_FROM_YEAR || y > last || !(liq || gas)) return;
     const p = prod[y] = prod[y] || {};
@@ -4032,11 +4063,16 @@ function anData(key) {
   e.ncs.forEach(name => {
     const ids = [...new Set((anLicByName[name] || []).map(r => r.fldNpdidField))];
     ids.forEach(id => {
+      let atLast = null;
       (P[id] || []).forEach(([y, m, , gas, oe]) => {
         if (!(m > 0) || y < AN_FROM_YEAR || y > last) return;
         const sh = anNcsShare(name, id, Date.UTC(y, m - 1, 15));
-        if (sh) addP(y, 'ncs', Math.max(0, (oe || 0) - (gas || 0)) * sh, (gas || 0) * sh);
+        if (!sh) return;
+        const liq = Math.max(0, (oe || 0) - (gas || 0)) * sh, g = (gas || 0) * sh;
+        addP(y, 'ncs', liq, g);
+        if (anMk(y, m) === LM.ncs) atLast = {liq, gas: g};
       });
+      fill('ncs', LM.ncs, atLast);
       const cur = fieldReserves && fieldReserves[id] ? reserveAt(fieldReserves[id], ry) : null;
       const sh = cur ? anNcsShare(name, id, now) : 0;
       if (sh) {
@@ -4052,13 +4088,28 @@ function anData(key) {
     const hist = dcsHasHistory(), dry = dcsResYear();
     dcsData.fields.forEach(f => {
       const nowSh = f.owners.reduce((t, [g, p]) => t + (e.dcs.has(dcsGroup(g)) ? p / 100 : 0), 0);
+      const shAt = k => {
+        if (!hist) return nowSh;
+        const sp = dcsHistSplit(f.slug, k).groups;
+        return [...e.dcs].reduce((t, g) => t + (sp[g] || 0), 0);
+      };
+      // Hele år fra årsfilen; inneværende år fra månedstallene.
       (dcsData.production.yearly[f.slug] || []).forEach(([yy, oil, gas]) => {
         const y = +yy;
-        if (y < AN_FROM_YEAR || y > last) return;
-        let sh = nowSh;
-        if (hist) { const sp = dcsHistSplit(f.slug, String(y)).groups; sh = [...e.dcs].reduce((t, g) => t + (sp[g] || 0), 0); }
+        if (y < AN_FROM_YEAR || y >= cy) return;
+        const sh = shAt(String(y));
         if (sh) addP(y, 'dcs', (oil || 0) * sh, (gas || 0) * sh);
       });
+      let atLast = null;
+      (dcsData.production.monthly[f.slug] || []).forEach(([ym, oil, gas]) => {
+        const y = +ym.slice(0, 4), k = anMk(y, +ym.slice(5));
+        if (y !== cy && k !== LM.dcs) return;
+        const sh = shAt(ym);
+        if (!sh) return;
+        if (y === cy) addP(y, 'dcs', (oil || 0) * sh, (gas || 0) * sh);
+        if (k === LM.dcs) atLast = {liq: (oil || 0) * sh, gas: (gas || 0) * sh};
+      });
+      fill('dcs', LM.dcs, atLast);
       if (nowSh) {
         const r = dcsFieldRes(f.slug, dry);   // millioner boe
         res.dcs.liq += r.liq * nowSh; res.dcs.gas += r.gas * nowSh;
@@ -4069,13 +4120,17 @@ function anData(key) {
   if (e.uk.size && ukReady()) {
     ukData.fields.forEach(f => {
       if (!f.equity.some(([g]) => e.uk.has(g))) return;
+      let atLast = null;
       (ukData.monthly[f.slug] || []).forEach(([ym, oil, gas]) => {
         const y = +ym.slice(0, 4);
         if (y < AN_FROM_YEAR || y > last) return;
         const S = ukSharesAt(f.slug, ym);
         const sh = [...e.uk].reduce((t, g) => t + (S[g] || 0) / 100, 0);
-        if (sh) addP(y, 'uk', oil * sh, gas * sh);
+        if (!sh) return;
+        addP(y, 'uk', oil * sh, gas * sh);
+        if (anMk(y, +ym.slice(5)) === LM.uk) atLast = {liq: oil * sh, gas: gas * sh};
       });
+      fill('uk', LM.uk, atLast);
     });
   }
   return anCache[key] = {prod, res, c2};
@@ -4180,9 +4235,12 @@ function drawCompanyAnalytics() {
   setChartNone();
   setChartTitle('Analytics BETA', 'Merger simulation across NCS, DCS and UKCS · net production and reserves');
   if (!allLicLoaded || !bundle.production) { setChartEmpty('Data could not be loaded.'); setInfo(''); return; }
-  const reg = anRegistry(), last = anLastYear(), ry = anResYear();
+  const reg = anRegistry(), last = currentYear, ry = anResYear();
+  const est = currentYear, LM = anLastMonths(), estTxt = y => y === est ? `${y}e` : String(y);
+  const estNote = `${est}e: reported months to ${AN_SHELVES.filter(([s]) => LM[s]).map(([s, l]) => `${anMonthTxt(LM[s])} (${l})`).join(', ')};
+    the rest of the year is assumed equal to the last reported month on each shelf (same daily rate per field), and the year is averaged.`;
   const from = anKeys('from'), to = anKeys('to');
-  const y = /^\d{4}$/.test(anF.yr) && +anF.yr >= AN_FROM_YEAR && +anF.yr <= last ? +anF.yr : last;
+  const y = /^\d{4}$/.test(anF.yr) && +anF.yr >= AN_FROM_YEAR && +anF.yr <= last ? +anF.yr : anLastYear();
   const order = [...new Set([...from, ...to])];
   const color = k => AN_COLORS[order.indexOf(k) % AN_COLORS.length];
   const n0 = v => Math.round(v).toLocaleString('en');
@@ -4198,7 +4256,7 @@ function drawCompanyAnalytics() {
       <div class="an-opts">
         <button type="button" class="grp-btn" onclick="anCopyFrom()">Copy From to To</button>
         <label>Production year <select class="year-select" onchange="anSet('yr', this.value)">${
-          Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => last - i).map(v => `<option value="${v}"${v === y ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+          Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => last - i).map(v => `<option value="${v}"${v === y ? ' selected' : ''}>${v === est ? `${v} (estimate)` : v}</option>`).join('')}</select></label>
         ${pillRow(AN_GROUPS, anF.g, v => `anSet('g', '${v}')`)}
       </div>
       <div class="pf-map-note">Companies are matched by name across the three shelves (e.g. Vår Energi on the NCS; BlueNord on the DCS and UKCS).
@@ -4213,13 +4271,13 @@ function drawCompanyAnalytics() {
   // Fra–til-sammenligningen.
   const segs = (keys, f) => keys.map(k => ({label: anLabel(k), color: color(k), v: f(k).tot}));
   const bridges = `<div class="pf-card pf-wide"><h3>From and to</h3><div class="an-bridges">
-      ${anBridgeSvg('Production', `${y}, kboe/d, net`, segs(from, k => anProdAt(k, y)), segs(to, k => anProdAt(k, y)), n0, fromName)}
+      ${anBridgeSvg('Production', `${y === est ? `${y} estimate` : y}, kboe/d, net`, segs(from, k => anProdAt(k, y)), segs(to, k => anProdAt(k, y)), n0, fromName)}
       ${anBridgeSvg('Remaining reserves', `End-${ry}, billion boe, net`, segs(from, anResOf), segs(to, anResOf), bn, fromName)}
       ${anBridgeSvg('Contingent resources', 'Discoveries, billion boe, net', segs(from, anC2Of), segs(to, anC2Of), bn, fromName)}
     </div><div class="pf-map-note">Reserves: Sodir's estimate at 31 December ${ry} (NCS) and ENS' at 1 January ${ry + 1} (DCS), times today's
       shares. Contingent resources: undeveloped NCS discoveries (Sodir classes 4F, 5F and 7F), today's shares.
       ${ukOnly.length ? 'UKCS has production only: NSTA does not publish field reserves or resources.' : ''}
-      The DCS and UKCS have no contingent resources here.</div></div>`;
+      The DCS and UKCS have no contingent resources here.${y === est ? ' Production ' + estNote : ''}</div></div>`;
 
   // Produksjonshistorikken til det sammenslåtte selskapet.
   const years = Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => AN_FROM_YEAR + i);
@@ -4230,7 +4288,9 @@ function drawCompanyAnalytics() {
   else if (g === 'shelf') ds = AN_SHELVES.map(([s, l, c]) =>
     ({label: l, backgroundColor: c, data: years.map(yy => to.reduce((t, key) => t + anProdAt(key, yy)[s], 0))}));
   else ds = to.map(key => ({label: anLabel(key), backgroundColor: color(key), data: years.map(yy => anProdAt(key, yy).tot)}));
+  // Anslaget for inneværende år vises lysere.
   ds = ds.filter(d => d.data.some(v => v > 0)).map(d => ({...d, type: 'bar', stack: 's', borderWidth: 0, order: 2,
+    backgroundColor: years.map(yy => yy === est ? paleColor(d.backgroundColor) : d.backgroundColor),
     data: d.data.map(v => +v.toFixed(1))}));
   const same = from.length === to.length && from.every(k => to.includes(k));
   if (from.length && !same) ds.push({type: 'line', label: `From: ${from.map(anLabel).join(' + ')}`, borderColor: '#1a2332',
@@ -4248,7 +4308,7 @@ function drawCompanyAnalytics() {
   const charts = `<div class="pf-card pf-wide"><h3>Net production, pro forma · kboe/d</h3>
       <div class="chart-container" style="height:320px"><canvas id="anProdCanvas"></canvas></div>
       <div class="pf-map-note">${esc(to.map(anLabel).join(' + ') || '—')}: equity share of production with the shares that applied each month
-        (NCS, UKCS) or year (DCS). ${from.length && !same ? 'Dashed line: the From companies.' : ''}</div></div>
+        (NCS, UKCS) or year (DCS). ${from.length && !same ? 'Dashed line: the From companies.' : ''} Pale bar, ${estNote}</div></div>
     <div class="pf-card pf-wide"><h3>Remaining reserves, end-${ry} · million boe</h3>
       <div class="chart-container" style="height:300px"><canvas id="anResCanvas"></canvas></div></div>`;
 
@@ -4275,7 +4335,7 @@ function drawCompanyAnalytics() {
   const tick = {callback: v => v.toLocaleString('en')};
   const pEl = document.getElementById('anProdCanvas');
   if (pEl && ds.length) anCharts.push(new Chart(pEl.getContext('2d'), {
-    type: 'bar', data: {labels: years.map(String), datasets: ds},
+    type: 'bar', data: {labels: years.map(estTxt), datasets: ds},
     options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
       plugins: {legend: {position: 'bottom', labels: {boxWidth: 12}},
         tooltip: {callbacks: {label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString('en')} kboe/d`}}},
