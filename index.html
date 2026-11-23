@@ -4545,7 +4545,10 @@ function anValPlus(a, b, sign = 1) {
 }
 
 // Kortet nederst. parts: [{id, label, color, deal, a, pct, sh}] som i resten av siden.
+// Radene legges også i anValRows til PPT- og Excel-eksporten.
+let anValRows = null;
 function anValCard(fromParts, toParts, sells, fromName) {
+  anValRows = null;
   if (!priceHist || !priceHist.byYear || !Object.keys(priceHist.byYear).length)
     return '<div class="pf-card pf-wide"><h3>Back-of-the-envelope valuation</h3><div class="status">Price data could not be loaded.</div></div>';
   const pct = r => `${Math.round(r * 100)} %`;
@@ -4559,6 +4562,16 @@ function anValCard(fromParts, toParts, sells, fromName) {
   const sumVal = (parts, price) => parts.reduce((t, p) => anValPlus(t, partVal(p, price)), anValZero());
   const price = hubCfPrice;
   const vFrom = sumVal(fromParts, price), vTo = sumVal(toParts, price);
+  {
+    const r2 = v => [v.ncs[0], v.disc, v.dcs[0], v.tot[0], v.tot[1]].map(x => +x.toFixed(2));
+    const toIds = toParts.map(p => p.id);
+    anValRows = {price, header: ['Company / asset', `NCS fields, ${pct(CF_RATES[0])}`, 'Discoveries', `DCS fields, ${pct(CF_RATES[0])}`,
+        `Total, ${pct(CF_RATES[0])}`, `Total, ${pct(CF_RATES[1])}`],
+      rows: [...toParts.map(p => [p.label + (p.deal ? ' (bought)' : ''), ...r2(partVal(p, price))]),
+        ...sells.map(d => [`${anAssetInfo(d.a).name} ${anPctTxt(d.f * 100)} % sold by ${anLabel(d.s)}`, ...r2(anValPlus(anValZero(), anValAsset(d.a, d.f, price), -1))]),
+        ...fromParts.filter(p => !toIds.includes(p.id)).map(p => [p.label + ' (From only)', ...r2(partVal(p, price))])],
+      foot: [...(fromParts.length ? [[fromName === 'Before' ? 'From' : fromName, ...r2(vFrom)]] : []), ...(toParts.length ? [['Pro forma', ...r2(vTo)]] : [])]};
+  }
   const chg = vFrom.tot[0] ? (vTo.tot[0] - vFrom.tot[0]) / Math.abs(vFrom.tot[0]) * 100 : null;
   const to = toParts.map(p => p.id), fromOnly = fromParts.filter(p => !to.includes(p.id));
   const row = (name, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td><td>${n2(v.ncs[0])}</td><td>${n2(v.disc)}</td>
@@ -4574,7 +4587,7 @@ function anValCard(fromParts, toParts, sells, fromName) {
           `<td>${n1(a.tot[k])} → <strong>${n1(b.tot[k])}</strong></td>`).join('')}</tr>`;
       }).join('')}</tbody></table>`;
   return `${valWarnCard(true)}
-    <div class="pf-card pf-wide"><h3>Back-of-the-envelope valuation</h3>
+    <div class="pf-card pf-wide" data-ppt-spec="anVal"><h3>Back-of-the-envelope valuation</h3>
       <div class="val-head">
         <div><div class="pill-group" style="width:max-content;max-width:100%">${CF_PRICES.map(p =>
           `<button class="pill-btn${p === price ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div></div>
@@ -4677,7 +4690,7 @@ function drawCompanyAnalytics() {
 
   // Fra–til-sammenligningen.
   const segs = (parts, f) => parts.map(p => ({label: p.label, color: p.color, v: f(p).tot}));
-  const bridges = `<div class="pf-card pf-wide"><h3>From and to</h3><div class="an-bridges">
+  const bridges = `<div class="pf-card pf-wide" data-ppt-spec="anBridge"><h3>From and to</h3><div class="an-bridges">
       ${anBridgeSvg('Production', `${y === est ? `${y} estimate` : y}, kboe/d, net`, segs(fromParts, p => p.prod(y)), segs(toParts, p => p.prod(y)), n0, fromName)}
       ${anBridgeSvg('Remaining reserves', `End-${ry}, billion boe, net`, segs(fromParts, p => p.res()), segs(toParts, p => p.res()), bn, fromName)}
       ${anBridgeSvg('Contingent resources', 'Discoveries, billion boe, net', segs(fromParts, p => p.c2()), segs(toParts, p => p.c2()), bn, fromName)}
@@ -4716,7 +4729,8 @@ function drawCompanyAnalytics() {
   const both = (r, c) => ({rr: r, cc: c, tot: (useR ? r.tot : 0) + (useC ? c.tot : 0)});
   const sumParts = ps => both(anSumAll(ps.map(p => p.res())), anSumAll(ps.map(p => p.c2())));
   const steps = [];
-  if (fromParts.length) steps.push({name: fromName, r: sumParts(fromParts), color: AN_WF_END, total: true});
+  const partsOf = ps => ps.map(p => ({label: p.label, color: p.color, r: both(p.res(), p.c2())}));
+  if (fromParts.length) steps.push({name: fromName, r: sumParts(fromParts), color: AN_WF_END, total: true, parts: partsOf(fromParts)});
   fromParts.filter(p => !to.includes(p.id)).forEach(p => steps.push({name: `− ${p.label}`, r: both(p.res(), p.c2()), sign: -1, color: AN_WF_NEG}));
   toParts.filter(p => !p.deal).forEach(p => {
     if (fromParts.some(q => q.id === p.id)) return;   // med i begge søylene: ingen endring (salgene kommer under)
@@ -4729,7 +4743,7 @@ function drawCompanyAnalytics() {
     r: both(anAssetRes(d.a, d.f), anAssetC2(d.a, d.f)), sign: -1, color: AN_WF_NEG}));
   toParts.filter(p => p.deal).forEach(p => steps.push({name: `+ ${anShort(anAssetInfo(p.a).name)} ${anPctTxt(p.pct)} %`,
     full: `${anAssetInfo(p.a).name}: ${anPctTxt(p.pct)} % bought`, r: both(p.res(), p.c2()), sign: 1, color: p.color}));
-  steps.push({name: 'Pro forma', r: sumParts(toParts), color: AN_WF_END, total: true});
+  steps.push({name: 'Pro forma', r: sumParts(toParts), color: AN_WF_END, total: true, parts: partsOf(toParts)});
   const shown = steps.filter(st => st.total || st.r.tot >= 0.05);
   const rg = anF.rg || 'cmp';
   const base0 = rg === 'og' ? [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]]
@@ -4760,20 +4774,43 @@ function drawCompanyAnalytics() {
     }),
     borderColor: wf.map(w => !w.total && w.sign < 0 && c ? AN_WF_NEG : 'transparent'), borderWidth: c ? 1 : 0,
     barPercentage: 0.8, categoryPercentage: 0.9}));
+  // Per selskap/asset: fra- og pro forma-søylen er en stabel av delene, hver i
+  // sin farge (reservene nederst, de betingede ressursene lyst over). Ett
+  // datasett per (mål, plass i stabelen); de vanlige datasettene står tomme der.
+  const stackTot = rg === 'cmp' && wf.some(w => w.parts && w.parts.length);
+  if (stackTot) {
+    resDs.forEach(d => { d.data = d.data.map((v, i) => wf[i].parts ? null : v); });
+    const maxN = Math.max(...wf.map(w => (w.parts || []).length));
+    const tops = wf.map(() => 0);
+    [['rr', useR, false], ['cc', useC, rm === 'both']].filter(([, on]) => on).forEach(([src, , pale]) => {
+      for (let j = 0; j < maxN; j++) {
+        const names = [], data = wf.map((w, i) => {
+          const p = w.parts && w.parts[j], v = p ? p.r[src].tot : 0;
+          names.push(p ? `${p.label}${rm === 'both' ? (src === 'rr' ? ', reserves' : ', contingent') : ''}` : '');
+          if (!(v > 1e-6)) return null;
+          const lo = tops[i]; tops[i] += v;
+          return [+lo.toFixed(1), +tops[i].toFixed(1)];
+        });
+        if (data.some(Boolean)) resDs.push({label: `${src}${j}`, anNames: names, grouped: false, data, borderWidth: 0,
+          backgroundColor: wf.map(w => { const p = w.parts && w.parts[j]; return p ? (pale ? paleColor(p.color) : p.color) : 'transparent'; }),
+          barPercentage: 0.8, categoryPercentage: 0.9});
+      }
+    });
+  }
   const AN_RES_MEASURES = [['both', 'Reserves + contingent'], ['res', 'Reserves'], ['c2', 'Contingent resources']];
   const AN_RES_GROUPS = [['cmp', 'By company / asset'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
 
-  const charts = `<div class="pf-row2"><div class="pf-card"><h3>Net production, pro forma · kboe/d</h3>
+  const charts = `<div class="pf-row2"><div class="pf-card" data-ppt-spec="anProd"><h3>Net production, pro forma · kboe/d</h3>
       ${pillRow(AN_GROUPS, anF.g, v => `anSet('g', '${v}')`)}
       <div class="chart-container" style="height:340px"><canvas id="anProdCanvas"></canvas></div>
       <div class="pf-map-note">${esc(toParts.map(p => p.label).join(' + ') || '—')}: equity share of production with the shares that applied each month
         (NCS, UKCS) or year (DCS); bought and sold shares apply to every year. ${from.length && !same ? 'Dashed line: the From companies.' : ''}
         Pale bar, ${estNote}</div></div>
-    <div class="pf-card"><h3>${rm === 'res' ? `Remaining reserves, end-${ry}` : rm === 'c2' ? 'Contingent resources' : `Reserves (end-${ry}) and contingent resources`} · from ${esc(fromName)} to pro forma · million boe</h3>
+    <div class="pf-card" data-ppt-spec="anRes"><h3>${rm === 'res' ? `Remaining reserves, end-${ry}` : rm === 'c2' ? 'Contingent resources' : `Reserves (end-${ry}) and contingent resources`} · from ${esc(fromName)} to pro forma · million boe</h3>
       ${pillRow(AN_RES_MEASURES, rm, v => `anSet('rm', '${v}')`)}
       ${pillRow(AN_RES_GROUPS, rg, v => `anSet('rg', '${v}')`)}
       <div class="chart-container" style="height:340px"><canvas id="anResCanvas"></canvas></div>
-      <div class="pf-map-note">${rg === 'cmp' ? `Grey: the From companies and the pro forma total. Steps: each company and bought share added
+      <div class="pf-map-note">${rg === 'cmp' ? `The From and pro forma bars are stacked by company and asset. Steps: each company and bought share added
         (its colour), and each company and sold share taken out (red).` : `Each step split ${rg === 'og' ? 'into liquids and gas' : 'by shelf'};
         decreases are pale with a red edge.`}${rm === 'both' ? ' The pale part of each bar is contingent resources in discoveries (NCS only).' : ''}
         Hover a bar for the numbers.</div></div></div>`;
@@ -4823,11 +4860,12 @@ function drawCompanyAnalytics() {
     options: {responsive: true, maintainAspectRatio: false,
       plugins: {legend: {display: rg !== 'cmp' || rm === 'both', position: 'bottom', labels: {boxWidth: 12,
           // Uten egen farge (per selskap) vises de to delene som mørk og lys grå.
-          generateLabels: ch => ch.data.datasets.map((d, i) => ({text: d.label, datasetIndex: i, lineWidth: 0,
+          generateLabels: ch => ch.data.datasets.slice(0, comps.length).map((d, i) => ({text: d.label, datasetIndex: i, lineWidth: 0,
             fillStyle: rg === 'cmp' ? (comps[i][4] ? paleColor('rgba(71,85,105,0.9)') : '#475569') : comps[i][3] && comps[i][4] ? paleColor(comps[i][3]) : comps[i][3]}))}},
         tooltip: {callbacks: {title: items => items.length ? (wf[items[0].dataIndex].full || wf[items[0].dataIndex].name) : '',
           label: c => {
           const w = wf[c.dataIndex], sg = w.total ? '' : w.v > 0 ? '+' : '−';
+          if (c.dataset.anNames) return `${c.dataset.anNames[c.dataIndex]}: ${f1(c.raw[1] - c.raw[0])} million boe`;
           if (rg !== 'cmp' || rm === 'both') return `${c.dataset.label}: ${sg}${f1(c.raw[1] - c.raw[0])} million boe`;
           const o = rm === 'c2' ? w.r.cc : w.r.rr;
           return [`${sg}${f1(Math.abs(w.v))} million boe`, `Liquids ${f1(o.liq)} · gas ${f1(o.gas)}`];
@@ -4845,6 +4883,80 @@ function drawCompanyAnalytics() {
       ctx.restore();
     }}]}));
   else if (rEl) rEl.parentElement.innerHTML = '<div class="status">No reserves data for these companies (UKCS has none).</div>';
+
+  // ── PPT og Excel ──
+  // Lysbildene: fra–til for produksjon, reserver og betingede ressurser,
+  // produksjonsgrafen, trappetrinnene og verdsettelsen, alle som ekte
+  // PowerPoint-grafer (tabell for verdsettelsen). Trappetrinnene er en
+  // stablet søylegraf med en usynlig sokkel under hvert trinn.
+  const src = 'Source: Sodir FactPages; Danish Energy Agency (ENS); NSTA · NCS Insight Analytics (beta), indicative';
+  const meta = (title, subtitle) => ({title, subtitle, source: src});
+  const toNames = toParts.map(p => p.label).join(' + ');
+  const bridgeSpec = (f, dec, unit) => {
+    const all = [...new Map([...fromParts, ...toParts].map(p => [p.id, p])).values()];
+    return {kind: 'cat', dir: 'col', stacked: true, labels: [fromName, 'Pro forma'], yTitle: unit,
+      series: all.map(p => ({name: p.label, type: 'bar', color: pptHex(p.color),
+        values: [fromParts.find(q => q.id === p.id), toParts.find(q => q.id === p.id)].map(q => q ? +f(q).toFixed(dec) : null)}))
+        .filter(x => x.values.some(v => v))};
+  };
+  const specProd = bridgeSpec(p => p.prod(y).tot, 0, 'kboe/d');
+  const specRes = bridgeSpec(p => p.res().tot / 1000, 2, 'billion boe');
+  const specC2 = bridgeSpec(p => p.c2().tot / 1000, 2, 'billion boe');
+  const prodChart = anCharts.find(c => c.canvas && c.canvas.id === 'anProdCanvas');
+  const specHist = prodChart ? {...pptSpecFromChart(prodChart), labels: years.map(estTxt)} : null;
+  // Trappetrinnene.
+  const wfLabels = wf.map(w => w.name.length > 22 ? w.name.slice(0, 21) + '…' : w.name);
+  const wfSeries = [{name: ' ', type: 'bar', color: 'transparent',
+    values: wf.map(w => w.total ? 0 : +Math.min(...w.seg.map(x => x[0])).toFixed(1))}];
+  if (stackTot) {
+    [['rr', useR, false], ['cc', useC, rm === 'both']].filter(([, on]) => on).forEach(([src2, , pale]) => {
+      const seen = new Map();
+      wf.forEach(w => (w.parts || []).forEach(p => { if (!seen.has(p.label)) seen.set(p.label, p.color); }));
+      seen.forEach((color, label) => wfSeries.push({name: rm === 'both' ? `${label}, ${src2 === 'rr' ? 'reserves' : 'contingent'}` : label,
+        type: 'bar', color: pale ? pptPale(pptHex(color)) : pptHex(color),
+        values: wf.map(w => { const p = (w.parts || []).find(q => q.label === label); return p && p.r[src2].tot > 0 ? +p.r[src2].tot.toFixed(1) : null; })}));
+    });
+    wfSeries.push({name: 'Added', type: 'bar', color: '2A6FA8', values: wf.map(w => !w.total && w.sign > 0 ? +Math.abs(w.v).toFixed(1) : null)});
+    wfSeries.push({name: 'Taken out', type: 'bar', color: 'C0392B', values: wf.map(w => !w.total && w.sign < 0 ? +Math.abs(w.v).toFixed(1) : null)});
+  } else comps.forEach(([src2, k, l, c, pale], ci) => wfSeries.push({name: l, type: 'bar',
+    color: pale ? pptPale(pptHex(c || '#475569')) : pptHex(c || '#475569'),
+    values: wf.map(w => { const v = w.seg[ci][1] - w.seg[ci][0]; return v > 1e-6 ? +v.toFixed(1) : null; })}));
+  const specWf = {kind: 'cat', dir: 'col', stacked: true, labels: wfLabels, yTitle: 'million boe',
+    series: wfSeries.filter((x, i) => i === 0 || x.values.some(v => v))};
+  const resWhat = rm === 'res' ? `Remaining reserves, end-${ry}` : rm === 'c2' ? 'Contingent resources' : `Reserves (end-${ry}) and contingent resources`;
+  const specVal = anValRows ? {kind: 'table', rows: [anValRows.header.map(h => ({text: h, bold: true, fill: 'E8EEF5'})),
+    ...anValRows.rows.map(r => r.map((c, i) => ({text: i ? c.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : c, align: i ? 'right' : 'left'}))),
+    ...anValRows.foot.map(r => r.map((c, i) => ({text: i ? c.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : c, align: i ? 'right' : 'left', bold: true, fill: 'F1F5F9'})))]} : null;
+  const yTxt = y === est ? `${y} estimate` : String(y);
+  pptSpec = specProd;
+  pptMainMeta = meta('Analytics · Production', `${fromName} → pro forma (${toNames}) · ${yTxt}, kboe/d, net`);
+  pptExtra = [
+    {id: 'anres', spec: specRes, meta: meta('Analytics · Remaining reserves', `${fromName} → pro forma · end-${ry}, billion boe, net`)},
+    {id: 'anc2', spec: specC2, meta: meta('Analytics · Contingent resources', `${fromName} → pro forma · discoveries, billion boe, net`)},
+    ...(specHist ? [{id: 'anhist', spec: specHist, meta: meta('Analytics · Net production, pro forma', `${toNames} · kboe/d${deals.length ? ' · with deals' : ''}`)}] : []),
+    {id: 'anwf', spec: specWf, meta: meta(`Analytics · ${resWhat}`, `From ${fromName} to pro forma · million boe`)},
+    ...(specVal ? [{id: 'anval', spec: specVal, meta: meta('Back-of-the-envelope valuation',
+      `Indicative value after tax, USD bn · oil price USD ${anValRows.price} · as at 1 January ${currentYear} · beta, indicative only`)}] : []),
+  ];
+  pptCardSpecs.anBridge = {...specProd, subtitle: `${fromName} → pro forma · production ${yTxt}, kboe/d, net`};
+  if (specHist) pptCardSpecs.anProd = {...specHist, subtitle: `${toNames} · net production, kboe/d`};
+  pptCardSpecs.anRes = {...specWf, subtitle: `${resWhat} · from ${fromName} to pro forma · million boe`};
+  if (specVal) pptCardSpecs.anVal = {...specVal, subtitle: `Indicative value after tax, USD bn · oil price USD ${anValRows.price}`};
+  // Excel: produksjonen i Data-arket, resten i egne ark.
+  lastLabels = years.map(estTxt); lastXTitle = 'Year';
+  lastDatasets = ds.filter(d => d.type !== 'line').map(d => ({label: `${d.label}, kboe/d`, data: d.data}))
+    .concat(ds.filter(d => d.type === 'line').map(d => ({label: `${d.label}, kboe/d`, data: d.data})));
+  xlsExtra = [
+    {name: 'From and to', header: ['Company / asset', 'Column', `Production ${yTxt}, kboe/d`, `Reserves end-${ry}, million boe`, 'Contingent resources, million boe'],
+      widths: [34, 12, 18, 18, 18],
+      rows: [...fromParts.map(p => [p.label, fromName, +p.prod(y).tot.toFixed(1), +p.res().tot.toFixed(1), +p.c2().tot.toFixed(1)]),
+             ...toParts.map(p => [p.label, 'Pro forma', +p.prod(y).tot.toFixed(1), +p.res().tot.toFixed(1), +p.c2().tot.toFixed(1)])]},
+    {name: 'Reserve steps', header: ['Step', 'Change, million boe', 'Reserves, million boe', 'Contingent, million boe'], widths: [44, 16, 16, 16],
+      rows: wf.map(w => [w.full || w.name, +w.v.toFixed(1), +(w.sign < 0 ? -1 : 1) * +w.r.rr.tot.toFixed(1), +(w.sign < 0 ? -1 : 1) * +w.r.cc.tot.toFixed(1)])},
+    ...(anValRows ? [{name: 'Valuation', header: anValRows.header.map(h => `${h}, USD bn`.replace('Company / asset, USD bn', 'Company / asset')),
+      widths: [40, 16, 16, 16, 16, 16], rows: [...anValRows.rows, ...anValRows.foot]}] : []),
+  ];
+  document.getElementById('downloadBtn').disabled = false;
 }
 
 // ── DCS (DANSK SOKKEL) ───────────────────────────────────────────────────────
