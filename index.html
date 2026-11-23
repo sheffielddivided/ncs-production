@@ -4880,6 +4880,29 @@ function drawCompanyAnalytics() {
       wf.forEach((w, i) => {
         ctx.fillText(`${w.total ? '' : w.v > 0 ? '+' : '−'}${Math.round(Math.abs(w.v)).toLocaleString('en')}`, X.getPixelForValue(i), Y.getPixelForValue(w.top) - 5);
       });
+      // Navnene inne i fra- og pro forma-søylene, som i fra–til-søylene: hvit
+      // tekst når segmentet er høyt nok, kuttet med … når det er for smalt.
+      // Per selskap står navnet på reservedelen (de betingede ressursene er
+      // samme selskap); ellers komponenten (væske/gass, sokkel).
+      ctx.font = '600 10.5px sans-serif'; ctx.textBaseline = 'middle';
+      ch.data.datasets.forEach((d, di) => {
+        if (stackTot && !d.anNames) return;
+        if (d.anNames && rm === 'both' && /^cc/.test(d.label)) return;
+        const meta = ch.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach((bar, i) => {
+          if (!wf[i].total || d.data[i] == null) return;
+          const h = Math.abs(bar.base - bar.y), wd = bar.width - 6;
+          if (h < 15 || wd < 20) return;
+          let t = d.anNames ? d.anNames[i].replace(/, (reserves|contingent)$/, '') : d.label;
+          if (!t) return;
+          if (ctx.measureText(t).width > wd) t = t.replace(/\s*\([^)]*\)$/, '');   // «BlueNord (DCS)» → «BlueNord»
+          while (t.length > 2 && ctx.measureText(t).width > wd) t = t.slice(0, -2) + '…';
+          const pale = !d.anNames && comps[di] && comps[di][4];
+          ctx.fillStyle = pale ? '#1a2332' : '#fff';
+          ctx.fillText(t, bar.x, (bar.y + bar.base) / 2);
+        });
+      });
       ctx.restore();
     }}]}));
   else if (rEl) rEl.parentElement.innerHTML = '<div class="status">No reserves data for these companies (UKCS has none).</div>';
