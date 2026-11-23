@@ -3945,12 +3945,13 @@ let anF = anDefaults();
 const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag']];
 let anReg = null, anCache = {}, anCharts = [], anLicByName = null;
 
-function anKey(name) {
+// rawKey: uten AN_ALIAS, så et gammelt navn (Noreco) kan skilles fra dagens (BlueNord).
+function anKey(name, rawKey) {
   const s = String(name || '').toLowerCase().replace(/ø/g, 'o').replace(/æ/g, 'ae').replace(/å/g, 'a')
     .normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9&-]+/g, ' ');
   const toks = s.split(' ').filter(t => t.length > 1 && t !== '--');
   const t = toks.find(x => !AN_NOISE.has(x)) || toks[0] || s.trim();
-  return AN_ALIAS[t] || t;
+  return rawKey ? t : AN_ALIAS[t] || t;
 }
 const anTitle = s => String(s).toLowerCase().replace(/(^|[\s\-/])(\S)/g, (m, a, b) => a + b.toUpperCase());
 const anUkLabel = s => String(s).replace(/\s*\((u\.?k\.?|uk)\)\s*/i, ' ').replace(/,?\s+(plc|limited|ltd\.?|llc|inc\.?)$/i, '').trim();
@@ -3962,7 +3963,7 @@ function anRegistry() {
   const reg = {};
   const ent = name => {
     const k = anKey(name);
-    return reg[k] = reg[k] || {key: k, labels: {}, ncs: new Set(), dcs: new Set(), uk: new Set()};
+    return reg[k] = reg[k] || {key: k, labels: {ncs: new Set(), dcs: new Set(), uk: new Set()}, ncs: new Set(), dcs: new Set(), uk: new Set()};
   };
   anLicByName = {};
   allLicRecords.forEach(r => {
@@ -3974,21 +3975,25 @@ function anRegistry() {
     const ck = concernKey(n), lab = NCS_OP_LABEL[ck] || anTitle(ck);
     const e = ent(lab);
     e.ncs.add(n);
-    e.labels.ncs = e.labels.ncs || lab;
+    e.labels.ncs.add(lab);
   });
   if (dcsReady()) [...dcsHistCompanies(), ...dcsCompanies()].forEach(g => {
     const n = dcsGroup(g), e = ent(n);
     e.dcs.add(n);
-    e.labels.dcs = e.labels.dcs || n;
+    e.labels.dcs.add(n);
   });
   if (ukReady()) ukData.fields.forEach(f => f.equity.forEach(([g]) => {
     if (!g || g === 'No Operator') return;
     const e = ent(g);
     e.uk.add(g);
-    e.labels.uk = e.labels.uk || anUkLabel(g);
+    e.labels.uk.add(anUkLabel(g));
   }));
   Object.values(reg).forEach(e => {
-    e.label = e.labels.ncs || e.labels.dcs || e.labels.uk;
+    // Visningsnavnet er dagens navn: et navn som gir nøkkelen uten alias
+    // (BlueNord, ikke Noreco; TotalEnergies, ikke Elf), helst fra NCS, så DCS, så UKCS.
+    const all = ['ncs', 'dcs', 'uk'].flatMap(s => [...e.labels[s]]);
+    e.label = all.find(n => anKey(n, true) === e.key) || all[0];
+    e.names = [...new Set(all)].filter(n => n !== e.label);
     e.shelves = AN_SHELVES.filter(([s]) => e[s].size).map(([, l]) => l);
   });
   return anReg = reg;
@@ -4113,7 +4118,9 @@ function anRemove(side, key) { anSet(side, anKeys(side).filter(k => k !== key).j
 function anPick(side, inp) {
   const v = inp.value.trim().toLowerCase();
   if (!v) return;
-  const e = anList().find(x => x.label.toLowerCase() === v) || anList().find(x => x.label.toLowerCase().startsWith(v));
+  const L = anList(), names = x => [x.label, ...x.names].map(n => n.toLowerCase());
+  const e = L.find(x => names(x).includes(v)) || L.find(x => names(x).some(n => n.startsWith(v)))
+    || L.find(x => names(x).some(n => n.includes(v)));
   inp.value = '';
   if (e) anAdd(side, e.key);
 }
@@ -4186,7 +4193,8 @@ function drawCompanyAnalytics() {
 
   const controls = `<div class="pf-card pf-wide"><h3>Merger simulation</h3>
       <div class="an-sides">${anChipBox('from', 'From', from, color)}${anChipBox('to', 'To (pro forma)', to, color)}</div>
-      <datalist id="anCmpList">${anList().map(e => `<option value="${esc(e.label)}">${esc(e.shelves.join(' · '))}</option>`).join('')}</datalist>
+      <datalist id="anCmpList">${anList().map(e => `<option value="${esc(e.label)}">${esc(e.shelves.join(' · ')
+        + (e.names.length ? ' · also ' + e.names.slice(0, 3).join(', ') : ''))}</option>`).join('')}</datalist>
       <div class="an-opts">
         <button type="button" class="grp-btn" onclick="anCopyFrom()">Copy From to To</button>
         <label>Production year <select class="year-select" onchange="anSet('yr', this.value)">${
