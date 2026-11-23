@@ -4233,7 +4233,7 @@ function anDestroy() { anCharts.forEach(c => c.destroy()); anCharts = []; }
 // Fra–til-søylene som i en investorpresentasjon: hver søyle er delt per selskap,
 // tallet over, og pilen viser endringen i prosent.
 function anBridgeSvg(title, sub, fromSegs, toSegs, fmt, fromName) {
-  const W = 300, H = 290, base = 238, maxH = 150, bw = 84, fx = 40, tx = 176;
+  const W = 300, H = 316, base = 264, maxH = 150, bw = 92, fx = 36, tx = 172;
   const fT = fromSegs.reduce((t, s) => t + s.v, 0), tT = toSegs.reduce((t, s) => t + s.v, 0);
   const max = Math.max(fT, tT, 1e-9), k = maxH / max;
   const bar = (x, segs) => {
@@ -4243,12 +4243,12 @@ function anBridgeSvg(title, sub, fromSegs, toSegs, fmt, fromName) {
       if (h <= 0) return;
       y -= h;
       out += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${s.color}"><title>${esc(s.label)}: ${esc(fmt(s.v))}</title></rect>`;
-      if (h >= 15) out += `<text x="${x + bw / 2}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#fff">${esc(s.label.length > 13 ? s.label.slice(0, 12) + '…' : s.label)}</text>`;
+      if (h >= 15) out += `<text x="${x + bw / 2}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="${s.label.length > 12 ? 9.5 : 10.5}" font-weight="600" fill="#fff">${esc(s.label.length > 16 ? s.label.slice(0, 15) + '…' : s.label)}</text>`;
     });
     return out;
   };
   const fTop = base - fT * k, tTop = base - tT * k;
-  const by = Math.max(24, Math.min(fTop, tTop) - 52);
+  const by = Math.max(60, Math.min(fTop, tTop) - 52);
   const fcx = fx + bw / 2, tcx = tx + bw / 2;
   const pct = fT > 0 ? (tT - fT) / fT * 100 : null;
   const pctTxt = pct == null ? '—' : `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`;
