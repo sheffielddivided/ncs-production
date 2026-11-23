@@ -3950,9 +3950,9 @@ const AN_COLORS = ['#003057', '#e3a73a', '#2a6fa8', '#ce0f69', '#00b373', '#8e6b
   '#3fa7a0', '#b07d2b', '#5a6f8a'];
 const AN_SHELVES = [['ncs', 'NCS', '#003057'], ['dcs', 'DCS', '#d14f4e'], ['uk', 'UKCS', '#2a6fa8']];
 const AN_GROUPS = [['cmp', 'By company'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
-const anDefaults = () => ({from: 'var', to: 'var~bluenord', yr: '', g: 'cmp', deals: ''});
+const anDefaults = () => ({from: 'var', to: 'var~bluenord', yr: '', g: 'cmp', deals: '', rg: 'cmp'});
 let anF = anDefaults();
-const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag'], ['deals', 'ad']];
+const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag'], ['deals', 'ad'], ['rg', 'ar']];
 let anReg = null, anCache = {}, anCharts = [], anLicByName = null;
 
 // rawKey: uten AN_ALIAS, så et gammelt navn (Noreco) kan skilles fra dagens (BlueNord).
@@ -4233,7 +4233,7 @@ function anDestroy() { anCharts.forEach(c => c.destroy()); anCharts = []; }
 // Fra–til-søylene som i en investorpresentasjon: hver søyle er delt per selskap,
 // tallet over, og pilen viser endringen i prosent.
 function anBridgeSvg(title, sub, fromSegs, toSegs, fmt, fromName) {
-  const W = 300, H = 290, base = 238, maxH = 150, bw = 84, fx = 40, tx = 176;
+  const W = 300, H = 316, base = 264, maxH = 150, bw = 92, fx = 36, tx = 172;
   const fT = fromSegs.reduce((t, s) => t + s.v, 0), tT = toSegs.reduce((t, s) => t + s.v, 0);
   const max = Math.max(fT, tT, 1e-9), k = maxH / max;
   const bar = (x, segs) => {
@@ -4243,12 +4243,12 @@ function anBridgeSvg(title, sub, fromSegs, toSegs, fmt, fromName) {
       if (h <= 0) return;
       y -= h;
       out += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${s.color}"><title>${esc(s.label)}: ${esc(fmt(s.v))}</title></rect>`;
-      if (h >= 15) out += `<text x="${x + bw / 2}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#fff">${esc(s.label.length > 13 ? s.label.slice(0, 12) + '…' : s.label)}</text>`;
+      if (h >= 15) out += `<text x="${x + bw / 2}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="${s.label.length > 12 ? 9.5 : 10.5}" font-weight="600" fill="#fff">${esc(s.label.length > 16 ? s.label.slice(0, 15) + '…' : s.label)}</text>`;
     });
     return out;
   };
   const fTop = base - fT * k, tTop = base - tT * k;
-  const by = Math.max(24, Math.min(fTop, tTop) - 52);
+  const by = Math.max(60, Math.min(fTop, tTop) - 52);
   const fcx = fx + bw / 2, tcx = tx + bw / 2;
   const pct = fT > 0 ? (tT - fT) / fT * 100 : null;
   const pctTxt = pct == null ? '—' : `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`;
@@ -4510,7 +4510,6 @@ function drawCompanyAnalytics() {
         <button type="button" class="grp-btn" onclick="anCopyFrom()">Copy From to To</button>
         <label>Production year <select class="year-select" onchange="anSet('yr', this.value)">${
           Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => last - i).map(v => `<option value="${v}"${v === y ? ' selected' : ''}>${v === est ? `${v} (estimate)` : v}</option>`).join('')}</select></label>
-        ${pillRow(AN_GROUPS, anF.g, v => `anSet('g', '${v}')`)}
       </div>
       <div class="pf-map-note">Companies are matched by name across the three shelves (e.g. Vår Energi on the NCS; BlueNord on the DCS and UKCS).
         Each company's portfolio is everything it holds on the shelves switched on in its tag; click a shelf to leave it out,
@@ -4552,20 +4551,61 @@ function drawCompanyAnalytics() {
     borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false, order: 1,
     data: years.map(yy => +anSumAll(fromParts.map(p => p.prod(yy))).tot.toFixed(1))});
 
-  // Reservene per del i til-søylen, pluss summen.
-  const resCats = toParts.map(p => ({name: p.label, r: p.res()}));
-  if (toParts.length > 1) resCats.push({name: 'Pro forma', r: anSumAll(resCats.map(x => x.r))});
-  const resDs = (g === 'shelf' ? AN_SHELVES.filter(([s]) => s !== 'uk') : [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]])
-    .map(([k, l, c]) => ({label: l, backgroundColor: c, data: resCats.map(x => +x.r[k].toFixed(1)), stack: 's', borderWidth: 0}))
-    .filter(d => d.data.some(v => v > 0));
+  // Reservene som trappetrinn: fra-søylen, så hver endring — selskaper som kommer
+  // til eller faller fra, hvert salg og hvert kjøp — og pro forma til slutt.
+  // Trinnene vises hele (per selskap/asset, i selskapets farge) eller delt på
+  // væske og gass eller på sokkel (anF.rg).
+  const AN_WF_END = '#475569', AN_WF_NEG = '#c0392b';
+  const fromRes = anSumAll(fromParts.map(p => p.res())), toRes = anSumAll(toParts.map(p => p.res()));
+  const steps = [];
+  if (fromParts.length) steps.push({name: fromName, r: fromRes, color: AN_WF_END, total: true});
+  fromParts.filter(p => !to.includes(p.id)).forEach(p => steps.push({name: `− ${p.label}`, r: p.res(), sign: -1, color: AN_WF_NEG}));
+  toParts.filter(p => !p.deal).forEach(p => {
+    if (fromParts.some(q => q.id === p.id)) return;   // med i begge søylene: ingen endring (salgene kommer under)
+    const r = anResOf(p.id);
+    if (r.tot >= 0.05) steps.push({name: p.label, r, sign: 1, color: p.color});
+  });
+  sells.forEach(d => {
+    const r = anAssetRes(d.a, d.f);
+    if (r.tot >= 0.05) steps.push({name: `${anAssetInfo(d.a).name} ${anPctTxt(d.f * 100)} % sold (${anLabel(d.s)})`, r, sign: -1, color: AN_WF_NEG});
+  });
+  toParts.filter(p => p.deal).forEach(p => {
+    const r = p.res();
+    if (r.tot >= 0.05) steps.push({name: `${p.label} bought`, r, sign: 1, color: p.color});
+  });
+  steps.push({name: 'Pro forma', r: toRes, color: AN_WF_END, total: true});
+  const rg = anF.rg || 'cmp';
+  const comps = rg === 'og' ? [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]]
+    : rg === 'shelf' ? AN_SHELVES.filter(([s2]) => s2 !== 'uk') : [['tot', 'Reserves', null]];
+  // Hver komponent får sitt flytende intervall [lo, hi]; nedgangene tegnes nedover fra nivået.
+  let level = 0;
+  const wf = steps.map(st => {
+    const base = st.total ? 0 : level, dir = st.total || st.sign > 0 ? 1 : -1;
+    let at = base;
+    const seg = comps.map(([k]) => { const v = st.r[k] || 0, lo = dir > 0 ? at : at - v, hi = dir > 0 ? at + v : at; at += dir * v; return [lo, hi]; });
+    const v = st.r.tot;
+    level = st.total ? v : level + dir * v;
+    return {...st, seg, v: st.total ? v : dir * v, top: st.total ? v : Math.max(base, base + dir * v)};
+  });
+  const resDs = !wf.length ? [] : comps.map(([k, l, c], ci) => ({label: l, grouped: false,
+    data: wf.map(w => w.seg[ci][1] - w.seg[ci][0] > 1e-6 ? [+w.seg[ci][0].toFixed(1), +w.seg[ci][1].toFixed(1)] : null),
+    backgroundColor: wf.map(w => !c ? w.color : w.total || w.sign > 0 ? c : paleColor(c)),
+    borderColor: wf.map(w => !c || w.total || w.sign > 0 ? 'transparent' : AN_WF_NEG), borderWidth: c ? 1 : 0,
+    barPercentage: 0.8, categoryPercentage: 0.9}));
+  const AN_RES_GROUPS = [['cmp', 'By company / asset'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
 
-  const charts = `<div class="pf-card pf-wide"><h3>Net production, pro forma · kboe/d</h3>
-      <div class="chart-container" style="height:320px"><canvas id="anProdCanvas"></canvas></div>
+  const charts = `<div class="pf-row2"><div class="pf-card"><h3>Net production, pro forma · kboe/d</h3>
+      ${pillRow(AN_GROUPS, anF.g, v => `anSet('g', '${v}')`)}
+      <div class="chart-container" style="height:340px"><canvas id="anProdCanvas"></canvas></div>
       <div class="pf-map-note">${esc(toParts.map(p => p.label).join(' + ') || '—')}: equity share of production with the shares that applied each month
         (NCS, UKCS) or year (DCS); bought and sold shares apply to every year. ${from.length && !same ? 'Dashed line: the From companies.' : ''}
         Pale bar, ${estNote}</div></div>
-    <div class="pf-card pf-wide"><h3>Remaining reserves, end-${ry} · million boe</h3>
-      <div class="chart-container" style="height:300px"><canvas id="anResCanvas"></canvas></div></div>`;
+    <div class="pf-card"><h3>Remaining reserves, end-${ry} · from ${esc(fromName)} to pro forma · million boe</h3>
+      ${pillRow(AN_RES_GROUPS, rg, v => `anSet('rg', '${v}')`)}
+      <div class="chart-container" style="height:340px"><canvas id="anResCanvas"></canvas></div>
+      <div class="pf-map-note">${rg === 'cmp' ? `Grey: the From companies and the pro forma total. Steps: each company and bought share added
+        (its colour), and each company and sold share taken out (red).` : `Each step split ${rg === 'og' ? 'into liquids and gas' : 'by shelf'};
+        decreases are pale with a red edge.`} Hover a bar for the numbers.</div></div></div>`;
 
   // Tabellen.
   const row = (name, p, r, c, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td>
@@ -4598,13 +4638,29 @@ function drawCompanyAnalytics() {
         tooltip: {callbacks: {label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString('en')} kboe/d`}}},
       scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, beginAtZero: true, ticks: tick, title: {display: true, text: 'kboe/d'}}}}}));
   const rEl = document.getElementById('anResCanvas');
-  if (rEl && resDs.length) anCharts.push(new Chart(rEl.getContext('2d'), {
-    type: 'bar', data: {labels: resCats.map(x => x.name), datasets: resDs},
+  const f1 = v => v.toLocaleString('en', {maximumFractionDigits: 1});
+  if (rEl && toRes.tot + fromRes.tot > 0) anCharts.push(new Chart(rEl.getContext('2d'), {
+    type: 'bar', data: {labels: wf.map(w => w.name), datasets: resDs},
     options: {responsive: true, maintainAspectRatio: false,
-      plugins: {legend: {position: 'bottom', labels: {boxWidth: 12}},
-        tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 1})} million boe`}}},
-      scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, beginAtZero: true, ticks: tick, title: {display: true, text: 'million boe'}}}}}));
-  else if (rEl) rEl.parentElement.innerHTML = '<div class="status">No reserves data for the To companies (UKCS has none).</div>';
+      plugins: {legend: {display: rg !== 'cmp', position: 'bottom', labels: {boxWidth: 12}},
+        tooltip: {callbacks: {label: c => {
+          const w = wf[c.dataIndex], sg = w.total ? '' : w.v > 0 ? '+' : '−';
+          if (rg !== 'cmp') return `${c.dataset.label}: ${sg}${f1(c.raw[1] - c.raw[0])} million boe`;
+          return [`${sg}${f1(Math.abs(w.v))} million boe`, `Liquids ${f1(w.r.liq)} · gas ${f1(w.r.gas)}`];
+        }}}},
+      scales: {x: {grid: {display: false}, ticks: {autoSkip: false, maxRotation: 40}},
+        y: {beginAtZero: true, grace: '8%', ticks: tick, title: {display: true, text: 'million boe'}}},
+      layout: {padding: {top: 14}}},
+    // Tallet over hvert trinn.
+    plugins: [{id: 'anWfLabels', afterDatasetsDraw(ch) {
+      const ctx = ch.ctx, X = ch.scales.x, Y = ch.scales.y;
+      ctx.save(); ctx.font = '600 11px sans-serif'; ctx.fillStyle = '#1a2332'; ctx.textAlign = 'center';
+      wf.forEach((w, i) => {
+        ctx.fillText(`${w.total ? '' : w.v > 0 ? '+' : '−'}${Math.round(Math.abs(w.v)).toLocaleString('en')}`, X.getPixelForValue(i), Y.getPixelForValue(w.top) - 5);
+      });
+      ctx.restore();
+    }}]}));
+  else if (rEl) rEl.parentElement.innerHTML = '<div class="status">No reserves data for these companies (UKCS has none).</div>';
 }
 
 // ── DCS (DANSK SOKKEL) ───────────────────────────────────────────────────────
