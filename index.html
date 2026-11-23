@@ -4496,7 +4496,7 @@ function drawCompanyAnalytics() {
   });
   deals.filter(d => d.t === 'b').forEach((d, i) => {
     const a = anAssetInfo(d.a);
-    toParts.push({id: 'deal' + i, label: `${a.name} ${anPctTxt(d.p)} %`, color: AN_COLORS[(order.length + i) % AN_COLORS.length],
+    toParts.push({id: 'deal' + i, a: d.a, pct: d.p, label: `${a.name} ${anPctTxt(d.p)} %`, color: AN_COLORS[(order.length + i) % AN_COLORS.length],
       sh: [a.shelf], deal: true, prod: yy => anAssetProd(d.a, yy, d.p / 100), res: () => anAssetRes(d.a, d.p / 100),
       c2: () => anAssetC2(d.a, d.p / 100)});
   });
@@ -4570,9 +4570,13 @@ function drawCompanyAnalytics() {
     if (fromParts.some(q => q.id === p.id)) return;   // med i begge søylene: ingen endring (salgene kommer under)
     steps.push({name: p.label, r: both(anResOf(p.id), anC2Of(p.id)), sign: 1, color: p.color});
   });
-  sells.forEach(d => steps.push({name: `${anAssetInfo(d.a).name} ${anPctTxt(d.f * 100)} % sold (${anLabel(d.s)})`,
+  // Korte navn på aksen (funnet uten brønnummer: «Slagugle»), hele i verktøytipset.
+  const anShort = n => { const m = String(n).match(/\(([^)]+)\)\s*$/); return m ? m[1] : n; };
+  sells.forEach(d => steps.push({name: `− ${anShort(anAssetInfo(d.a).name)} ${anPctTxt(d.f * 100)} %`,
+    full: `${anAssetInfo(d.a).name}: ${anPctTxt(d.f * 100)} % sold by ${anLabel(d.s)}`,
     r: both(anAssetRes(d.a, d.f), anAssetC2(d.a, d.f)), sign: -1, color: AN_WF_NEG}));
-  toParts.filter(p => p.deal).forEach(p => steps.push({name: `${p.label} bought`, r: both(p.res(), p.c2()), sign: 1, color: p.color}));
+  toParts.filter(p => p.deal).forEach(p => steps.push({name: `+ ${anShort(anAssetInfo(p.a).name)} ${anPctTxt(p.pct)} %`,
+    full: `${anAssetInfo(p.a).name}: ${anPctTxt(p.pct)} % bought`, r: both(p.res(), p.c2()), sign: 1, color: p.color}));
   steps.push({name: 'Pro forma', r: sumParts(toParts), color: AN_WF_END, total: true});
   const shown = steps.filter(st => st.total || st.r.tot >= 0.05);
   const rg = anF.rg || 'cmp';
@@ -4662,13 +4666,14 @@ function drawCompanyAnalytics() {
   const toRes = sumParts(toParts), fromRes = sumParts(fromParts);
   const f1 = v => v.toLocaleString('en', {maximumFractionDigits: 1});
   if (rEl && toRes.tot + fromRes.tot > 0) anCharts.push(new Chart(rEl.getContext('2d'), {
-    type: 'bar', data: {labels: wf.map(w => w.name), datasets: resDs},
+    type: 'bar', data: {labels: wf.map(w => w.name.length > 18 ? w.name.slice(0, 17) + '…' : w.name), datasets: resDs},
     options: {responsive: true, maintainAspectRatio: false,
       plugins: {legend: {display: rg !== 'cmp' || rm === 'both', position: 'bottom', labels: {boxWidth: 12,
           // Uten egen farge (per selskap) vises de to delene som mørk og lys grå.
           generateLabels: ch => ch.data.datasets.map((d, i) => ({text: d.label, datasetIndex: i, lineWidth: 0,
             fillStyle: rg === 'cmp' ? (comps[i][4] ? paleColor('rgba(71,85,105,0.9)') : '#475569') : comps[i][3] && comps[i][4] ? paleColor(comps[i][3]) : comps[i][3]}))}},
-        tooltip: {callbacks: {label: c => {
+        tooltip: {callbacks: {title: items => items.length ? (wf[items[0].dataIndex].full || wf[items[0].dataIndex].name) : '',
+          label: c => {
           const w = wf[c.dataIndex], sg = w.total ? '' : w.v > 0 ? '+' : '−';
           if (rg !== 'cmp' || rm === 'both') return `${c.dataset.label}: ${sg}${f1(c.raw[1] - c.raw[0])} million boe`;
           const o = rm === 'c2' ? w.r.cc : w.r.rr;
