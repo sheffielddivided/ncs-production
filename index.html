@@ -633,12 +633,22 @@
     .an-chip i, .an-dot{display:inline-block;width:10px;height:10px;border-radius:2px;flex:none;}
     .an-dot{margin-right:6px;vertical-align:-1px;}
     .an-chip small, .an-sh{font-weight:400;color:var(--muted);font-size:0.7rem;}
-    .an-chip button{border:0;background:none;cursor:pointer;font-size:1rem;line-height:1;color:#64748b;padding:2px 6px;min-width:24px;min-height:24px;}
-    .an-chip button:hover{color:#b42318;}
+    .an-chip .an-sb{border:1px solid #cbd2d9;background:#fff;color:#94a3b8;border-radius:10px;font-size:0.68rem;font-weight:600;
+      padding:1px 7px;cursor:pointer;min-height:22px;text-decoration:line-through;}
+    .an-chip .an-sb.on{background:var(--blue);border-color:var(--blue);color:#fff;text-decoration:none;}
+    .an-chip .an-x{border:0;background:none;cursor:pointer;font-size:1rem;line-height:1;color:#64748b;padding:2px 6px;min-width:24px;min-height:24px;}
+    .an-chip .an-x:hover{color:#b42318;}
     .an-none{color:var(--muted);font-size:0.8rem;}
     .an-in{width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px;}
     .an-opts{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;font-size:0.8rem;}
     .an-opts .pill-group{width:max-content;max-width:100%;}
+    .an-deal{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eef2f7;font-size:0.82rem;}
+    .an-deal small{color:var(--muted);}
+    .an-dt{min-width:34px;}
+    .an-dt.buy{color:#00895a;} .an-dt.sell{color:#b42318;}
+    .an-pct{width:84px;padding:4px 6px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px;}
+    .an-warn{color:#b42318;font-size:0.75rem;}
+    .an-deal .an-x{border:0;background:none;cursor:pointer;font-size:1.1rem;color:#64748b;margin-left:auto;min-width:28px;min-height:28px;}
     .an-bridges{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-around;}
     .an-bridge{flex:1 1 260px;max-width:340px;width:100%;height:auto;}
     /* Company / Valuation BETA */
@@ -3940,9 +3950,9 @@ const AN_COLORS = ['#003057', '#e3a73a', '#2a6fa8', '#ce0f69', '#00b373', '#8e6b
   '#3fa7a0', '#b07d2b', '#5a6f8a'];
 const AN_SHELVES = [['ncs', 'NCS', '#003057'], ['dcs', 'DCS', '#d14f4e'], ['uk', 'UKCS', '#2a6fa8']];
 const AN_GROUPS = [['cmp', 'By company'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
-const anDefaults = () => ({from: 'var', to: 'var~bluenord', yr: '', g: 'cmp'});
+const anDefaults = () => ({from: 'var', to: 'var~bluenord', yr: '', g: 'cmp', deals: ''});
 let anF = anDefaults();
-const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag']];
+const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag'], ['deals', 'ad']];
 let anReg = null, anCache = {}, anCharts = [], anLicByName = null;
 
 // rawKey: uten AN_ALIAS, så et gammelt navn (Noreco) kan skilles fra dagens (BlueNord).
@@ -3999,8 +4009,25 @@ function anRegistry() {
   return anReg = reg;
 }
 const anList = () => Object.values(anRegistry()).sort((a, b) => a.label.localeCompare(b.label, 'en'));
-const anLabel = k => (anRegistry()[k] || {label: k}).label;
-const anKeys = side => (anF[side] || '').split(SEP).filter(k => anRegistry()[k]);
+// Et valg er et selskap på alle soklene det er på («shell»), eller på noen av
+// dem («shell:ncs» eller «shell:ncs+uk»), så hvert land kan velges for seg.
+const anShelfIds = key => AN_SHELVES.map(([s]) => s).filter(s => (anRegistry()[key] || {})[s] && anRegistry()[key][s].size);
+function anParse(item) {
+  const [key, sub] = String(item).split(':'), all = anShelfIds(key);
+  return {key, all, sh: sub ? all.filter(s => sub.split('+').includes(s)) : all};
+}
+const anItem = (key, sh) => {
+  const all = anShelfIds(key), keep = all.filter(s => sh.includes(s));
+  return keep.length === all.length ? key : `${key}:${keep.join('+')}`;
+};
+const anShelfLabel = s => (AN_SHELVES.find(x => x[0] === s) || [s, s])[1];
+const anName = k => (anRegistry()[k] || {label: k}).label;
+// «Shell» på alle soklene, ellers «Shell (NCS)».
+function anLabel(item) {
+  const {key, all, sh} = anParse(item);
+  return anName(key) + (sh.length < all.length ? ` (${sh.map(anShelfLabel).join(' + ')})` : '');
+}
+const anKeys = side => (anF[side] || '').split(SEP).filter(it => anRegistry()[anParse(it).key] && anParse(it).sh.length);
 
 // Lisensandelen (0–1) til ett juridisk NCS-selskap i et felt på et tidspunkt.
 function anNcsShare(name, id, ts) {
@@ -4144,40 +4171,60 @@ function anResYear() {
 const anSum = o => Object.values(o || {}).reduce((t, v) => t + v.liq + v.gas, 0);
 const anKboe = (mboe, y) => mboe * 1000 / daysInYear(y);
 // Produksjon (kboe/d) i ett år for ett selskap: {liq, gas, ncs, dcs, uk, tot}.
-function anProdAt(key, y) {
+function anProdAt(item, y) {
+  const {key, sh} = anParse(item);
   const p = anData(key).prod[y] || {}, o = {liq: 0, gas: 0, ncs: 0, dcs: 0, uk: 0};
-  Object.entries(p).forEach(([s, v]) => { o.liq += anKboe(v.liq, y); o.gas += anKboe(v.gas, y); o[s] = anKboe(v.liq + v.gas, y); });
+  Object.entries(p).forEach(([s, v]) => {
+    if (!sh.includes(s)) return;
+    o.liq += anKboe(v.liq, y); o.gas += anKboe(v.gas, y); o[s] = anKboe(v.liq + v.gas, y);
+  });
   o.tot = o.liq + o.gas;
   return o;
 }
-function anResOf(key) {
-  const r = anData(key).res;
-  const o = {liq: r.ncs.liq + r.dcs.liq, gas: r.ncs.gas + r.dcs.gas, ncs: r.ncs.liq + r.ncs.gas, dcs: r.dcs.liq + r.dcs.gas, uk: 0};
+function anResOf(item) {
+  const {key, sh} = anParse(item), d = anData(key).res, z = {liq: 0, gas: 0};
+  const n = sh.includes('ncs') ? d.ncs : z, dk = sh.includes('dcs') ? d.dcs : z;
+  const o = {liq: n.liq + dk.liq, gas: n.gas + dk.gas, ncs: n.liq + n.gas, dcs: dk.liq + dk.gas, uk: 0};
   o.tot = o.liq + o.gas;
   return o;
 }
-function anC2Of(key) {
-  const c = anData(key).c2;
+function anC2Of(item) {
+  const {key, sh} = anParse(item);
+  const c = sh.includes('ncs') ? anData(key).c2 : {liq: 0, gas: 0};
   return {liq: c.liq, gas: c.gas, ncs: c.liq + c.gas, dcs: 0, uk: 0, tot: c.liq + c.gas};
 }
 
 // ── Valg ──
 function anSet(k, v) { anF[k] = v; syncUrl(); drawChart(); }
-function anAdd(side, key) {
-  if (!anRegistry()[key]) return;
-  const ks = anKeys(side);
-  if (!ks.includes(key)) ks.push(key);
+// Legger til et selskap (eventuelt bare noen sokler). Står selskapet der
+// fra før, slås soklene sammen.
+function anAdd(side, item) {
+  const {key, sh} = anParse(item);
+  if (!anRegistry()[key] || !sh.length) return;
+  const ks = anKeys(side), i = ks.findIndex(it => anParse(it).key === key);
+  if (i < 0) ks.push(anItem(key, sh));
+  else ks[i] = anItem(key, [...new Set([...anParse(ks[i]).sh, ...sh])]);
   anSet(side, ks.join(SEP));
 }
-function anRemove(side, key) { anSet(side, anKeys(side).filter(k => k !== key).join(SEP)); }
+function anRemove(side, item) { anSet(side, anKeys(side).filter(k => k !== item).join(SEP)); }
+// Slår én sokkel av eller på for et valgt selskap; uten sokler fjernes det.
+function anToggleShelf(side, item, s) {
+  const {key, sh} = anParse(item);
+  const next = sh.includes(s) ? sh.filter(x => x !== s) : [...sh, s];
+  anSet(side, anKeys(side).map(it => it !== item ? it : next.length ? anItem(key, next) : null).filter(Boolean).join(SEP));
+}
 function anPick(side, inp) {
-  const v = inp.value.trim().toLowerCase();
+  let v = inp.value.trim().toLowerCase();
   if (!v) return;
+  // «Shell (NCS)»: bare den sokkelen.
+  const m = v.match(/^(.*\S)\s*\((ncs|dcs|ukcs)\)$/);
+  const only = m ? ({ncs: 'ncs', dcs: 'dcs', ukcs: 'uk'})[m[2]] : null;
+  if (m) v = m[1];
   const L = anList(), names = x => [x.label, ...x.names].map(n => n.toLowerCase());
   const e = L.find(x => names(x).includes(v)) || L.find(x => names(x).some(n => n.startsWith(v)))
     || L.find(x => names(x).some(n => n.includes(v)));
   inp.value = '';
-  if (e) anAdd(side, e.key);
+  if (e) anAdd(side, only && anShelfIds(e.key).includes(only) ? `${e.key}:${only}` : e.key);
 }
 function anCopyFrom() { anSet('to', anF.from); }
 
@@ -4222,24 +4269,207 @@ function anBridgeSvg(title, sub, fromSegs, toSegs, fmt, fromName) {
 }
 
 function anChipBox(side, title, keys, color) {
-  const chips = keys.map(k => `<span class="an-chip"><i style="background:${color(k)}"></i>${esc(anLabel(k))}
-      <small>${esc(anRegistry()[k].shelves.join(' · '))}</small>
-      <button type="button" aria-label="Remove ${esc(anLabel(k))}" onclick="anRemove('${side}', ${esc(jsStr(k))})">×</button></span>`).join('');
+  const chips = keys.map(k => {
+    const {key, all, sh} = anParse(k);
+    // Sokkelknappene: på = med i porteføljen. Med bare én sokkel er det ingenting å velge.
+    const shelves = all.length > 1 ? all.map(s => `<button type="button" class="an-sb${sh.includes(s) ? ' on' : ''}"
+        aria-pressed="${sh.includes(s)}" title="${sh.includes(s) ? 'Leave out' : 'Include'} ${anShelfLabel(s)}"
+        onclick="anToggleShelf('${side}', ${esc(jsStr(k))}, '${s}')">${anShelfLabel(s)}</button>`).join('')
+      : `<small>${anShelfLabel(all[0])}</small>`;
+    return `<span class="an-chip"><i style="background:${color(k)}"></i>${esc(anName(key))}${shelves}
+      <button type="button" class="an-x" aria-label="Remove ${esc(anLabel(k))}" onclick="anRemove('${side}', ${esc(jsStr(k))})">×</button></span>`;
+  }).join('');
   return `<div class="an-side"><h4>${title}</h4><div class="an-chips">${chips || '<span class="an-none">No companies</span>'}</div>
     <input class="an-in" list="anCmpList" placeholder="Add company…" aria-label="Add company to ${title}"
       onchange="anPick('${side}', this)" onkeydown="if(event.key==='Enter'){event.preventDefault();anPick('${side}', this)}"></div>`;
 }
+
+// ── Analytics: kjøp og salg av enkeltfelt og funn ──
+// En handel gjelder pro forma-søylen (til): {t: 'b' kjøp | 's' salg, a: eiendel,
+// p: prosentpoeng av eiendelen, s: selgeren, et selskap i til-søylen, ved salg}.
+// Kjøpet legges til som et eget segment; salget trekkes fra selgeren. Begge
+// gjelder hele historikken, som en pro forma-portefølje.
+// Eiendelene: 'ncs:<feltId>', 'ncsd:<funnId>', 'dcs:<slug>', 'uk:<slug>'.
+const AN_ASSET_KIND = {ncs: 'NCS field', ncsd: 'NCS discovery', dcs: 'DCS field', uk: 'UKCS field'};
+let anAssetMemo = null;
+const anAssetCache = {};
+function anAssets() {
+  if (anAssetMemo) return anAssetMemo;
+  const out = [], P = (bundle.production && bundle.production.fields) || {};
+  if (bundle.fields) bundle.fields.rows.forEach(([id, name]) => {
+    if (P[id] || (fieldReserves && fieldReserves[id])) out.push({id: `ncs:${id}`, name: anTitle(name), kind: 'ncs'});
+  });
+  allDiscoveries.forEach(d => { if (discoveryRes[d.id] && discoveryRes[d.id].oe > 0) out.push({id: `ncsd:${d.id}`, name: d.name, kind: 'ncsd'}); });
+  if (dcsReady()) dcsData.fields.forEach(f => out.push({id: `dcs:${f.slug}`, name: f.name, kind: 'dcs'}));
+  if (ukReady()) ukData.fields.forEach(f => { if ((ukData.monthly[f.slug] || []).length) out.push({id: `uk:${f.slug}`, name: f.name, kind: 'uk'}); });
+  out.forEach(a => { a.label = `${a.name} (${AN_ASSET_KIND[a.kind]})`; a.shelf = a.kind === 'ncsd' ? 'ncs' : a.kind; });
+  out.sort((a, b) => a.label.localeCompare(b.label, 'en'));
+  anAssetMemo = out;
+  anAssetMemo.byId = Object.fromEntries(out.map(a => [a.id, a]));
+  return anAssetMemo;
+}
+const anAssetInfo = id => anAssets().byId[id] || null;
+
+// Brutto tall for en eiendel, millioner boe: {prod: {år: {liq, gas}}, res: {liq, gas}, c2: {liq, gas}}.
+// Inneværende år som i anData: siste rapporterte måned videreføres ut året.
+function anAssetGross(id) {
+  if (anAssetCache[id]) return anAssetCache[id];
+  const a = anAssetInfo(id), [kind, ref] = [a.kind, id.slice(id.indexOf(':') + 1)];
+  const cy = currentYear, LM = anLastMonths(), prod = {}, res = {liq: 0, gas: 0}, c2 = {liq: 0, gas: 0};
+  const add = (y, liq, gas) => {
+    if (y < AN_FROM_YEAR || y > cy || !(liq || gas)) return;
+    const o = prod[y] = prod[y] || {liq: 0, gas: 0};
+    o.liq += liq * BBL_PER_SM3; o.gas += gas * BBL_PER_SM3;
+  };
+  const fill = (Lk, v) => {
+    if (!v || !Lk) return;
+    for (let k = Math.max(Lk + 1, anMk(cy, 1)); k <= anMk(cy, 12); k++) add(cy, v.liq * anDim(k) / anDim(Lk), v.gas * anDim(k) / anDim(Lk));
+  };
+  if (kind === 'ncs') {
+    let atLast = null;
+    ((bundle.production && bundle.production.fields[ref]) || []).forEach(([y, m, , gas, oe]) => {
+      if (!(m > 0) || y > cy) return;
+      const liq = Math.max(0, (oe || 0) - (gas || 0));
+      add(y, liq, gas || 0);
+      if (anMk(y, m) === LM.ncs) atLast = {liq, gas: gas || 0};
+    });
+    fill(LM.ncs, atLast);
+    const cur = fieldReserves && fieldReserves[ref] ? reserveAt(fieldReserves[ref], anResYear()) : null;
+    if (cur) { res.liq = Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3; res.gas = cur.remainingGas * BBL_PER_SM3; }
+  } else if (kind === 'ncsd') {
+    const v = discoveryRes[+ref];
+    if (v) { c2.liq = v.liq * BBL_PER_SM3; c2.gas = v.gas * BBL_PER_SM3; }
+  } else if (kind === 'dcs') {
+    (dcsData.production.yearly[ref] || []).forEach(([yy, oil, gas]) => { if (+yy < cy) add(+yy, oil || 0, gas || 0); });
+    let atLast = null;
+    (dcsData.production.monthly[ref] || []).forEach(([ym, oil, gas]) => {
+      const y = +ym.slice(0, 4), k = anMk(y, +ym.slice(5));
+      if (y === cy) add(y, oil || 0, gas || 0);
+      if (k === LM.dcs) atLast = {liq: oil || 0, gas: gas || 0};
+    });
+    fill(LM.dcs, atLast);
+    const r = dcsFieldRes(ref, dcsResYear());
+    res.liq = r.liq; res.gas = r.gas;
+  } else if (kind === 'uk') {
+    let atLast = null;
+    (ukData.monthly[ref] || []).forEach(([ym, oil, gas]) => {
+      const y = +ym.slice(0, 4);
+      add(y, oil, gas);
+      if (anMk(y, +ym.slice(5)) === LM.uk) atLast = {liq: oil, gas};
+    });
+    fill(LM.uk, atLast);
+  }
+  return anAssetCache[id] = {prod, res, c2, shelf: a.shelf};
+}
+// Samme form som anProdAt/anResOf/anC2Of, for en andel f (0–1) av eiendelen.
+const anShape = (liq, gas, shelf) => ({liq, gas, ncs: 0, dcs: 0, uk: 0, [shelf]: liq + gas, tot: liq + gas});
+function anAssetProd(id, y, f) {
+  const g = anAssetGross(id), p = g.prod[y] || {liq: 0, gas: 0};
+  return anShape(anKboe(p.liq, y) * f, anKboe(p.gas, y) * f, g.shelf);
+}
+function anAssetRes(id, f) { const g = anAssetGross(id); return anShape(g.res.liq * f, g.res.gas * f, g.shelf); }
+function anAssetC2(id, f) { const g = anAssetGross(id); return anShape(g.c2.liq * f, g.c2.gas * f, g.shelf); }
+
+// Andelen (0–1) et valgt selskap har i eiendelen i dag.
+function anOwnShare(item, id) {
+  const a = anAssetInfo(id), {key, sh} = anParse(item), e = anRegistry()[key];
+  if (!a || !e || !sh.includes(a.shelf)) return 0;
+  const ref = id.slice(id.indexOf(':') + 1);
+  if (a.kind === 'ncs') return [...e.ncs].reduce((t, n) => t + anNcsShare(n, +ref, Date.now()), 0);
+  if (a.kind === 'ncsd') {
+    const d = allDiscoveries.find(x => x.id === +ref);
+    return d ? discoveryPartners(d).filter(p => e.ncs.has(p.name)).reduce((t, p) => t + p.share / 100, 0) : 0;
+  }
+  if (a.kind === 'dcs') return ((dcsData.bySlug[ref] || {owners: []}).owners)
+    .reduce((t, [g, p]) => t + (e.dcs.has(dcsGroup(g)) ? p / 100 : 0), 0);
+  const S = ukSharesAt(ref, ukLastMonth());
+  return [...e.uk].reduce((t, g) => t + (S[g] || 0) / 100, 0);
+}
+
+const anDeals = () => (anF.deals || '').split(SEP).filter(Boolean).map(x => {
+  const [t, a, p, s] = x.split('*');
+  return {t, a, p: Math.min(100, Math.max(0, +p || 0)), s: s || ''};
+}).filter(d => (d.t === 'b' || d.t === 's') && anAssetInfo(d.a) && d.p > 0);
+const anDealStr = ds => ds.map(d => [d.t, d.a, +(+d.p).toFixed(3), d.t === 's' ? d.s : ''].join('*')).join(SEP);
+const anPctTxt = v => (+v).toLocaleString('en', {maximumFractionDigits: 2});
+
+function anDealAdd() {
+  const t = document.getElementById('anDealType').value, inp = document.getElementById('anDealAsset');
+  const pctIn = document.getElementById('anDealPct').value.trim(), msg = document.getElementById('anDealMsg');
+  const v = inp.value.trim().toLowerCase(), L = anAssets();
+  const a = L.find(x => x.label.toLowerCase() === v) || L.find(x => x.name.toLowerCase() === v)
+    || L.find(x => x.name.toLowerCase().startsWith(v)) || L.find(x => x.label.toLowerCase().includes(v));
+  if (!v || !a) { msg.textContent = 'Pick a field or discovery from the list.'; return; }
+  const to = anKeys('to'), held = to.map(k => ({k, s: anOwnShare(k, a.id)})).filter(x => x.s > 0).sort((x, y) => y.s - x.s);
+  let p = pctIn === '' ? null : +pctIn, s = '';
+  if (t === 's') {
+    if (!held.length) { msg.textContent = `None of the To companies holds ${a.name}.`; return; }
+    s = held[0].k;
+    if (p == null) p = held[0].s * 100;
+  } else if (p == null) p = Math.max(0, 100 - held.reduce((t2, x) => t2 + x.s, 0) * 100);   // kjøper ut partnerne
+  if (!(p > 0)) { msg.textContent = 'Enter a share above 0 %.'; return; }
+  anSet('deals', anDealStr([...anDeals(), {t, a: a.id, p, s}]));
+}
+function anDealSet(i, k, v) {
+  const ds = anDeals();
+  if (!ds[i]) return;
+  ds[i][k] = k === 'p' ? +v || 0 : v;
+  anSet('deals', anDealStr(ds.filter(d => d.p > 0)));
+}
+function anDealRemove(i) { anSet('deals', anDealStr(anDeals().filter((_, j) => j !== i))); }
+
+function anDealsCard(to) {
+  const ds = anDeals();
+  const rows = ds.map((d, i) => {
+    const a = anAssetInfo(d.a);
+    let extra = '';
+    if (d.t === 's') {
+      const held = to.map(k => ({k, s: anOwnShare(k, d.a)})).filter(x => x.s > 0);
+      const cur = held.find(x => x.k === d.s);
+      extra = held.length ? `from <select class="year-select" aria-label="Seller" onchange="anDealSet(${i}, 's', this.value)">${
+        held.map(x => `<option value="${esc(x.k)}"${x.k === d.s ? ' selected' : ''}>${esc(anLabel(x.k))} (holds ${anPctTxt(x.s * 100)} %)</option>`).join('')}</select>
+        ${!cur ? '<span class="an-warn">pick a seller</span>' : d.p > cur.s * 100 + 1e-6 ? `<span class="an-warn">capped at ${anPctTxt(cur.s * 100)} %</span>` : ''}`
+        : '<span class="an-warn">no To company holds it; ignored</span>';
+    }
+    return `<div class="an-deal"><strong class="an-dt ${d.t === 's' ? 'sell' : 'buy'}">${d.t === 's' ? 'Sell' : 'Buy'}</strong>
+      <input type="number" class="an-pct" min="0" max="100" step="0.01" value="${anPctTxt(d.p)}" aria-label="Share in percent"
+        onchange="anDealSet(${i}, 'p', this.value)"> % of <span>${esc(a.name)} <small>${AN_ASSET_KIND[a.kind]}</small></span> ${extra}
+      <button type="button" class="an-x" aria-label="Remove deal" onclick="anDealRemove(${i})">×</button></div>`;
+  }).join('');
+  return `<div class="pf-card pf-wide"><h3>Field and discovery deals · pro forma</h3>${rows || '<div class="an-none">No deals.</div>'}
+    <datalist id="anAssetList">${anAssets().map(a => `<option value="${esc(a.label)}"></option>`).join('')}</datalist>
+    <div class="an-opts">
+      <select id="anDealType" class="year-select" aria-label="Buy or sell"><option value="b">Buy</option><option value="s">Sell</option></select>
+      <input id="anDealAsset" class="an-in" style="flex:1 1 220px;width:auto" list="anAssetList" placeholder="Field or discovery…" aria-label="Field or discovery">
+      <input id="anDealPct" class="an-in an-pct" type="number" min="0" max="100" step="0.01" placeholder="%" aria-label="Share in percent">
+      <button type="button" class="grp-btn" onclick="anDealAdd()">Add</button>
+      <span id="anDealMsg" class="an-warn" role="alert"></span>
+    </div>
+    <div class="pf-map-note">Shares are percentage points of the whole field or discovery. Buy: added to the pro forma column as its own part
+      (left empty, the share the To companies do not already hold). Sell: taken from the To company that holds it (left empty, all of its share).
+      Deals apply to every year shown, as a pro forma portfolio.</div></div>`;
+}
+
+// Summer av {liq, gas, ncs, dcs, uk, tot}; sign −1 trekker fra (aldri under null).
+const AN_DIMS = ['liq', 'gas', 'ncs', 'dcs', 'uk', 'tot'];
+const anZero = () => ({liq: 0, gas: 0, ncs: 0, dcs: 0, uk: 0, tot: 0});
+function anPlus(a, b, sign = 1) {
+  const o = {};
+  AN_DIMS.forEach(k => { o[k] = Math.max(0, (a[k] || 0) + sign * (b[k] || 0)); });
+  return o;
+}
+const anSumAll = list => list.reduce((t, x) => anPlus(t, x), anZero());
 
 function drawCompanyAnalytics() {
   anDestroy();
   setChartNone();
   setChartTitle('Analytics BETA', 'Merger simulation across NCS, DCS and UKCS · net production and reserves');
   if (!allLicLoaded || !bundle.production) { setChartEmpty('Data could not be loaded.'); setInfo(''); return; }
-  const reg = anRegistry(), last = currentYear, ry = anResYear();
+  const last = currentYear, ry = anResYear();
   const est = currentYear, LM = anLastMonths(), estTxt = y => y === est ? `${y}e` : String(y);
   const estNote = `${est}e: reported months to ${AN_SHELVES.filter(([s]) => LM[s]).map(([s, l]) => `${anMonthTxt(LM[s])} (${l})`).join(', ')};
     the rest of the year is assumed equal to the last reported month on each shelf (same daily rate per field), and the year is averaged.`;
-  const from = anKeys('from'), to = anKeys('to');
+  const from = anKeys('from'), to = anKeys('to'), deals = anDeals();
   const y = /^\d{4}$/.test(anF.yr) && +anF.yr >= AN_FROM_YEAR && +anF.yr <= last ? +anF.yr : anLastYear();
   const order = [...new Set([...from, ...to])];
   const color = k => AN_COLORS[order.indexOf(k) % AN_COLORS.length];
@@ -4247,12 +4477,35 @@ function drawCompanyAnalytics() {
   const n1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   const bn = v => (v / 1000).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const fromName = from.length === 1 ? anLabel(from[0]) : 'Before';
-  const ukOnly = to.concat(from).filter(k => reg[k].uk.size);
+
+  // Delene i søylene: {label, color, prod(y), res(), c2(), sh: sokler}. Fra-søylen er
+  // selskapene; til-søylen er selskapene minus salgene, pluss kjøpene som egne deler.
+  const cmpPart = k => ({id: k, label: anLabel(k), color: color(k), sh: anParse(k).sh,
+    prod: yy => anProdAt(k, yy), res: () => anResOf(k), c2: () => anC2Of(k)});
+  const fromParts = from.map(cmpPart);
+  const sells = deals.filter(d => d.t === 's' && to.includes(d.s)).map(d => ({...d, f: Math.min(d.p / 100, anOwnShare(d.s, d.a))}))
+    .filter(d => d.f > 0);
+  const toParts = to.map(k => {
+    const p = cmpPart(k), mine = sells.filter(d => d.s === k);
+    if (!mine.length) return p;
+    return {...p,
+      prod: yy => mine.reduce((t, d) => anPlus(t, anAssetProd(d.a, yy, d.f), -1), anProdAt(k, yy)),
+      res: () => mine.reduce((t, d) => anPlus(t, anAssetRes(d.a, d.f), -1), anResOf(k)),
+      c2: () => mine.reduce((t, d) => anPlus(t, anAssetC2(d.a, d.f), -1), anC2Of(k))};
+  });
+  deals.filter(d => d.t === 'b').forEach((d, i) => {
+    const a = anAssetInfo(d.a);
+    toParts.push({id: 'deal' + i, label: `${a.name} ${anPctTxt(d.p)} %`, color: AN_COLORS[(order.length + i) % AN_COLORS.length],
+      sh: [a.shelf], deal: true, prod: yy => anAssetProd(d.a, yy, d.p / 100), res: () => anAssetRes(d.a, d.p / 100),
+      c2: () => anAssetC2(d.a, d.p / 100)});
+  });
+  const ukAny = [...fromParts, ...toParts].some(p => p.sh.includes('uk'));
 
   const controls = `<div class="pf-card pf-wide"><h3>Merger simulation</h3>
       <div class="an-sides">${anChipBox('from', 'From', from, color)}${anChipBox('to', 'To (pro forma)', to, color)}</div>
       <datalist id="anCmpList">${anList().map(e => `<option value="${esc(e.label)}">${esc(e.shelves.join(' · ')
-        + (e.names.length ? ' · also ' + e.names.slice(0, 3).join(', ') : ''))}</option>`).join('')}</datalist>
+        + (e.names.length ? ' · also ' + e.names.slice(0, 3).join(', ') : ''))}</option>` + (e.shelves.length > 1
+        ? e.shelves.map(l => `<option value="${esc(`${e.label} (${l})`)}">${l} only</option>`).join('') : '')).join('')}</datalist>
       <div class="an-opts">
         <button type="button" class="grp-btn" onclick="anCopyFrom()">Copy From to To</button>
         <label>Production year <select class="year-select" onchange="anSet('yr', this.value)">${
@@ -4260,55 +4513,57 @@ function drawCompanyAnalytics() {
         ${pillRow(AN_GROUPS, anF.g, v => `anSet('g', '${v}')`)}
       </div>
       <div class="pf-map-note">Companies are matched by name across the three shelves (e.g. Vår Energi on the NCS; BlueNord on the DCS and UKCS).
-        Each company's portfolio is everything it holds on the shelves listed under its name.</div></div>`;
+        Each company's portfolio is everything it holds on the shelves switched on in its tag; click a shelf to leave it out,
+        or pick e.g. «Shell (NCS)» from the list.</div></div>`;
+  const dealsCard = anDealsCard(to);
 
-  if (!to.length && !from.length) {
-    setProfile(controls + '<div class="pf-card pf-wide"><div class="status">Add companies to From and To.</div></div>');
+  if (!toParts.length && !fromParts.length) {
+    setProfile(controls + dealsCard + '<div class="pf-card pf-wide"><div class="status">Add companies to From and To.</div></div>');
     setInfo('');
     return;
   }
 
   // Fra–til-sammenligningen.
-  const segs = (keys, f) => keys.map(k => ({label: anLabel(k), color: color(k), v: f(k).tot}));
+  const segs = (parts, f) => parts.map(p => ({label: p.label, color: p.color, v: f(p).tot}));
   const bridges = `<div class="pf-card pf-wide"><h3>From and to</h3><div class="an-bridges">
-      ${anBridgeSvg('Production', `${y === est ? `${y} estimate` : y}, kboe/d, net`, segs(from, k => anProdAt(k, y)), segs(to, k => anProdAt(k, y)), n0, fromName)}
-      ${anBridgeSvg('Remaining reserves', `End-${ry}, billion boe, net`, segs(from, anResOf), segs(to, anResOf), bn, fromName)}
-      ${anBridgeSvg('Contingent resources', 'Discoveries, billion boe, net', segs(from, anC2Of), segs(to, anC2Of), bn, fromName)}
+      ${anBridgeSvg('Production', `${y === est ? `${y} estimate` : y}, kboe/d, net`, segs(fromParts, p => p.prod(y)), segs(toParts, p => p.prod(y)), n0, fromName)}
+      ${anBridgeSvg('Remaining reserves', `End-${ry}, billion boe, net`, segs(fromParts, p => p.res()), segs(toParts, p => p.res()), bn, fromName)}
+      ${anBridgeSvg('Contingent resources', 'Discoveries, billion boe, net', segs(fromParts, p => p.c2()), segs(toParts, p => p.c2()), bn, fromName)}
     </div><div class="pf-map-note">Reserves: Sodir's estimate at 31 December ${ry} (NCS) and ENS' at 1 January ${ry + 1} (DCS), times today's
       shares. Contingent resources: undeveloped NCS discoveries (Sodir classes 4F, 5F and 7F), today's shares.
-      ${ukOnly.length ? 'UKCS has production only: NSTA does not publish field reserves or resources.' : ''}
-      The DCS and UKCS have no contingent resources here.${y === est ? ' Production ' + estNote : ''}</div></div>`;
+      ${ukAny ? 'UKCS has production only: NSTA does not publish field reserves or resources.' : ''}
+      The DCS and UKCS have no contingent resources here.${deals.length ? ' Deals are in the pro forma column.' : ''}${y === est ? ' Production ' + estNote : ''}</div></div>`;
 
   // Produksjonshistorikken til det sammenslåtte selskapet.
   const years = Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => AN_FROM_YEAR + i);
   const g = anF.g;
+  const toProd = years.map(yy => anSumAll(toParts.map(p => p.prod(yy))));
   let ds;
   if (g === 'og') ds = [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]].map(([k, l, c]) =>
-    ({label: l, backgroundColor: c, data: years.map(yy => to.reduce((t, key) => t + anProdAt(key, yy)[k], 0))}));
-  else if (g === 'shelf') ds = AN_SHELVES.map(([s, l, c]) =>
-    ({label: l, backgroundColor: c, data: years.map(yy => to.reduce((t, key) => t + anProdAt(key, yy)[s], 0))}));
-  else ds = to.map(key => ({label: anLabel(key), backgroundColor: color(key), data: years.map(yy => anProdAt(key, yy).tot)}));
+    ({label: l, backgroundColor: c, data: toProd.map(o => o[k])}));
+  else if (g === 'shelf') ds = AN_SHELVES.map(([s, l, c]) => ({label: l, backgroundColor: c, data: toProd.map(o => o[s])}));
+  else ds = toParts.map(p => ({label: p.label, backgroundColor: p.color, data: years.map(yy => p.prod(yy).tot)}));
   // Anslaget for inneværende år vises lysere.
   ds = ds.filter(d => d.data.some(v => v > 0)).map(d => ({...d, type: 'bar', stack: 's', borderWidth: 0, order: 2,
     backgroundColor: years.map(yy => yy === est ? paleColor(d.backgroundColor) : d.backgroundColor),
     data: d.data.map(v => +v.toFixed(1))}));
-  const same = from.length === to.length && from.every(k => to.includes(k));
+  const same = !deals.length && from.length === to.length && from.every(k => to.includes(k));
   if (from.length && !same) ds.push({type: 'line', label: `From: ${from.map(anLabel).join(' + ')}`, borderColor: '#1a2332',
     borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false, order: 1,
-    data: years.map(yy => +from.reduce((t, key) => t + anProdAt(key, yy).tot, 0).toFixed(1))});
+    data: years.map(yy => +anSumAll(fromParts.map(p => p.prod(yy))).tot.toFixed(1))});
 
-  // Reservene per selskap i til-søylen, pluss summen.
-  const resCats = to.map(k => ({name: anLabel(k), r: anResOf(k)}));
-  if (to.length > 1) resCats.push({name: 'Pro forma', r: to.map(anResOf).reduce((a, b) =>
-    ({liq: a.liq + b.liq, gas: a.gas + b.gas, ncs: a.ncs + b.ncs, dcs: a.dcs + b.dcs, uk: 0}))});
+  // Reservene per del i til-søylen, pluss summen.
+  const resCats = toParts.map(p => ({name: p.label, r: p.res()}));
+  if (toParts.length > 1) resCats.push({name: 'Pro forma', r: anSumAll(resCats.map(x => x.r))});
   const resDs = (g === 'shelf' ? AN_SHELVES.filter(([s]) => s !== 'uk') : [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]])
     .map(([k, l, c]) => ({label: l, backgroundColor: c, data: resCats.map(x => +x.r[k].toFixed(1)), stack: 's', borderWidth: 0}))
     .filter(d => d.data.some(v => v > 0));
 
   const charts = `<div class="pf-card pf-wide"><h3>Net production, pro forma · kboe/d</h3>
       <div class="chart-container" style="height:320px"><canvas id="anProdCanvas"></canvas></div>
-      <div class="pf-map-note">${esc(to.map(anLabel).join(' + ') || '—')}: equity share of production with the shares that applied each month
-        (NCS, UKCS) or year (DCS). ${from.length && !same ? 'Dashed line: the From companies.' : ''} Pale bar, ${estNote}</div></div>
+      <div class="pf-map-note">${esc(toParts.map(p => p.label).join(' + ') || '—')}: equity share of production with the shares that applied each month
+        (NCS, UKCS) or year (DCS); bought and sold shares apply to every year. ${from.length && !same ? 'Dashed line: the From companies.' : ''}
+        Pale bar, ${estNote}</div></div>
     <div class="pf-card pf-wide"><h3>Remaining reserves, end-${ry} · million boe</h3>
       <div class="chart-container" style="height:300px"><canvas id="anResCanvas"></canvas></div></div>`;
 
@@ -4317,19 +4572,21 @@ function drawCompanyAnalytics() {
       <td>${n0(p.liq)}</td><td>${n0(p.gas)}</td><td><strong>${n0(p.tot)}</strong></td>
       <td>${n1(r.liq)}</td><td>${n1(r.gas)}</td><td><strong>${n1(r.tot)}</strong></td><td>${n1(c.tot)}</td>
       <td>${p.tot > 0 ? n1(r.tot * 1000 / (p.tot * daysInYear(y))) : '—'}</td></tr>`;
-  const tot = (keys, f) => keys.map(f).reduce((a, b) => ({liq: a.liq + b.liq, gas: a.gas + b.gas, tot: a.tot + b.tot}), {liq: 0, gas: 0, tot: 0});
+  const nameCell = p => `<i class="an-dot" style="background:${p.color}"></i>${esc(p.label)} <small class="an-sh">${
+    esc(p.deal ? 'bought' : p.sh.map(anShelfLabel).join(' · '))}</small>`;
+  const fromRows = fromParts.filter(p => !to.includes(p.id));
   const tbl = `<div class="pf-card pf-wide"><h3>Companies</h3><div class="pf-scroll"><table class="res-table">
-      <caption>Net · production ${y} in kboe/d · reserves end-${ry} and contingent resources in million boe · R/P in years</caption>
+      <caption>Net · production ${y} in kboe/d · reserves end-${ry} and contingent resources in million boe · R/P in years${
+        sells.length ? ' · pro forma rows after sales' : ''}</caption>
       <thead><tr><th>Company</th><th>Liquids</th><th>Gas</th><th>Production</th><th>Liquids</th><th>Gas</th><th>Reserves</th><th>Contingent</th><th>R/P</th></tr></thead>
-      <tbody>${order.map(k => row(`<i class="an-dot" style="background:${color(k)}"></i>${esc(anLabel(k))} <small class="an-sh">${esc(reg[k].shelves.join(' · '))}</small>`,
-        anProdAt(k, y), anResOf(k), anC2Of(k))).join('')}</tbody>
-      <tfoot>${from.length ? row('From', tot(from, k => anProdAt(k, y)), tot(from, anResOf), tot(from, anC2Of), 'total-row') : ''}
-        ${to.length ? row('To, pro forma', tot(to, k => anProdAt(k, y)), tot(to, anResOf), tot(to, anC2Of), 'total-row') : ''}</tfoot>
+      <tbody>${[...toParts, ...fromRows].map(p => row(nameCell(p), p.prod(y), p.res(), p.c2())).join('')}</tbody>
+      <tfoot>${fromParts.length ? row('From', anSumAll(fromParts.map(p => p.prod(y))), anSumAll(fromParts.map(p => p.res())), anSumAll(fromParts.map(p => p.c2())), 'total-row') : ''}
+        ${toParts.length ? row('To, pro forma', anSumAll(toParts.map(p => p.prod(y))), anSumAll(toParts.map(p => p.res())), anSumAll(toParts.map(p => p.c2())), 'total-row') : ''}</tfoot>
     </table></div></div>`;
 
-  setProfile(controls + bridges + charts + tbl);
+  setProfile(controls + dealsCard + bridges + charts + tbl);
   setInfo(`<strong>Method:</strong> net production = field production × equity share (NCS and UKCS monthly, DCS yearly from ENS' ownership history);
-    reserves and contingent resources × today's shares; companies matched by name across shelves &nbsp;|&nbsp;
+    reserves and contingent resources × today's shares; companies matched by name across shelves; deals as pro forma shares &nbsp;|&nbsp;
     <strong>Sources:</strong> Sodir FactPages; ENS; NSTA &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
 
   const tick = {callback: v => v.toLocaleString('en')};
