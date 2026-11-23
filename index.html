@@ -624,6 +624,23 @@
     /* Rad med to kort side om side og lik høyde (hubprofilen). */
     .pf-row2{column-span:all;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
     .pf-row2 > .pf-card{margin:0;min-width:0;}
+    /* Company / Analytics BETA */
+    .an-sides{display:flex;flex-wrap:wrap;gap:14px;}
+    .an-side{flex:1 1 300px;min-width:0;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;}
+    .an-side h4{margin:0 0 8px;font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+    .an-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+    .an-chip{display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border-radius:14px;padding:3px 4px 3px 10px;font-size:0.8rem;font-weight:600;}
+    .an-chip i, .an-dot{display:inline-block;width:10px;height:10px;border-radius:2px;flex:none;}
+    .an-dot{margin-right:6px;vertical-align:-1px;}
+    .an-chip small, .an-sh{font-weight:400;color:var(--muted);font-size:0.7rem;}
+    .an-chip button{border:0;background:none;cursor:pointer;font-size:1rem;line-height:1;color:#64748b;padding:2px 6px;min-width:24px;min-height:24px;}
+    .an-chip button:hover{color:#b42318;}
+    .an-none{color:var(--muted);font-size:0.8rem;}
+    .an-in{width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px;}
+    .an-opts{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;font-size:0.8rem;}
+    .an-opts .pill-group{width:max-content;max-width:100%;}
+    .an-bridges{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-around;}
+    .an-bridge{flex:1 1 260px;max-width:340px;width:100%;height:auto;}
     /* Company / Valuation BETA */
     .val-warn{background:#fff7e6;border:1px solid #f0c36d;color:#5c4300;font-size:0.76rem;line-height:1.45;}
     .val-warn strong{color:#8a5a00;}
@@ -2045,6 +2062,7 @@ const COMPANY_TABS = [
   {id:'profile',       label:'Factsheet'},
   {id:'news',          label:'News'},
   {id:'valuation',     label:'Valuation BETA'},
+  {id:'analytics',     label:'Analytics BETA'},
 ];
 
 function renderViewTabs() {
@@ -2064,8 +2082,9 @@ function renderViewTabs() {
   document.body.classList.toggle('prices', topMode === 'prices');
   document.body.classList.toggle('dcs', topMode === 'dcs');
   document.body.classList.toggle('ukcs', topMode === 'ukcs');
-  document.body.classList.toggle('dd-pick', ['fields', 'hubs', 'companies'].includes(topMode) || discoveryProfileMode());
-  document.body.classList.toggle('no-pick', topMode === 'discoveries' && !discoveryProfileMode());
+  const anView = topMode === 'companies' && companySubView === 'analytics';
+  document.body.classList.toggle('dd-pick', (['fields', 'hubs', 'companies'].includes(topMode) && !anView) || discoveryProfileMode());
+  document.body.classList.toggle('no-pick', (topMode === 'discoveries' && !discoveryProfileMode()) || anView);
   if (!discoveryProfileMode()) document.body.classList.remove('disc-sheet');   // settes av drawDiscoveryProfile
   if (!((topMode === 'fields' && fieldSubView === 'profile') || (topMode === 'hubs' && hubSubView === 'profile'))) {
     setSideMap('');   // settes av drawFieldProfile og drawHubProfile
@@ -3029,6 +3048,10 @@ function stateToHash() {
     const dflt = ncsDefaults();
     NCS_PARAMS.forEach(([k, p]) => { if (ncsF[k] !== dflt[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
   }
+  if (topMode === 'companies' && companySubView === 'analytics') {
+    const dflt = anDefaults();
+    AN_PARAMS.forEach(([k, p]) => { if (anF[k] !== dflt[k]) q.set(p, anF[k] || '-'); });
+  }
   if (topMode === 'companies' && companySubView === 'exploration') {
     if (cmpExplVol) q.set('cv', '1');
     if (cmpExplYear) q.set('cy', cmpExplYear);
@@ -3162,6 +3185,7 @@ function pageSources() {
   if (m === 'ncs' && v === 'outage' && ncsF.gx === 'infra') add('ne');
   else if ((m === 'ncs' && v === 'outage') || (m === 'companies' && v === 'downtime')) add('gassco');
   if (m === 'companies' && v === 'news') add('havtil', 'ais');
+  if (m === 'companies' && v === 'analytics') add('ens', 'nsta');
   if (m === 'exploration') {
     if (v === 'map') add('ne');
     if (v === 'news') add('ais', 'havtil');
@@ -3389,6 +3413,8 @@ function applyHash() {
   if (q.get('g') === 'company') hubReserveGrouping = 'company';
   resFrom = /^\d{4}$/.test(q.get('ry') || '') ? q.get('ry') : '';
   resMetric = q.get('rm') === 'life' ? 'life' : 'volume';
+  anF = anDefaults();
+  AN_PARAMS.forEach(([k, p]) => { if (q.has(p)) anF[k] = q.get(p) === '-' ? '' : q.get(p); });
   explF.open = +q.get('xw') > 0 ? +q.get('xw') : null;
   explF.rig = q.get('xg') || null;
   return true;
@@ -3619,6 +3645,13 @@ async function refreshFields() {
 }
 
 async function refreshCompanies() {
+  // Analytics har egne selskapsvalg (fra og til), uavhengig av velgeren.
+  if (companySubView === 'analytics') {
+    showSpinner();
+    await Promise.all([loadAllLicensees(), loadFieldReserves(), loadDiscoveries(), loadDcs(), loadUk()]);
+    drawChart();
+    return;
+  }
   const companies = [...selectedCompanyNames];
   if (!companies.length) {
     setChartTitle('',''); setChartEmpty('Tap the button below to select one or more companies.');
@@ -3800,12 +3833,14 @@ function drawChartView() {
     else if (sv === 'news')          drawCompanyNews();
     else if (sv === 'licences')      drawCompanyLicences();
     else if (sv === 'valuation')     betaGate(drawCompanyValuation);
+    else if (sv === 'analytics')     betaGate(drawCompanyAnalytics, 'Analytics BETA');
     else if (sv === 'downtime')      drawCompanyOutage();
   }
 }
 
 // ── PASSORD FOR VALUATION BETA ───────────────────────────────────────────────
-// Valuation BETA (hub og selskap) vises først når passordet er tastet inn.
+// Valuation BETA (hub og selskap) og Company → Analytics BETA vises først når
+// passordet er tastet inn.
 // Passordet ligger bare i GitHub-secreten BETA_PASSWORD. Workflowen
 // beta-password.yml (kjøres for hånd) skriver en saltet PBKDF2-SHA256-hash av
 // det til data/beta_gate.json; her regnes det inntastede passordet om på samme
@@ -3827,9 +3862,10 @@ async function betaLoad() {
   betaState.ok = !!betaState.file && lsGet(BETA_KEY) === betaState.file.hash;
 }
 
-function betaGate(draw) {
+function betaGate(draw, name = 'Valuation BETA') {
   if (betaState.ok) return draw();
-  setChartTitle('Valuation BETA', 'Password protected');
+  if (typeof anDestroy === 'function') anDestroy();
+  setChartTitle(name, 'Password protected');
   setChartNone(); setProfile(''); setInfo('');
   if (typeof valChartCf !== 'undefined' && valChartCf) { valChartCf.destroy(); valChartCf = null; }
   if (typeof valChartProd !== 'undefined' && valChartProd) { valChartProd.destroy(); valChartProd = null; }
@@ -3840,11 +3876,11 @@ function betaGate(draw) {
     return;
   }
   if (!betaState.file) {
-    area.innerHTML = '<div class="status">Valuation BETA is password protected, and no password has been set yet.</div>';
+    area.innerHTML = `<div class="status">${name} is password protected, and no password has been set yet.</div>`;
     return;
   }
   area.innerHTML = `<form class="beta-gate" onsubmit="betaUnlock(event)" style="max-width:340px;margin:40px auto;text-align:center">
-      <p style="margin:0 0 12px">Valuation BETA is in testing and password protected.</p>
+      <p style="margin:0 0 12px">${name} is in testing and password protected.</p>
       <input type="password" id="betaPw" autocomplete="current-password" aria-label="Password" placeholder="Password"
         style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px">
       <button type="submit" class="grp-btn" style="margin-top:10px">Unlock</button>
@@ -3872,6 +3908,378 @@ async function betaUnlock(ev) {
   ioEvent('beta-unlock');
   try { localStorage.setItem(BETA_KEY, hash); } catch (e) { /* bare denne økten */ }
   drawChart();
+}
+
+// ── COMPANY → ANALYTICS BETA ─────────────────────────────────────────────────
+// Simulerer sammenslåinger av selskaper på tvers av NCS, DCS og UKCS. Ett
+// selskap er alle konsernene med samme normaliserte navn (anKey) på de tre
+// soklene: Vår Energi på NCS, BlueNord på DCS og «Bluenord Energy UK» på UKCS
+// blir to selskaper, Vår Energi og BlueNord, der BlueNord har både DCS og UKCS.
+// Man velger selskapene i fra- og til-søylen; siden viser produksjon og
+// reserver for til-søylen (det sammenslåtte selskapet) fordelt per selskap,
+// per olje/gass eller per sokkel, og en fra–til-sammenligning for produksjon,
+// reserver og betingede ressurser.
+//
+// NCS: Sodirs månedsproduksjon × lisensandelen midt i måneden; reserver siste
+// årsestimat (per 31.12) × dagens andel; betingede ressurser i funn (4F, 5F,
+// 7F) × dagens andel. DCS: ENS' årsproduksjon × andelen i eierhistorikken
+// (dagens andel uten historikk); reserver per 1. januar året etter × dagens
+// andel. UKCS: NSTAs månedsproduksjon × de daterte andelene; NSTA publiserer
+// ikke reserver per felt, så UKCS bidrar bare med produksjon.
+// Væske er olje, NGL og kondensat (o.e. minus gass); 1000 Sm³ gass = 1 Sm³ o.e.
+const AN_FROM_YEAR = 2010;
+const anLastYear = () => currentYear - 1;   // siste hele år på alle tre soklene
+const AN_NOISE = new Set(['the', 'as', 'asa', 'plc', 'ltd', 'limited', 'llc', 'inc', 'gmbh', 'ag', 'bv', 'sa', 'co', 'company',
+  'corporation', 'corp', 'group', 'holdings', 'holding', 'international', 'energy', 'energi', 'oil', 'gas', 'petroleum',
+  'resources', 'exploration', 'production', 'e&p', 'ep', 'upstream', 'industries', 'uk', 'norge', 'norway', 'norske',
+  'norsk', 'danmark', 'denmark', 'north', 'sea', 'developments', 'development', 'expro', 'aktiengesellschaft', '&']);
+// Navnebytter og samme konsern under ulike navn på soklene.
+const AN_ALIAS = {total: 'totalenergies', elf: 'totalenergies', fina: 'totalenergies', statoil: 'equinor',
+  noreco: 'bluenord', esso: 'exxonmobil', mobil: 'exxonmobil', moller: 'maersk', conphil: 'conocophillips', det: 'aker'};
+const AN_COLORS = ['#003057', '#e3a73a', '#2a6fa8', '#ce0f69', '#00b373', '#8e6bbf', '#d14f4e', '#6c9a2f', '#7d2248',
+  '#3fa7a0', '#b07d2b', '#5a6f8a'];
+const AN_SHELVES = [['ncs', 'NCS', '#003057'], ['dcs', 'DCS', '#d14f4e'], ['uk', 'UKCS', '#2a6fa8']];
+const AN_GROUPS = [['cmp', 'By company'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
+const anDefaults = () => ({from: 'var', to: 'var~bluenord', yr: '', g: 'cmp'});
+let anF = anDefaults();
+const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag']];
+let anReg = null, anCache = {}, anCharts = [], anLicByName = null;
+
+function anKey(name) {
+  const s = String(name || '').toLowerCase().replace(/ø/g, 'o').replace(/æ/g, 'ae').replace(/å/g, 'a')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9&-]+/g, ' ');
+  const toks = s.split(' ').filter(t => t.length > 1 && t !== '--');
+  const t = toks.find(x => !AN_NOISE.has(x)) || toks[0] || s.trim();
+  return AN_ALIAS[t] || t;
+}
+const anTitle = s => String(s).toLowerCase().replace(/(^|[\s\-/])(\S)/g, (m, a, b) => a + b.toUpperCase());
+const anUkLabel = s => String(s).replace(/\s*\((u\.?k\.?|uk)\)\s*/i, ' ').replace(/,?\s+(plc|limited|ltd\.?|llc|inc\.?)$/i, '').trim();
+
+// Alle selskapene på de tre soklene, slått sammen på anKey. Bygges når
+// lisenshaverne (NCS), DCS og UKCS er lastet.
+function anRegistry() {
+  if (anReg) return anReg;
+  const reg = {};
+  const ent = name => {
+    const k = anKey(name);
+    return reg[k] = reg[k] || {key: k, labels: {}, ncs: new Set(), dcs: new Set(), uk: new Set()};
+  };
+  anLicByName = {};
+  allLicRecords.forEach(r => {
+    const n = r.cmpLongName;
+    if (!n) return;
+    (anLicByName[n] = anLicByName[n] || []).push(r);
+  });
+  Object.keys(anLicByName).forEach(n => {
+    const ck = concernKey(n), lab = NCS_OP_LABEL[ck] || anTitle(ck);
+    const e = ent(lab);
+    e.ncs.add(n);
+    e.labels.ncs = e.labels.ncs || lab;
+  });
+  if (dcsReady()) [...dcsHistCompanies(), ...dcsCompanies()].forEach(g => {
+    const n = dcsGroup(g), e = ent(n);
+    e.dcs.add(n);
+    e.labels.dcs = e.labels.dcs || n;
+  });
+  if (ukReady()) ukData.fields.forEach(f => f.equity.forEach(([g]) => {
+    if (!g || g === 'No Operator') return;
+    const e = ent(g);
+    e.uk.add(g);
+    e.labels.uk = e.labels.uk || anUkLabel(g);
+  }));
+  Object.values(reg).forEach(e => {
+    e.label = e.labels.ncs || e.labels.dcs || e.labels.uk;
+    e.shelves = AN_SHELVES.filter(([s]) => e[s].size).map(([, l]) => l);
+  });
+  return anReg = reg;
+}
+const anList = () => Object.values(anRegistry()).sort((a, b) => a.label.localeCompare(b.label, 'en'));
+const anLabel = k => (anRegistry()[k] || {label: k}).label;
+const anKeys = side => (anF[side] || '').split(SEP).filter(k => anRegistry()[k]);
+
+// Lisensandelen (0–1) til ett juridisk NCS-selskap i et felt på et tidspunkt.
+function anNcsShare(name, id, ts) {
+  let s = 0;
+  (anLicByName[name] || []).forEach(r => {
+    if (r.fldNpdidField !== id) return;
+    if (r.fldLicenseeFrom !== null && ts < r.fldLicenseeFrom) return;
+    if (r.fldLicenseeTo !== null && ts > r.fldLicenseeTo + 86399999) return;
+    s += (r.fldCompanyShare || 0) / 100;
+  });
+  return s;
+}
+
+// Tallene for ett selskap, millioner boe:
+// prod: {år: {ncs|dcs|uk: {liq, gas}}} · res: {ncs|dcs: {liq, gas}} · c2: {liq, gas}
+function anData(key) {
+  if (anCache[key]) return anCache[key];
+  const e = anRegistry()[key], last = anLastYear();
+  const prod = {}, res = {ncs: {liq: 0, gas: 0}, dcs: {liq: 0, gas: 0}};
+  const addP = (y, sh, liq, gas) => {
+    if (y < AN_FROM_YEAR || y > last || !(liq || gas)) return;
+    const p = prod[y] = prod[y] || {};
+    const o = p[sh] = p[sh] || {liq: 0, gas: 0};
+    o.liq += liq * BBL_PER_SM3; o.gas += gas * BBL_PER_SM3;
+  };
+  // NCS.
+  const P = (bundle.production && bundle.production.fields) || {}, now = Date.now();
+  const ry = anResYear();
+  e.ncs.forEach(name => {
+    const ids = [...new Set((anLicByName[name] || []).map(r => r.fldNpdidField))];
+    ids.forEach(id => {
+      (P[id] || []).forEach(([y, m, , gas, oe]) => {
+        if (!(m > 0) || y < AN_FROM_YEAR || y > last) return;
+        const sh = anNcsShare(name, id, Date.UTC(y, m - 1, 15));
+        if (sh) addP(y, 'ncs', Math.max(0, (oe || 0) - (gas || 0)) * sh, (gas || 0) * sh);
+      });
+      const cur = fieldReserves && fieldReserves[id] ? reserveAt(fieldReserves[id], ry) : null;
+      const sh = cur ? anNcsShare(name, id, now) : 0;
+      if (sh) {
+        res.ncs.liq += Math.max(0, cur.remainingOE - cur.remainingGas) * BBL_PER_SM3 * sh;
+        res.ncs.gas += cur.remainingGas * BBL_PER_SM3 * sh;
+      }
+    });
+  });
+  const c2 = {liq: 0, gas: 0};
+  if (e.ncs.size && allDiscoveries.length) companyDiscoveryGroups([...e.ncs]).forEach(g => { c2.liq += g.liq; c2.gas += g.gas; });
+  // DCS.
+  if (e.dcs.size && dcsReady()) {
+    const hist = dcsHasHistory(), dry = dcsResYear();
+    dcsData.fields.forEach(f => {
+      const nowSh = f.owners.reduce((t, [g, p]) => t + (e.dcs.has(dcsGroup(g)) ? p / 100 : 0), 0);
+      (dcsData.production.yearly[f.slug] || []).forEach(([yy, oil, gas]) => {
+        const y = +yy;
+        if (y < AN_FROM_YEAR || y > last) return;
+        let sh = nowSh;
+        if (hist) { const sp = dcsHistSplit(f.slug, String(y)).groups; sh = [...e.dcs].reduce((t, g) => t + (sp[g] || 0), 0); }
+        if (sh) addP(y, 'dcs', (oil || 0) * sh, (gas || 0) * sh);
+      });
+      if (nowSh) {
+        const r = dcsFieldRes(f.slug, dry);   // millioner boe
+        res.dcs.liq += r.liq * nowSh; res.dcs.gas += r.gas * nowSh;
+      }
+    });
+  }
+  // UKCS.
+  if (e.uk.size && ukReady()) {
+    ukData.fields.forEach(f => {
+      if (!f.equity.some(([g]) => e.uk.has(g))) return;
+      (ukData.monthly[f.slug] || []).forEach(([ym, oil, gas]) => {
+        const y = +ym.slice(0, 4);
+        if (y < AN_FROM_YEAR || y > last) return;
+        const S = ukSharesAt(f.slug, ym);
+        const sh = [...e.uk].reduce((t, g) => t + (S[g] || 0) / 100, 0);
+        if (sh) addP(y, 'uk', oil * sh, gas * sh);
+      });
+    });
+  }
+  return anCache[key] = {prod, res, c2};
+}
+// Siste NCS-reserveestimat (per 31.12); DCS' tall per 1. januar året etter.
+function anResYear() {
+  let y = 0;
+  Object.values(fieldReserves || {}).forEach(rows => rows.forEach(r => { if (r.year > y) y = r.year; }));
+  return y || anLastYear();
+}
+const anSum = o => Object.values(o || {}).reduce((t, v) => t + v.liq + v.gas, 0);
+const anKboe = (mboe, y) => mboe * 1000 / daysInYear(y);
+// Produksjon (kboe/d) i ett år for ett selskap: {liq, gas, ncs, dcs, uk, tot}.
+function anProdAt(key, y) {
+  const p = anData(key).prod[y] || {}, o = {liq: 0, gas: 0, ncs: 0, dcs: 0, uk: 0};
+  Object.entries(p).forEach(([s, v]) => { o.liq += anKboe(v.liq, y); o.gas += anKboe(v.gas, y); o[s] = anKboe(v.liq + v.gas, y); });
+  o.tot = o.liq + o.gas;
+  return o;
+}
+function anResOf(key) {
+  const r = anData(key).res;
+  const o = {liq: r.ncs.liq + r.dcs.liq, gas: r.ncs.gas + r.dcs.gas, ncs: r.ncs.liq + r.ncs.gas, dcs: r.dcs.liq + r.dcs.gas, uk: 0};
+  o.tot = o.liq + o.gas;
+  return o;
+}
+function anC2Of(key) {
+  const c = anData(key).c2;
+  return {liq: c.liq, gas: c.gas, ncs: c.liq + c.gas, dcs: 0, uk: 0, tot: c.liq + c.gas};
+}
+
+// ── Valg ──
+function anSet(k, v) { anF[k] = v; syncUrl(); drawChart(); }
+function anAdd(side, key) {
+  if (!anRegistry()[key]) return;
+  const ks = anKeys(side);
+  if (!ks.includes(key)) ks.push(key);
+  anSet(side, ks.join(SEP));
+}
+function anRemove(side, key) { anSet(side, anKeys(side).filter(k => k !== key).join(SEP)); }
+function anPick(side, inp) {
+  const v = inp.value.trim().toLowerCase();
+  if (!v) return;
+  const e = anList().find(x => x.label.toLowerCase() === v) || anList().find(x => x.label.toLowerCase().startsWith(v));
+  inp.value = '';
+  if (e) anAdd(side, e.key);
+}
+function anCopyFrom() { anSet('to', anF.from); }
+
+function anDestroy() { anCharts.forEach(c => c.destroy()); anCharts = []; }
+
+// Fra–til-søylene som i en investorpresentasjon: hver søyle er delt per selskap,
+// tallet over, og pilen viser endringen i prosent.
+function anBridgeSvg(title, sub, fromSegs, toSegs, fmt, fromName) {
+  const W = 300, H = 290, base = 238, maxH = 150, bw = 84, fx = 40, tx = 176;
+  const fT = fromSegs.reduce((t, s) => t + s.v, 0), tT = toSegs.reduce((t, s) => t + s.v, 0);
+  const max = Math.max(fT, tT, 1e-9), k = maxH / max;
+  const bar = (x, segs) => {
+    let y = base, out = '';
+    segs.forEach(s => {
+      const h = s.v * k;
+      if (h <= 0) return;
+      y -= h;
+      out += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${s.color}"><title>${esc(s.label)}: ${esc(fmt(s.v))}</title></rect>`;
+      if (h >= 15) out += `<text x="${x + bw / 2}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#fff">${esc(s.label.length > 13 ? s.label.slice(0, 12) + '…' : s.label)}</text>`;
+    });
+    return out;
+  };
+  const fTop = base - fT * k, tTop = base - tT * k;
+  const by = Math.max(24, Math.min(fTop, tTop) - 52);
+  const fcx = fx + bw / 2, tcx = tx + bw / 2;
+  const pct = fT > 0 ? (tT - fT) / fT * 100 : null;
+  const pctTxt = pct == null ? '—' : `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`;
+  return `<svg class="an-bridge" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}: ${esc(fmt(fT))} to ${esc(fmt(tT))}">
+    <text x="0" y="16" font-size="15" font-weight="700" fill="#1a2332">${esc(title)}</text>
+    <text x="0" y="32" font-size="11" fill="#64748b">${esc(sub)}</text>
+    <path d="M${fcx} ${(fTop - 22).toFixed(1)} V${by} H${tcx} V${(tTop - 28).toFixed(1)}" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <path d="M${tcx - 5} ${(tTop - 34).toFixed(1)} L${tcx} ${(tTop - 26).toFixed(1)} L${tcx + 5} ${(tTop - 34).toFixed(1)}" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect x="${(fcx + tcx) / 2 - 30}" y="${by - 12}" width="60" height="24" rx="5" fill="#eef2f7"/>
+    <text x="${(fcx + tcx) / 2}" y="${by + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="${pct != null && pct < 0 ? '#b42318' : '#b07d2b'}">${pctTxt}</text>
+    ${bar(fx, fromSegs)}${bar(tx, toSegs)}
+    <text x="${fcx}" y="${(fTop - 8).toFixed(1)}" text-anchor="middle" font-size="13" fill="#1a2332">${esc(fmt(fT))}</text>
+    <text x="${tcx}" y="${(tTop - 8).toFixed(1)}" text-anchor="middle" font-size="16" font-weight="700" fill="#1a2332">${esc(fmt(tT))}</text>
+    <line x1="20" x2="${W - 20}" y1="${base}" y2="${base}" stroke="#cbd2d9"/>
+    <text x="${fcx}" y="${base + 18}" text-anchor="middle" font-size="12" fill="#475569">${esc(fromName)}</text>
+    <text x="${tcx}" y="${base + 18}" text-anchor="middle" font-size="12" fill="#475569">Pro forma</text>
+  </svg>`;
+}
+
+function anChipBox(side, title, keys, color) {
+  const chips = keys.map(k => `<span class="an-chip"><i style="background:${color(k)}"></i>${esc(anLabel(k))}
+      <small>${esc(anRegistry()[k].shelves.join(' · '))}</small>
+      <button type="button" aria-label="Remove ${esc(anLabel(k))}" onclick="anRemove('${side}', ${esc(jsStr(k))})">×</button></span>`).join('');
+  return `<div class="an-side"><h4>${title}</h4><div class="an-chips">${chips || '<span class="an-none">No companies</span>'}</div>
+    <input class="an-in" list="anCmpList" placeholder="Add company…" aria-label="Add company to ${title}"
+      onchange="anPick('${side}', this)" onkeydown="if(event.key==='Enter'){event.preventDefault();anPick('${side}', this)}"></div>`;
+}
+
+function drawCompanyAnalytics() {
+  anDestroy();
+  setChartNone();
+  setChartTitle('Analytics BETA', 'Merger simulation across NCS, DCS and UKCS · net production and reserves');
+  if (!allLicLoaded || !bundle.production) { setChartEmpty('Data could not be loaded.'); setInfo(''); return; }
+  const reg = anRegistry(), last = anLastYear(), ry = anResYear();
+  const from = anKeys('from'), to = anKeys('to');
+  const y = /^\d{4}$/.test(anF.yr) && +anF.yr >= AN_FROM_YEAR && +anF.yr <= last ? +anF.yr : last;
+  const order = [...new Set([...from, ...to])];
+  const color = k => AN_COLORS[order.indexOf(k) % AN_COLORS.length];
+  const n0 = v => Math.round(v).toLocaleString('en');
+  const n1 = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const bn = v => (v / 1000).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const fromName = from.length === 1 ? anLabel(from[0]) : 'Before';
+  const ukOnly = to.concat(from).filter(k => reg[k].uk.size);
+
+  const controls = `<div class="pf-card pf-wide"><h3>Merger simulation</h3>
+      <div class="an-sides">${anChipBox('from', 'From', from, color)}${anChipBox('to', 'To (pro forma)', to, color)}</div>
+      <datalist id="anCmpList">${anList().map(e => `<option value="${esc(e.label)}">${esc(e.shelves.join(' · '))}</option>`).join('')}</datalist>
+      <div class="an-opts">
+        <button type="button" class="grp-btn" onclick="anCopyFrom()">Copy From to To</button>
+        <label>Production year <select class="year-select" onchange="anSet('yr', this.value)">${
+          Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => last - i).map(v => `<option value="${v}"${v === y ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+        ${pillRow(AN_GROUPS, anF.g, v => `anSet('g', '${v}')`)}
+      </div>
+      <div class="pf-map-note">Companies are matched by name across the three shelves (e.g. Vår Energi on the NCS; BlueNord on the DCS and UKCS).
+        Each company's portfolio is everything it holds on the shelves listed under its name.</div></div>`;
+
+  if (!to.length && !from.length) {
+    setProfile(controls + '<div class="pf-card pf-wide"><div class="status">Add companies to From and To.</div></div>');
+    setInfo('');
+    return;
+  }
+
+  // Fra–til-sammenligningen.
+  const segs = (keys, f) => keys.map(k => ({label: anLabel(k), color: color(k), v: f(k).tot}));
+  const bridges = `<div class="pf-card pf-wide"><h3>From and to</h3><div class="an-bridges">
+      ${anBridgeSvg('Production', `${y}, kboe/d, net`, segs(from, k => anProdAt(k, y)), segs(to, k => anProdAt(k, y)), n0, fromName)}
+      ${anBridgeSvg('Remaining reserves', `End-${ry}, billion boe, net`, segs(from, anResOf), segs(to, anResOf), bn, fromName)}
+      ${anBridgeSvg('Contingent resources', 'Discoveries, billion boe, net', segs(from, anC2Of), segs(to, anC2Of), bn, fromName)}
+    </div><div class="pf-map-note">Reserves: Sodir's estimate at 31 December ${ry} (NCS) and ENS' at 1 January ${ry + 1} (DCS), times today's
+      shares. Contingent resources: undeveloped NCS discoveries (Sodir classes 4F, 5F and 7F), today's shares.
+      ${ukOnly.length ? 'UKCS has production only: NSTA does not publish field reserves or resources.' : ''}
+      The DCS and UKCS have no contingent resources here.</div></div>`;
+
+  // Produksjonshistorikken til det sammenslåtte selskapet.
+  const years = Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => AN_FROM_YEAR + i);
+  const g = anF.g;
+  let ds;
+  if (g === 'og') ds = [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]].map(([k, l, c]) =>
+    ({label: l, backgroundColor: c, data: years.map(yy => to.reduce((t, key) => t + anProdAt(key, yy)[k], 0))}));
+  else if (g === 'shelf') ds = AN_SHELVES.map(([s, l, c]) =>
+    ({label: l, backgroundColor: c, data: years.map(yy => to.reduce((t, key) => t + anProdAt(key, yy)[s], 0))}));
+  else ds = to.map(key => ({label: anLabel(key), backgroundColor: color(key), data: years.map(yy => anProdAt(key, yy).tot)}));
+  ds = ds.filter(d => d.data.some(v => v > 0)).map(d => ({...d, type: 'bar', stack: 's', borderWidth: 0, order: 2,
+    data: d.data.map(v => +v.toFixed(1))}));
+  const same = from.length === to.length && from.every(k => to.includes(k));
+  if (from.length && !same) ds.push({type: 'line', label: `From: ${from.map(anLabel).join(' + ')}`, borderColor: '#1a2332',
+    borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false, order: 1,
+    data: years.map(yy => +from.reduce((t, key) => t + anProdAt(key, yy).tot, 0).toFixed(1))});
+
+  // Reservene per selskap i til-søylen, pluss summen.
+  const resCats = to.map(k => ({name: anLabel(k), r: anResOf(k)}));
+  if (to.length > 1) resCats.push({name: 'Pro forma', r: to.map(anResOf).reduce((a, b) =>
+    ({liq: a.liq + b.liq, gas: a.gas + b.gas, ncs: a.ncs + b.ncs, dcs: a.dcs + b.dcs, uk: 0}))});
+  const resDs = (g === 'shelf' ? AN_SHELVES.filter(([s]) => s !== 'uk') : [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]])
+    .map(([k, l, c]) => ({label: l, backgroundColor: c, data: resCats.map(x => +x.r[k].toFixed(1)), stack: 's', borderWidth: 0}))
+    .filter(d => d.data.some(v => v > 0));
+
+  const charts = `<div class="pf-card pf-wide"><h3>Net production, pro forma · kboe/d</h3>
+      <div class="chart-container" style="height:320px"><canvas id="anProdCanvas"></canvas></div>
+      <div class="pf-map-note">${esc(to.map(anLabel).join(' + ') || '—')}: equity share of production with the shares that applied each month
+        (NCS, UKCS) or year (DCS). ${from.length && !same ? 'Dashed line: the From companies.' : ''}</div></div>
+    <div class="pf-card pf-wide"><h3>Remaining reserves, end-${ry} · million boe</h3>
+      <div class="chart-container" style="height:300px"><canvas id="anResCanvas"></canvas></div></div>`;
+
+  // Tabellen.
+  const row = (name, p, r, c, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td>
+      <td>${n0(p.liq)}</td><td>${n0(p.gas)}</td><td><strong>${n0(p.tot)}</strong></td>
+      <td>${n1(r.liq)}</td><td>${n1(r.gas)}</td><td><strong>${n1(r.tot)}</strong></td><td>${n1(c.tot)}</td>
+      <td>${p.tot > 0 ? n1(r.tot * 1000 / (p.tot * daysInYear(y))) : '—'}</td></tr>`;
+  const tot = (keys, f) => keys.map(f).reduce((a, b) => ({liq: a.liq + b.liq, gas: a.gas + b.gas, tot: a.tot + b.tot}), {liq: 0, gas: 0, tot: 0});
+  const tbl = `<div class="pf-card pf-wide"><h3>Companies</h3><div class="pf-scroll"><table class="res-table">
+      <caption>Net · production ${y} in kboe/d · reserves end-${ry} and contingent resources in million boe · R/P in years</caption>
+      <thead><tr><th>Company</th><th>Liquids</th><th>Gas</th><th>Production</th><th>Liquids</th><th>Gas</th><th>Reserves</th><th>Contingent</th><th>R/P</th></tr></thead>
+      <tbody>${order.map(k => row(`<i class="an-dot" style="background:${color(k)}"></i>${esc(anLabel(k))} <small class="an-sh">${esc(reg[k].shelves.join(' · '))}</small>`,
+        anProdAt(k, y), anResOf(k), anC2Of(k))).join('')}</tbody>
+      <tfoot>${from.length ? row('From', tot(from, k => anProdAt(k, y)), tot(from, anResOf), tot(from, anC2Of), 'total-row') : ''}
+        ${to.length ? row('To, pro forma', tot(to, k => anProdAt(k, y)), tot(to, anResOf), tot(to, anC2Of), 'total-row') : ''}</tfoot>
+    </table></div></div>`;
+
+  setProfile(controls + bridges + charts + tbl);
+  setInfo(`<strong>Method:</strong> net production = field production × equity share (NCS and UKCS monthly, DCS yearly from ENS' ownership history);
+    reserves and contingent resources × today's shares; companies matched by name across shelves &nbsp;|&nbsp;
+    <strong>Sources:</strong> Sodir FactPages; ENS; NSTA &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
+
+  const tick = {callback: v => v.toLocaleString('en')};
+  const pEl = document.getElementById('anProdCanvas');
+  if (pEl && ds.length) anCharts.push(new Chart(pEl.getContext('2d'), {
+    type: 'bar', data: {labels: years.map(String), datasets: ds},
+    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {position: 'bottom', labels: {boxWidth: 12}},
+        tooltip: {callbacks: {label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString('en')} kboe/d`}}},
+      scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, beginAtZero: true, ticks: tick, title: {display: true, text: 'kboe/d'}}}}}));
+  const rEl = document.getElementById('anResCanvas');
+  if (rEl && resDs.length) anCharts.push(new Chart(rEl.getContext('2d'), {
+    type: 'bar', data: {labels: resCats.map(x => x.name), datasets: resDs},
+    options: {responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {position: 'bottom', labels: {boxWidth: 12}},
+        tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {maximumFractionDigits: 1})} million boe`}}},
+      scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, beginAtZero: true, ticks: tick, title: {display: true, text: 'million boe'}}}}}));
+  else if (rEl) rEl.parentElement.innerHTML = '<div class="status">No reserves data for the To companies (UKCS has none).</div>';
 }
 
 // ── DCS (DANSK SOKKEL) ───────────────────────────────────────────────────────
@@ -11248,7 +11656,8 @@ function isReservesView() {
       || (topMode === 'companies' && companySubView === 'news')
       || (topMode === 'companies' && companySubView === 'downtime')
       || (topMode === 'companies' && companySubView === 'licences')
-      || (topMode === 'companies' && companySubView === 'valuation');
+      || (topMode === 'companies' && companySubView === 'valuation')
+      || (topMode === 'companies' && companySubView === 'analytics');
 }
 
 async function loadFieldReserves() {
