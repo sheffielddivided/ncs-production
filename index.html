@@ -4826,6 +4826,8 @@ function drawCompanyAnalytics() {
       }
     });
   }
+  // Pilen med prosentvis endring krever en fra-søyle med verdi og pro forma til slutt.
+  const wfBrk = wf.length > 1 && wf[0].total && wf[wf.length - 1].total && wf[0].v > 0;
   const AN_RES_MEASURES = [['both', 'Reserves + contingent'], ['res', 'Reserves'], ['c2', 'Contingent resources']];
   const AN_RES_GROUPS = [['cmp', 'By company / asset'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
 
@@ -4900,8 +4902,11 @@ function drawCompanyAnalytics() {
           return [`${sg}${f1(Math.abs(w.v))} million boe`, `Liquids ${f1(o.liq)} · gas ${f1(o.gas)}`];
         }}}},
       scales: {x: {grid: {display: false}, ticks: {autoSkip: false, maxRotation: 40}},
-        y: {beginAtZero: true, grace: '8%', ticks: tick, title: {display: true, text: 'million boe'}}},
-      layout: {padding: {top: 14}}},
+        // Ingen verdiakse: tallene står over trinnene og navnene i søylene.
+        y: {display: false, beginAtZero: true, grace: '6%'}},
+      // Pilen ligger i en fast plass over det høyeste punktet i grafen (fra,
+      // pro forma eller et mellomtrinn), uansett skala.
+      layout: {padding: {top: wfBrk ? 56 : 18}}},
     // Tallet over hvert trinn.
     plugins: [{id: 'anWfLabels', afterDatasetsDraw(ch) {
       const ctx = ch.ctx, X = ch.scales.x, Y = ch.scales.y;
@@ -4909,6 +4914,27 @@ function drawCompanyAnalytics() {
       wf.forEach((w, i) => {
         ctx.fillText(`${w.total ? '' : w.v > 0 ? '+' : '−'}${Math.round(Math.abs(w.v)).toLocaleString('en')}`, X.getPixelForValue(i), Y.getPixelForValue(w.top) - 5);
       });
+      // Pilen fra fra-søylen til pro forma med endringen i prosent, som i
+      // fra–til-søylene; den går over alle trinnene.
+      if (wfBrk) {
+        const i1 = wf.length - 1, x0 = X.getPixelForValue(0), x1 = X.getPixelForValue(i1);
+        const yTop = i => Y.getPixelForValue(wf[i].top) - 20;   // over tallet
+        const by = Math.max(14, Math.min(...wf.map((_, i) => yTop(i))) - 20);   // over det høyeste tallet
+        const pct = (wf[i1].v - wf[0].v) / wf[0].v * 100, txt = `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`;
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x0, yTop(0)); ctx.lineTo(x0, by); ctx.lineTo(x1, by); ctx.lineTo(x1, yTop(i1) - 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1 - 5, yTop(i1) - 9); ctx.lineTo(x1, yTop(i1) - 1); ctx.lineTo(x1 + 5, yTop(i1) - 9); ctx.stroke();
+        ctx.font = '700 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const bw = ctx.measureText(txt).width + 20, bx = (x0 + x1) / 2;
+        ctx.fillStyle = '#eef2f7';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx - bw / 2, by - 12, bw, 24, 5); else ctx.rect(bx - bw / 2, by - 12, bw, 24);
+        ctx.fill();
+        ctx.fillStyle = pct < 0 ? '#b42318' : '#b07d2b';
+        ctx.fillText(txt, bx, by + 1);
+        ctx.restore();
+      }
       // Navnene inne i fra- og pro forma-søylene, som i fra–til-søylene: hvit
       // tekst når segmentet er høyt nok, kuttet med … når det er for smalt.
       // Per selskap står navnet på reservedelen (de betingede ressursene er
@@ -4983,7 +5009,10 @@ function drawCompanyAnalytics() {
     color: pale ? pptPale(pptHex(c || '#475569'), AN_LIGHT) : pptHex(c || '#475569'),
     values: wf.map(w => { const v = w.seg[ci][1] - w.seg[ci][0]; return v > 1e-6 ? +v.toFixed(1) : null; })}));
   const specWf = {kind: 'cat', dir: 'col', stacked: true, labels: wfLabels, yTitle: 'million boe',
-    series: wfSeries.filter((x, i) => i === 0 || x.values.some(v => v))};
+    series: wfSeries.filter((x, i) => i === 0 || x.values.some(v => v)),
+    // Uten verdiakse: tallet over hvert trinn, og pilen med endringen som på siden.
+    wf: {tops: wf.map(w => w.top), texts: wf.map(w => `${w.total ? '' : w.v > 0 ? '+' : '−'}${Math.round(Math.abs(w.v)).toLocaleString('en')}`),
+         pct: wfBrk ? (wf[wf.length - 1].v - wf[0].v) / wf[0].v * 100 : null}};
   const resWhat = rm === 'res' ? `Remaining reserves, end-${ry}` : rm === 'c2' ? 'Contingent resources' : `Reserves (end-${ry}) and contingent resources`;
   const specVal = anValRows ? {kind: 'table', rows: [anValRows.header.map(h => ({text: h, bold: true, fill: 'E8EEF5'})),
     ...anValRows.rows.map(r => r.map((c, i) => ({text: i ? c.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : c, align: i ? 'right' : 'left'}))),
@@ -17770,6 +17799,34 @@ function pptAddChart(pptx, slide, spec, box) {
   const lineOpts = list => ({chartColors: list.map(s => s.color), lineSize: 2, lineDataSymbol: list.length && spec.labels.length <= 30 ? 'circle' : 'none',
     lineDataSymbolSize: 4, ...(list.some(s => s.dash) && list.every(s => s.dash) ? {lineDash: 'dash'} : {})});
 
+  // Trappetrinn (spec.wf): stablet søylegraf med usynlig sokkel, uten verdiakse.
+  // Fast plottområde, så tallet over hvert trinn og pilen fra første til siste
+  // søyle (prosentvis endring) kan legges som figurer, som på siden.
+  if (spec.wf) {
+    const W = spec.wf, n = spec.labels.length, L = {x: 0.03, y: 0.03, w: 0.94, h: 0.74};
+    // Aksen settes ut fra det høyeste punktet (også mellomtrinn) og fast plass
+    // over det: 0,8 tommer til tall og pil, 0,35 uten pil.
+    const ph0 = box.h * L.h, room = W.pct != null ? 0.8 : 0.35;
+    const maxTop = Math.max(...W.tops, 0), top = maxTop > 0 ? maxTop / Math.max(0.3, 1 - room / ph0) : 1;
+    slide.addChart(C.BAR, toData(bars), {...common, ...barOpts, valAxisHidden: true, valGridLine: {style: 'none'},
+      valAxisMinVal: 0, valAxisMaxVal: top, layout: L});
+    const px = box.x + box.w * L.x, py = box.y + box.h * L.y, pw = box.w * L.w, ph = box.h * L.h;
+    const cx = i => px + pw * (i + 0.5) / n, yOf = v => py + ph * (1 - v / top);
+    W.texts.forEach((t, i) => slide.addText(t, {x: cx(i) - 0.7, y: yOf(W.tops[i]) - 0.28, w: 1.4, h: 0.24,
+      fontFace: 'Arial', fontSize: 11, bold: true, color: '1A2332', align: 'center', valign: 'bottom', margin: 0}));
+    if (W.pct != null) {
+      const i1 = n - 1, t0 = yOf(W.tops[0]) - 0.32, t1 = yOf(W.tops[i1]) - 0.34;
+      const by = Math.max(py + 0.17, Math.min(...W.tops.map(v => yOf(v) - 0.32)) - 0.3);   // over det høyeste tallet
+      const ln = {color: '94A3B8', width: 1.5};
+      slide.addShape(pptx.ShapeType.line, {x: cx(0), y: by, w: 0, h: Math.max(0.01, t0 - by), line: ln});
+      slide.addShape(pptx.ShapeType.line, {x: cx(0), y: by, w: cx(i1) - cx(0), h: 0, line: ln});
+      slide.addShape(pptx.ShapeType.line, {x: cx(i1), y: by, w: 0, h: Math.max(0.01, t1 - by), line: {...ln, endArrowType: 'triangle'}});
+      slide.addText(`${W.pct >= 0 ? '+' : '−'}${Math.abs(W.pct).toFixed(0)}%`, {shape: pptx.ShapeType.roundRect, rectRadius: 0.08,
+        x: (cx(0) + cx(i1)) / 2 - 0.45, y: by - 0.17, w: 0.9, h: 0.34, fill: {color: 'EEF2F7'}, line: {color: 'EEF2F7'},
+        fontFace: 'Arial', fontSize: 14, bold: true, color: W.pct < 0 ? 'B42318' : 'B07D2B', align: 'center', valign: 'middle', margin: 0});
+    }
+    return;
+  }
   // Stablede søyler med tall i segmentene og totalen over hver stolpe
   // (spec.totals), eventuelt uten verdiakse (spec.noValAxis): Analytics' fra–til.
   // Totalen er en usynlig linjeserie med etiketter over punktene.
@@ -17779,7 +17836,8 @@ function pptAddChart(pptx, slide, spec, box) {
     // stolpenes plass på lysbildet er kjent og pilen og prosentboksen kan
     // tegnes over dem som figurer, som på siden.
     const brk = spec.bracket && spec.totals.length === 2 && spec.totals[0] > 0 && spec.totals[1] != null;
-    const L = {x: 0.04, y: 0.03, w: 0.92, h: 0.76}, top = max > 0 ? max * (brk ? 1.5 : 1.15) : 0;
+    const L = {x: 0.04, y: 0.03, w: 0.92, h: 0.76};
+    const room = brk ? 0.8 : 0.35, top = max > 0 ? max / Math.max(0.3, 1 - room / (box.h * (brk ? L.h : 0.8))) : 0;
     const barPart = {type: C.BAR, data: toData(bars), options: {...barOpts, showValue: true, dataLabelPosition: 'ctr', dataLabelColor: 'FFFFFF',
         dataLabelFontSize: 9, dataLabelFormatCode: fmt}};
     // Med kjent plass (klamme) står totalene som tekst over stolpene, så de ikke
@@ -17794,7 +17852,7 @@ function pptAddChart(pptx, slide, spec, box) {
       const px = box.x + box.w * L.x, py = box.y + box.h * L.y, pw = box.w * L.w, ph = box.h * L.h;
       const cx = [px + pw * 0.25, px + pw * 0.75], yOf = v => py + ph * (1 - v / top);
       const t0 = yOf(spec.totals[0]) - 0.32, t1 = yOf(spec.totals[1]) - 0.34;   // over totaltallet
-      const by = Math.max(py + 0.2, Math.min(t0, t1) - 0.45);
+      const by = Math.max(py + 0.17, Math.min(t0, t1) - 0.3);
       const ln = {color: '94A3B8', width: 1.5};
       slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: 0, h: Math.max(0.01, t0 - by), line: ln});
       slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: cx[1] - cx[0], h: 0, line: ln});
