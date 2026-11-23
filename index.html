@@ -5007,7 +5007,10 @@ function drawCompanyAnalytics() {
     color: pale ? pptPale(pptHex(c || '#475569'), AN_LIGHT) : pptHex(c || '#475569'),
     values: wf.map(w => { const v = w.seg[ci][1] - w.seg[ci][0]; return v > 1e-6 ? +v.toFixed(1) : null; })}));
   const specWf = {kind: 'cat', dir: 'col', stacked: true, labels: wfLabels, yTitle: 'million boe',
-    series: wfSeries.filter((x, i) => i === 0 || x.values.some(v => v))};
+    series: wfSeries.filter((x, i) => i === 0 || x.values.some(v => v)),
+    // Uten verdiakse: tallet over hvert trinn, og pilen med endringen som på siden.
+    wf: {tops: wf.map(w => w.top), texts: wf.map(w => `${w.total ? '' : w.v > 0 ? '+' : '−'}${Math.round(Math.abs(w.v)).toLocaleString('en')}`),
+         pct: wfBrk ? (wf[wf.length - 1].v - wf[0].v) / wf[0].v * 100 : null}};
   const resWhat = rm === 'res' ? `Remaining reserves, end-${ry}` : rm === 'c2' ? 'Contingent resources' : `Reserves (end-${ry}) and contingent resources`;
   const specVal = anValRows ? {kind: 'table', rows: [anValRows.header.map(h => ({text: h, bold: true, fill: 'E8EEF5'})),
     ...anValRows.rows.map(r => r.map((c, i) => ({text: i ? c.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : c, align: i ? 'right' : 'left'}))),
@@ -17794,6 +17797,31 @@ function pptAddChart(pptx, slide, spec, box) {
   const lineOpts = list => ({chartColors: list.map(s => s.color), lineSize: 2, lineDataSymbol: list.length && spec.labels.length <= 30 ? 'circle' : 'none',
     lineDataSymbolSize: 4, ...(list.some(s => s.dash) && list.every(s => s.dash) ? {lineDash: 'dash'} : {})});
 
+  // Trappetrinn (spec.wf): stablet søylegraf med usynlig sokkel, uten verdiakse.
+  // Fast plottområde, så tallet over hvert trinn og pilen fra første til siste
+  // søyle (prosentvis endring) kan legges som figurer, som på siden.
+  if (spec.wf) {
+    const W = spec.wf, n = spec.labels.length, L = {x: 0.03, y: 0.03, w: 0.94, h: 0.74};
+    const maxTop = Math.max(...W.tops, 0), top = maxTop > 0 ? maxTop * (W.pct != null ? 1.32 : 1.12) : 1;
+    slide.addChart(C.BAR, toData(bars), {...common, ...barOpts, valAxisHidden: true, valGridLine: {style: 'none'},
+      valAxisMinVal: 0, valAxisMaxVal: top, layout: L});
+    const px = box.x + box.w * L.x, py = box.y + box.h * L.y, pw = box.w * L.w, ph = box.h * L.h;
+    const cx = i => px + pw * (i + 0.5) / n, yOf = v => py + ph * (1 - v / top);
+    W.texts.forEach((t, i) => slide.addText(t, {x: cx(i) - 0.7, y: yOf(W.tops[i]) - 0.28, w: 1.4, h: 0.24,
+      fontFace: 'Arial', fontSize: 11, bold: true, color: '1A2332', align: 'center', valign: 'bottom', margin: 0}));
+    if (W.pct != null) {
+      const i1 = n - 1, t0 = yOf(W.tops[0]) - 0.32, t1 = yOf(W.tops[i1]) - 0.34;
+      const by = Math.max(py + 0.2, Math.min(...W.tops.map(v => yOf(v) - 0.32)) - 0.3);
+      const ln = {color: '94A3B8', width: 1.5};
+      slide.addShape(pptx.ShapeType.line, {x: cx(0), y: by, w: 0, h: Math.max(0.01, t0 - by), line: ln});
+      slide.addShape(pptx.ShapeType.line, {x: cx(0), y: by, w: cx(i1) - cx(0), h: 0, line: ln});
+      slide.addShape(pptx.ShapeType.line, {x: cx(i1), y: by, w: 0, h: Math.max(0.01, t1 - by), line: {...ln, endArrowType: 'triangle'}});
+      slide.addText(`${W.pct >= 0 ? '+' : '−'}${Math.abs(W.pct).toFixed(0)}%`, {shape: pptx.ShapeType.roundRect, rectRadius: 0.08,
+        x: (cx(0) + cx(i1)) / 2 - 0.45, y: by - 0.17, w: 0.9, h: 0.34, fill: {color: 'EEF2F7'}, line: {color: 'EEF2F7'},
+        fontFace: 'Arial', fontSize: 14, bold: true, color: W.pct < 0 ? 'B42318' : 'B07D2B', align: 'center', valign: 'middle', margin: 0});
+    }
+    return;
+  }
   // Stablede søyler med tall i segmentene og totalen over hver stolpe
   // (spec.totals), eventuelt uten verdiakse (spec.noValAxis): Analytics' fra–til.
   // Totalen er en usynlig linjeserie med etiketter over punktene.
