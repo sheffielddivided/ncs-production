@@ -4826,6 +4826,8 @@ function drawCompanyAnalytics() {
       }
     });
   }
+  // Pilen med prosentvis endring krever en fra-søyle med verdi og pro forma til slutt.
+  const wfBrk = wf.length > 1 && wf[0].total && wf[wf.length - 1].total && wf[0].v > 0;
   const AN_RES_MEASURES = [['both', 'Reserves + contingent'], ['res', 'Reserves'], ['c2', 'Contingent resources']];
   const AN_RES_GROUPS = [['cmp', 'By company / asset'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
 
@@ -4900,8 +4902,8 @@ function drawCompanyAnalytics() {
           return [`${sg}${f1(Math.abs(w.v))} million boe`, `Liquids ${f1(o.liq)} · gas ${f1(o.gas)}`];
         }}}},
       scales: {x: {grid: {display: false}, ticks: {autoSkip: false, maxRotation: 40}},
-        y: {beginAtZero: true, grace: '8%', ticks: tick, title: {display: true, text: 'million boe'}}},
-      layout: {padding: {top: 14}}},
+        y: {beginAtZero: true, grace: wfBrk ? '18%' : '8%', ticks: tick, title: {display: true, text: 'million boe'}}},
+      layout: {padding: {top: wfBrk ? 30 : 14}}},
     // Tallet over hvert trinn.
     plugins: [{id: 'anWfLabels', afterDatasetsDraw(ch) {
       const ctx = ch.ctx, X = ch.scales.x, Y = ch.scales.y;
@@ -4909,6 +4911,27 @@ function drawCompanyAnalytics() {
       wf.forEach((w, i) => {
         ctx.fillText(`${w.total ? '' : w.v > 0 ? '+' : '−'}${Math.round(Math.abs(w.v)).toLocaleString('en')}`, X.getPixelForValue(i), Y.getPixelForValue(w.top) - 5);
       });
+      // Pilen fra fra-søylen til pro forma med endringen i prosent, som i
+      // fra–til-søylene; den går over alle trinnene.
+      if (wfBrk) {
+        const i1 = wf.length - 1, x0 = X.getPixelForValue(0), x1 = X.getPixelForValue(i1);
+        const yTop = i => Y.getPixelForValue(wf[i].top) - 20;   // over tallet
+        const by = Math.max(ch.chartArea.top - 18, Math.min(...wf.map((_, i) => yTop(i))) - 18);
+        const pct = (wf[i1].v - wf[0].v) / wf[0].v * 100, txt = `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`;
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x0, yTop(0)); ctx.lineTo(x0, by); ctx.lineTo(x1, by); ctx.lineTo(x1, yTop(i1) - 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1 - 5, yTop(i1) - 9); ctx.lineTo(x1, yTop(i1) - 1); ctx.lineTo(x1 + 5, yTop(i1) - 9); ctx.stroke();
+        ctx.font = '700 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const bw = ctx.measureText(txt).width + 20, bx = (x0 + x1) / 2;
+        ctx.fillStyle = '#eef2f7';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx - bw / 2, by - 12, bw, 24, 5); else ctx.rect(bx - bw / 2, by - 12, bw, 24);
+        ctx.fill();
+        ctx.fillStyle = pct < 0 ? '#b42318' : '#b07d2b';
+        ctx.fillText(txt, bx, by + 1);
+        ctx.restore();
+      }
       // Navnene inne i fra- og pro forma-søylene, som i fra–til-søylene: hvit
       // tekst når segmentet er høyt nok, kuttet med … når det er for smalt.
       // Per selskap står navnet på reservedelen (de betingede ressursene er
