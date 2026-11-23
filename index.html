@@ -4902,7 +4902,8 @@ function drawCompanyAnalytics() {
           return [`${sg}${f1(Math.abs(w.v))} million boe`, `Liquids ${f1(o.liq)} · gas ${f1(o.gas)}`];
         }}}},
       scales: {x: {grid: {display: false}, ticks: {autoSkip: false, maxRotation: 40}},
-        y: {beginAtZero: true, grace: wfBrk ? '18%' : '8%', ticks: tick, title: {display: true, text: 'million boe'}}},
+        // Ingen verdiakse: tallene står over trinnene og navnene i søylene.
+        y: {display: false, beginAtZero: true, grace: wfBrk ? '18%' : '8%'}},
       layout: {padding: {top: wfBrk ? 30 : 14}}},
     // Tallet over hvert trinn.
     plugins: [{id: 'anWfLabels', afterDatasetsDraw(ch) {
