@@ -670,8 +670,13 @@
       font-size:0.9rem;font-weight:700;cursor:pointer;text-align:center;}
     .val-fin-btn:hover{filter:brightness(1.08);}
     .val-fin-btn:focus-visible{outline:3px solid #1a2332;outline-offset:2px;}
-    .val-dlg{border:0;border-radius:12px;padding:16px 18px;width:min(1040px,94vw);max-height:90vh;overflow:auto;
+    /* Popupen ruller ikke selv: nøkkeltallene (TradingView, med egen rulling)
+       fyller høyden som er igjen, så det blir bare ett rullefelt. */
+    .val-dlg{border:0;border-radius:12px;padding:16px 18px;width:min(1040px,94vw);height:90vh;max-height:90vh;overflow:hidden;
       box-shadow:0 20px 60px rgba(15,23,42,0.35);}
+    .val-dlg[open]{display:flex;flex-direction:column;}
+    .val-dlg .val-fin{flex:1 1 0;min-height:0;height:auto;margin-bottom:6px;}
+    .val-dlg .pf-map-note{flex:none;}
     .val-dlg::backdrop{background:rgba(15,23,42,0.45);}
     .val-dlg-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;}
     .val-dlg-head h3{margin:0;}
