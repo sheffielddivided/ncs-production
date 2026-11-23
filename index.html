@@ -4917,14 +4917,20 @@ function drawCompanyAnalytics() {
   const toNames = toParts.map(p => p.label).join(' + ');
   const bridgeSpec = (f, dec, unit) => {
     const all = [...new Map([...fromParts, ...toParts].map(p => [p.id, p])).values()];
-    return {kind: 'cat', dir: 'col', stacked: true, labels: [fromName, 'Pro forma'], yTitle: unit,
+    return {kind: 'cat', dir: 'col', stacked: true, labels: [fromName, 'Pro forma'], yTitle: unit, yMin: 0,
       series: all.map(p => ({name: p.label, type: 'bar', color: pptHex(p.color),
         values: [fromParts.find(q => q.id === p.id), toParts.find(q => q.id === p.id)].map(q => q ? +f(q).toFixed(dec) : null)}))
         .filter(x => x.values.some(v => v))};
   };
   const specProd = bridgeSpec(p => p.prod(y).tot, 0, 'kboe/d');
-  const specRes = bridgeSpec(p => p.res().tot / 1000, 2, 'billion boe');
-  const specC2 = bridgeSpec(p => p.c2().tot / 1000, 2, 'billion boe');
+  // Overskriften per graf: fra → til og endringen, som i fra–til-søylene på siden.
+  const chgTxt = (f, fmt, unit) => {
+    const a = fromParts.reduce((t, p) => t + f(p), 0), b = toParts.reduce((t, p) => t + f(p), 0);
+    const c = a > 0 ? (b - a) / a * 100 : null;
+    return `${fmt(a)} → ${fmt(b)} ${unit}${c == null ? '' : ` (${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(0)} %)`}`;
+  };
+  const specRes = {...bridgeSpec(p => p.res().tot / 1000, 2, 'billion boe'), yFormat: '0.0'};
+  const specC2 = {...bridgeSpec(p => p.c2().tot / 1000, 2, 'billion boe'), yFormat: '0.0'};
   const prodChart = anCharts.find(c => c.canvas && c.canvas.id === 'anProdCanvas');
   const specHist = prodChart ? {...pptSpecFromChart(prodChart), labels: years.map(estTxt)} : null;
   // Trappetrinnene.
@@ -4951,17 +4957,20 @@ function drawCompanyAnalytics() {
     ...anValRows.rows.map(r => r.map((c, i) => ({text: i ? c.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : c, align: i ? 'right' : 'left'}))),
     ...anValRows.foot.map(r => r.map((c, i) => ({text: i ? c.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : c, align: i ? 'right' : 'left', bold: true, fill: 'F1F5F9'})))]} : null;
   const yTxt = y === est ? `${y} estimate` : String(y);
-  pptSpec = specProd;
-  pptMainMeta = meta('Analytics · Production', `${fromName} → pro forma (${toNames}) · ${yTxt}, kboe/d, net`);
+  // De tre fra–til-grafene på ett lysbilde.
+  const specBridges = {kind: 'multi', charts: [
+    {title: 'Production', subtitle: `${yTxt}, net · ${chgTxt(p => p.prod(y).tot, n0, 'kboe/d')}`, spec: specProd},
+    {title: 'Remaining reserves', subtitle: `End-${ry}, net · ${chgTxt(p => p.res().tot, bn, 'bn boe')}`, spec: specRes},
+    {title: 'Contingent resources', subtitle: `Discoveries, net · ${chgTxt(p => p.c2().tot, bn, 'bn boe')}`, spec: specC2}]};
+  pptSpec = specBridges;
+  pptMainMeta = meta('Analytics · From and to', `${fromName} → pro forma (${toNames})`);
   pptExtra = [
-    {id: 'anres', spec: specRes, meta: meta('Analytics · Remaining reserves', `${fromName} → pro forma · end-${ry}, billion boe, net`)},
-    {id: 'anc2', spec: specC2, meta: meta('Analytics · Contingent resources', `${fromName} → pro forma · discoveries, billion boe, net`)},
     ...(specHist ? [{id: 'anhist', spec: specHist, meta: meta('Analytics · Net production, pro forma', `${toNames} · kboe/d${deals.length ? ' · with deals' : ''}`)}] : []),
     {id: 'anwf', spec: specWf, meta: meta(`Analytics · ${resWhat}`, `From ${fromName} to pro forma · million boe`)},
     ...(specVal ? [{id: 'anval', spec: specVal, meta: meta('Back-of-the-envelope valuation',
       `Indicative value after tax, USD bn · oil price USD ${anValRows.price} · as at 1 January ${currentYear} · beta, indicative only`)}] : []),
   ];
-  pptCardSpecs.anBridge = {...specProd, subtitle: `${fromName} → pro forma · production ${yTxt}, kboe/d, net`};
+  pptCardSpecs.anBridge = {...specBridges, subtitle: `${fromName} → pro forma (${toNames})`};
   if (specHist) pptCardSpecs.anProd = {...specHist, subtitle: `${toNames} · net production, kboe/d`};
   pptCardSpecs.anRes = {...specWf, subtitle: `${resWhat} · from ${fromName} to pro forma · million boe`};
   if (specVal) pptCardSpecs.anVal = {...specVal, subtitle: `Indicative value after tax, USD bn · oil price USD ${anValRows.price}`};
@@ -17572,6 +17581,18 @@ function pptAddChart(pptx, slide, spec, box) {
       dataBorder: {pt: 0.75, color: 'FFFFFF'}});
     return;
   }
+  // Flere grafer side om side på samme lysbilde (Analytics: fra–til for
+  // produksjon, reserver og betingede ressurser), hver med egen overskrift.
+  if (spec.kind === 'multi') {
+    const n = spec.charts.length, gap = 0.25, w = (box.w - gap * (n - 1)) / n;
+    spec.charts.forEach((c, i) => {
+      const x = box.x + i * (w + gap);
+      slide.addText(c.title || '', {x, y: box.y, w, h: 0.35, fontFace: 'Arial', fontSize: 13, bold: true, color: '1A2332'});
+      if (c.subtitle) slide.addText(c.subtitle, {x, y: box.y + 0.33, w, h: 0.3, fontFace: 'Arial', fontSize: 10, color: '5A6F8A'});
+      pptAddChart(pptx, slide, c.spec, {x, y: box.y + 0.7, w, h: box.h - 0.7});
+    });
+    return;
+  }
   if (spec.kind === 'table') {
     // Tabell (overlappsmatrisen): første kolonne bredere, resten likt fordelt;
     // skriften krymper med antall rader så alt får plass på lysbildet.
@@ -17698,6 +17719,8 @@ function pptAddChart(pptx, slide, spec, box) {
   // Ren søyle- eller linjegraf.
   if (!lines1.length && !lines2.length) {
     slide.addChart(C.BAR, toData(bars), {...common, ...barOpts, ...axisTitle(spec.yTitle),
+      ...(spec.yFormat ? {valAxisLabelFormatCode: spec.yFormat} : {}),
+      ...(spec.yMin != null ? {valAxisMinVal: spec.yMin} : {}),
       ...(spec.catLabelSkip ? {catAxisLabelFrequency: spec.catLabelSkip, catAxisLabelRotate: 0, catAxisLabelPos: 'low'} : {}),
       ...(spec.dir === 'bar' ? {catAxisOrientation: 'maxMin', valAxisLabelPos: 'low'} : {})});
     return;
