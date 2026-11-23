@@ -666,6 +666,17 @@
     .val-tvp tv-company-profile{display:block;width:100%;min-height:200px;}
     /* Financials-widgeten trenger fast høyde (den setter beholderen til 100 %) og ruller selv. */
     .val-fin{height:760px;margin-bottom:6px;}
+    .val-fin-btn{display:block;width:100%;margin-top:12px;padding:11px 16px;border:0;border-radius:8px;background:var(--blue);color:#fff;
+      font-size:0.9rem;font-weight:700;cursor:pointer;text-align:center;}
+    .val-fin-btn:hover{filter:brightness(1.08);}
+    .val-fin-btn:focus-visible{outline:3px solid #1a2332;outline-offset:2px;}
+    .val-dlg{border:0;border-radius:12px;padding:16px 18px;width:min(1040px,94vw);max-height:90vh;overflow:auto;
+      box-shadow:0 20px 60px rgba(15,23,42,0.35);}
+    .val-dlg::backdrop{background:rgba(15,23,42,0.45);}
+    .val-dlg-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;}
+    .val-dlg-head h3{margin:0;}
+    .val-dlg-x{border:0;background:none;font-size:1.7rem;line-height:1;cursor:pointer;color:#64748b;min-width:40px;min-height:40px;}
+    .val-dlg-x:hover{color:#1a2332;}
     @media (max-width: 700px){ .val-fin{height:600px;} }   /* «compact» på smale skjermer: kort som rulles sidelengs */
     .val-ass td, .val-ass th{text-align:left !important;white-space:normal !important;vertical-align:top;}
     .val-ass td:first-child{font-weight:600;white-space:nowrap !important;}
@@ -11621,24 +11632,45 @@ function valShareCard(cmp) {
     <div class="pf-card"><h3>About the listed ${many ? 'owners' : 'company'}</h3>
       <div class="val-tvp">${own.map(t => `<tv-company-profile symbol="${esc(valW(t))}"></tv-company-profile>`).join('')}</div>
       <div class="pf-map-note">Company profile${many ? 's' : ''} by
-        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>; ${many ? 'they describe the listed companies' : 'it describes the listed company'} as a whole.</div></div></div>
-    <div class="pf-card pf-wide"><h3>Key financials of the listed ${many ? 'owners' : 'company'}</h3>
+        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>; ${many ? 'they describe the listed companies' : 'it describes the listed company'} as a whole.</div>
+      <button type="button" class="val-fin-btn" onclick="valFinOpen()">Key financials of the listed ${many ? 'owners' : 'company'} ›</button></div></div>
+    <dialog id="valFinDlg" class="val-dlg" aria-labelledby="valFinTitle">
+      <div class="val-dlg-head"><h3 id="valFinTitle">Key financials of the listed ${many ? 'owners' : 'company'}</h3>
+        <button type="button" class="val-dlg-x" aria-label="Close" onclick="this.closest('dialog').close()">×</button></div>
       ${own.map(t => `${many ? `<div class="pf-map-note" style="margin:6px 0 2px"><strong>${esc(t.n)}</strong></div>` : ''}
         <div class="val-fin"><div class="tradingview-widget-container" data-sym="${esc(valW(t))}" style="height:100%"><div class="tradingview-widget-container__widget" style="height:100%"></div></div></div>`).join('')}
       <div class="pf-map-note">Fundamentals for ${own.map(t => valTvLink(valW(t))).join(' and ')} by
         <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>: the listed ${many ? 'companies' : 'company'} as a whole, from the latest reports${
-        own.some(t => t.w && t.w !== t.main) ? '; for a US listing (ADR) the amounts are in USD' : ''}. These are not the figures behind the indicative valuation above.</div></div>`;
+        own.some(t => t.w && t.w !== t.main) ? '; for a US listing (ADR) the amounts are in USD' : ''}. These are not the figures behind the indicative valuation above.</div>
+    </dialog>`;
+}
+
+// Popupen med nøkkeltall (Financials), ett per børsnotert eier, med brukerens
+// oppsett. TradingView-widgeten lastes ved første åpning, når dialogen har
+// bredde; klikk utenfor eller Esc lukker den.
+function valFinOpen() {
+  const d = document.getElementById('valFinDlg');
+  if (!d) return;
+  if (!d.dataset.wired) {
+    d.dataset.wired = '1';
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+  }
+  d.showModal();
+  ioEvent('val-financials');
+  d.querySelectorAll('.val-fin .tradingview-widget-container').forEach(el => {
+    if (el.dataset.mounted) return;
+    el.dataset.mounted = '1';
+    // «regular» (brukerens valg) gir to spalter som blir uleselige på mobil; der brukes «compact».
+    mountTvScript(el, 'financials', {symbol: el.dataset.sym, colorTheme: 'light', displayMode: el.clientWidth < 600 ? 'compact' : 'regular',
+      isTransparent: true, locale: 'en', width: '100%', height: '100%'});
+  });
 }
 
 function valMountShares(cmp) {
   const own = valTickers(cmp), box = document.getElementById('valTv');
   if (!own) return;
   if (box) mountTvChart(box, own.filter(t => t.chart !== false).map(t => [t.n, `${valW(t)}|3M`]));
-  // Nøkkeltall (Financials), ett per børsnotert eier, med brukerens oppsett.
-  document.querySelectorAll('.val-fin .tradingview-widget-container').forEach(el =>
-    // «regular» (brukerens valg) gir to spalter som blir uleselige på mobil; der brukes «compact».
-    mountTvScript(el, 'financials', {symbol: el.dataset.sym, colorTheme: 'light', displayMode: el.clientWidth < 600 ? 'compact' : 'regular',
-      isTransparent: true, locale: 'en', width: '100%', height: '100%'}));
+  // Nøkkeltallene ligger i en popup (valFinOpen) og lastes først når den åpnes.
   // Selskapsprofilen (tv-company-profile) er et eget webkomponent fra
   // TradingView: skriptet lastes én gang og definerer elementet, som så
   // oppgraderes uansett når kortet tegnes.
