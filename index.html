@@ -4919,7 +4919,7 @@ function drawCompanyAnalytics() {
     const all = [...new Map([...fromParts, ...toParts].map(p => [p.id, p])).values()];
     // Tall i segmentene, totalen over stolpen og ingen verdiakse, som på siden.
     const tot = ps => ps.length ? +ps.reduce((t, q) => t + f(q), 0).toFixed(dec) : null;
-    return {kind: 'cat', dir: 'col', stacked: true, labels: [fromName, 'Pro forma'], yTitle: unit, yMin: 0, noValAxis: true,
+    return {kind: 'cat', dir: 'col', stacked: true, labels: [fromName, 'Pro forma'], yTitle: unit, yMin: 0, noValAxis: true, bracket: true,
       totals: [tot(fromParts), tot(toParts)],
       series: all.map(p => ({name: p.label, type: 'bar', color: pptHex(p.color),
         values: [fromParts.find(q => q.id === p.id), toParts.find(q => q.id === p.id)].map(q => q && +f(q).toFixed(dec) ? +f(q).toFixed(dec) : null)}))
@@ -17724,6 +17724,11 @@ function pptAddChart(pptx, slide, spec, box) {
   // Totalen er en usynlig linjeserie med etiketter over punktene.
   if (spec.totals) {
     const fmt = spec.yFormat || '#,##0', max = Math.max(...spec.totals.filter(v => v != null), 0);
+    // Med klamme (spec.bracket, to stolper): fast plottområde og akse, så
+    // stolpenes plass på lysbildet er kjent og pilen og prosentboksen kan
+    // tegnes over dem som figurer, som på siden.
+    const brk = spec.bracket && spec.totals.length === 2 && spec.totals[0] > 0 && spec.totals[1] != null;
+    const L = {x: 0.04, y: 0.03, w: 0.92, h: 0.76}, top = max > 0 ? max * (brk ? 1.5 : 1.15) : 0;
     slide.addChart([
       {type: C.BAR, data: toData(bars), options: {...barOpts, showValue: true, dataLabelPosition: 'ctr', dataLabelColor: 'FFFFFF',
         dataLabelFontSize: 9, dataLabelFormatCode: fmt}},
@@ -17731,7 +17736,21 @@ function pptAddChart(pptx, slide, spec, box) {
         lineDataSymbol: 'none', showValue: true, dataLabelPosition: 't', dataLabelFontSize: 11, dataLabelFontBold: true,
         dataLabelColor: '1A2332', dataLabelFormatCode: fmt}},
     ], {...common, ...(spec.noValAxis ? {valAxisHidden: true, valGridLine: {style: 'none'}} : axisTitle(spec.yTitle)),
-      valAxisMinVal: 0, ...(max > 0 ? {valAxisMaxVal: max * 1.15} : {}), valAxisLabelFormatCode: fmt});
+      valAxisMinVal: 0, ...(top > 0 ? {valAxisMaxVal: top} : {}), valAxisLabelFormatCode: fmt, ...(brk ? {layout: L} : {})});
+    if (brk) {
+      const px = box.x + box.w * L.x, py = box.y + box.h * L.y, pw = box.w * L.w, ph = box.h * L.h;
+      const cx = [px + pw * 0.25, px + pw * 0.75], yOf = v => py + ph * (1 - v / top);
+      const t0 = yOf(spec.totals[0]) - 0.32, t1 = yOf(spec.totals[1]) - 0.34;   // over totaltallet
+      const by = Math.max(py + 0.2, Math.min(t0, t1) - 0.45);
+      const ln = {color: '94A3B8', width: 1.5};
+      slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: 0, h: Math.max(0.01, t0 - by), line: ln});
+      slide.addShape(pptx.ShapeType.line, {x: cx[0], y: by, w: cx[1] - cx[0], h: 0, line: ln});
+      slide.addShape(pptx.ShapeType.line, {x: cx[1], y: by, w: 0, h: Math.max(0.01, t1 - by), line: {...ln, endArrowType: 'triangle'}});
+      const pct = (spec.totals[1] - spec.totals[0]) / spec.totals[0] * 100;
+      slide.addText(`${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%`, {shape: pptx.ShapeType.roundRect, rectRadius: 0.08,
+        x: (cx[0] + cx[1]) / 2 - 0.45, y: by - 0.17, w: 0.9, h: 0.34, fill: {color: 'EEF2F7'}, line: {color: 'EEF2F7'},
+        fontFace: 'Arial', fontSize: 14, bold: true, color: pct < 0 ? 'B42318' : 'B07D2B', align: 'center', valign: 'middle', margin: 0});
+    }
     return;
   }
   // Ren søyle- eller linjegraf.
