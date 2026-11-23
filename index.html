@@ -3661,7 +3661,9 @@ async function refreshCompanies() {
   // Analytics har egne selskapsvalg (fra og til), uavhengig av velgeren.
   if (companySubView === 'analytics') {
     showSpinner();
-    await Promise.all([loadAllLicensees(), loadFieldReserves(), loadDiscoveries(), loadDcs(), loadUk()]);
+    // Verdsettelsen nederst trenger produksjonen for alle felt (hubprognosene) og prisene.
+    await Promise.all([loadAllLicensees(), loadFieldReserves(), loadDiscoveries(), loadDcs(), loadUk(),
+      loadProdForFields(ncsFieldIds()), loadPriceHistory()]);
     drawChart();
     return;
   }
@@ -4453,6 +4455,154 @@ function anDealsCard(to) {
       Deals apply to every year shown, as a pro forma portfolio.</div></div>`;
 }
 
+// ── Analytics: Back-of-the-envelope valuation ──
+// Samme sjablongmodell som Valuation BETA: NCS-feltene med hubmodellen
+// (valCompute per juridisk selskap, dagens andeler, CF_TAX), funn til
+// VAL_DISC_USD per fat o.e. etter skatt, og DCS med den danske modellen
+// (dcsValCompute, DCS_TAX). UKCS verdsettes ikke. Kjøpte og solgte andeler
+// verdsettes med samme modell per felt (huben styrer feltets prognose).
+// Alle beløp er USD mrd etter skatt, som [CF_RATES[0], CF_RATES[1]].
+const anValCache = {};
+let anDcsValFields = null;
+function anValMemo(key, f) { return key in anValCache ? anValCache[key] : (anValCache[key] = f()); }
+
+// NPV før skatt for en andel f av ett NCS-felt, som i valCompute.
+function anValNcsField(id, f, price) {
+  return anValMemo(`nf|${id}|${price}`, () => {
+    const ph = priceHist && priceHist.byYear;
+    if (!ph || !Object.keys(ph).length) return [0, 0];
+    const y0 = currentYear, inv = bundle.field_investments, lastInv = invLastYear();
+    const fxNow = usdnokOf(Math.max(...Object.keys(ph).map(Number).filter(y => ph[y].usdnok)));
+    const hub = hubNameOf(id);
+    const ids = hub === 'Other' || !hubFieldIds([hub]).length ? [id] : hubFieldIds([hub]);
+    const fc = cfHubForecast(ids), fr = fc.perField[id] || {rows: []};
+    let lastProd = 0;
+    ids.forEach(i => {
+      annualProduction(i).annual.forEach(a => { if ((a.prfPrdOeNetMillSm3 || 0) > 0 && a.prfYear < y0) lastProd = Math.max(lastProd, a.prfYear); });
+      (fc.perField[i] || {rows: []}).rows.forEach(([y]) => { lastProd = Math.max(lastProd, y); });
+    });
+    const net = {};
+    fr.rows.forEach(([y, q]) => { const k = cfInfl(y); net[y] = (net[y] || 0) + (q * price * k - q * OPEX_USD * k) / 1e9; });
+    const exp = inv && inv.expected[String(id)];
+    if (exp && exp[0] > 0 && fxNow) CF_CAPEX_SPLIT.forEach((w, i) => {
+      const yy = lastInv + 1 + i;
+      net[yy] = (net[yy] || 0) - exp[0] * w / fxNow / 1000 * Math.pow(1 + CF_INFL, yy - exp[1]);
+    });
+    let hc = 0;
+    ((inv && inv.fields[String(id)]) || []).forEach(([y, v]) => { const fx = usdnokOf(y); if (fx) hc += v / fx / 1000; });
+    if (lastProd >= y0 - 1 && hc > 0) { const ya = lastProd + 1; net[ya] = (net[ya] || 0) - CF_ABEX * hc * cfInfl(ya); }
+    return CF_RATES.map(rate => Object.entries(net).filter(([y]) => +y >= y0)
+      .reduce((t, [y, v]) => t + v / Math.pow(1 + rate, +y - y0 + 0.5), 0));
+  }).map(v => v * f);
+}
+// NPV før skatt for en andel f av ett DCS-felt (DCS_MERGE: feltet ENS fører reservene under).
+function anValDcsField(slug, f, price) {
+  return anValMemo(`df|${slug}|${price}`, () => {
+    anDcsValFields = anDcsValFields || dcsValFields();
+    const fld = anDcsValFields.find(x => x.slug === (DCS_MERGE[slug] || slug));
+    if (!fld) return [0, 0];
+    const net = {};
+    fld.rows.forEach(([y, q]) => { const k = cfInfl(y); net[y] = (net[y] || 0) + (q * price * k - q * DCS_OPEX_USD * k) / 1e9; });
+    return CF_RATES.map(rate => Object.entries(net).reduce((t, [y, v]) => t + v / Math.pow(1 + rate, +y - currentYear + 0.5), 0));
+  }).map(v => v * f);
+}
+
+// Verdien av et valgt selskap: {ncs: [..], disc, dcs: [..], tot: [..]}, etter skatt.
+function anValItem(item, price) {
+  return anValMemo(`it|${item}|${price}`, () => {
+    const {key, sh} = anParse(item), e = anRegistry()[key];
+    let ncs = [0, 0], dcs = [0, 0];
+    if (sh.includes('ncs')) e.ncs.forEach(n => {
+      if (!(anLicByName[n] || []).some(r => r.fldLicenseeTo === null)) return;   // ingen felt i dag
+      const v = anValMemo(`vc|${n}|${price}`, () => valCompute(n, price));
+      if (v) ncs = ncs.map((x, k) => x + v.hubNpv[k] * (1 - CF_TAX));
+    });
+    if (sh.includes('dcs') && dcsReady()) {
+      anDcsValFields = anDcsValFields || dcsValFields();
+      const owners = new Set(dcsCompanies());
+      e.dcs.forEach(g => {
+        if (!owners.has(g)) return;
+        const v = dcsValCompute(g, price, anDcsValFields);
+        dcs = dcs.map((x, k) => x + v.npv[k] * (1 - DCS_TAX));
+      });
+    }
+    const disc = anC2Of(item).tot * VAL_DISC_USD / 1000;   // millioner boe × USD/boe → USD mrd
+    return {ncs, disc, dcs, tot: [0, 1].map(k => ncs[k] + dcs[k] + disc)};
+  });
+}
+// Verdien av en andel f av en eiendel, i samme form.
+function anValAsset(id, f, price) {
+  const a = anAssetInfo(id), ref = id.slice(id.indexOf(':') + 1), z = [0, 0];
+  const ncs = a.kind === 'ncs' ? anValNcsField(+ref, f, price).map(v => v * (1 - CF_TAX)) : z;
+  const dcs = a.kind === 'dcs' ? anValDcsField(ref, f, price).map(v => v * (1 - DCS_TAX)) : z;
+  const disc = a.kind === 'ncsd' ? anAssetC2(id, f).tot * VAL_DISC_USD / 1000 : 0;
+  return {ncs, disc, dcs, tot: [0, 1].map(k => ncs[k] + dcs[k] + disc)};
+}
+const anValZero = () => ({ncs: [0, 0], disc: 0, dcs: [0, 0], tot: [0, 0]});
+function anValPlus(a, b, sign = 1) {
+  return {ncs: a.ncs.map((x, k) => x + sign * b.ncs[k]), disc: a.disc + sign * b.disc,
+          dcs: a.dcs.map((x, k) => x + sign * b.dcs[k]), tot: a.tot.map((x, k) => x + sign * b.tot[k])};
+}
+
+// Kortet nederst. parts: [{id, label, color, deal, a, pct, sh}] som i resten av siden.
+function anValCard(fromParts, toParts, sells, fromName) {
+  if (!priceHist || !priceHist.byYear || !Object.keys(priceHist.byYear).length)
+    return '<div class="pf-card pf-wide"><h3>Back-of-the-envelope valuation</h3><div class="status">Price data could not be loaded.</div></div>';
+  const pct = r => `${Math.round(r * 100)} %`;
+  const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+  const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const partVal = (p, price) => {
+    if (p.deal) return anValAsset(p.a, p.pct / 100, price);
+    const mine = sells.filter(d => d.s === p.id);
+    return mine.reduce((t, d) => anValPlus(t, anValAsset(d.a, d.f, price), -1), anValItem(p.id, price));
+  };
+  const sumVal = (parts, price) => parts.reduce((t, p) => anValPlus(t, partVal(p, price)), anValZero());
+  const price = hubCfPrice;
+  const vFrom = sumVal(fromParts, price), vTo = sumVal(toParts, price);
+  const chg = vFrom.tot[0] ? (vTo.tot[0] - vFrom.tot[0]) / Math.abs(vFrom.tot[0]) * 100 : null;
+  const to = toParts.map(p => p.id), fromOnly = fromParts.filter(p => !to.includes(p.id));
+  const row = (name, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td><td>${n2(v.ncs[0])}</td><td>${n2(v.disc)}</td>
+      <td>${n2(v.dcs[0])}</td><td><strong>${n2(v.tot[0])}</strong></td><td>${n2(v.tot[1])}</td></tr>`;
+  const nameCell = p => `<i class="an-dot" style="background:${p.color}"></i>${esc(p.label)}${p.deal ? ' <small class="an-sh">bought</small>' : ''}`;
+  const ukIn = [...fromParts, ...toParts].some(p => (p.sh || []).includes('uk'));
+  const sens = `<table class="res-table">
+      <caption>Total value after tax, USD bn · ${esc(fromName)} → pro forma</caption>
+      <thead><tr><th>Oil price</th>${CF_RATES.map(r => `<th>${pct(r)}</th>`).join('')}</tr></thead>
+      <tbody>${CF_PRICES.map(pr => {
+        const a = sumVal(fromParts, pr), b = sumVal(toParts, pr);
+        return `<tr${pr === price ? ' class="total-row"' : ''}><td>USD ${pr}</td>${CF_RATES.map((_, k) =>
+          `<td>${n1(a.tot[k])} → <strong>${n1(b.tot[k])}</strong></td>`).join('')}</tr>`;
+      }).join('')}</tbody></table>`;
+  return `${valWarnCard(true)}
+    <div class="pf-card pf-wide"><h3>Back-of-the-envelope valuation</h3>
+      <div class="val-head">
+        <div><div class="pill-group" style="width:max-content;max-width:100%">${CF_PRICES.map(p =>
+          `<button class="pill-btn${p === price ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div></div>
+        <div class="val-big"><span>Pro forma at ${pct(CF_RATES[0])}</span><strong>USD ${n1(vTo.tot[0])} bn</strong>
+          <small>${esc(fromName)}: USD ${n1(vFrom.tot[0])} bn${chg == null ? '' : ` · ${chg >= 0 ? '+' : '−'}${Math.abs(chg).toFixed(0)} %`}</small></div>
+      </div>
+      <div class="pf-scroll" style="margin-top:12px"><table class="res-table">
+        <caption>Indicative value after tax, USD bn · oil price USD ${price} · as at 1 January ${currentYear}</caption>
+        <thead><tr><th>Company / asset</th><th>NCS fields, ${pct(CF_RATES[0])}</th><th>Discoveries</th><th>DCS fields, ${pct(CF_RATES[0])}</th>
+          <th>Total, ${pct(CF_RATES[0])}</th><th>Total, ${pct(CF_RATES[1])}</th></tr></thead>
+        <tbody>${toParts.map(p => row(nameCell(p), partVal(p, price))).join('')}
+          ${sells.map(d => row(`<i class="an-dot" style="background:#c0392b"></i>${esc(anAssetInfo(d.a).name)} ${anPctTxt(d.f * 100)} %
+            <small class="an-sh">sold by ${esc(anLabel(d.s))} · included in its row</small>`,
+            anValPlus(anValZero(), anValAsset(d.a, d.f, price), -1), 'an-sold')).join('')}
+          ${fromOnly.map(p => row(nameCell(p) + ' <small class="an-sh">From only</small>', partVal(p, price))).join('')}</tbody>
+        <tfoot>${fromParts.length ? row(esc(fromName === 'Before' ? 'From' : fromName), vFrom, 'total-row') : ''}
+          ${toParts.length ? row('Pro forma', vTo, 'total-row') : ''}</tfoot>
+      </table></div>
+      <div style="margin-top:12px">${sens}</div>
+      <div class="pf-map-note">Method as in Valuation BETA. NCS fields: the hub cash-flow model on today's shares (USD ${OPEX_USD}/boe opex,
+        Sodir's expected investments, ${pct(CF_ABEX)} of historical capex for abandonment, ${pct(CF_TAX)} tax); discoveries at USD ${VAL_DISC_USD}
+        per boe of net contingent resources, after tax; DCS fields: ENS reserves declining from last year's production, USD ${DCS_OPEX_USD}/boe
+        opex, ${pct(DCS_TAX)} tax, no capex. All boe at the oil price, ${(CF_INFL * 100).toFixed(1)} % inflation, mid-year discounting.
+        Bought and sold shares are valued the same way, field by field.${ukIn ? ' UKCS is not valued.' : ''} Not included: tariffs,
+        company-specific costs and tax positions, hedging, debt and cash, and synergies.</div>
+    </div>`;
+}
+
 // Summer av {liq, gas, ncs, dcs, uk, tot}; sign −1 trekker fra (aldri under null).
 const AN_DIMS = ['liq', 'gas', 'ncs', 'dcs', 'uk', 'tot'];
 const anZero = () => ({liq: 0, gas: 0, ncs: 0, dcs: 0, uk: 0, tot: 0});
@@ -4651,10 +4801,11 @@ function drawCompanyAnalytics() {
         ${toParts.length ? row('To, pro forma', anSumAll(toParts.map(p => p.prod(y))), anSumAll(toParts.map(p => p.res())), anSumAll(toParts.map(p => p.c2())), 'total-row') : ''}</tfoot>
     </table></div></div>`;
 
-  setProfile(controls + dealsCard + bridges + charts + tbl);
+  setProfile(controls + dealsCard + bridges + charts + tbl + anValCard(fromParts, toParts, sells, fromName));
   setInfo(`<strong>Method:</strong> net production = field production × equity share (NCS and UKCS monthly, DCS yearly from ENS' ownership history);
-    reserves and contingent resources × today's shares; companies matched by name across shelves; deals as pro forma shares &nbsp;|&nbsp;
-    <strong>Sources:</strong> Sodir FactPages; ENS; NSTA &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
+    reserves and contingent resources × today's shares; companies matched by name across shelves; deals as pro forma shares;
+    valuation as in Valuation BETA &nbsp;|&nbsp;
+    <strong>Sources:</strong> Sodir FactPages; ENS; NSTA; World Bank Pink Sheet; FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
 
   const tick = {callback: v => v.toLocaleString('en')};
   const pEl = document.getElementById('anProdCanvas');
