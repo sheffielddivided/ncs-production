@@ -27,7 +27,10 @@ ellers alle innretninger i drift.
 Et besøk er et skip som har vært minst MIN_VISIT_MIN minutter innenfor
 radiusen rundt en av feltets innretninger, og enten stoppet der (fart under
 STOP_KNOTS) eller vært der minst LONG_VISIT_MIN minutter. Skip som bare passerer, er ikke
-besøk. Opphold med hull under GAP_HOURS slås sammen.
+besøk. Opphold med hull under GAP_HOURS slås sammen, og det samme skipets
+anløp med under SAME_SHIP_HOURS imellom er ett anløp. Det er de også når
+skipet lå og ventet til sjøs under WAIT_NEAR_KM fra feltet mellom dem (under
+WAIT_DAYS). Opphold under MIN_LOAD_HOURS er ikke lasting og tas ikke med.
 """
 
 import json
@@ -59,6 +62,9 @@ MIN_VISIT_MIN = 30
 LONG_VISIT_MIN = 120   # uten stopp må skipet ha vært så lenge innenfor radiusen
 GAP_HOURS = 6
 SAME_SHIP_HOURS = 72   # anløp av samme skip på samme felt med kortere mellomrom er ett anløp
+WAIT_DAYS = 7          # ventet skipet til sjøs nær feltet mellom to anløp, er de ett anløp så lenge
+WAIT_NEAR_KM = 40      # så nær feltet ligger skipet når det venter
+MIN_LOAD_HOURS = 6     # kortere opphold er ikke lasting (skipet venter eller går inn mens et annet laster)
 # Kapasitet og last. Dødvekt anslås som DWT_K × lengde × bredde × største
 # dypgang (AIS-registeret) når tanker_specs.json ikke har oppgitt tall;
 # DWT_K er kalibrert mot AETs oppgitte tall for Eagle Balder, Blane og Bergen
@@ -584,17 +590,30 @@ def main():
                 merged.append(dict(v))
         st['visits'] = sorted(merged, key=lambda v: v['s'])
         st['ships'] = ships
+        for v in st['visits']:
+            v['open'] = st['until_min'] - v['e'] < 60   # skipet er (trolig) der ennå
+        # Korte opphold er ikke lasting: tankskipet går inn i radiusen mens et
+        # annet laster, eller passerer sakte. Pågående opphold beholdes.
+        st['visits'] = [v for v in st['visits'] if v['open'] or v['e'] - v['s'] >= MIN_LOAD_HOURS * 60]
         prev_rows = [] if reroute else st['prev'].get('visits') or []
+        # Anløp som tidligere er slått sammen fordi skipet ventet nær feltet.
+        st['joins'] = set() if reroute else {tuple(j) for j in st['prev'].get('joins') or []}
         # Tomme fra/til funnet med et kortere vindu slås opp på nytt.
         retry = (st['prev'].get('routeDays') or 4) < ROUTE_DAYS
         keep = lambda p: p if not (retry and p and not p[1]) else None
         old_from = {f"{r[0]}|{r[1]}": keep(r[5]) for r in prev_rows}
         redo_to = (st['prev'].get('toVersion') or 1) < TO_VERSION   # ny regel for «to»: slå opp alle på nytt
         old_to = {} if redo_to else {f"{r[0]}|{r[2]}": keep(r[6]) for r in prev_rows if not r[4]}
+        joined_e = {(j[0], j[1]) for j in st['joins']}
+        joined_s = {(j[0], j[2]) for j in st['joins']}
         for v in st['visits']:
-            v['open'] = st['until_min'] - v['e'] < 60   # skipet er (trolig) der ennå
             v['from'] = old_from.get(f"{v['m']}|{iso(v['s'])}")
             v['to'] = old_to.get(f"{v['m']}|{iso(v['e'])}")
+            # Fra/til midt i et sammenslått anløp trengs ikke på nytt.
+            if (v['m'], iso(v['s'])) in joined_s:
+                v['from'] = ['join', '']
+            if (v['m'], iso(v['e'])) in joined_e:
+                v['to'] = ['join', '']
 
     # 4. Hvor skipet kom fra og dro til, for besøkene som mangler det.
     # Gjenbrukes fra forrige kjøring; slås opp for flere skip samtidig.
@@ -632,6 +651,29 @@ def main():
             list(pool.map(route, jobs))
         print(f'  ruter: {len(jobs)} besøk manglet fra/til, {sum(1 for _, v in jobs if v["from"] is None or (v["to"] is None and not v["open"]))} mangler fortsatt')
 
+    # 5. Lå skipet og ventet til sjøs nær feltet mellom to anløp (forrige
+    # anløps «to» og nesteanløps «from» er stopp til sjøs under WAIT_NEAR_KM
+    # fra feltet), er det ett anløp: skipet gikk til side, eller AIS-sporet
+    # falt ut en stund. Sammenslåtte par huskes i shipping.json → joins.
+    for st in setups:
+        def waiting(p):
+            if not p or p[0] != 'sea':
+                return False
+            lat, lon = p[1].split('°N ')
+            lon = float(lon[:-2]) * (1 if lon.endswith('E') else -1)
+            return km(lon, float(lat), *st['centre']) <= WAIT_NEAR_KM
+        out_v = []
+        for v in sorted(st['visits'], key=lambda v: (v['m'], v['s'])):
+            cur = out_v[-1] if out_v else None
+            if cur and cur['m'] == v['m'] and v['s'] - cur['e'] <= WAIT_DAYS * 1440:
+                key = (v['m'], iso(cur['e']), iso(v['s']))
+                if key in st['joins'] or (waiting(cur['to']) and waiting(v['from'])):
+                    st['joins'].add(key)
+                    cur.update(e=v['e'], d=min(cur['d'], v['d']), open=v['open'], to=v['to'])
+                    continue
+            out_v.append(dict(v))
+        st['visits'] = sorted(out_v, key=lambda v: v['s'])
+
     specs = (load_json(SPECS, {}).get('ships') or {})
     obs = load_json(OBS, {'ships': {}})['ships']
     for st in setups:
@@ -654,6 +696,7 @@ def main():
             'storage': st['fc'].get('storage') or [],
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest'],
             'visits': rows_out,
+            'joins': sorted(list(j) for j in st['joins'] if j[0] in ship_ids),
             'ships': {m: {**st['ships'][m], **tanker_spec(st['ships'][m], specs)} for m in sorted(ship_ids)},
         }
         print(f'  {st["fc"]["name"]}: {len(rows_out)} besøk, {len(ship_ids)} skip, data til {st["flog"]["until"]}')
