@@ -3041,7 +3041,8 @@ function stateToHash() {
     const dflt = ukDefaults();
     UK_PARAMS.forEach(([k, p]) => { if (ukF[k] !== dflt[k]) q.set(p, ukF[k]); });
   }
-  else if (topMode !== 'ncs')  q.set('c', [...selectedCompanyNames].join(SEP));
+  // Analytics bruker ikke selskapsvelgeren, så valget derfra står ikke i lenken.
+  else if (topMode !== 'ncs' && !(topMode === 'companies' && companySubView === 'analytics')) q.set('c', [...selectedCompanyNames].join(SEP));
   if (showWater && ((topMode !== 'companies' && currentSubView() === 'oilgas')
                     || (topMode === 'ncs' && ncsSubView === 'production' && ncsF.prod === 'product')
                     || (topMode === 'dcs' && dcsSubView === 'production' && dcsF.prod === 'product')
@@ -3479,7 +3480,8 @@ function syncTitle() {
       : (modeTabs().find(x => x.id === sv) || {}).label;
     const pick = topMode === 'fields' ? (allFields.find(f => selectedFieldIds.has(f.id)) || {}).name
       : topMode === 'hubs' ? [...selectedHubNames][0]
-      : topMode === 'companies' ? [...selectedCompanyNames][0]
+      // Analytics viser ikke selskapet i velgeren; tittelen avslører det ikke.
+      : topMode === 'companies' ? (companySubView === 'analytics' ? '' : [...selectedCompanyNames][0])
       : discoveryProfileMode() ? (allDiscoveries.find(d => selectedDiscoveryIds.has(d.id)) || {}).name
       : topMode === 'licences' && licSubView === 'licence' && licF.lic ? 'PL ' + licF.lic : '';
     t = [pick, tab, MODE_LABEL[topMode]].filter(Boolean).join(' · ') + ' – NCS Insight';
