@@ -662,7 +662,7 @@
     .val-big small{font-size:0.72rem;color:var(--muted);}
     .val-sub{display:block;font-size:0.66rem;color:var(--muted);margin-top:1px;}
     /* TradingViews selskapsprofil i Valuation BETA; to eiere side om side på brede skjermer. */
-    .val-tvp{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;}
+    .val-tvp{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:12px;}
     .val-tvp tv-company-profile{display:block;width:100%;min-height:200px;}
     /* Financials-widgeten trenger fast høyde (den setter beholderen til 100 %) og ruller selv. */
     .val-fin{height:760px;margin-bottom:6px;}
@@ -11613,14 +11613,15 @@ function valShareCard(cmp) {
         See ${noChart.map(t => valTvLink(t.main, `${t.main} on TradingView`)).join(' and ')}.</div>`;
   const usNote = own.some(t => t.w && t.w !== t.main && t.chart !== false)
     ? ` ${why}, so the US listing (ADR) is shown instead; its price is in USD and follows the main listing.` : '';
-  return `<div class="pf-card pf-wide"><h3>Share price</h3>${chartHtml}
+  // Kursgrafen og selskapsprofilen side om side (under hverandre på smale skjermer).
+  return `<div class="pf-row2"><div class="pf-card"><h3>Share price</h3>${chartHtml}
       <div class="pf-map-note"><strong>Listed ${many ? 'owners' : 'company'}:</strong> ${listed}. The share price${many ? 's are' : ' is'} for the listed
         ${many ? 'companies' : 'company'} as a whole, not only ${many ? 'their' : 'its'} Norwegian business.${usNote}
         Chart and prices by <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">TradingView</a>; prices may be delayed.</div></div>
-    <div class="pf-card pf-wide"><h3>About the listed ${many ? 'owners' : 'company'}</h3>
+    <div class="pf-card"><h3>About the listed ${many ? 'owners' : 'company'}</h3>
       <div class="val-tvp">${own.map(t => `<tv-company-profile symbol="${esc(valW(t))}"></tv-company-profile>`).join('')}</div>
       <div class="pf-map-note">Company profile${many ? 's' : ''} by
-        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>; ${many ? 'they describe the listed companies' : 'it describes the listed company'} as a whole.</div></div>
+        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a>; ${many ? 'they describe the listed companies' : 'it describes the listed company'} as a whole.</div></div></div>
     <div class="pf-card pf-wide"><h3>Key financials of the listed ${many ? 'owners' : 'company'}</h3>
       ${own.map(t => `${many ? `<div class="pf-map-note" style="margin:6px 0 2px"><strong>${esc(t.n)}</strong></div>` : ''}
         <div class="val-fin"><div class="tradingview-widget-container" data-sym="${esc(valW(t))}" style="height:100%"><div class="tradingview-widget-container__widget" style="height:100%"></div></div></div>`).join('')}
