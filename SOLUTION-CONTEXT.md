@@ -2685,8 +2685,8 @@ store og små bokstaver. To spørringer (MOVEABLE og FIXED) i stedet for én med
 `build_rig_wells()`) har produksjons- og injeksjonsbrønner fra de siste to årene,
 bare med det riggtidslinjen trenger. Jordprøver og observasjonsbrønner er
 utelatt. Sodir har *ingen planlagt startdato* for utviklingsbrønner, så de
-dukker opp først når boringen har startet, og «Next planned» gjelder fortsatt
-bare letebrønner. Sluttdato rapporteres med etterslep (statusen er
+dukker opp først når boringen har startet; bare letebrønner tegnes som
+planlagte. Sluttdato rapporteres med etterslep (statusen er
 `ONLINE/OPERATIONAL` fra første dag), så frontenden (`loadRigWells`) tolker:
 uten sluttdato og startet de siste 60 dagene = «mulig pågående» (grønn,
 stiplet); uten sluttdato og eldre = tegnet med typisk lengde på 21 dager
@@ -2922,12 +2922,13 @@ planlagte posisjonen), og å vise Sodirs egne datoer ved siden av de AIS-målte.
 dem, men rigg, og de står fortsatt som «ikke startet». De tegnes som stiplede ravgule bar
 med ⚠, fra det tidligste riggen kan være ledig (etter siste aktivitet, aldri før i dag), i
 rekkefølge etter Sodirs gamle dato, 60 dager hver (placeholder), og kortes inn mot en
-senere planlagt brønn med gyldig dato så de ikke overlapper. Tooltip og tabellen
-(«Next planned») viser Sodirs opprinnelige dato. Tidligere ble de utelatt, og bare
+senere planlagt brønn med gyldig dato så de ikke overlapper. Tooltipen viser
+Sodirs opprinnelige dato. Tidligere ble de utelatt, og bare
 brønner med fremtidig dato vistes.
 
-**Sodir mot AIS (avviksoversikten):** `<details>`-kortet under riggtabellen på
-Rigs-fanen. `planRigBars` samler tre slags avvik i `res.disc`: *shifted* (hver
+**Sodir mot AIS (avviksoversikten):** `<details>`-kortet under riggtidslinjen på
+Rigs-fanen. (Tabellen over riggene — nå, neste og sist ferdig — er fjernet; den
+gjentok bare tidslinjen.) `planRigBars` samler tre slags avvik i `res.disc`: *shifted* (hver
 AIS-målt bar, med hvor mange dager AIS flytter start og slutt mot Sodir),
 *hidden* (aktiviteter som havner inni et opphold AIS plasserer riggen et annet
 sted, og derfor ikke tegnes) og *unmatched* (aktiviteter i AIS-dekningen som ikke

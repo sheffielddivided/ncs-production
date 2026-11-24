@@ -21330,17 +21330,6 @@ function explRenderRigs() {
     return `${con}${row}`;
   }).join('');
   const tx = clampX(today);
-  const table = out.map(r => {
-    const cell = (w, d) => w ? `<a href="#" onclick="${exOpen(w)};return false">${esc(w.title)}</a><small>${esc(w.operator)} · ${d}${w.kind === 'dev' ? ' · development' : ''}</small>` : '—';
-    const st = showCon ? contractStatus(r.name, today) : null;
-    const conCell = !st ? '' : `<td class="ex-l">${st.now ? `${esc(st.now.client)}<small>until ${esc(conWhen(st.now, 'end'))}${
-        st.next ? ` · then ${esc(st.next.client)}` : ''}</small>` : st.next ? `<span class="ex-none">free</span><small>${esc(st.next.client)} from ${esc(conWhen(st.next, 'start'))}</small>`
-        : contractsFor(r.name).length ? '<span class="ex-none">free</span>' : '<span class="ex-none">—</span>'}</td>`;
-    return `<tr><td class="ex-l"><strong>${rigLink(r.name)}</strong><small>${esc(tc(r.type))}</small></td>${conCell}
-      <td class="ex-l">${cell(r.now, r.now ? 'since ' + fmtShort(r.now.start) + (r.now.maybe ? ' (probably)' : '') : '')}</td>
-      <td class="ex-l">${cell(r.next, r.next ? (r.next.overdue ? 'planned ' + fmtShort(r.next.sodirPlanned) + ' ⚠' : fmtShort(r.next.planned)) : '')}</td>
-      <td class="ex-l">${cell(r.last, r.last ? 'finished ' + fmtShort(r.last.end) + (r.last.noEnd ? ' (est.)' : '') : '')}</td></tr>`;
-  }).join('');
   const nDev = inWin.filter(w => w.kind === 'dev').reduce((t, b) => t + b.items.length, 0);
   const nAisOnly = inWin.filter(w => w.kind === 'ais').length;
   document.getElementById('explBody').innerHTML = `
@@ -21377,9 +21366,6 @@ function explRenderRigs() {
         dayrate is in the tooltip), so far for ${Object.keys(rigContracts.byRig).length} rigs; click one for the rig's full contract history.
         Rigs without wells in the period are listed when they have a contract on the Norwegian shelf.` : ''}</div>
     </div>
-    <div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
-      <th class="ex-l">Rig</th>${showCon ? '<th class="ex-l">Contract</th>' : ''}<th class="ex-l">Drilling now</th><th class="ex-l">Next planned</th><th class="ex-l">Last completed</th>
-      </tr></thead><tbody>${table}</tbody></table></div>
     ${explDiscHtml(discAll)}`;
   dockBar('explBody');
 }
