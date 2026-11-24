@@ -355,6 +355,16 @@
     .ex-table th.ex-l,.ex-table td.ex-l{text-align:left;}
     .ex-table td.ex-l{white-space:normal;}
     .ex-table td.ex-name{white-space:normal;min-width:150px;text-align:left;}
+    /* Recent transactions: én gruppe per transaksjon, tydelig skille og annenhver grå. */
+    .tx-table td{vertical-align:top;padding-top:9px;padding-bottom:9px;border-bottom:none;}
+    .tx-table tbody.tx-grp{border-top:1.5px solid #d5dce4;}
+    .tx-table tbody.tx-grp:nth-of-type(even){background:#f7f9fb;}
+    .tx-table tbody.tx-grp tr + tr td{border-top:1px dashed #e2e7ed;}
+    .tx-table td.tx-date{white-space:nowrap;}
+    .tx-table td.tx-date small{display:block;color:var(--muted);font-size:0.68rem;margin-top:2px;}
+    .tx-table td.tx-lics{min-width:200px;max-width:340px;}
+    .tx-table .tx-lic{white-space:nowrap;margin-right:6px;display:inline-block;}
+    .tx-table .tx-lic small{color:var(--muted);}
     .ex-table td small{display:block;color:var(--muted);font-size:0.66rem;font-weight:400;}
     .ex-row{cursor:pointer;}
     .ex-row:hover,.ex-row:focus{background:#faf0f5;outline:none;}
@@ -16737,8 +16747,10 @@ function buildLicenceRows(name) {
 function licContentHtml(fields, ds) {
   const parts = [];
   fields.forEach(f => parts.push(fieldLink(f.id, f.name)));
-  ds.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, d.name)));
-  if (ds.length > 3) parts.push(`<span class="lic-more" title="${esc(ds.slice(3).map(d => d.name).join(', '))}">+${ds.length - 3} more</span>`);
+  // Bare funnets eget navn («35/11-24 S (Swisher)» -> «Swisher»); funn uten navn beholder betegnelsen.
+  const dn = d => explDiscoveryLabel(d.name) || d.name;
+  ds.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, dn(d))));
+  if (ds.length > 3) parts.push(`<span class="lic-more" title="${esc(ds.slice(3).map(dn).join(', '))}">+${ds.length - 3} more</span>`);
   return parts.join(', ');
 }
 
@@ -16772,27 +16784,35 @@ function licenceDealsCard(name) {
   const {byField, byDisc} = licenceInfo();
   const chip = kind => { const k = licKindOf(kind) || {label: kind, color: '#9aa5b1'};
     return `<span class="lc-kind" style="--c:${k.color}">${esc(k.label.replace(/s$/, ''))}</span>`; };
-  const row = g => {
-    const one = g.items.length === 1;
-    // Bytte: andeler går begge veier mellom de to partene.
-    const swap = g.items.some(t => concernKey(t.seller || '') !== concernKey(g.seller || ''));
-    // Flere lisenser: hver lisens med sin andel (og retning i et bytte), og feltene/funnene samlet.
-    const licList = items => items.map(t => `<strong>${licenceLink(licName(t.lic))}</strong>${one ? '' : ` (${licPct(t.share)})`}`).join(', ');
-    const lics = !swap ? licList(g.items)
-      : [...new Set(g.items.map(t => t.buyer))].map(by => `<div style="min-width:240px"><small>To ${esc(by || '—')}:</small> ${
-          licList(g.items.filter(t => t.buyer === by))}</div>`).join('');
-    const info = g.items.map(t => { const ln = licName(t.lic); return licContentHtml(byField[ln] || [], byDisc[ln] || []); })
-      .filter(Boolean).join(', ');
-    return `<tr><td class="ex-l">${licDayStr(g.day)}</td><td class="ex-l"${one ? '' : ' style="min-width:240px"'}>${lics}${one ? '' : `<small>${g.items.length} licences, one transaction</small>`}</td>
-      <td>${one ? licPct(g.items[0].share) : '<span class="ex-none">see licences</span>'}</td>${swap
-        ? `<td class="ex-l" colspan="2">${g.seller ? companyLink(g.seller) : '—'} ⇄ ${g.buyer ? companyLink(g.buyer) : '—'}<small>swap, shares both ways</small></td>`
-        : `<td class="ex-l">${g.seller ? companyLink(g.seller) : '—'}</td><td class="ex-l">${g.buyer ? companyLink(g.buyer) : '—'}</td>`}
-      <td class="ex-l">${[...new Set(g.items.map(t => t.kind))].map(chip).join(' ')}</td>
-      <td class="ex-l lic-info">${info}</td></tr>`; };
-  const table = rows => `<div class="pf-scroll"><table class="res-table ex-table"><thead><tr>
-      <th class="ex-l">Date</th><th class="ex-l">Licence</th><th>Share</th><th class="ex-l">Seller</th>
-      <th class="ex-l">Buyer</th><th class="ex-l">Type</th><th class="ex-l">Field / discoveries</th></tr></thead>
-      <tbody>${rows.map(row).join('')}</tbody></table></div>`;
+  // Én gruppe (tbody) per transaksjon, én linje per retning: i et bytte står
+  // det som går hver vei på hver sin linje, med selger, kjøper og felt/funn.
+  const grp = g => {
+    const dirs = [];
+    g.items.forEach(t => {
+      const k = (t.seller ? concernKey(t.seller) : '') + '>' + (t.buyer ? concernKey(t.buyer) : '');
+      let d = dirs.find(x => x.k === k);
+      if (!d) dirs.push(d = {k, seller: t.seller, buyer: t.buyer, items: []});
+      d.items.push(t);
+    });
+    // Selskapets egen side først: det det kjøpte, så det det solgte.
+    dirs.sort((a, b) => (concernKey(b.buyer || '') === key) - (concernKey(a.buyer || '') === key));
+    const n = g.items.length, swap = dirs.length > 1;
+    const sub = swap ? `Swap · ${n} licences` : n > 1 ? `${n} licences, one transaction` : '';
+    return `<tbody class="tx-grp">${dirs.map((d, i) => {
+      const lics = d.items.map(t => `<span class="tx-lic"><strong>${licenceLink(licName(t.lic))}</strong> <small>${licPct(t.share)}</small></span>`).join(' ');
+      const info = d.items.map(t => { const ln = licName(t.lic); return licContentHtml(byField[ln] || [], byDisc[ln] || []); })
+        .filter(Boolean).join(', ');
+      return `<tr>${i === 0 ? `<td class="ex-l tx-date" rowspan="${dirs.length}">${licDayStr(g.day)}${sub ? `<small>${sub}</small>` : ''}</td>` : ''}
+        <td class="ex-l tx-lics">${lics}</td>
+        <td class="ex-l">${d.seller ? companyLink(d.seller) : '—'}</td><td class="ex-l">${d.buyer ? companyLink(d.buyer) : '—'}</td>
+        <td class="ex-l">${[...new Set(d.items.map(t => t.kind))].map(chip).join(' ')}</td>
+        <td class="ex-l lic-info">${info || '<span class="ex-none">—</span>'}</td></tr>`;
+    }).join('')}</tbody>`;
+  };
+  const table = rows => `<div class="pf-scroll"><table class="res-table ex-table tx-table"><thead><tr>
+      <th class="ex-l">Date</th><th class="ex-l">Licences and shares</th><th class="ex-l">Seller</th>
+      <th class="ex-l">Buyer</th><th class="ex-l">Type</th><th class="ex-l">Fields / discoveries</th></tr></thead>
+      ${rows.map(grp).join('')}</table></div>`;
   const rest = pkgs.slice(shown);
   return `<div class="pf-card pf-wide"><h3>Recent transactions</h3>
     <div class="ex-sum"><strong>${thisYear}</strong> ${thisYear === 1 ? 'transaction' : 'transactions'} in ${currentYear} ·
@@ -16801,8 +16821,8 @@ function licenceDealsCard(name) {
     ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} earlier</summary>${table(rest)}</details>` : ''}
     <div class="pf-map-note">Licence stakes the company's group bought or sold: transfers, state (SDFI) transfers,
       withdrawals and mergers. Name changes and transfers within the group are left out. Transfers between the same parties
-      on the same date are one transaction and shown as one row, with each licence's share; when shares go both ways it is
-      shown as a swap, with the buyer of each licence. All transactions this year
+      on the same date are one transaction and shown together; when shares go both ways (a swap), each direction has its own
+      line with seller, buyer and the fields and discoveries involved. All transactions this year
       are shown, and at least the five latest. The last column is the same as in the licence table below.
       Source: Sodir layer 3003.</div></div>`;
 }
