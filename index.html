@@ -16827,46 +16827,55 @@ function licenceDealsCard(name) {
       Source: Sodir layer 3003.</div></div>`;
 }
 
-function licenceTableHtml(rows) {
-  if (!rows.length) return '';
-  const {key, dir} = licenceSort;
-  // Infokolonnen: feltet lisensen eier først, deretter funnene i den. Lange
-  // lister kuttes — PL 050 har 26 funn — og hele listen ligger i title.
-  const info = r => licContentHtml(r.fields, r.discoveries);
-  const sortVal = (r, k) =>
-    k === 'validTo' ? (r.validTo || 0)
-    : k === 'share' ? r.share
-    : k === 'info'  ? (r.fields[0]?.name || r.discoveries[0]?.name || '￿')
-    : String(r[k] || '￿');
+// Lisenstabellen for ett selskap, felles for Company → Licences og
+// Licence → Company. rows fra licRows(c) (lisensmodulens data, med BAA, runde
+// og areal). sort: {key, dir}; sortJs: funksjonsnavnet overskriftene kaller;
+// lim: antall rader før «Show all», moreJs: det knappen kjører.
+function licPortfolioTableHtml(c, rows, {sort, sortJs, lim = rows.length, moreJs = ''}) {
+  if (!rows.length) return '<div class="pf-map-note">The company holds no active production licences.</div>';
+  const {key, dir} = sort;
+  const dn = d => explDiscoveryLabel(d.name) || d.name;
+  const val = (r, k) => k === 'name' ? r.name : k === 'sea' ? r.sea : k === 'round' ? r.round
+    : k === 'operator' ? (r.isOp ? '' : (r.operator || '￿').toLowerCase()) : k === 'share' ? r.share
+    : k === 'gross' ? r.gross : k === 'net' ? r.net : k === 'phase' ? r.phase : k === 'validTo' ? (r.validTo || 0)
+    : k === 'info' ? (r.fields[0]?.name || r.baas[0]?.name || (r.discoveries[0] ? dn(r.discoveries[0]) : '') || '￿') : '';
   const sorted = rows.slice().sort((a, b) => {
-    const x = sortVal(a, key), y = sortVal(b, key);
-    const c = typeof x === 'number' ? x - y : x.localeCompare(y, 'en');
-    return (c || a.name.localeCompare(b.name, 'en')) * dir;
+    const x = val(a, key), y = val(b, key);
+    const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'en', {numeric: true});
+    return (d || a.name.localeCompare(b.name, 'en', {numeric: true})) * dir;
   });
-  const COLS = [['name','Licence'], ['area','Area'], ['phase','Phase'],
-                ['operator','Operator'], ['share','Share'], ['validTo','Valid to'],
-                ['info','Field / discoveries']];
-  const head = COLS.map(([k, label]) =>
-    `<th class="lic-th${key === k ? ' sorted' : ''}" onclick="setLicenceSort('${k}')"` +
-    ` title="Sort by ${label.toLowerCase()}">${label}` +
+  // Feltet lisensen (eller en BAA den er med i) eier, så funnene — bare funnets
+  // eget navn, de tre første og resten i title — og BAA-ene i grått under.
+  const info = r => {
+    const parts = r.fields.map(f => fieldLink(f.id, f.name));
+    r.discoveries.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, dn(d))));
+    if (r.discoveries.length > 3) parts.push(`<span class="lic-more" title="${esc(r.discoveries.slice(3).map(dn).join(', '))}">+${r.discoveries.length - 3} more</span>`);
+    const baa = r.baas.map(b => `<span class="lc-baa" title="${esc(tc(b.kind))}">${esc(b.name)}</span>`).join(' ');
+    return [parts.join(', '), baa].filter(Boolean).join('<br>');
+  };
+  const COLS = [['name', 'Licence', 'ex-l'], ['sea', 'Area', 'ex-l'], ['round', 'Round', 'ex-l'],
+                ['operator', 'Operator', 'ex-l'], ['share', 'Share'], ['gross', 'Gross, km²'], ['net', 'Net, km²'],
+                ['phase', 'Phase', 'ex-l'], ['validTo', 'Valid to'], ['info', 'Field / BAA / discoveries', 'ex-l']];
+  const head = COLS.map(([k, label, cls]) =>
+    `<th class="${cls || ''}${key === k ? ' sorted' : ''}" onclick="${sortJs}('${k}')" title="Sort by ${label.toLowerCase()}">${label}` +
     `<span class="lic-arrow">${key === k ? (dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
-  const pct = v => v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + ' %';
-  const yr = ms => ms ? new Date(ms).toLocaleDateString('en-GB',
-    {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}) : '—';
-  return `
-    <div class="pf-scroll"><table class="res-table lic-table">
-      <caption>${rows.length} active production ${rows.length === 1 ? 'licence' : 'licences'} ·
-        click a heading to sort</caption>
-      <thead><tr>${head}</tr></thead>
-      <tbody>${sorted.map(r => `
-        <tr><td>${licenceLink(r.name)}</td><td>${esc(r.area || '—')}</td>
-          <td>${esc(r.phase || '—')}</td><td>${r.operator ? companyLink(r.operator) : '—'}</td>
-          <td>${pct(r.share)}</td><td>${yr(r.validTo)}</td>
-          <td class="lic-info">${info(r)}</td></tr>`).join('')}</tbody>
-    </table></div>
-    <div class="pf-map-note">Active production licences only; business arrangement areas are
-      not included. The last column names the field the licence owns, then the discoveries
-      that sit in it — most licences have neither and stay blank. Source: Sodir layer 3000.</div>`;
+  const date = ms => ms ? new Date(ms).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'}) : '—';
+  const op = rows.filter(r => r.isOp).length;
+  const body = sorted.slice(0, lim).map(r => `
+    <tr><td class="ex-l"><strong>${licenceLink(r.name)}</strong></td>
+      <td class="ex-l">${esc(licSeaOf(r.sea)?.label || tc(r.sea) || '—')}</td>
+      <td class="ex-l">${esc(r.round || '—')}</td>
+      <td class="ex-l">${r.isOp ? '<span class="ex-chip ex-drilling">Operator</span>' : r.operator ? companyLink(r.operator) : '—'}</td>
+      <td>${licPct(r.share)}</td><td>${licKm(r.gross)}</td><td>${licKm(r.net)}</td>
+      <td class="ex-l">${esc(tc(r.phase) || '—')}</td><td>${date(r.validTo)}</td>
+      <td class="ex-l lic-info">${info(r) || '—'}</td></tr>`).join('');
+  return `<div class="pf-scroll"><table class="res-table ex-table lic-table">
+      <caption>${rows.length} active production ${rows.length === 1 ? 'licence' : 'licences'}, ${op} operated · click a heading to sort</caption>
+      <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${lim < sorted.length ? `<button class="grp-btn ex-more" onclick="${moreJs}">Show all ${sorted.length} licences</button>` : ''}
+    <div class="pf-map-note">Active production licences. Operator: the company's own operatorships are marked, otherwise the operator is named.
+      Gross area is the licence's current area; net area is gross area × the company's share. «Field / BAA / discoveries»: fields and
+      discoveries owned by the licence or by a business arrangement area it is part of (in grey). Source: Sodir layers 3000 and 3007.</div>`;
 }
 
 // Selskapsprofilen: lisensene oppsummert per havområde og totalt. Brutto
@@ -16916,7 +16925,7 @@ function drawCompanyLicences() {
   }
   const name = names[0];
   licenceRows = buildLicenceRows(name);
-  licenceSort = {key: 'name', dir: 1};
+  companyLicAll = false;
   setChartNone();
   const op = licenceRows.filter(r => r.operator === name).length;
   setChartTitle(name, `Licences · ${licenceRows.length} active production licence${licenceRows.length === 1 ? '' : 's'}, ${op} operated`);
@@ -16926,17 +16935,36 @@ function drawCompanyLicences() {
     ${licenceDealsCard(name)}
     <div class="pf-card pf-wide"><h3>Licence map</h3>${licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})))}</div>
     <div class="pf-card pf-wide"><h3>All licences</h3>
-      <div id="licenceBox">${licenceTableHtml(licenceRows)}</div>
+      <div id="licenceBox" data-company="${esc(name)}">${companyLicBoxHtml(name)}</div>
       <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licence →</button></div></div>`
     : '<div class="pf-card pf-wide"><div class="pf-map-note">The company holds no active production licences.</div></div>'
       + licenceDealsCard(name));
 }
 
-function setLicenceSort(key) {
-  licenceSort = {key, dir: licenceSort.key === key ? -licenceSort.dir : 1};
-  const host = document.getElementById('licenceBox');
-  if (host && licenceRows) host.innerHTML = licenceTableHtml(licenceRows);
+// Tabellen bruker lisensmodulens data; lastes de første gang, tegnes boksen
+// på nytt når de er klare (hvis den fortsatt står på siden).
+let companyLicAll = false;
+function companyLicBoxHtml(name) {
+  if (!licLoaded) {
+    loadLicences().then(() => {
+      const host = document.getElementById('licenceBox');
+      if (host && host.dataset.company === name) host.innerHTML = companyLicBoxHtml(name);
+    });
+    return '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
+  }
+  return licPortfolioTableHtml(name, licByCo[name] ? licRows(name) : [],
+    {sort: licProfSort, sortJs: 'companyLicSortBy', lim: companyLicAll ? Infinity : 50, moreJs: 'companyLicMore()'});
 }
+function companyLicRedraw() {
+  const host = document.getElementById('licenceBox');
+  if (host) host.innerHTML = companyLicBoxHtml(host.dataset.company);
+}
+function companyLicSortBy(key) {
+  const text = ['name', 'sea', 'round', 'operator', 'phase', 'info'].includes(key);
+  licProfSort = {key, dir: licProfSort.key === key ? -licProfSort.dir : (text ? 1 : -1)};
+  companyLicRedraw();
+}
+function companyLicMore() { companyLicAll = true; companyLicRedraw(); }
 
 function drawCompanyProfile() {
   const names = [...selectedCompanyNames];
@@ -17020,7 +17048,6 @@ function drawCompanyProfile() {
   const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
   const remOe = companyEquityRemaining(holdings);
   licenceRows = buildLicenceRows(name);
-  licenceSort = {key: 'name', dir: 1};
 
   // Key facts og Location står side om side i en pf-row2, så de får samme
   // høyde på bred skjerm (spalteflyten ellers gir hvert kort sin egen høyde).
@@ -23628,45 +23655,11 @@ function licRenderCompany() {
     return;
   }
   const rows = licRows(c);
-  const key = licProfSort.key, dir = licProfSort.dir;
-  const val = (r, k) => k === 'name' ? r.name : k === 'sea' ? r.sea : k === 'round' ? r.round
-    : k === 'role' ? (r.isOp ? 0 : 1) : k === 'share' ? r.share : k === 'gross' ? r.gross
-    : k === 'net' ? r.net : k === 'phase' ? r.phase : k === 'validTo' ? (r.validTo || 0)
-    : k === 'info' ? (r.fields[0]?.name || r.baas[0]?.name || r.discoveries[0]?.name || '￿') : '';
-  const sorted = rows.slice().sort((a, b) => {
-    const x = val(a, key), y = val(b, key);
-    const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'en', {numeric: true});
-    return (d || a.name.localeCompare(b.name, 'en', {numeric: true})) * dir;
-  });
-  const info = r => {
-    const parts = r.fields.map(f => fieldLink(f.id, f.name));
-    r.discoveries.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, d.name)));
-    if (r.discoveries.length > 3) parts.push(`<span class="lic-more">+${r.discoveries.length - 3} more</span>`);
-    const baa = r.baas.map(b => `<span class="lc-baa" title="${esc(tc(b.kind))}">${esc(b.name)}</span>`).join(' ');
-    return [parts.join(', '), baa].filter(Boolean).join('<br>');
-  };
-  const COLS = [['name', 'Licence', 'ex-l'], ['sea', 'Area', 'ex-l'], ['round', 'Round', 'ex-l'],
-                ['role', 'Role', 'ex-l'], ['share', 'Share'], ['gross', 'Gross, km²'], ['net', 'Net, km²'],
-                ['phase', 'Phase', 'ex-l'], ['validTo', 'Valid to'], ['info', 'Field / BAA / discoveries', 'ex-l']];
-  const head = COLS.map(([k, label, cls]) =>
-    `<th class="${cls || ''}${key === k ? ' sorted' : ''}" onclick="licProfSortBy('${k}')">${label}` +
-    `<span class="lic-arrow">${key === k ? (dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
-
   const seaFacts = LIC_SEAS.map(z => {
     const t = st.sea[z.key];
     return `<div class="pf-fact"><span><i class="ex-dot" style="background:${z.color}"></i>${z.label}</span>
       <strong>${t.count} · ${licKm(t.net)} km²</strong></div>`;
   }).join('');
-  const lim = licF.rowsAll ? sorted.length : 50;
-  const table = sorted.slice(0, lim).map(r => `
-    <tr><td class="ex-l"><strong>${licenceLink(r.name)}</strong></td>
-      <td class="ex-l">${esc(licSeaOf(r.sea)?.label || r.sea || '—')}</td>
-      <td class="ex-l">${esc(r.round || '—')}</td>
-      <td class="ex-l">${r.isOp ? '<span class="ex-chip ex-drilling">Operator</span>' : 'Partner'}</td>
-      <td>${licPct(r.share)}</td><td>${licKm(r.gross)}</td><td>${licKm(r.net)}</td>
-      <td class="ex-l">${esc(tc(r.phase) || '—')}</td><td>${licYear(r.validTo)}</td>
-      <td class="ex-l lic-info">${info(r) || '—'}</td></tr>`).join('');
-
   document.getElementById('licBody').innerHTML = `
     <div class="pf-card">
       <h3>${esc(c)}</h3><div class="ex-slot"></div>
@@ -23685,17 +23678,14 @@ function licRenderCompany() {
     </div>
     <div class="pf-card"><h3>Licence map</h3>${licCompanyMap(rows)}</div>
     <div class="pf-card"><h3>Licences</h3>
-      <div class="pf-scroll"><table class="res-table ex-table lic-table">
-        <thead><tr>${head}</tr></thead><tbody>${table}</tbody></table></div>
-      ${lim < sorted.length ? `<button class="grp-btn ex-more" onclick="licSet('rowsAll',true,false)">Show all ${sorted.length} licences</button>` : ''}
-      <div class="pf-map-note">Active production licences. «Field / BAA / discoveries»: fields and discoveries owned
-        by the licence or by a business arrangement area it is part of (in grey). Click a heading to sort.</div>
+      ${licPortfolioTableHtml(c, rows, {sort: licProfSort, sortJs: 'licProfSortBy', lim: licF.rowsAll ? Infinity : 50,
+        moreJs: "licSet('rowsAll',true,false)"})}
     </div>`;
   dockBar('licBody');
 }
 
 function licProfSortBy(key) {
-  const text = ['name', 'sea', 'round', 'role', 'phase', 'info'].includes(key);
+  const text = ['name', 'sea', 'round', 'operator', 'phase', 'info'].includes(key);
   licProfSort = {key, dir: licProfSort.key === key ? -licProfSort.dir : (text ? 1 : -1)};
   licRenderBody();
 }

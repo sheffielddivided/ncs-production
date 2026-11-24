@@ -3413,3 +3413,11 @@ selger, kjøper og felt/funn. Antallet i oppsummeringen er transaksjoner, med
 antall lisensoverføringer i parentes. Felt/funn-kolonnen (`licContentHtml`,
 også i lisenstabellen) viser bare funnets eget navn (`explDiscoveryLabel`);
 funn uten navn beholder betegnelsen.
+
+**Lisenstabellen for ett selskap** (`licPortfolioTableHtml`) er felles for
+Company → Licences og Licence → Company, med lisensmodulens data (`licRows`,
+lastet med `loadLicences`; Company → Licences laster dem ved behov og tegner
+boksen på nytt). Kolonner: lisens, havområde, runde, operatør (egne
+operatørskap merket, ellers operatørens navn), andel, brutto og netto areal,
+fase, gyldig til (dato) og felt/BAA/funn (bare funnets eget navn; BAA i grått).
+Sorteringen (`licProfSort`) deles av begge sidene; 50 rader før «Show all».
