@@ -44,7 +44,8 @@
     .mode-btn.active{background:var(--blue);color:#fff;}
     /* Lenke til en annen app i menyen (Mapmaker): ser ut som en menyknapp, med pil og skillestrek foran. */
     a.mode-btn{display:inline-flex;align-items:center;gap:4px;text-decoration:none;}
-    .mode-ext{margin-left:4px;box-shadow:inset 1px 0 0 rgba(125,34,72,0.18);border-top-left-radius:0;border-bottom-left-radius:0;}
+    /* Skillestrek foran en menyknapp (foran Macro og Mapmaker). */
+    .mode-sep{margin-left:4px;box-shadow:inset 1px 0 0 rgba(125,34,72,0.18);border-top-left-radius:0;border-bottom-left-radius:0;}
     @media (hover:hover){ .mode-ext:hover{color:var(--blue);} }
 
     .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
@@ -1045,11 +1046,11 @@
       <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
       <button class="mode-btn" id="modeBtnDrilling" onclick="switchMode('drilling')">Drilling</button>
-      <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Market</button>
+      <button class="mode-btn mode-sep" id="modeBtnPrices" onclick="switchMode('prices')">Macro</button>
       <button class="mode-btn" id="modeBtnDcs" onclick="switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS</button>
       <button class="mode-btn" id="modeBtnUkcs" onclick="switchMode('ukcs')" title="UK Continental Shelf (data from the North Sea Transition Authority)">UKCS</button>
       <!-- Mapmaker er en egen app (sheffielddivided/mapmaker) og åpnes i ny fane. -->
-      <a class="mode-btn mode-ext" href="https://map.kbak.no/" target="_blank" rel="noopener" title="NCS Mapmaker: custom maps for presentations (opens in a new tab)">Mapmaker <span aria-hidden="true">↗</span></a>
+      <a class="mode-btn mode-ext mode-sep" href="https://map.kbak.no/" target="_blank" rel="noopener" title="NCS Mapmaker: custom maps for presentations (opens in a new tab)">Mapmaker <span aria-hidden="true">↗</span></a>
     </div>
 </nav>
 
@@ -2768,7 +2769,7 @@ const HOME_SECTIONS = [
     '<path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><path d="M5 22h14M8 22l4-6 4 6"/>'],
   ['drilling', 'Drilling', 'Where the drilling rigs are, what they are doing and how they perform.',
     '<path d="M12 2l4 9H8z"/><path d="M10 11l-3 11M14 11l3 11M8.5 17h7"/>'],
-  ['prices', 'Market', 'Brent and gas prices, the world oil balance, EU storage, US supply, exchange and interest rates.',
+  ['prices', 'Macro', 'Brent and gas prices, the world oil balance, EU storage, US supply, exchange and interest rates.',
     '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'],
   ['dcs', 'DCS', 'Production, fields, companies, reserves and drilling on the Danish Continental Shelf.',
     '<path d="M4 21V4"/><path d="M4 4h13l-3 4 3 4H4"/>'],
@@ -3489,7 +3490,7 @@ document.getElementById('shareLbl').textContent = shareLabel();
 // The browser title follows the view, so tabs, bookmarks and history entries
 // can be told apart: "<selection> · <tab> · <section> – NCS Insight".
 const MODE_LABEL = {ncs: 'NCS', companies: 'Company', licences: 'Licence', hubs: 'Hub', fields: 'Field',
-  discoveries: 'Discoveries', exploration: 'Exploration', drilling: 'Drilling', prices: 'Market', dcs: 'DCS', ukcs: 'UKCS'};
+  discoveries: 'Discoveries', exploration: 'Exploration', drilling: 'Drilling', prices: 'Macro', dcs: 'DCS', ukcs: 'UKCS'};
 function modeTabs() {
   return topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
        : topMode === 'discoveries' ? DISCOVERY_TABS : topMode === 'exploration' ? EXPL_TABS
@@ -18438,7 +18439,7 @@ async function downloadExcel() {
   // Oil market: Data-arket er tabellen, så sidetittelen; ellers grafens tittel.
   const viewTitle = ((priceSubView === 'oilmarket' ? null : pptMainMeta) || pptMeta()).title || '';
   const filename = market
-    ? `${(viewTitle || 'Market').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
+    ? `${(viewTitle || 'Macro').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
     : categorical
     ? `${(pptMeta().title || shelf).replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
     : `${shelf}_Production_${periodLabel}_${fy}-${ty}.xlsx`;
