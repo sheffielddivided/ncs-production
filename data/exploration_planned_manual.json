@@ -2,5 +2,15 @@
   "version": 1,
   "updated": "2026-11-24",
   "note": "Planlagte letebrønner lagt inn for hånd fra selskapenes egne planer (Exploration → Wells → Company plans). Vises i brønnlisten til Sodir har brønnen. when: år, halvår, kvartal, måned eller dato, slik selskapet oppgir det.",
-  "wells": []
+  "wells": [
+    {
+      "id": "mwv1swsc",
+      "name": "Norma appraisal",
+      "operator": "DNO Norge AS",
+      "licence": "984",
+      "purpose": "APPRAISAL",
+      "when": "q4 2026",
+      "added": "2026-11-24"
+    }
+  ]
 }
