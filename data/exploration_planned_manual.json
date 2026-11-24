@@ -69,6 +69,17 @@
       "source": "https://okea.no/wp-content/uploads/2026/11/OKEA-Q3-Quarterly-Report.pdf",
       "note": "Okea Q3-26",
       "added": "2026-11-24"
+    },
+    {
+      "id": "mwv3d4ct",
+      "name": "Schroeder",
+      "operator": "Equinor Energy AS",
+      "licence": "1177",
+      "purpose": "WILDCAT",
+      "when": "2027",
+      "rig": "DEEPSEA BERGEN",
+      "well": "30/4-5",
+      "added": "2026-11-24"
     }
   ]
 }
