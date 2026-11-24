@@ -647,6 +647,13 @@
     /* Rad med to kort side om side og lik høyde (hubprofilen). */
     .pf-row2{column-span:all;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
     .pf-row2 > .pf-card{margin:0;min-width:0;}
+    /* Company → Licences: oversikt og transaksjoner til venstre, et smalere kart til høyre som blir stående mens man ruller. */
+    .lic-top{column-span:all;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px;margin-bottom:10px;align-items:start;}
+    .lic-top-l{display:flex;flex-direction:column;gap:10px;min-width:0;}
+    .lic-top-l > .pf-card, .lic-top > .pf-card{margin:0;min-width:0;}
+    .lic-top-map{position:sticky;top:10px;}
+    .lic-top .tx-table td.tx-lics{min-width:140px;}
+    @media (max-width: 899px){ .lic-top{grid-template-columns:1fr;} .lic-top-map{position:static;} }
     /* Company / Analytics BETA */
     .an-sides{display:flex;flex-wrap:wrap;gap:14px;}
     .an-side{flex:1 1 300px;min-width:0;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;}
@@ -13105,7 +13112,7 @@ const mmboe = v => (v * BBL_PER_SM3).toLocaleString('en', {minimumFractionDigits
 // minPx}. Ringer utenfor utsnittet filtreres bort her, så kallerne kan sende
 // inn alt de har.
 function outlineMap(ownItems, opts = {}) {
-  const W = 560, H = opts.h || 230, MIN_SPAN = 1.6;   // grader bredde
+  const W = opts.w || 560, H = opts.h || 230, MIN_SPAN = 1.6;   // grader bredde; w: smalere kart (Company → Licences)
   // Hvor mye luft rundt forekomsten. Standard 3 passer for én forekomst eller
   // en samlet hub. En selskapsportefølje kan spenne over hele sokkelen, og da
   // blir 3 så mye at feltene blir usynlige prikker — derfor kan kallerne
@@ -16936,9 +16943,13 @@ function drawCompanyLicences() {
   setChartTitle(name, `Licences · ${licenceRows.length} active production licence${licenceRows.length === 1 ? '' : 's'}, ${op} operated`);
   setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Source:</strong> Sodir layers 3000 and 3007`);
   setProfile(licenceRows.length ? `
-    ${licenceSummaryCard(name, licenceRows, false, `${esc(name)} · Licences`)}
-    ${licenceDealsCard(name)}
-    <div class="pf-card pf-wide"><h3>Licence map</h3>${licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})))}</div>
+    <div class="lic-top">
+      <div class="lic-top-l">
+        ${licenceSummaryCard(name, licenceRows, false, `${esc(name)} · Licences`)}
+        ${licenceDealsCard(name)}
+      </div>
+      <div class="pf-card lic-top-map"><h3>Licence map</h3>${licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})), {w: 420, h: 620})}</div>
+    </div>
     <div class="pf-card pf-wide"><h3>All licences</h3>
       <div id="licenceBox" data-company="${esc(name)}">${companyLicBoxHtml(name)}</div>
       <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licence →</button></div></div>`
@@ -23695,7 +23706,7 @@ function licProfSortBy(key) {
   licRenderBody();
 }
 
-function licCompanyMap(rows) {
+function licCompanyMap(rows, size = {}) {
   const set = (bundle.licence_outlines && bundle.licence_outlines.licences) || {};
   const mine = new Set(rows.map(r => r.name));
   const items = rows.filter(r => set[r.name]).map(r => ({
@@ -23704,7 +23715,7 @@ function licCompanyMap(rows) {
   if (!items.length) return '<div class="ex-sum">No outlines available.</div>';
   const others = Object.entries(set).filter(([n]) => !mine.has(n)).map(([n, rings]) => ({name: n, rings}));
   return outlineMap(items, {
-    label: 'Licence map', h: 420, pad: 1.4, stroke: '#8e0a48', labelMax: 4, inset: false, fill: 'rgba(206,15,105,0.32)',
+    label: 'Licence map', h: size.h || 420, ...(size.w ? {w: size.w} : {}), pad: 1.4, stroke: '#8e0a48', labelMax: 4, inset: false, fill: 'rgba(206,15,105,0.32)',
     layers: [{items: others, fill: '#dfe5ec', stroke: '#c3ccd5', label: false}, fieldLayer()],
     note: '<span class="ex-dot" style="background:rgba(206,15,105,0.80)"></span>Operator · ' +
           '<span class="ex-dot" style="background:rgba(206,15,105,0.32)"></span>Partner · other licences in grey, ' +
