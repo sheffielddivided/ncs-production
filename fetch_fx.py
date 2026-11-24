@@ -1,5 +1,5 @@
 """
-Henter daglige valutakurser fra Norges Bank til Forex-fanen i Market og
+Henter daglige valutakurser fra Norges Bank til Forex-fanen i Macro og
 skriver dem til data/fx.json.
 
 Kilde: Norges Banks datatjeneste (data.norges-bank.no), datasett EXR,

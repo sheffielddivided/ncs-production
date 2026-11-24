@@ -93,10 +93,10 @@ som statiske JSON-filer i dette repoet.
 | `.htaccess` | Apache-oppsett for energy.kbak.no: skjuler skript og rådata, kort cache og komprimering av datafilene |
 | `data/normpris-raw/` | Normpris-xlsx fra regjeringen.no (lastes ned manuelt) |
 | `fetch_gas.py` | Henter månedlige gasspriser (SSB eksportpris, IMF Europa, Henry Hub, Norges Bank-kurser) til `data/gas_prices.json` |
-| `fetch_nve.py` | Leser de publiserte JSON-filene fra nve-løsningen (`sheffielddivided/nve`): NVEs magasinstatistikk og ENTSO-Es day-ahead-priser, og bygger `data/power.json` til Market → Power. Ukjent format gir exit 1 uten at noe skrives. `--local ../nve` leser fra en lokal kopi |
+| `fetch_nve.py` | Leser de publiserte JSON-filene fra nve-løsningen (`sheffielddivided/nve`): NVEs magasinstatistikk og ENTSO-Es day-ahead-priser, og bygger `data/power.json` til Macro → Power. Ukjent format gir exit 1 uten at noe skrives. `--local ../nve` leser fra en lokal kopi |
 | `data/power.json` | Magasinfylling per uke for Norge og NO1–NO5 (inneværende år og de 20 foregående), ukepriser for NO1–NO5 og Tyskland fra 2015, og netto eksport per utenlandsforbindelse (MW, ukesnitt) fra 2015 |
-| `fetch_fx.py` | Henter daglige valutakurser fra Norges Bank (NOK, USD, EUR, GBP, SEK, DKK, CHF, CAD) til `data/fx.json`, Forex-fanen i Market |
-| `fetch_rates.py` | Bygger `data/rates.json` (styringsrente, inflasjon og rentekurver for NO, US, EU, UK, SE) fra convert-repoets nb-data, pluss Feds målintervall og Treasury-kurven, til Interest-fanen i Market |
+| `fetch_fx.py` | Henter daglige valutakurser fra Norges Bank (NOK, USD, EUR, GBP, SEK, DKK, CHF, CAD) til `data/fx.json`, Forex-fanen i Macro |
+| `fetch_rates.py` | Bygger `data/rates.json` (styringsrente, inflasjon og rentekurver for NO, US, EU, UK, SE) fra convert-repoets nb-data, pluss Feds målintervall og Treasury-kurven, til Interest-fanen i Macro |
 | `fetch_cpi.py` | Henter konsumprisindekser (US CPI-U, euroområdets HICP, SSBs KPI) til `data/cpi.json`, realprisene i Prices |
 | `fetch_eia.py` | Henter daglig Brent spot fra 1990 (EIA RBRTE, ev. FRED) til `data/brent_eia.json`. Skjøter Datert Brent bakover før 2011 og framover etter Petroleumsprisrådets siste dato |
 | `fetch_normpris.py` | Bygger `data/normpris_*.json` fra xlsx-filene |
@@ -198,7 +198,7 @@ Månedlige normpris-differensialer per felt ($/fat, relativt til Datert Brent)
 og daglig Datert Brent, hentet fra kvartalsvise xlsx-filer på
 [regjeringen.no](https://www.regjeringen.no/no/tema/energi/olje-og-gass/petroleumsprisradet--og-fastsetting-av-n/id661459/).
 Siden ligger bak Cloudflare og kan ikke hentes automatisk: last ned nye filer
-og last dem opp i appen (Market → Brent → tannhjulet, samme GitHub-token som
+og last dem opp i appen (Macro → Brent → tannhjulet, samme GitHub-token som
 hub-innstillingene), eller legg dem i `data/normpris-raw/` og push til `main`.
 Appen sjekker filene i nettleseren med de samme reglene som importen, skriver
 dem i én commit og viser resultatet når jobben er ferdig. Workflowen

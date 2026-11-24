@@ -4,10 +4,10 @@ og EIA-delen), til disse filene:
 
 - data/ttf_daily.json: daglige TTF day-ahead-priser (EEX TTF Neutral Gas
   Price, EUR/MWh). Brukes bare til prognosen for inneværende periode i
-  Gas-fanen i Market; dagsprisene vises ikke selv.
+  Gas-fanen i Macro; dagsprisene vises ikke selv.
 - data/eu_storage.json: fyllingsgraden i europeiske gasslagre per dag, i % av
   kapasitet (AGSI+, Gas Infrastructure Europe), for EU totalt og Tyskland,
-  Italia, Nederland og Frankrike. Til EU storage-fanen i Market.
+  Italia, Nederland og Frankrike. Til EU storage-fanen i Macro.
 - data/eu_lng.json: LNG send-out (regassifisering) fra europeiske
   LNG-terminaler per dag, GWh/d (ALSI+, Gas Infrastructure Europe), for EU
   totalt og Spania, Frankrike, Italia og Nederland. Til samme fane.
@@ -15,16 +15,16 @@ og EIA-delen), til disse filene:
   tusen fat), LNG-eksport (EIA, månedlig, MMcf) og LNG-eksportprisen (EIA,
   månedlig, USD/MMBtu) og råoljeproduksjonen (EIA, ukentlig WCRFPUS2 og
   månedlig MCRFPUS2, tusen fat per dag). Til US supply-fanen og
-  gassprisgrafen i Market.
+  gassprisgrafen i Macro.
 - data/refining.json: ukentlige spotpriser til 3-2-1-raffineringsmarginen i
-  Refining-fanen i Market: WTI Cushing (RWTC, USD/fat), NY Harbor bensin
+  Refining-fanen i Macro: WTI Cushing (RWTC, USD/fat), NY Harbor bensin
   (regular, USD/gallon) og NY Harbor nr. 2 fyringsolje/diesel (USD/gallon),
   samme serier som Refining-visningen i eia-repoet. Brent (RBRTE) er med til
   varianten mot Brent. Marginen regnes ut i appen.
 - data/steo.json: EIAs Short-Term Energy Outlook, tabell 3a og 3c (verdens
   oljebalanse: produksjon, forbruk, lagertrekk og OECD-lagre; månedlig,
   kvartalsvis og årlig, historikk og prognose). Kopieres uendret fra
-  data/eia/steo.json i eia-repoet, til Oil market-fanen i Market.
+  data/eia/steo.json i eia-repoet, til Oil market-fanen i Macro.
 
 Feiler en henting, beholdes forrige fil for den. Steget i arbeidsflyten er
 continue-on-error.

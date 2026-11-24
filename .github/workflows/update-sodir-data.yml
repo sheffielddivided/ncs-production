@@ -63,7 +63,7 @@ jobs:
         run: python fetch_eugas.py
 
       # Daglige valutakurser fra Norges Bank (NOK, USD, EUR, GBP, SEK, DKK,
-      # CHF, CAD) til Forex-fanen i Market.
+      # CHF, CAD) til Forex-fanen i Macro.
       - name: Hent valutakurser (Norges Bank)
         continue-on-error: true
         timeout-minutes: 5
@@ -76,7 +76,7 @@ jobs:
         run: python fetch_cpi.py
 
       # Styringsrenter, inflasjon og rentekurver for NO, US, EU, UK og SE til
-      # Interest-fanen i Market (fra convert-repoet, pluss Fed og Treasury).
+      # Interest-fanen i Macro (fra convert-repoet, pluss Fed og Treasury).
       # Etter KPI-steget: hull i amerikansk inflasjon fylles fra data/cpi.json.
       - name: Hent renter og inflasjon
         continue-on-error: true
@@ -147,7 +147,7 @@ jobs:
         timeout-minutes: 5
         run: python fetch_ens.py
 
-      # Magasinfylling og strømpriser til Market → Power: leser de publiserte
+      # Magasinfylling og strømpriser til Macro → Power: leser de publiserte
       # JSON-filene fra nve-løsningen (sheffielddivided/nve), som selv henter
       # fra NVE og ENTSO-E. Feiler steget, beholdes forrige data/power.json.
       - name: Hent magasin og strømpriser (nve)

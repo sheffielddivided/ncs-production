@@ -1,5 +1,5 @@
 """
-Bygger data/rates.json til Interest-fanen i Market: styringsrente,
+Bygger data/rates.json til Interest-fanen i Macro: styringsrente,
 inflasjon og statsrentekurve for Norge, USA, euroområdet, Storbritannia og
 Sverige.
 

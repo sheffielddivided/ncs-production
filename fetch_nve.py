@@ -1,6 +1,6 @@
 """
 Henter magasinfylling og strømpriser fra nve-løsningen (sheffielddivided/nve)
-og lagrer dem kompakt i data/power.json til Market → Power.
+og lagrer dem kompakt i data/power.json til Macro → Power.
 
 nve-repoet er og forblir kilden: det henter magasinstatistikken fra NVEs
 åpne API (ukentlig, onsdag kl. 13) og day-ahead-priser fra ENTSO-E (daglig),

@@ -44,7 +44,8 @@
     .mode-btn.active{background:var(--blue);color:#fff;}
     /* Lenke til en annen app i menyen (Mapmaker): ser ut som en menyknapp, med pil og skillestrek foran. */
     a.mode-btn{display:inline-flex;align-items:center;gap:4px;text-decoration:none;}
-    .mode-ext{margin-left:4px;box-shadow:inset 1px 0 0 rgba(125,34,72,0.18);border-top-left-radius:0;border-bottom-left-radius:0;}
+    /* Skillestrek foran en menyknapp (foran Macro og Mapmaker). */
+    .mode-sep{margin-left:4px;box-shadow:inset 1px 0 0 rgba(125,34,72,0.18);border-top-left-radius:0;border-bottom-left-radius:0;}
     @media (hover:hover){ .mode-ext:hover{color:var(--blue);} }
 
     .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
@@ -191,7 +192,7 @@
     .lc-two > .pf-card{margin-bottom:10px;min-width:0;}
     @media (max-width:800px){.lc-two{grid-template-columns:1fr;}}
     .np-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;}
-    /* Market → Oil market: STEO-balansen som tabell, samme oppsett som i eia-løsningen. */
+    /* Macro → Oil market: STEO-balansen som tabell, samme oppsett som i eia-løsningen. */
     .om-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px;}
     table.om{border-collapse:separate;border-spacing:0;width:100%;font-size:0.72rem;font-variant-numeric:tabular-nums;background:var(--card);}
     table.om th,table.om td{padding:4px 7px;white-space:nowrap;text-align:right;}
@@ -539,7 +540,7 @@
     .gx-split .res-table td,.gx-split .res-table th{vertical-align:top;}
     .gx-pipe{cursor:pointer;}
     @media (max-width: 899px){ .gx-split{grid-template-columns:minmax(0,1fr);} .gx-split .gx-r{position:static;} }
-    /* Market → Power: nøkkeltall øverst, magasin og pris side om side. */
+    /* Macro → Power: nøkkeltall øverst, magasin og pris side om side. */
     .pw-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:4px 0 14px;}
     .pw-kpi{background:#f4f6f9;border-radius:10px;padding:9px 11px;min-width:0;}
     .pw-kpi > span{display:block;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);}
@@ -1045,11 +1046,11 @@
       <button class="mode-btn" id="modeBtnDiscoveries" onclick="switchMode('discoveries')">Discoveries</button>
       <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
       <button class="mode-btn" id="modeBtnDrilling" onclick="switchMode('drilling')">Drilling</button>
-      <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Market</button>
+      <button class="mode-btn mode-sep" id="modeBtnPrices" onclick="switchMode('prices')">Macro</button>
       <button class="mode-btn" id="modeBtnDcs" onclick="switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS</button>
       <button class="mode-btn" id="modeBtnUkcs" onclick="switchMode('ukcs')" title="UK Continental Shelf (data from the North Sea Transition Authority)">UKCS</button>
       <!-- Mapmaker er en egen app (sheffielddivided/mapmaker) og åpnes i ny fane. -->
-      <a class="mode-btn mode-ext" href="https://map.kbak.no/" target="_blank" rel="noopener" title="NCS Mapmaker: custom maps for presentations (opens in a new tab)">Mapmaker <span aria-hidden="true">↗</span></a>
+      <a class="mode-btn mode-ext mode-sep" href="https://map.kbak.no/" target="_blank" rel="noopener" title="NCS Mapmaker: custom maps for presentations (opens in a new tab)">Mapmaker <span aria-hidden="true">↗</span></a>
     </div>
 </nav>
 
@@ -2768,7 +2769,7 @@ const HOME_SECTIONS = [
     '<path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><path d="M5 22h14M8 22l4-6 4 6"/>'],
   ['drilling', 'Drilling', 'Where the drilling rigs are, what they are doing and how they perform.',
     '<path d="M12 2l4 9H8z"/><path d="M10 11l-3 11M14 11l3 11M8.5 17h7"/>'],
-  ['prices', 'Market', 'Brent and gas prices, the world oil balance, EU storage, US supply, exchange and interest rates.',
+  ['prices', 'Macro', 'Brent and gas prices, the world oil balance, EU storage, US supply, exchange and interest rates.',
     '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'],
   ['dcs', 'DCS', 'Production, fields, companies, reserves and drilling on the Danish Continental Shelf.',
     '<path d="M4 21V4"/><path d="M4 4h13l-3 4 3 4H4"/>'],
@@ -3489,7 +3490,7 @@ document.getElementById('shareLbl').textContent = shareLabel();
 // The browser title follows the view, so tabs, bookmarks and history entries
 // can be told apart: "<selection> · <tab> · <section> – NCS Insight".
 const MODE_LABEL = {ncs: 'NCS', companies: 'Company', licences: 'Licence', hubs: 'Hub', fields: 'Field',
-  discoveries: 'Discoveries', exploration: 'Exploration', drilling: 'Drilling', prices: 'Market', dcs: 'DCS', ukcs: 'UKCS'};
+  discoveries: 'Discoveries', exploration: 'Exploration', drilling: 'Drilling', prices: 'Macro', dcs: 'DCS', ukcs: 'UKCS'};
 function modeTabs() {
   return topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
        : topMode === 'discoveries' ? DISCOVERY_TABS : topMode === 'exploration' ? EXPL_TABS
@@ -3515,7 +3516,7 @@ function syncTitle() {
   if (document.title !== t) document.title = t;
 }
 
-// Home, Market, DCS and UKCS can be drawn before the core data is in (see init).
+// Home, Macro, DCS and UKCS can be drawn before the core data is in (see init).
 // Other sections wait: init draws the current one as soon as it has loaded.
 const EARLY_MODES = ['home', 'prices', 'dcs', 'ukcs'];
 // Sokkelsidene (Norge, Danmark, Storbritannia) viser hele historikken som standard.
@@ -18429,7 +18430,7 @@ async function downloadExcel() {
   // Uten tidsakse er periode og årsutvalg irrelevant, og ville bare villedet
   // den som åpner arket.
   const categorical = !!lastXTitle;
-  // Market-fanene har egne tidsakser og valg; produksjonsperioden og
+  // Macro-fanene har egne tidsakser og valg; produksjonsperioden og
   // årsutvalget gjelder ikke der, og filen får navn etter grafen.
   const market = topMode === 'prices';
   // Sokkelen eksporten gjelder: DCS (Danmark) og UKCS (Storbritannia) har
@@ -18438,7 +18439,7 @@ async function downloadExcel() {
   // Oil market: Data-arket er tabellen, så sidetittelen; ellers grafens tittel.
   const viewTitle = ((priceSubView === 'oilmarket' ? null : pptMainMeta) || pptMeta()).title || '';
   const filename = market
-    ? `${(viewTitle || 'Market').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
+    ? `${(viewTitle || 'Macro').replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
     : categorical
     ? `${(pptMeta().title || shelf).replace(/[\\/:*?"<>|·]+/g, ' ').replace(/\s+/g, ' ').trim()}.xlsx`
     : `${shelf}_Production_${periodLabel}_${fy}-${ty}.xlsx`;
@@ -18448,14 +18449,14 @@ async function downloadExcel() {
 
   const wsInfo = wb.addWorksheet('Info');
   wsInfo.columns = [{width:24},{width:80}];
-  const titleRow = wsInfo.addRow([market ? 'NCS Insight Market Export'
+  const titleRow = wsInfo.addRow([market ? 'NCS Insight Macro Export'
     : categorical ? (shelf === 'NCS' ? 'NCS Reserves Export' : `${shelf} Export`) : `${shelf} Production Export`]);
   titleRow.getCell(1).font = {bold:true, size:14};
   wsInfo.addRow([]);
   wsInfo.addRow(['Generated', new Date().toLocaleString()]);
   if (market) {
     const tab = PRICE_TABS.find(t => t.id === priceSubView);
-    wsInfo.addRow(['View', `Market · ${tab ? tab.label : priceSubView}`]);
+    wsInfo.addRow(['View', `Macro · ${tab ? tab.label : priceSubView}`]);
     if (viewTitle) wsInfo.addRow(['Chart', viewTitle]);
   } else if (!categorical) {
     wsInfo.addRow(['Period type', periodLabel]);
@@ -18973,7 +18974,7 @@ async function saveFeeds() {
 }
 
 // ── NORMPRIS: OPPLASTING ─────────────────────────────────────────────────────
-// Tannhjulet i Market → Brent laster opp nye normpris-xlsx-filer til
+// Tannhjulet i Macro → Brent laster opp nye normpris-xlsx-filer til
 // data/normpris-raw/. regjeringen.no ligger bak Cloudflare, så filene må lastes
 // ned for hånd; før måtte de også pushes for hånd.
 //
@@ -24338,7 +24339,7 @@ async function init() {
   setInfo('');
 
   // ── Fast start: the home page needs only a small file of key figures, and
-  //    Market, DCS and UKCS load their own data. Draw those right away; the core
+  //    Macro, DCS and UKCS load their own data. Draw those right away; the core
   //    data below (about 4 MB) then loads in the background. ──
   const startMode = (/(?:^|[#&])m=([a-z]+)/.exec(location.hash) || [])[1] || 'home';
   if (startMode === 'home') ioView();
