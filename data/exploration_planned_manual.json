@@ -55,6 +55,18 @@
       "source": "https://varenergi.no/wp-content/uploads/2026/11/Third-quarter-2026-Var-Energi-ASA-presentation.pdf",
       "note": "Vår Energi Q3",
       "added": "2026-11-24"
+    },
+    {
+      "id": "mwv2wi18",
+      "name": "Trust",
+      "operator": "Vår Energi ASA",
+      "licence": "153",
+      "purpose": "WILDCAT",
+      "when": "H1 2027",
+      "rig": "Gjøa",
+      "source": "https://okea.no/wp-content/uploads/2026/11/OKEA-Q3-Quarterly-Report.pdf",
+      "note": "Okea Q3",
+      "added": "2026-11-24"
     }
   ]
 }
