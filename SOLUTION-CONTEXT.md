@@ -3444,3 +3444,13 @@ siste 30 dager mot samme periode i fjor. Data: `data/eu_gas_flows.json`, bygget
 av `gas_flows()` i `fetch_eugas.py` fra eia-repoets `data/gas_flows.json`
 (ENTSOG og GIE ALSI) med samme gruppering og dagsutvalg som `gassimport.html`.
 Tegnes av `drawGasFlowCards`; begge grafene er med i PowerPoint-eksporten.
+
+**DCS → Valuation: slutt i 2050.** Danmark har vedtatt at olje- og
+gassproduksjonen opphører i 2050 (`DCS_LAST_YEAR`). `dcsFitEnd` tester hver
+feltprognose: ender den etter 2050 (eller rekker ikke å produsere alle
+reservene), presses den sammen. Produserende felt starter fra fjorårets nivå
+med et lavere årlig fall, funnet ved halvering, så hele R er produsert i 2050;
+holder ikke flat produksjon på fjorårets nivå (N × P < R), beholdes det
+opprinnelige fallet og kurven løftes. Nye felt får høyere platånivå
+(`cfNewField` tar nå platåraten som valgfritt argument). Feltene merkes * i
+felttabellen, og horisonten er 2050.
