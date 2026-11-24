@@ -2918,6 +2918,26 @@ en tynn mørk linje øverst er AIS-målt.
 *Mulig videre arbeid:* ankomstsignal for planlagte brønner (riggen ligger ved den
 planlagte posisjonen), og å vise Sodirs egne datoer ved siden av de AIS-målte.
 
+**Planlagte brønner fra selskapene (Exploration → Wells → «Company plans»):**
+Selskapene legger ofte ut boreplaner lenger fram enn Sodir har brønnene. De
+legges inn for hånd i `data/exploration_planned_manual.json` (`explPlans`),
+via panelet `pwPanel` (`openPlanPanel`, `planEdit`, `planSave`, `planDelete`),
+som skriver fila rett til GitHub med samme token som brønnavnene (`planWrite`
+leser fila på nytt rett før skriving). Felter: `name`, `operator`, `licence`
+(normalisert til Sodirs form med `planLicence`: «PL 1014» → «1014», «37» → «037»),
+`purpose` (WILDCAT/APPRAISAL), `when`, `rig`, `well`, `source`, `note`, `added`.
+`when` er tidspunktet slik selskapet oppgir det; `planWhen` tolker år, halvår
+(H2 2027, 2H27), kvartal (Q3 2027, 3Q27), måned (May 2027, 2027-05) og dato, og
+gir første dag i perioden (sortering) og siste (⚠ når perioden er passert).
+`explPlanWells` lager listeobjekter i samme form som Sodir-brønnene
+(`manual: true`, partnere fra lisensens nåværende rettighetshavere), og
+`explRenderList` legger dem til etter filtrene (`explPass`, felles med
+`explFiltered`). De vises bare i listen; kartet, riggtidslinjen og statistikken
+bygger fortsatt bare på Sodir. `planInSodir` skjuler oppføringen når Sodir har
+brønnen: på `well` (brønnen eller en av grenene), ellers samme lisens og samme
+navn (tittel, funn-, prospekt- eller håndsatt navn). Slike oppføringer merkes i
+panelet og kan slettes.
+
 **Planlagte brønner med passert dato i riggtidslinjen:** Sodir har ingen brukbar dato for
 dem, men rigg, og de står fortsatt som «ikke startet». De tegnes som stiplede ravgule bar
 med ⚠, fra det tidligste riggen kan være ledig (etter siste aktivitet, aldri før i dag), i

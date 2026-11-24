@@ -790,6 +790,21 @@
     .fd-del{grid-column:2;grid-row:1 / span 3;align-self:center;background:none;border:1px solid var(--border);border-radius:7px;
       color:#8a3030;cursor:pointer;padding:4px 9px;font-size:0.75rem;}
     .fd-other{padding:9px 12px;font-size:0.72rem;color:var(--muted);}
+    .pw-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 12px;padding:12px;background:var(--card);border-bottom:1px solid var(--border);}
+    .pw-form label{display:flex;flex-direction:column;gap:3px;font-size:0.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;}
+    .pw-form input,.pw-form select{padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;color:#1a2332;background:#fff;text-transform:none;font-weight:400;}
+    .pw-form input:focus,.pw-form select:focus{border-color:var(--blue);outline:none;}
+    .pw-form .pw-wide{grid-column:1 / -1;}
+    .pw-form .pw-hint{font-weight:400;text-transform:none;font-size:0.66rem;}
+    .pw-form .pw-actions{grid-column:1 / -1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    .pw-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--card);font-size:0.8rem;}
+    .pw-row .pw-t{font-weight:700;color:var(--navy);}
+    .pw-row .pw-i{grid-column:1;font-size:0.72rem;color:var(--muted);overflow-wrap:anywhere;}
+    .pw-row .pw-i.wait{color:#9a5a00;}
+    .pw-row .pw-b{grid-column:2;grid-row:1 / span 3;align-self:center;display:flex;gap:6px;}
+    .pw-row .pw-b button{background:none;border:1px solid var(--border);border-radius:7px;color:var(--navy);cursor:pointer;padding:4px 9px;font-size:0.75rem;}
+    .pw-row .pw-b button.del{color:#8a3030;}
+    .ex-chip.ex-manual{background:#fde8b0;color:#7a5b00;}
     .settings-note{padding:12px;font-size:0.72rem;color:var(--muted);line-height:1.5;background:var(--card);border-bottom:1px solid var(--border);}
       /* ── Maksbredde på store skjermer ──────────────────────────────────────
        Innholdet sentreres i en spalte på 1100 px. Under 1148 px (spalten
@@ -1244,6 +1259,30 @@
     usually within a minute or two — the status above updates by itself. A file with the same name as one in the repository replaces it.
   </div>
   <div class="settings-list" id="npList"></div>
+</div>
+
+<div class="settings-panel" id="pwPanel">
+  <div class="settings-head">
+    <div>
+      <h3>Company-announced wells</h3>
+      <div class="sub">Planned exploration wells not yet in Sodir's data · saved to data/exploration_planned_manual.json · shared by everyone</div>
+    </div>
+    <button class="settings-close" onclick="closePlanPanel()">&#10005;</button>
+  </div>
+  <div class="settings-bar">
+    <button class="save-btn" onclick="planEdit('')">Add well</button>
+    <div class="save-status" id="pwStatus"></div>
+  </div>
+  <div id="pwForm"></div>
+  <div class="settings-note">
+    Operators often publish their drilling plans (capital markets days, quarterly reports, rig contracts) further ahead than Sodir lists the wells.
+    Wells added here appear in Exploration → Wells as planned, marked «Company plan», with the expected timing as given by the company
+    (a year, half-year, quarter, month or date). Partners are taken from the licence's current licensees.
+    When Sodir lists the well, the manual entry is hidden automatically: matched on the Sodir well name if given, otherwise on the same licence and name.
+    Such entries are marked below and can be deleted. Saving uses your GitHub token (the same as for hub settings and well names);
+    others see the change within a couple of minutes.
+  </div>
+  <div class="settings-list" id="pwList"></div>
 </div>
 
 <div class="sheet-overlay" id="sheetOverlay" onclick="dismissSheet()"></div>
@@ -19181,6 +19220,7 @@ let explSubView = 'wells';
 let explWells = [], explOwners = [], explCompanies = [];
 let explWellCount = {};   // selskap -> antall brønner som operatør eller partner
 let explNameOv = {};   // brønn (wlbWell) -> navn satt for hånd, fra data/exploration_name_overrides.json
+let explPlans = [];   // planlagte brønner lagt inn for hånd fra selskapenes planer, fra data/exploration_planned_manual.json
 let explById = {};   // brønnbane-id -> brønnen (gruppen) den hører til
 let explLoaded = false, explLoading = null, explRaw = null;
 const explDefaults = () => ({company:'', role:'any', status:'all', result:'all',
@@ -19301,8 +19341,10 @@ function loadExploration() {
   if (explLoaded) return Promise.resolve();
   if (explLoading) return explLoading;
   explLoading = Promise.all([fetchBundle('exploration_wells'), loadDiscoveries().catch(() => {}),
-                             fetchBundle('exploration_prospects'), fetchBundle('exploration_name_overrides')]).then(([b, , prospects, nameOv]) => {
+                             fetchBundle('exploration_prospects'), fetchBundle('exploration_name_overrides'),
+                             fetchBundle('exploration_planned_manual')]).then(([b, , prospects, nameOv, plans]) => {
     explNameOv = (nameOv && nameOv.names) || {};
+    explPlans = (plans && plans.wells) || [];
     if (b) {
       canonRigColumn(b);
       explRaw = b;
@@ -19350,8 +19392,12 @@ function explCompanyMatch(w, name, role) {
 }
 
 function explFiltered(ignoreView) {
+  return explWells.filter(w => explPass(w, ignoreView));
+}
+
+function explPass(w, ignoreView) {
   const f = explF, q = f.q.trim().toLowerCase();
-  return explWells.filter(w => {
+  {
     if (f.company && !explCompanyMatch(w, f.company.trim(), f.role)) return false;
     if (f.lic && w.licence !== f.lic) return false;
     if (f.purpose !== 'all' && w.purpose !== f.purpose) return false;
@@ -19362,7 +19408,7 @@ function explFiltered(ignoreView) {
         : f.result !== 'all' && w.resKey !== f.result) return false;
     if (f.from && w.state === 'completed' && w.start.slice(0, 4) < f.from) return false;
     return true;
-  });
+  }
 }
 
 const fmtShort = d => {
@@ -20247,7 +20293,7 @@ function explSummary(list) {
 }
 
 function explRenderList() {
-  const list = explFiltered();
+  const list = explFiltered().concat(explPlanWells().filter(w => explPass(w)));
   const {key, dir} = explSort;
   list.sort((a, b) => {
     const x = explSortVal(a, key), y = explSortVal(b, key);
@@ -20255,29 +20301,35 @@ function explRenderList() {
   });
   const th = (k, label, cls) => `<th class="${cls || ''}${explSort.key === k ? ' sorted' : ''}" onclick="explSortBy('${k}')">${label}${
     explSort.key === k ? (explSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
-  const rows = list.slice(0, explLimit).map(w => `
-    <tr class="ex-row" tabindex="0" onclick="openWell(${w.id})" onkeydown="if(event.key==='Enter')openWell(${w.id})">
+  const rows = list.slice(0, explLimit).map(w => {
+    const open = w.manual ? `planEdit('${w.pid}')` : `openWell(${w.id})`;
+    return `
+    <tr class="ex-row" tabindex="0" onclick="${open}" onkeydown="if(event.key==='Enter')${open}"${w.manual ? ' title="Announced by the company, not yet in Sodir\'s data. Click to edit."' : ''}>
       <td class="ex-name"><strong>${esc(w.title)}</strong>${w.state !== 'completed'
-        ? `<span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}
-        ${w.sub ? `<small>${esc(w.sub)}</small>` : ''}</td>
+        ? `<span class="ex-chip ex-${w.state}">${STATE_LABEL[w.state]}</span>` : ''}${w.manual ? '<span class="ex-chip ex-manual">Company plan</span>' : ''}
+        ${w.manual ? `<small>${w.source ? `<a href="${esc(w.source)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Source ↗</a>` : 'No source given'}${
+          w.note ? ' · ' + esc(w.note) : ''}</small>` : w.sub ? `<small>${esc(w.sub)}</small>` : ''}</td>
       <td class="ex-l">${explResultCell(w)}</td>
       <td class="ex-l">${w.licence ? licenceLink(w.licence) : '—'}</td>
       <td class="ex-l">${esc(tc(w.purpose))}</td>
       <td class="ex-l">${w.operator ? companyLink(w.operator) : '—'}</td>
       <td class="ex-l"${w.rigs.length > 1 ? ` title="${esc(w.rigs.join(', '))}"` : ''}>${w.rig ? rigLink(w.rig) : '—'}${w.rigs.length > 1 ? ` <small>+${w.rigs.length - 1} more</small>` : ''}</td>
-      <td>${w.state === 'planned' ? `<span class="ex-est"${w.overdue ? ' title="The planned start date has passed"' : ''}>${fmtShort(w.planned)}${w.overdue ? ' ⚠' : ''}</span>` : fmtShort(w.entry)}</td>
+      <td>${w.state === 'planned' ? `<span class="ex-est"${w.overdue ? ' title="The planned start date has passed"' : ''}>${w.manual ? esc(w.whenLabel) : fmtShort(w.planned)}${w.overdue ? ' ⚠' : ''}</span>` : fmtShort(w.entry)}</td>
       <td>${w.end ? fmtShort(w.end) : '—'}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   const more = list.length > explLimit
     ? `<button class="grp-btn ex-more" onclick="explLimit+=200;explRenderList()">Show more (${list.length - explLimit} remaining)</button>` : '';
   document.getElementById('explBody').innerHTML = `
-    <div class="pf-card"><h3>Exploration wells</h3><div class="ex-slot"></div>
+    <div class="pf-card"><h3 class="cn-head"><span>Exploration wells</span>
+      <button class="cn-gear" style="margin-right:62px" onclick="openPlanPanel()" title="Planned wells announced by the companies but not yet in Sodir's data">${GEAR_SVG}Company plans</button></h3><div class="ex-slot"></div>
     <div class="ex-sum">${explSummary(list) || 'No wells match the filters'}</div>
     ${list.length ? `<div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       ${th('name', 'Well / discovery', 'ex-l')}${th('result', 'Result', 'ex-l')}${th('licence', 'Licence', 'ex-l')}
       ${th('purpose', 'Purpose', 'ex-l')}${th('operator', 'Operator', 'ex-l')}${th('rig', 'Rig', 'ex-l')}
       ${th('start', 'Start')}${th('end', 'End')}</tr></thead><tbody>${rows}</tbody></table></div>${more}` : ''}
-    <div class="ex-note">Planned start dates are Sodir's estimates and may slip (⚠ = date already passed). Where a well made a discovery, the
+    <div class="ex-note">Planned start dates are Sodir's estimates and may slip (⚠ = date already passed). Wells marked «Company plan» are added by hand
+      from the operators' own announcements, with the timing they gave, and disappear once Sodir lists them. Where a well made a discovery, the
       discovery name is shown with the wellbore name below. Source: Sodir wellbore data (NLOD 2.0).</div></div>`;
   dockBar('explBody');
 }
@@ -21529,6 +21581,261 @@ async function explEditName(id) {
   openWell(id, true);
   explRenderBody();
   pptToast(w.nameOv ? 'Name saved. Others see it within a couple of minutes.' : 'Manual name removed');
+}
+
+// ── Planlagte brønner fra selskapene ─────────────────────────────────────────
+// Selskapene legger ofte ut boreplanene sine (kapitalmarkedsdager,
+// kvartalsrapporter, riggkontrakter) lenger fram enn Sodir har brønnene.
+// Slike brønner legges inn for hånd i data/exploration_planned_manual.json,
+// med tidspunktet slik selskapet oppgir det (år, halvår, kvartal, måned eller
+// dato). De vises bare i brønnlisten (Exploration → Wells), merket «Company
+// plan»; kartet, riggtidslinjen og statistikken bygger fortsatt bare på Sodir.
+// Når Sodir har brønnen, skjules den manuelle: på Sodirs brønnavn hvis det er
+// oppgitt, ellers på samme lisens og samme navn.
+const EXPL_PLAN_PATH = 'data/exploration_planned_manual.json';
+const PW_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+// «2027», «H2 2027», «Q3 2027», «3Q27», «May 2027», «2027-05», «2027-05-14»
+// -> {date: første dag i perioden, end: siste dag, label}. null hvis ukjent.
+function planWhen(raw) {
+  const t = String(raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const yr = y => y.length === 2 ? 2000 + +y : +y;
+  const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const last = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const span = (y, m0, m1, label) => ({date: iso(y, m0, 1), end: iso(y, m1, last(y, m1)), label});
+  let m;
+  if ((m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t))) {
+    const y = +m[1], mo = +m[2], d = +m[3];
+    if (mo < 1 || mo > 12 || d < 1 || d > last(y, mo)) return null;
+    return {date: t, end: t, label: fmtShort(t)};
+  }
+  if ((m = /^(\d{4})-(\d{1,2})$/.exec(t)) && +m[2] >= 1 && +m[2] <= 12)
+    return span(+m[1], +m[2], +m[2], `${MONTH_ABBR[+m[2] - 1]} ${m[1]}`);
+  if ((m = /^([a-z]{3})[a-z]*\.? (\d{4})$/.exec(t)) && PW_MONTHS.includes(m[1])) {
+    const mo = PW_MONTHS.indexOf(m[1]) + 1;
+    return span(+m[2], mo, mo, `${MONTH_ABBR[mo - 1]} ${m[2]}`);
+  }
+  if ((m = /^q([1-4]) ?'?(\d{4}|\d{2})$/.exec(t)) || (m = /^([1-4])q ?'?(\d{4}|\d{2})$/.exec(t))
+      || ((m = /^(\d{4}) ?q([1-4])$/.exec(t)) && (m = [m[0], m[2], m[1]]))) {
+    const y = yr(m[2]), q = +m[1];
+    return span(y, q * 3 - 2, q * 3, `Q${q} ${y}`);
+  }
+  if ((m = /^h([12]) ?'?(\d{4}|\d{2})$/.exec(t)) || (m = /^([12])h ?'?(\d{4}|\d{2})$/.exec(t))
+      || ((m = /^(\d{4}) ?h([12])$/.exec(t)) && (m = [m[0], m[2], m[1]]))) {
+    const y = yr(m[2]), h = +m[1];
+    return span(y, h * 6 - 5, h * 6, `H${h} ${y}`);
+  }
+  if ((m = /^(\d{4})$/.exec(t))) return span(+m[1], 1, 12, m[1]);
+  return null;
+}
+
+// «PL 1014», «pl1174s», «37» -> Sodirs form: «1014», «1174 S», «037».
+function planLicence(raw) {
+  const t = String(raw || '').trim().toUpperCase().replace(/^PL\s*/, '').replace(/\s+/g, ' ');
+  const m = /^(\d+)\s*([A-Z]{1,3})?$/.exec(t);
+  return m ? m[1].padStart(3, '0') + (m[2] ? ' ' + m[2] : '') : t;
+}
+
+function planPartners(licence) {
+  const ll = bundle.licence_licensees;
+  if (!ll || !licence) return [];
+  const o = ll.columns.indexOf('owner'), k = ll.columns.indexOf('ownerKind'), c = ll.columns.indexOf('company'), sh = ll.columns.indexOf('share');
+  return ll.rows.filter(r => r[o] === licence && r[k] === 'PRODUCTION LICENCE' && r[c]).map(r => ({name: r[c], share: r[sh]}));
+}
+
+// Sodir-brønnen som tilsvarer en manuell oppføring, hvis Sodir har den.
+function planInSodir(p) {
+  if (p.well) {
+    // Brønnen eller en av grenene: «25/9-5» og «25/9-5 S» treffer begge.
+    const key = p.well.trim().toUpperCase().replace(/\s+/g, ' ');
+    const hit = explWells.find(w => w.key.toUpperCase() === key || w.branches.some(x => (x.name || '').toUpperCase() === key));
+    if (hit) return hit;
+  }
+  const n = (p.name || '').trim().toLowerCase(), lic = planLicence(p.licence);
+  if (!n || !lic) return null;
+  return explWells.find(w => w.licence === lic && [w.title, w.autoTitle, w.prospect, w.nameOv]
+    .some(x => x && x.toLowerCase() === n)) || null;
+}
+
+// De manuelle brønnene Sodir ikke har ennå, i samme form som Sodir-brønnene i listen.
+function explPlanWells() {
+  const today = new Date().toISOString().slice(0, 10);
+  return explPlans.filter(p => !planInSodir(p)).map(p => {
+    const when = planWhen(p.when) || {date: '9999-12-31', end: '9999-12-31', label: p.when || '—'};
+    const lic = planLicence(p.licence), rig = (p.rig || '').trim();
+    return {
+      manual: true, pid: p.id, id: 'p' + p.id, title: p.name, sub: '', key: p.well || '', state: 'planned',
+      planned: when.date, start: when.date, end: '', entry: '', whenLabel: when.label, overdue: when.end < today,
+      licence: lic, operator: p.operator || '', purpose: p.purpose || 'WILDCAT', rig, rigs: rig ? [rig] : [],
+      resKey: '', content: '', partners: planPartners(lic), source: p.source || '', note: p.note || '',
+      hay: [p.name, p.well, lic, p.operator, rig, p.note].join('|').toLowerCase(),
+    };
+  });
+}
+
+let pwEditing = null;
+function openPlanPanel() {
+  pwEditing = null;
+  document.getElementById('pwForm').innerHTML = '';
+  setPwStatus('');
+  document.getElementById('pwPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderPlanList();
+}
+function closePlanPanel() {
+  document.getElementById('pwPanel').classList.remove('open');
+  document.body.style.overflow = '';
+  pwEditing = null;
+  if (topMode === 'exploration' && explSubView === 'wells') explRenderList();
+}
+function setPwStatus(msg, kind) {
+  const el = document.getElementById('pwStatus');
+  el.innerHTML = msg || '';
+  el.className = 'save-status' + (kind ? ' ' + kind : '');
+}
+
+function renderPlanList() {
+  const list = explPlans.slice().sort((a, b) => ((planWhen(a.when) || {}).date || '9') < ((planWhen(b.when) || {}).date || '9') ? -1 : 1);
+  document.getElementById('pwList').innerHTML = list.length ? list.map(p => {
+    const sod = planInSodir(p), when = planWhen(p.when);
+    const info = [p.operator, p.licence ? 'PL ' + planLicence(p.licence) : '', tc(p.purpose || 'WILDCAT'), when ? when.label : p.when, p.rig]
+      .filter(Boolean).map(esc).join(' · ');
+    return `<div class="pw-row"><div class="pw-t">${esc(p.name)}</div>
+      <div class="pw-b"><button onclick="planEdit('${p.id}')">Edit</button><button class="del" onclick="planDelete('${p.id}')">Delete</button></div>
+      <div class="pw-i">${info}</div>
+      ${sod ? `<div class="pw-i wait">Now in Sodir's data as ${esc(sod.key)} (${esc(STATE_LABEL[sod.state].toLowerCase())}) — hidden from the list and can be deleted</div>`
+        : p.source ? `<div class="pw-i"><a href="${esc(p.source)}" target="_blank" rel="noopener">${esc(p.source)}</a>${p.added ? ` · added ${esc(fmtShort(p.added))}` : ''}</div>` : ''}
+    </div>`;
+  }).join('') : '<div class="np-foot">No company-announced wells yet. Use «Add well» to add one.</div>';
+}
+
+function planEdit(id) {
+  if (!document.getElementById('pwPanel').classList.contains('open')) openPlanPanel();
+  const p = id ? explPlans.find(x => x.id === id) : null;
+  if (id && !p) return;
+  pwEditing = id || '';
+  const v = k => esc(p ? p[k] || '' : '');
+  const rigs = [...new Set(explWells.flatMap(w => w.rigs))].sort();
+  const sel = (cur, val, label) => `<option value="${val}"${(cur || 'WILDCAT') === val ? ' selected' : ''}>${label}</option>`;
+  document.getElementById('pwForm').innerHTML = `
+    <form class="pw-form" onsubmit="planSave(event)">
+      <label>Name (prospect)<input id="pwName" required maxlength="60" value="${v('name')}" placeholder="e.g. Ringhorne Nord"/></label>
+      <label>Operator<input id="pwOp" list="pwOps" maxlength="80" value="${v('operator')}" placeholder="e.g. Aker BP ASA"/></label>
+      <label>Licence<input id="pwLic" maxlength="20" value="${v('licence')}" placeholder="e.g. PL 1014"/></label>
+      <label>Purpose<select id="pwPurpose">${sel(p && p.purpose, 'WILDCAT', 'Wildcat')}${sel(p && p.purpose, 'APPRAISAL', 'Appraisal')}</select></label>
+      <label>Expected start<input id="pwWhen" required maxlength="20" value="${v('when')}" placeholder="2027, H2 2027, Q3 2027, May 2027…"/>
+        <span class="pw-hint" id="pwWhenHint">As precise as the company is: year, half-year, quarter, month or date</span></label>
+      <label>Rig<input id="pwRig" list="pwRigs" maxlength="60" value="${v('rig')}" placeholder="optional"/></label>
+      <label>Sodir well name<input id="pwWell" maxlength="20" value="${v('well')}" placeholder="optional, e.g. 25/8-25 S"/>
+        <span class="pw-hint">If known; used to hide the entry once Sodir lists the well</span></label>
+      <label class="pw-wide">Source<input id="pwSrc" type="url" maxlength="400" value="${v('source')}" placeholder="https://… (presentation, report or press release)"/></label>
+      <label class="pw-wide">Note<input id="pwNote" maxlength="160" value="${v('note')}" placeholder="optional, e.g. «Capital Markets Day, Feb 2026»"/></label>
+      <div class="pw-actions"><button class="save-btn" type="submit" id="pwSaveBtn">${p ? 'Save changes' : 'Add well'}</button>
+        <button class="grp-btn" type="button" onclick="planCancel()">Cancel</button></div>
+      <datalist id="pwOps">${sortCompanies(explCompanies).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <datalist id="pwRigs">${rigs.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    </form>`;
+  const w = document.getElementById('pwWhen');
+  const hint = () => {
+    const r = planWhen(w.value), h = document.getElementById('pwWhenHint');
+    h.textContent = !w.value.trim() ? 'As precise as the company is: year, half-year, quarter, month or date'
+      : r ? `Read as ${r.label}` : 'Not understood — use e.g. 2027, H2 2027, Q3 2027, May 2027 or 2027-05-14';
+    h.style.color = w.value.trim() && !r ? '#c0392b' : '';
+  };
+  w.addEventListener('input', hint); hint();
+  document.getElementById('pwName').focus();
+  setPwStatus('');
+}
+function planCancel() { pwEditing = null; document.getElementById('pwForm').innerHTML = ''; setPwStatus(''); }
+
+// Leser fila på nytt rett før skriving (som navnene), så to som lagrer samtidig
+// ikke overskriver hverandre. change(list) returnerer den nye lista.
+async function planWrite(change, message) {
+  let token = lsGet(GH_TOKEN_KEY);
+  if (!token) {
+    token = prompt(
+      `Paste a GitHub fine-grained token with "Contents: read and write" on ${GH_OWNER}/${GH_REPO}.\n\n` +
+      'The token is stored only in your own browser, never in the page source.');
+    if (!token) return false;
+    token = token.trim();
+    lsSet(GH_TOKEN_KEY, token);
+  }
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${EXPL_PLAN_PATH}`;
+  const headers = {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json'};
+  const cur = await fetch(`${api}?ref=${GH_BRANCH}`, {headers, cache: 'no-store'});
+  if (cur.status === 401 || cur.status === 403) {
+    lsDel(GH_TOKEN_KEY);
+    throw new Error('The token was rejected. Try again and paste a new one.');
+  }
+  let sha, wells = [];
+  if (cur.ok) {
+    const j = await cur.json();
+    sha = j.sha;
+    try { wells = JSON.parse(base64ToUtf8(j.content)).wells || []; } catch (e) { wells = []; }
+  }
+  wells = change(wells);
+  const text = JSON.stringify({
+    version: 1,
+    updated: new Date().toISOString().slice(0, 10),
+    note: 'Planlagte letebrønner lagt inn for hånd fra selskapenes egne planer (Exploration → Wells → Company plans). ' +
+          'Vises i brønnlisten til Sodir har brønnen. when: år, halvår, kvartal, måned eller dato, slik selskapet oppgir det.',
+    wells,
+  }, null, 2) + '\n';
+  const res = await fetch(api, {
+    method: 'PUT', headers: {...headers, 'Content-Type': 'application/json'},
+    body: JSON.stringify({message, content: utf8ToBase64(text), branch: GH_BRANCH, ...(sha ? {sha} : {})}),
+  });
+  if (res.status === 409 || res.status === 422) throw new Error('The file was changed by someone else. Try again.');
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.message || res.status);
+  }
+  explPlans = wells;
+  return true;
+}
+
+async function planSave(ev) {
+  ev.preventDefault();
+  const val = id => document.getElementById(id).value.trim().replace(/\s+/g, ' ');
+  const rec = {name: val('pwName'), operator: val('pwOp'), licence: val('pwLic') ? planLicence(val('pwLic')) : '',
+               purpose: document.getElementById('pwPurpose').value, when: val('pwWhen'), rig: val('pwRig'),
+               well: val('pwWell').toUpperCase(), source: val('pwSrc'), note: val('pwNote')};
+  if (!rec.name) return setPwStatus('A name is required.', 'err');
+  if (!planWhen(rec.when)) return setPwStatus('The expected start was not understood.', 'err');
+  if (rec.source && !/^https?:\/\//i.test(rec.source)) return setPwStatus('The source must be a web address (https://…).', 'err');
+  Object.keys(rec).forEach(k => { if (!rec[k]) delete rec[k]; });
+  const id = pwEditing;
+  const btn = document.getElementById('pwSaveBtn');
+  btn.disabled = true;
+  setPwStatus('Saving…');
+  try {
+    const ok = await planWrite(list => {
+      if (id) return list.map(x => x.id === id ? {id, ...rec, added: x.added} : x);
+      const nid = Date.now().toString(36);
+      return list.concat([{id: nid, ...rec, added: new Date().toISOString().slice(0, 10)}]);
+    }, id ? `Selskapsplan oppdatert: ${rec.name}` : `Selskapsplan lagt til: ${rec.name}`);
+    if (!ok) { btn.disabled = false; return setPwStatus(''); }
+  } catch (e) {
+    btn.disabled = false;
+    return setPwStatus(`Saving failed: ${esc(e.message)}`, 'err');
+  }
+  planCancel();
+  renderPlanList();
+  setPwStatus(`${esc(rec.name)} saved. Others see it within a couple of minutes.`, 'ok');
+}
+
+async function planDelete(id) {
+  const p = explPlans.find(x => x.id === id);
+  if (!p || !confirm(`Delete «${p.name}» from the company plans?`)) return;
+  setPwStatus('Deleting…');
+  try {
+    if (!(await planWrite(list => list.filter(x => x.id !== id), `Selskapsplan fjernet: ${p.name}`))) return setPwStatus('');
+  } catch (e) {
+    return setPwStatus(`Deleting failed: ${esc(e.message)}`, 'err');
+  }
+  if (pwEditing === id) planCancel();
+  renderPlanList();
+  setPwStatus(`${esc(p.name)} deleted.`, 'ok');
 }
 
 function openWell(id, quiet) {
