@@ -3421,3 +3421,13 @@ boksen på nytt). Kolonner: lisens, havområde, runde, operatør (egne
 operatørskap merket, ellers operatørens navn), andel, brutto og netto areal,
 fase, gyldig til (dato) og felt/BAA/funn (bare funnets eget navn; BAA i grått).
 Sorteringen (`licProfSort`) deles av begge sidene; 50 rader før «Show all».
+
+**Kartet på Company → Licences** er porteføljen over tid med avspiller
+(`companyLicMapRender`), samme kart og kontroller som Licence → Map
+(`licTlMapHtml`, `licTlBuild(co, 420, 640)` for et smalere, høyere kart), men
+uten sidepanelet; `licTlSet` hopper over sidepanelet når det ikke finnes, og
+avspillingen stopper når kartet er borte. Eierhistorikken lastes ved behov;
+uten historikk vises dagens kart (`licCompanyMap`).
+
+**Faktaark for DCS/UKCS-felt ved navigering:** `popstate` tømmer `dcsF.fs/wl`
+og `ukF.fs` når adressen peker til en annen side, så arket lukkes.

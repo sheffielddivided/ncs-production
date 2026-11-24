@@ -3214,6 +3214,9 @@ window.addEventListener('popstate', async () => {
   try {
     const wasNcs = SHELF_MODES.includes(topMode);
     applyHash();
+    // Faktaarket for et DCS-/UKCS-felt hører til sin sokkel; på en annen side skal det lukkes.
+    if (topMode !== 'dcs') { dcsF.fs = ''; dcsF.wl = ''; }
+    if (topMode !== 'ukcs') ukF.fs = '';
     if (wasNcs && !SHELF_MODES.includes(topMode)) ncsPrevPeriod = null;   // perioden står i adressen
     syncModeButtons();
     renderViewTabs();
@@ -16948,13 +16951,39 @@ function drawCompanyLicences() {
         ${licenceSummaryCard(name, licenceRows, false, `${esc(name)} · Licences`)}
         ${licenceDealsCard(name)}
       </div>
-      <div class="pf-card lic-top-map"><h3>Licence map</h3>${licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})), {w: 420, h: 620})}</div>
+      <div class="pf-card lic-top-map"><h3>Licence map</h3><div id="cmpLicMap" data-company="${esc(name)}">
+        <div class="status"><div class="spinner"></div><div>Loading…</div></div></div></div>
     </div>
     <div class="pf-card pf-wide"><h3>All licences</h3>
       <div id="licenceBox" data-company="${esc(name)}">${companyLicBoxHtml(name)}</div>
       <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licence →</button></div></div>`
     : `<div class="pf-card pf-wide"><h3>${esc(name)} · Licences</h3><div class="pf-map-note">The company holds no active production licences.</div></div>`
       + licenceDealsCard(name));
+  companyLicMapRender();
+}
+
+// Kartet på Company → Licences: porteføljen over tid med avspiller, som i
+// Licence → Map men uten sidepanelet. Trenger eierhistorikken; til den er
+// lastet står en spinner. Uten historikk for selskapet vises dagens kart.
+function companyLicMapRender() {
+  const host = document.getElementById('cmpLicMap');
+  if (!host) return;
+  const name = host.dataset.company;
+  if (!licHist || !licLoaded) {
+    Promise.all([licLoadHistory(), loadLicences()]).then(() => {
+      const h = document.getElementById('cmpLicMap');
+      if (h && h.dataset.company === name && licHist) companyLicMapRender();
+    });
+    return;
+  }
+  licStop();
+  licTl = licTlBuild(name, 420, 640);
+  if (!licTl) {
+    host.innerHTML = licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})), {w: 420, h: 620});
+    return;
+  }
+  host.innerHTML = licTlMapHtml(licTl, licTl.today);
+  licTlSet(licTl.today, true);
 }
 
 // Tabellen bruker lisensmodulens data; lastes de første gang, tegnes boksen
@@ -24422,7 +24451,7 @@ function licVersionAt(id, d) {
   return d < vs[0][0] ? vs[0] : vs[vs.length - 1];
 }
 
-function licTlBuild(co) {
+function licTlBuild(co, W = 640, HMAX = 560) {   // W/HMAX: smalere, høyere kart på Company → Licences
   // Selskapet følges som konsern: forgjengerne (Det norske for Aker BP, Statoil
   // for Equinor) ligger under andre juridiske navn i historikken.
   const key = licConcern(co).key, entities = new Set();
@@ -24443,9 +24472,9 @@ function licTlBuild(co) {
   }))));
   if (x0 > x1) return null;
   // Utsnitt som i outlineMap: ekvirektangulær med breddegradskorrigering.
-  const W = 640, kx = Math.cos(((y0 + y1) / 2) * Math.PI / 180);
+  const kx = Math.cos(((y0 + y1) / 2) * Math.PI / 180);
   const padX = 1.08, spanX = Math.max((x1 - x0) * padX, 1.6), spanY = Math.max((y1 - y0) * padX, 1.2);
-  const H = Math.round(Math.min(560, Math.max(300, W * spanY / (spanX * kx))));
+  const H = Math.round(Math.min(HMAX, Math.max(300, W * spanY / (spanX * kx))));
   // Felles skala: samme grader per piksel i begge retninger, korrigert med kx.
   const scale = Math.min(W / (spanX * kx), H / spanY);
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
@@ -24503,13 +24532,9 @@ function licTlSpark() {
   return (t.spark = pts);
 }
 
-function licRenderMap() {
-  const box = document.getElementById('licBody');
-  const co = licF.company;
-  licTl = licTlBuild(co);
-  if (!licTl) { box.innerHTML = `<div class="status">No licence history found for ${esc(co)}.</div>`; dockBar('licBody'); return; }
-  const t = licTl;
-  const d0 = licF.date ? Math.min(Math.max(licIsoDay(licF.date), t.min), t.today) : t.today;
+// Kartet med avspiller (play, tidslinje, fart), uten sidepanelet. Brukes av
+// Licence → Map og Company → Licences. licTl må være bygget (licTlBuild).
+function licTlMapHtml(t, d0) {
   const coast = ((bundle.coastline && bundle.coastline.rings) || []);
   const fields = Object.values((bundle.field_outlines && bundle.field_outlines.fields) || {}).flat();
   const ringPath = rings => rings.map(r => {
@@ -24522,6 +24547,31 @@ function licRenderMap() {
     }
     return n >= 3 ? s + 'Z' : '';
   }).join('');
+  return `
+          <svg class="pf-map" viewBox="0 0 ${t.W} ${t.H}" style="aspect-ratio:${t.W}/${t.H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Portfolio map">
+            <rect width="${t.W}" height="${t.H}" fill="#eef3f8"/>
+            <path d="${ringPath(coast)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>
+            <path d="${ringPath(fields)}" fill="#cbd6e2" stroke="#b2bfcd" stroke-width="0.4" opacity="0.7"/>
+            <g id="licTlG"></g>
+            <text id="licTlDate" class="lc-tl-date" x="${t.W - 10}" y="${Math.round(30 * t.W / 640)}" text-anchor="end"${t.W < 640 ? ` style="font-size:${Math.round(22 * t.W / 640)}px"` : ''}></text>
+          </svg>
+          <div class="lc-slider"><button class="grp-btn" id="licPlay" onclick="licTlPlay()">▶ Play</button>
+            <input type="range" id="licTlRange" min="${t.min}" max="${t.today}" step="1" value="${d0}" aria-label="Date"
+                   oninput="licTlSet(+this.value)"/>
+            <select class="year-select" id="licTlSpeed" aria-label="Speed"><option value="30">1×</option><option value="90" selected>3×</option><option value="240">8×</option></select></div>
+          <div class="lc-slider-ends"><span>${licDayYear(t.min)}</span><span>${licDayYear(t.today)}</span></div>
+          <div class="pf-map-note"><span class="ex-dot" style="background:rgba(206,15,105,0.85)"></span>Operator ·
+            <span class="ex-dot" style="background:rgba(206,15,105,0.34)"></span>Partner · outlined: stake acquired within the last year.
+            Areas follow Sodir's area history, so a licence is shown at the size it had on the date. Fields: today's.</div>`;
+}
+
+function licRenderMap() {
+  const box = document.getElementById('licBody');
+  const co = licF.company;
+  licTl = licTlBuild(co);
+  if (!licTl) { box.innerHTML = `<div class="status">No licence history found for ${esc(co)}.</div>`; dockBar('licBody'); return; }
+  const t = licTl;
+  const d0 = licF.date ? Math.min(Math.max(licIsoDay(licF.date), t.min), t.today) : t.today;
   const sp = licTlSpark(), maxN = Math.max(1, ...sp.map(p => p[1]));
   const SW = 300, SH = 60;
   const spX = d => (d - t.min) / (t.today - t.min || 1) * SW;
@@ -24531,21 +24581,7 @@ function licRenderMap() {
       ${t.entities.length > 1 ? `<div class="pf-map-note" style="margin:-4px 0 8px">Follows the whole concern, including predecessors: ${esc(t.entities.slice(0, 8).map(licShort).join(', '))}${t.entities.length > 8 ? '…' : ''}</div>` : ''}
       <div class="lc-tl">
         <div>
-          <svg class="pf-map" viewBox="0 0 ${t.W} ${t.H}" style="aspect-ratio:${t.W}/${t.H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Portfolio map">
-            <rect width="${t.W}" height="${t.H}" fill="#eef3f8"/>
-            <path d="${ringPath(coast)}" fill="#f4f2ee" stroke="#c3ccd5" stroke-width="0.7"/>
-            <path d="${ringPath(fields)}" fill="#cbd6e2" stroke="#b2bfcd" stroke-width="0.4" opacity="0.7"/>
-            <g id="licTlG"></g>
-            <text id="licTlDate" class="lc-tl-date" x="${t.W - 10}" y="30" text-anchor="end"></text>
-          </svg>
-          <div class="lc-slider"><button class="grp-btn" id="licPlay" onclick="licTlPlay()">▶ Play</button>
-            <input type="range" id="licTlRange" min="${t.min}" max="${t.today}" step="1" value="${d0}" aria-label="Date"
-                   oninput="licTlSet(+this.value)"/>
-            <select class="year-select" id="licTlSpeed" aria-label="Speed"><option value="30">1×</option><option value="90" selected>3×</option><option value="240">8×</option></select></div>
-          <div class="lc-slider-ends"><span>${licDayYear(t.min)}</span><span>${licDayYear(t.today)}</span></div>
-          <div class="pf-map-note"><span class="ex-dot" style="background:rgba(206,15,105,0.85)"></span>Operator ·
-            <span class="ex-dot" style="background:rgba(206,15,105,0.34)"></span>Partner · outlined: stake acquired within the last year.
-            Areas follow Sodir's area history, so a licence is shown at the size it had on the date. Fields: today's.</div>
+          ${licTlMapHtml(t, d0)}
         </div>
         <div>
           <div class="pf-facts" id="licTlFacts"></div>
@@ -24577,6 +24613,8 @@ function licTlSet(d, fromRender) {
   document.getElementById('licTlDate').textContent = licDayStr(d);
   const rng = document.getElementById('licTlRange');
   if (rng && +rng.value !== d) rng.value = d;
+  // Sidepanelet (fakta, kurve og avtaler) finnes bare i Licence → Map.
+  if (!document.getElementById('licTlFacts')) return;
   document.getElementById('licTlFacts').innerHTML = `
     <div class="pf-fact"><span>Licences</span><strong>${st.n}</strong></div>
     <div class="pf-fact"><span>Operatorships</span><strong>${st.op}</strong></div>
@@ -24609,6 +24647,7 @@ function licTlPlay() {
   if (t.d >= t.today) licTlSet(t.min);
   document.getElementById('licPlay').textContent = '❚❚ Pause';
   licTlTimer = setInterval(() => {
+    if (!document.getElementById('licTlG')) { licStop(); return; }   // siden er byttet
     const step = +document.getElementById('licTlSpeed').value;
     const next = Math.min(t.today, t.d + step);
     licTlSet(next);
