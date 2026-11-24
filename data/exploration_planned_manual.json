@@ -67,6 +67,17 @@
       "source": "https://okea.no/wp-content/uploads/2026/11/OKEA-Q3-Quarterly-Report.pdf",
       "note": "Okea Q3",
       "added": "2026-11-24"
+    },
+    {
+      "id": "mwv2xofg",
+      "name": "Tverrdal",
+      "operator": "OKEA ASA",
+      "licence": "1102",
+      "purpose": "WILDCAT",
+      "when": "h2 2027",
+      "source": "https://okea.no/wp-content/uploads/2026/11/OKEA-Q3-Quarterly-Report.pdf",
+      "note": "Okea Q3-26",
+      "added": "2026-11-24"
     }
   ]
 }
