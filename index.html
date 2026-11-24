@@ -6000,6 +6000,48 @@ function drawDcsReserves() {
 // NPV per 1.1. i år med midtårskonvensjon, samme priser, inflasjon, horisont
 // og rater som den norske modellen.
 const DCS_OPEX_USD = 30, DCS_TAX = 0.64;
+// Danmark har vedtatt at olje- og gassproduksjonen skal opphøre i 2050. Alle
+// reservene må da være produsert innen utgangen av DCS_LAST_YEAR, så profilen
+// for et felt som ellers ville produsert lenger, presses sammen (dcsFitEnd).
+const DCS_LAST_YEAR = 2050;
+
+// Tilpasser en prognose til sluttåret. Uendret hvis feltet er ferdig innen da.
+// · Produserende felt (last > 0): starter fra fjorårets nivå som før, men med
+//   så lavt årlig fall at hele R er produsert i DCS_LAST_YEAR. Holder ikke
+//   engang flat produksjon på fjorårets nivå, beholdes det opprinnelige fallet
+//   og hele kurven løftes, så den starter over fjorårets nivå.
+// · Nye felt (last = 0): høyere platånivå, til profilen slutter innen sluttåret.
+// Returnerer {rows, fitted, origEnd}.
+function dcsFitEnd(rows, R, last, y0) {
+  const origEnd = rows.length ? rows[rows.length - 1][0] : null;
+  const produced = rows.reduce((t, r) => t + r[1], 0);
+  if (!rows.length || (origEnd <= DCS_LAST_YEAR && produced >= R * 0.999)) return {rows, fitted: false, origEnd};
+  if (last > 0) {
+    const N = DCS_LAST_YEAR - y0 + 1;
+    const geo = (A, d) => Array.from({length: N}, (_, k) => A * Math.pow(1 - d, k + 1));
+    const sum = a => a.reduce((t, x) => t + x, 0);
+    let q;
+    if (N * last >= R) {
+      // Fallet d som gir sum R over N år fra fjorårets nivå (summen synker med d).
+      let lo = 0, hi = 0.999;
+      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (sum(geo(last, m)) > R) lo = m; else hi = m; }
+      q = geo(last, (lo + hi) / 2);
+    } else {
+      const d0 = rows.length > 1 ? Math.max(0, 1 - rows[1][1] / rows[0][1]) : 0;
+      q = geo(1, d0);
+    }
+    const k = R / sum(q);   // skaleres til nøyaktig R
+    return {rows: q.map((x, i) => [y0 + i, x * k]), fitted: true, origEnd};
+  }
+  // Nytt felt: laveste platånivå som gjør profilen ferdig innen sluttåret.
+  const start = rows[0][0];
+  let lo = CF_PLATEAU_RATE, hi = 1;
+  for (let i = 0; i < 40; i++) {
+    const m = (lo + hi) / 2, r = cfNewField(R, start, m);
+    if (r[r.length - 1][0] > DCS_LAST_YEAR) lo = m; else hi = m;
+  }
+  return {rows: cfNewField(R, start, hi), fitted: true, origEnd};
+}
 const DCS_MERGE = {tyra_se: 'tyra'};   // produksjonen regnes med feltet ENS fører reservene under
 let dcsValCharts = [];
 
@@ -6014,10 +6056,11 @@ function dcsValFields() {
     for (let y = ry; y < y0; y++) R -= merged(f.slug).reduce((t, s) => t + prodIn(s, y), 0);
     R = Math.max(0, R);
     const last = merged(f.slug).reduce((t, s) => t + prodIn(s, y0 - 1), 0);
-    const rows = R <= 0 ? [] : last > 0 ? cfDecline(last, R, y0) : cfNewField(R, y0 + 1);
+    const base = R <= 0 ? [] : last > 0 ? cfDecline(last, R, y0) : cfNewField(R, y0 + 1);
+    const {rows, fitted, origEnd} = dcsFitEnd(base, R, last, y0);
     const hist = {};
     for (let y = y0 - 12; y < y0; y++) hist[y] = merged(f.slug).reduce((t, s) => t + prodIn(s, y), 0);
-    return {slug: f.slug, name: f.name, R, liqShare: oil + gas > 0 ? oil / (oil + gas) : 1, last, rows, hist,
+    return {slug: f.slug, name: f.name, R, liqShare: oil + gas > 0 ? oil / (oil + gas) : 1, last, rows, hist, fitted, origEnd,
             members: merged(f.slug), zeroRounded: R <= 0 && last > 0};
   });
 }
@@ -6066,14 +6109,14 @@ function drawDcsValuation() {
   const fact = (k, val, sub = '') => `<div class="pf-fact"><span>${k}</span><strong>${val}</strong>${sub ? `<small class="val-sub">${sub}</small>` : ''}</div>`;
   const boed = x => Math.round(x / daysInYear(y0 - 1)).toLocaleString('en');
   setChartTitle(`${cmp} · Valuation (beta), Denmark`, `Indicative after-tax value of the Danish portfolio · oil price USD ${hubCfPrice} · as at 1 January ${y0}`);
-  setInfo(`<strong>Method:</strong> ${esc(cmp)}'s share today of each Danish field's forecast, ENS reserves per 1 January ${ry} declining from ${y0 - 1} production, USD ${DCS_OPEX_USD}/boe operating cost, ${pct(DCS_TAX)} tax, no capex &nbsp;|&nbsp; <strong>Sources:</strong> Danish Energy Agency (ENS) production, reserves and licences &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
+  setInfo(`<strong>Method:</strong> ${esc(cmp)}'s share today of each Danish field's forecast, ENS reserves per 1 January ${ry} declining from ${y0 - 1} production and all produced by ${DCS_LAST_YEAR}, when Danish production ends, USD ${DCS_OPEX_USD}/boe operating cost, ${pct(DCS_TAX)} tax, no capex &nbsp;|&nbsp; <strong>Sources:</strong> Danish Energy Agency (ENS) production, reserves and licences &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
   ncsToggleAbove(dcsBar(`<span class="ctrl-label">Company</span><select class="year-select" onchange="dcsSet('cmp', this.value)" aria-label="Company">${
     byVal.map(({c}) => `<option value="${esc(c)}"${c === cmp ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`));
 
   const zero = v.list.filter(f => f.zeroRounded);
   const warn = `<div class="pf-card pf-wide val-warn" role="note">
       <strong>Beta · indicative only, and rougher than the Norwegian valuation.</strong> The Danish data have no investment figures per field,
-      so there is no capex and no abandonment cost in the model: every field simply declines from last year's production at a flat
+      so there is no capex and no abandonment cost in the model: every field simply declines from last year's production (all reserves produced by ${DCS_LAST_YEAR}, when Danish production ends) at a flat
       USD ${DCS_OPEX_USD} per boe operating cost and ${pct(DCS_TAX)} tax. It does not reflect company-specific costs, contracts, tariffs, tax positions,
       hedging, new developments or reserve assessments, and it must not be used for investment or other decisions.</div>`;
   const head = `<div class="pf-card pf-wide">
@@ -6116,20 +6159,21 @@ function drawDcsValuation() {
       <tbody>${v.list.map(f => `<tr><td>${rowLink(f.name, `dcsOpenSheet(${esc(jsStr(f.slug))})`, `Open the factsheet for ${f.name}`)}${
           f.members.length > 1 ? ` <small style="color:var(--muted)">incl. ${f.members.slice(1).map(dcsName).map(esc).join(', ')}</small>` : ''}${
           f.zeroRounded ? ' <small style="color:var(--muted)" title="ENS rounds each field to whole million m³ oil / bn Nm³ gas">reserves rounded to 0</small>' : ''}</td>
-        <td>${(f.share * 100).toFixed(1)} %</td><td>${n1(f.reserves / 1e6)}</td><td>${f.prod ? boed(f.prod) : '—'}</td><td>${f.end || '—'}</td>
+        <td>${(f.share * 100).toFixed(1)} %</td><td>${n1(f.reserves / 1e6)}</td><td>${f.prod ? boed(f.prod) : '—'}</td><td${f.fitted ? ` title="Compressed to end by ${DCS_LAST_YEAR} (the decline model alone gives ${f.origEnd})"` : ''}>${f.end || '—'}${f.fitted ? '*' : ''}</td>
         ${f.npv.map(x => `<td>${n2(x * tax)}</td>`).join('')}<td>${perBoe(f.npv[0] * tax, f.reserves)}</td></tr>`).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td></td><td>${n1(v.reserves / 1e6)}</td><td>${boed(v.prod)}</td><td></td>
         ${v.npv.map(x => `<td>${n2(x * tax)}</td>`).join('')}<td>${perBoe(v.npv[0] * tax, v.reserves)}</td></tr></tfoot></table>`;
   const A = [
     ['Reserves', `ENS remaining reserves per 1 January ${ry}`, 'Fields in production and approved developments; ENS rounds each field to whole million m³ oil / bn Nm³ gas, so small fields count as zero'],
     ['Production', `Decline from ${y0 - 1} production`, `Per field, ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year until the reserves R are produced; a field with reserves but no production last year starts next year with ramp-up and plateau. Tyra Southeast is counted with Tyra`],
+    ['End of production', `${DCS_LAST_YEAR} at the latest`, `Denmark has decided that oil and gas production ends in ${DCS_LAST_YEAR}, so all reserves are produced by then. A field whose decline would run past ${DCS_LAST_YEAR} is front-loaded: it starts from last year's production with a slower decline, so the reserves are produced out exactly in ${DCS_LAST_YEAR}; if not even flat production at last year's level would be enough, the original decline is kept and the whole profile raised. New fields get a higher plateau. Marked * in the field table`],
     ['Oil price', `USD ${CF_PRICES.join(' / ')} per boe in ${OPEX_BASE} money`, 'All boe, including gas, at the oil price; escalated with inflation'],
     ['Inflation', `${(CF_INFL * 100).toFixed(1)} % a year`, 'On prices and operating cost'],
     ['Operating cost', `USD ${DCS_OPEX_USD} per boe in ${OPEX_BASE} money`, 'Flat for all fields'],
     ['Capex and abandonment', 'Not included', 'ENS has no investment figures per field'],
     ['Tax', `${pct(DCS_TAX)} flat`, 'On all cash flows'],
     ['Discounting', CF_RATES.map(pct).join(' and '), `Mid-year, as at 1 January ${y0}`],
-    ['Horizon', `${CF_HORIZON} years`, ''],
+    ['Horizon', `To ${DCS_LAST_YEAR}`, 'The end of Danish production'],
     ['Ownership', 'Today\'s licence shares (ENS)', 'Forecast only; the production history uses the ownership history'],
   ];
   // Samme oppsett som antakelsestabellen i den norske verdsettelsen (val-ass).
@@ -15001,8 +15045,8 @@ function cfStartYear(id) {
 }
 
 // Profil for et nytt felt: halvt år én, platå, så fall.
-function cfNewField(R, start) {
-  const p = CF_PLATEAU_RATE * R, out = [];
+function cfNewField(R, start, plateauRate = CF_PLATEAU_RATE) {
+  const p = plateauRate * R, out = [];
   let rem = R, y = start, cum = 0;
   const first = Math.min(0.5 * p, rem);
   out.push([y++, first]); rem -= first; cum += first;
