@@ -33,6 +33,17 @@
       "rig": "DEEPSEA BERGEN",
       "well": "30/4-5",
       "added": "2026-11-24"
+    },
+    {
+      "id": "mwv2ilvl",
+      "name": "Purzel",
+      "operator": "Vår Energi ASA",
+      "licence": "1105 S",
+      "purpose": "WILDCAT",
+      "when": "q4 2026",
+      "source": "https://varenergi.no/wp-content/uploads/2026/11/Third-quarter-2026-Var-Energi-ASA-presentation.pdf",
+      "note": "Vår Energi Q3",
+      "added": "2026-11-24"
     }
   ]
 }
