@@ -654,6 +654,10 @@
     .an-warn{color:#b42318;font-size:0.75rem;}
     .res-table tr.an-sold td{color:#b42318;}
     .an-deal .an-x{border:0;background:none;cursor:pointer;font-size:1.1rem;color:#64748b;margin-left:auto;min-width:28px;min-height:28px;}
+    .an-man{border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:10px;}
+    .an-man .an-x{border:0;background:none;cursor:pointer;font-size:1.1rem;color:#64748b;margin-left:auto;min-width:28px;min-height:28px;}
+    .an-man-t{margin-top:8px;}
+    .an-man-t td, .an-man-t th{white-space:nowrap;}
     .an-bridges{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-around;}
     .an-bridge{flex:1 1 260px;max-width:340px;width:100%;height:auto;}
     /* Company / Valuation BETA */
@@ -3977,9 +3981,9 @@ const AN_COLORS = ['#003057', '#e3a73a', '#2a6fa8', '#ce0f69', '#00b373', '#8e6b
   '#3fa7a0', '#b07d2b', '#5a6f8a'];
 const AN_SHELVES = [['ncs', 'NCS', '#003057'], ['dcs', 'DCS', '#d14f4e'], ['uk', 'UKCS', '#2a6fa8']];
 const AN_GROUPS = [['cmp', 'By company'], ['og', 'Oil & gas'], ['shelf', 'By shelf']];
-const anDefaults = () => ({from: 'var', to: 'var~bluenord', yr: '', g: 'cmp', deals: '', rg: 'cmp', rm: 'both'});
+const anDefaults = () => ({from: 'var', to: 'var~bluenord', yr: '', g: 'cmp', deals: '', rg: 'cmp', rm: 'both', ax: '', ah: ''});
 let anF = anDefaults();
-const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag'], ['deals', 'ad'], ['rg', 'ar'], ['rm', 'am']];
+const AN_PARAMS = [['from', 'af'], ['to', 'at'], ['yr', 'ay'], ['g', 'ag'], ['deals', 'ad'], ['rg', 'ar'], ['rm', 'am'], ['ax', 'ax'], ['ah', 'ah']];
 let anReg = null, anCache = {}, anCharts = [], anLicByName = null;
 
 // rawKey: uten AN_ALIAS, så et gammelt navn (Noreco) kan skilles fra dagens (BlueNord).
@@ -4213,12 +4217,17 @@ function anResOf(item) {
   const n = sh.includes('ncs') ? d.ncs : z, dk = sh.includes('dcs') ? d.dcs : z;
   const o = {liq: n.liq + dk.liq, gas: n.gas + dk.gas, ncs: n.liq + n.gas, dcs: dk.liq + dk.gas, uk: 0};
   o.tot = o.liq + o.gas;
-  return o;
+  // Pluss selskapets andel av de manuelle eiendelene (2P).
+  return anManHeld(item).reduce((t, {h, m}) => anPlus(t, anManVol(m, h.p / 100).res), o);
 }
-function anC2Of(item) {
+// Betingede ressurser fra kildene alene (funnene); anC2Of tar med de manuelle (2C).
+function anC2Base(item) {
   const {key, sh} = anParse(item);
   const c = sh.includes('ncs') ? anData(key).c2 : {liq: 0, gas: 0};
   return {liq: c.liq, gas: c.gas, ncs: c.liq + c.gas, dcs: 0, uk: 0, tot: c.liq + c.gas};
+}
+function anC2Of(item) {
+  return anManHeld(item).reduce((t, {h, m}) => anPlus(t, anManVol(m, h.p / 100).c2), anC2Base(item));
 }
 
 // ── Valg ──
@@ -4317,7 +4326,7 @@ function anChipBox(side, title, keys, color) {
 // Kjøpet legges til som et eget segment; salget trekkes fra selgeren. Begge
 // gjelder hele historikken, som en pro forma-portefølje.
 // Eiendelene: 'ncs:<feltId>', 'ncsd:<funnId>', 'dcs:<slug>', 'uk:<slug>'.
-const AN_ASSET_KIND = {ncs: 'NCS field', ncsd: 'NCS discovery', dcs: 'DCS field', uk: 'UKCS field'};
+const AN_ASSET_KIND = {ncs: 'NCS field', ncsd: 'NCS discovery', dcs: 'DCS field', uk: 'UKCS field', x: 'Manual'};
 let anAssetMemo = null;
 const anAssetCache = {};
 function anAssets() {
@@ -4335,11 +4344,18 @@ function anAssets() {
   anAssetMemo.byId = Object.fromEntries(out.map(a => [a.id, a]));
   return anAssetMemo;
 }
-const anAssetInfo = id => anAssets().byId[id] || null;
+const anAssetInfo = id => /^x:/.test(id) ? anManAsset(id.slice(2)) : anAssets().byId[id] || null;
+// Felt og funn fra kildene pluss de manuelle eiendelene (øverst), til listen over handler.
+const anAllAssets = () => [...anMan().map(m => anManAsset(m.k)), ...anAssets()];
 
 // Brutto tall for en eiendel, millioner boe: {prod: {år: {liq, gas}}, res: {liq, gas}, c2: {liq, gas}}.
 // Inneværende år som i anData: siste rapporterte måned videreføres ut året.
 function anAssetGross(id) {
+  // Manuelle eiendeler endres i adressen og mellomlagres derfor ikke.
+  if (/^x:/.test(id)) {
+    const m = anManGet(id.slice(2)), v = anManVol(m, 1);
+    return {prod: {}, res: {liq: v.res.liq, gas: v.res.gas}, c2: {liq: v.c2.liq, gas: v.c2.gas}, shelf: m.shelf};
+  }
   if (anAssetCache[id]) return anAssetCache[id];
   const a = anAssetInfo(id), [kind, ref] = [a.kind, id.slice(id.indexOf(':') + 1)];
   const cy = currentYear, LM = anLastMonths(), prod = {}, res = {liq: 0, gas: 0}, c2 = {liq: 0, gas: 0};
@@ -4399,7 +4415,9 @@ function anAssetC2(id, f) { const g = anAssetGross(id); return anShape(g.c2.liq 
 
 // Andelen (0–1) et valgt selskap har i eiendelen i dag.
 function anOwnShare(item, id) {
-  const a = anAssetInfo(id), {key, sh} = anParse(item), e = anRegistry()[key];
+  const a = anAssetInfo(id), {key, all, sh} = anParse(item), e = anRegistry()[key];
+  if (a && e && a.kind === 'x') return all.includes(a.shelf) && !sh.includes(a.shelf) ? 0
+    : anHolds().filter(h => h.c === key && h.k === a.m.k).reduce((t, h) => t + h.p / 100, 0);
   if (!a || !e || !sh.includes(a.shelf)) return 0;
   const ref = id.slice(id.indexOf(':') + 1);
   if (a.kind === 'ncs') return [...e.ncs].reduce((t, n) => t + anNcsShare(n, +ref, Date.now()), 0);
@@ -4423,10 +4441,10 @@ const anPctTxt = v => (+v).toLocaleString('en', {maximumFractionDigits: 2});
 function anDealAdd() {
   const t = document.getElementById('anDealType').value, inp = document.getElementById('anDealAsset');
   const pctIn = document.getElementById('anDealPct').value.trim(), msg = document.getElementById('anDealMsg');
-  const v = inp.value.trim().toLowerCase(), L = anAssets();
+  const v = inp.value.trim().toLowerCase(), L = anAllAssets();
   const a = L.find(x => x.label.toLowerCase() === v) || L.find(x => x.name.toLowerCase() === v)
     || L.find(x => x.name.toLowerCase().startsWith(v)) || L.find(x => x.label.toLowerCase().includes(v));
-  if (!v || !a) { msg.textContent = 'Pick a field or discovery from the list.'; return; }
+  if (!v || !a) { msg.textContent = 'Pick a field, discovery or manual asset from the list.'; return; }
   const to = anKeys('to'), held = to.map(k => ({k, s: anOwnShare(k, a.id)})).filter(x => x.s > 0).sort((x, y) => y.s - x.s);
   let p = pctIn === '' ? null : +pctIn, s = '';
   if (t === 's') {
@@ -4458,23 +4476,209 @@ function anDealsCard(to) {
         ${!cur ? '<span class="an-warn">pick a seller</span>' : d.p > cur.s * 100 + 1e-6 ? `<span class="an-warn">capped at ${anPctTxt(cur.s * 100)} %</span>` : ''}`
         : '<span class="an-warn">no To company holds it; ignored</span>';
     }
+    // Manuell eiendel: andelens netto volumer kan skrives inn; bruttoen regnes da ut av andelen.
+    const net = a.kind === 'x' ? `<span>= ${anManNetIn(a.m, 'p2', d.p)} 2P + ${anManNetIn(a.m, 'c2', d.p)} 2C, million boe net</span>` : '';
     return `<div class="an-deal"><strong class="an-dt ${d.t === 's' ? 'sell' : 'buy'}">${d.t === 's' ? 'Sell' : 'Buy'}</strong>
       <input type="number" class="an-pct" min="0" max="100" step="0.01" value="${anPctTxt(d.p)}" aria-label="Share in percent"
-        onchange="anDealSet(${i}, 'p', this.value)"> % of <span>${esc(a.name)} <small>${AN_ASSET_KIND[a.kind]}</small></span> ${extra}
+        onchange="anDealSet(${i}, 'p', this.value)"> % of <span>${esc(a.name)} <small>${AN_ASSET_KIND[a.kind]}</small></span> ${net} ${extra}
       <button type="button" class="an-x" aria-label="Remove deal" onclick="anDealRemove(${i})">×</button></div>`;
   }).join('');
   return `<div class="pf-card pf-wide"><h3>Field and discovery deals · pro forma</h3>${rows || '<div class="an-none">No deals.</div>'}
-    <datalist id="anAssetList">${anAssets().map(a => `<option value="${esc(a.label)}"></option>`).join('')}</datalist>
+    <datalist id="anAssetList">${anAllAssets().map(a => `<option value="${esc(a.label)}"></option>`).join('')}</datalist>
     <div class="an-opts">
       <select id="anDealType" class="year-select" aria-label="Buy or sell"><option value="b">Buy</option><option value="s">Sell</option></select>
-      <input id="anDealAsset" class="an-in" style="flex:1 1 220px;width:auto" list="anAssetList" placeholder="Field or discovery…" aria-label="Field or discovery">
+      <input id="anDealAsset" class="an-in" style="flex:1 1 220px;width:auto" list="anAssetList" placeholder="Field, discovery or manual asset…" aria-label="Field, discovery or manual asset">
       <input id="anDealPct" class="an-in an-pct" type="number" min="0" max="100" step="0.01" placeholder="%" aria-label="Share in percent">
       <button type="button" class="grp-btn" onclick="anDealAdd()">Add</button>
       <span id="anDealMsg" class="an-warn" role="alert"></span>
     </div>
     <div class="pf-map-note">Shares are percentage points of the whole field or discovery. Buy: added to the pro forma column as its own part
       (left empty, the share the To companies do not already hold). Sell: taken from the To company that holds it (left empty, all of its share).
-      Deals apply to every year shown, as a pro forma portfolio.</div></div>`;
+      Deals apply to every year shown, as a pro forma portfolio. Manual assets can be bought and sold the same way; enter either the share
+      or the net volumes, and the gross volumes are worked out from the share.</div></div>`;
+}
+
+// ── Analytics: manuelle eiendeler (2P og 2C) ──
+// Skjønnsmessige eiendeler med volumer som ikke finnes i kildene, f.eks. et
+// prosjekt med godkjent PUD før Sodir har publisert neste reserveårgang. Hver
+// eiendel har brutto 2P (reserver) og 2C (betingede ressurser) i millioner boe,
+// en gassandel og en verdi per fat 2P (USD/boe etter skatt). Den kan
+//   - eies i fra-verdiene: anF.ah, «selskap*eiendel*andel» — beholdningen
+//     regnes inn i selskapets reserver og ressurser i begge søylene, og
+//   - kjøpes og selges i handlene som felt og funn (id «x:<k>»).
+// Andelene og volumene kan skrives inn enten brutto eller netto; det andre
+// regnes ut av andelen. Alt står i adressen, som resten av siden.
+// anF.ax: «k*navn*sokkel*2P*2C*gass %*USD per boe 2P*kobling», skilt med SEP.
+// Koblingen (valgfri) er et felt eller funn fra kildene: den gir forslag til
+// sokkel, gassandel og eiernes andeler, og varsler om mulig dobbelttelling.
+const AN_MAN_USD = 10;   // standardverdi for 2P, USD/boe etter skatt
+const anNum = v => { const x = +String(v == null ? '' : v).replace(',', '.'); return isFinite(x) && x > 0 ? x : 0; };
+const anClean = s => String(s || '').replace(/[*~]/g, ' ').replace(/\s+/g, ' ').trim();
+const anR = (v, d) => +(+v || 0).toFixed(d);
+function anMan() {
+  return (anF.ax || '').split(SEP).filter(Boolean).map(x => {
+    const [k, name, shelf, p2, c2, gas, usd, link] = x.split('*');
+    return {k, name: anClean(name) || 'Manual asset', shelf: ['ncs', 'dcs', 'uk'].includes(shelf) ? shelf : 'ncs',
+      p2: anNum(p2), c2: anNum(c2), gas: Math.min(100, anNum(gas)),
+      usd: usd == null || usd === '' ? AN_MAN_USD : anNum(usd), link: link && !/^x:/.test(link) ? link : ''};
+  }).filter(m => /^\d+$/.test(m.k));
+}
+const anManStr = ms => ms.map(m => [m.k, anClean(m.name), m.shelf, anR(m.p2, 4), anR(m.c2, 4), anR(m.gas, 2), anR(m.usd, 2), m.link || ''].join('*')).join(SEP);
+const anManGet = k => anMan().find(m => m.k === String(k)) || null;
+function anManAsset(k) {
+  const m = anManGet(k);
+  return m && {id: `x:${m.k}`, name: m.name, kind: 'x', shelf: m.shelf, label: `${m.name} (Manual)`, m};
+}
+function anHolds() {
+  const ks = new Set(anMan().map(m => m.k));
+  return (anF.ah || '').split(SEP).filter(Boolean).map(x => { const [c, k, p] = x.split('*'); return {c, k, p: Math.min(100, anNum(p))}; })
+    .filter(h => h.c && ks.has(h.k) && h.p > 0);
+}
+const anHoldStr = hs => hs.map(h => [h.c, h.k, anR(h.p, 4)].join('*')).join(SEP);
+// Volumene for en andel f (0–1), i samme form som anResOf/anC2Of.
+function anManVol(m, f) {
+  const g = m.gas / 100;
+  return {res: anShape(m.p2 * (1 - g) * f, m.p2 * g * f, m.shelf), c2: anShape(m.c2 * (1 - g) * f, m.c2 * g * f, m.shelf)};
+}
+// Verdien etter skatt, USD mrd: 2P til eiendelens USD/boe, 2C som funnene (VAL_DISC_USD).
+const anManVal = (m, f) => (m.p2 * m.usd + m.c2 * VAL_DISC_USD) * f / 1000;
+// Beholdningene et valgt selskap har i de manuelle eiendelene. En eiendel på en
+// sokkel selskapet er slått av på, telles ikke; en sokkel selskapet ellers ikke
+// er på, kan det ikke slås av på, så den telles.
+function anManHeld(item) {
+  const {key, all, sh} = anParse(item);
+  return anHolds().filter(h => h.c === key).map(h => ({h, m: anManGet(h.k)}))
+    .filter(x => x.m && (sh.includes(x.m.shelf) || !all.includes(x.m.shelf)));
+}
+// Gassandelen (%) i det koblede feltet eller funnet, som forslag.
+function anLinkGas(link) {
+  const a = link && anAssetInfo(link);
+  if (!a) return 50;
+  const ref = link.slice(link.indexOf(':') + 1);
+  let liq = 0, gas = 0;
+  if (a.kind === 'ncs') {
+    const cur = fieldReserves && fieldReserves[ref] ? reserveAt(fieldReserves[ref], anResYear()) : null;
+    const r = (cur && cur.raw) || {};
+    gas = r.fldRecoverableGas || 0; liq = Math.max(0, (r.fldRecoverableOE || 0) - gas);
+  } else if (a.kind === 'ncsd' && discoveryRes[+ref]) ({liq, gas} = discoveryRes[+ref]);
+  else if (a.kind === 'dcs') ({liq, gas} = dcsFieldRes(ref, dcsResYear()));
+  return liq + gas > 0 ? anR(gas / (liq + gas) * 100, 1) : 50;
+}
+// Varsel når kildene allerede har volumer i det koblede feltet eller funnet.
+function anManWarn(m) {
+  const a = m.link && anAssetInfo(m.link);
+  if (!a) return '';
+  const ref = m.link.slice(m.link.indexOf(':') + 1);
+  let v = 0, what = '';
+  if (a.kind === 'ncs') {
+    const cur = fieldReserves && fieldReserves[ref] ? reserveAt(fieldReserves[ref], anResYear()) : null;
+    v = cur ? cur.remainingOE * BBL_PER_SM3 : 0; what = `remaining reserves at end-${anResYear()} (Sodir)`;
+  } else if (a.kind === 'ncsd') {
+    v = discoveryRes[+ref] ? discoveryRes[+ref].oe * BBL_PER_SM3 : 0; what = 'contingent resources (Sodir)';
+  } else if (a.kind === 'dcs') {
+    const r = dcsFieldRes(ref, dcsResYear()); v = r.liq + r.gas; what = 'reserves (ENS)';
+  }
+  return v > 0.05 ? `<div class="an-warn">${esc(a.name)} already has ${v.toLocaleString('en', {maximumFractionDigits: 1})} million boe of ${what}
+    in the data. Check that the manual volumes do not count the same barrels twice.</div>` : '';
+}
+const anManNetIn = (m, f, pct) => `<input type="number" class="an-pct" min="0" step="0.01" value="${anR(m[f] * pct / 100, 2)}"
+  aria-label="Net ${f === 'p2' ? '2P' : '2C'}, million boe" title="Net ${f === 'p2' ? '2P' : '2C'} at ${anPctTxt(pct)} %; the gross is worked out from the share"
+  onchange="anManNet('${m.k}', '${f}', ${pct}, this.value)">`;
+
+function anManPatch(k, o) { anSet('ax', anManStr(anMan().map(m => m.k === String(k) ? {...m, ...o} : m))); }
+function anManSet(k, f, v) {
+  const val = f === 'name' ? anClean(v) || 'Manual asset' : f === 'shelf' ? v
+    : f === 'usd' && String(v).trim() === '' ? AN_MAN_USD : f === 'gas' ? Math.min(100, anNum(v)) : anNum(v);
+  anManPatch(k, {[f]: val});
+}
+// Netto inn: brutto = netto / andel.
+function anManNet(k, f, pct, v) { if (pct > 0) anManPatch(k, {[f]: anNum(v) / (pct / 100)}); }
+function anManAdd() {
+  const nameIn = document.getElementById('anManName'), linkIn = document.getElementById('anManLink'), msg = document.getElementById('anManMsg');
+  const lv = linkIn.value.trim().toLowerCase(), L = anAssets();
+  const a = !lv ? null : L.find(x => x.label.toLowerCase() === lv) || L.find(x => x.name.toLowerCase() === lv)
+    || L.find(x => x.name.toLowerCase().startsWith(lv)) || L.find(x => x.label.toLowerCase().includes(lv));
+  if (lv && !a) { msg.textContent = 'Pick the linked field or discovery from the list, or leave it empty.'; return; }
+  const name = anClean(nameIn.value) || (a ? a.name : '');
+  if (!name) { msg.textContent = 'Enter a name.'; return; }
+  const ms = anMan(), k = String(ms.reduce((t, m) => Math.max(t, +m.k), 0) + 1);
+  const m = {k, name, shelf: a ? a.shelf : 'ncs', p2: 0, c2: 0, gas: a ? anLinkGas(a.id) : 50, usd: AN_MAN_USD, link: a ? a.id : ''};
+  // Med kobling: selskapene i fra og til som eier feltet eller funnet i dag, får sin andel.
+  const holds = a ? [...new Set([...anKeys('from'), ...anKeys('to')].map(x => anParse(x).key))]
+    .map(c => ({c, k, p: anOwnShare(c, a.id) * 100})).filter(h => h.p > 0) : [];
+  anF.ah = anHoldStr([...anHolds(), ...holds]);
+  anSet('ax', anManStr([...ms, m]));
+}
+function anManRemove(k) {
+  k = String(k);
+  anF.ah = anHoldStr(anHolds().filter(h => h.k !== k));
+  anF.deals = anDealStr(anDeals().filter(d => d.a !== `x:${k}`));
+  anSet('ax', anManStr(anMan().filter(m => m.k !== k)));
+}
+function anHoldAdd(k) {
+  const m = anManGet(k), sel = document.getElementById(`anManHold${k}`), pin = document.getElementById(`anManHoldPct${k}`);
+  if (!m || !sel || !sel.value) return;
+  const c = sel.value, others = anHolds().filter(h => h.k === m.k);
+  // Tomt felt: andelen i det koblede feltet, ellers resten opp til 100 %.
+  let p = pin && pin.value.trim() !== '' ? Math.min(100, anNum(pin.value)) : m.link ? anOwnShare(c, m.link) * 100 : 0;
+  if (!(p > 0) && !(pin && pin.value.trim() !== '')) p = Math.max(0, 100 - others.reduce((t, h) => t + h.p, 0));
+  if (!(p > 0)) return;
+  anSet('ah', anHoldStr([...anHolds(), {c, k: m.k, p}]));
+}
+function anHoldSet(k, c, v) {
+  anSet('ah', anHoldStr(anHolds().map(h => h.k === String(k) && h.c === c ? {...h, p: Math.min(100, anNum(v))} : h)));
+}
+function anHoldRemove(k, c) { anSet('ah', anHoldStr(anHolds().filter(h => !(h.k === String(k) && h.c === c)))); }
+
+function anManCard(from, to) {
+  const ms = anMan(), hs = anHolds(), cmps = [...new Set([...from, ...to].map(k => anParse(k).key))];
+  const n2 = v => anR(v, 2);
+  const gross = (m, f) => `<input type="number" class="an-pct" min="0" step="0.01" value="${n2(m[f])}"
+    aria-label="Gross ${f === 'p2' ? '2P' : '2C'}, million boe" onchange="anManSet('${m.k}', '${f}', this.value)">`;
+  const blocks = ms.map(m => {
+    const mine = hs.filter(h => h.k === m.k), free = cmps.filter(c => !mine.some(h => h.c === c));
+    const sum = mine.reduce((t, h) => t + h.p, 0), link = m.link && anAssetInfo(m.link);
+    const rows = mine.map(h => `<tr><td>${esc(anName(h.c))}${cmps.includes(h.c) ? '' : ' <small class="an-sh">not in From or To</small>'}</td>
+        <td><input type="number" class="an-pct" min="0" max="100" step="0.01" value="${anPctTxt(h.p)}" aria-label="Share of ${esc(anName(h.c))}, percent"
+          onchange="anHoldSet('${m.k}', ${esc(jsStr(h.c))}, this.value)"> %</td>
+        <td>${anManNetIn(m, 'p2', h.p)}</td><td>${anManNetIn(m, 'c2', h.p)}</td>
+        <td><button type="button" class="an-x" aria-label="Remove holder ${esc(anName(h.c))}" onclick="anHoldRemove('${m.k}', ${esc(jsStr(h.c))})">×</button></td></tr>`).join('');
+    return `<div class="an-man">
+      <div class="an-opts" style="margin-top:0">
+        <input class="an-in" style="flex:1 1 200px;width:auto" value="${esc(m.name)}" aria-label="Name of manual asset" onchange="anManSet('${m.k}', 'name', this.value)">
+        <select class="year-select" aria-label="Shelf" onchange="anManSet('${m.k}', 'shelf', this.value)">${AN_SHELVES.map(([s, l]) =>
+          `<option value="${s}"${s === m.shelf ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <label>Gas <input type="number" class="an-pct" min="0" max="100" step="1" value="${anR(m.gas, 1)}" aria-label="Gas share, percent"
+          onchange="anManSet('${m.k}', 'gas', this.value)"> %</label>
+        <label>2P value USD <input type="number" class="an-pct" min="0" step="0.5" value="${anR(m.usd, 2)}" aria-label="2P value, USD per boe after tax"
+          onchange="anManSet('${m.k}', 'usd', this.value)"> /boe</label>
+        <button type="button" class="an-x" aria-label="Remove manual asset ${esc(m.name)}" onclick="anManRemove('${m.k}')">×</button>
+      </div>
+      ${link ? `<div class="an-sh" style="margin-top:4px">Linked to ${esc(link.label)}: suggests the holders' shares and the gas share.</div>` : ''}
+      ${anManWarn(m)}
+      <div class="pf-scroll"><table class="res-table an-man-t">
+        <thead><tr><th>Holder</th><th>Share</th><th>2P, million boe</th><th>2C, million boe</th><th></th></tr></thead>
+        <tbody><tr class="total-row"><td>Gross</td><td>100 %</td><td>${gross(m, 'p2')}</td><td>${gross(m, 'c2')}</td><td></td></tr>${rows}</tbody>
+      </table></div>
+      ${sum > 100 + 1e-6 ? `<div class="an-warn">The holders' shares add up to ${anPctTxt(sum)} %.</div>` : ''}
+      ${free.length ? `<div class="an-opts">
+        <select id="anManHold${m.k}" class="year-select" aria-label="Holder">${free.map(c => `<option value="${esc(c)}">${esc(anName(c))}</option>`).join('')}</select>
+        <input id="anManHoldPct${m.k}" class="an-pct" type="number" min="0" max="100" step="0.01" placeholder="%" aria-label="Holder's share, percent">
+        <button type="button" class="grp-btn" onclick="anHoldAdd('${m.k}')">Add holder</button></div>` : ''}
+    </div>`;
+  }).join('');
+  return `<div class="pf-card pf-wide"><h3>Manual assets · 2P and 2C</h3>${blocks || '<div class="an-none">No manual assets.</div>'}
+    <div class="an-opts">
+      <input id="anManName" class="an-in" style="flex:1 1 180px;width:auto" placeholder="Name, e.g. Ekofisk PPF" aria-label="Name of new manual asset">
+      <input id="anManLink" class="an-in" style="flex:1 1 220px;width:auto" list="anAssetList" placeholder="Linked field or discovery (optional)…" aria-label="Linked field or discovery, optional">
+      <button type="button" class="grp-btn" onclick="anManAdd()">Add asset</button>
+      <span id="anManMsg" class="an-warn" role="alert"></span>
+    </div>
+    <div class="pf-map-note">Discretionary volumes that are not in the sources yet, for example a project with an approved PDO before Sodir
+      publishes the next reserve estimate. 2P counts as remaining reserves and 2C as contingent resources, split into liquids and gas by the gas share.
+      Holders: the asset is part of the holder's own figures, in both the From and the pro forma column. Enter the share, or the net volumes and the
+      gross is worked out from the share (or the gross, and the net follows). With a linked field, the companies in From and To get their shares in it today.
+      Valuation: 2P at the USD per boe set here (default USD ${AN_MAN_USD}), 2C at USD ${VAL_DISC_USD} per boe like the discoveries, both after tax.</div></div>`;
 }
 
 // ── Analytics: Back-of-the-envelope valuation ──
@@ -4529,8 +4733,14 @@ function anValDcsField(slug, f, price) {
   }).map(v => v * f);
 }
 
-// Verdien av et valgt selskap: {ncs: [..], disc, dcs: [..], tot: [..]}, etter skatt.
+// Verdien av et valgt selskap: {ncs: [..], disc, dcs: [..], man, tot: [..]}, etter skatt.
+// man er selskapets manuelle eiendeler; de står i adressen og mellomlagres ikke.
 function anValItem(item, price) {
+  const v = anValItemBase(item, price);
+  const man = anManHeld(item).reduce((t, {h, m}) => t + anManVal(m, h.p / 100), 0);
+  return man ? {...v, man, tot: v.tot.map(x => x + man)} : v;
+}
+function anValItemBase(item, price) {
   return anValMemo(`it|${item}|${price}`, () => {
     const {key, sh} = anParse(item), e = anRegistry()[key];
     let ncs = [0, 0], dcs = [0, 0];
@@ -4548,8 +4758,8 @@ function anValItem(item, price) {
         dcs = dcs.map((x, k) => x + v.npv[k] * (1 - DCS_TAX));
       });
     }
-    const disc = anC2Of(item).tot * VAL_DISC_USD / 1000;   // millioner boe × USD/boe → USD mrd
-    return {ncs, disc, dcs, tot: [0, 1].map(k => ncs[k] + dcs[k] + disc)};
+    const disc = anC2Base(item).tot * VAL_DISC_USD / 1000;   // millioner boe × USD/boe → USD mrd
+    return {ncs, disc, dcs, man: 0, tot: [0, 1].map(k => ncs[k] + dcs[k] + disc)};
   });
 }
 // Verdien av en andel f av en eiendel, i samme form.
@@ -4558,12 +4768,14 @@ function anValAsset(id, f, price) {
   const ncs = a.kind === 'ncs' ? anValNcsField(+ref, f, price).map(v => v * (1 - CF_TAX)) : z;
   const dcs = a.kind === 'dcs' ? anValDcsField(ref, f, price).map(v => v * (1 - DCS_TAX)) : z;
   const disc = a.kind === 'ncsd' ? anAssetC2(id, f).tot * VAL_DISC_USD / 1000 : 0;
-  return {ncs, disc, dcs, tot: [0, 1].map(k => ncs[k] + dcs[k] + disc)};
+  const man = a.kind === 'x' ? anManVal(a.m, f) : 0;
+  return {ncs, disc, dcs, man, tot: [0, 1].map(k => ncs[k] + dcs[k] + disc + man)};
 }
-const anValZero = () => ({ncs: [0, 0], disc: 0, dcs: [0, 0], tot: [0, 0]});
+const anValZero = () => ({ncs: [0, 0], disc: 0, dcs: [0, 0], man: 0, tot: [0, 0]});
 function anValPlus(a, b, sign = 1) {
   return {ncs: a.ncs.map((x, k) => x + sign * b.ncs[k]), disc: a.disc + sign * b.disc,
-          dcs: a.dcs.map((x, k) => x + sign * b.dcs[k]), tot: a.tot.map((x, k) => x + sign * b.tot[k])};
+          dcs: a.dcs.map((x, k) => x + sign * b.dcs[k]), man: (a.man || 0) + sign * (b.man || 0),
+          tot: a.tot.map((x, k) => x + sign * b.tot[k])};
 }
 
 // Kortet nederst. parts: [{id, label, color, deal, a, pct, sh}] som i resten av siden.
@@ -4576,19 +4788,22 @@ function anValCard(fromParts, toParts, sells, fromName) {
   const pct = r => `${Math.round(r * 100)} %`;
   const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  const partVal = (p, price) => {
+  // Salgene gjelder bare pro forma-søylen; fra-søylen er selskapene før handlene.
+  const partVal = (p, price, pro = true) => {
     if (p.deal) return anValAsset(p.a, p.pct / 100, price);
-    const mine = sells.filter(d => d.s === p.id);
+    const mine = pro ? sells.filter(d => d.s === p.id) : [];
     return mine.reduce((t, d) => anValPlus(t, anValAsset(d.a, d.f, price), -1), anValItem(p.id, price));
   };
-  const sumVal = (parts, price) => parts.reduce((t, p) => anValPlus(t, partVal(p, price)), anValZero());
+  const sumVal = (parts, price, pro = true) => parts.reduce((t, p) => anValPlus(t, partVal(p, price, pro)), anValZero());
   const price = hubCfPrice;
-  const vFrom = sumVal(fromParts, price), vTo = sumVal(toParts, price);
+  const vFrom = sumVal(fromParts, price, false), vTo = sumVal(toParts, price);
+  // Kolonnen for manuelle eiendeler vises bare når noen av delene har dem.
+  const showMan = Math.abs(vFrom.man) + Math.abs(vTo.man) > 1e-9 || sells.some(d => /^x:/.test(d.a));
   {
-    const r2 = v => [v.ncs[0], v.disc, v.dcs[0], v.tot[0], v.tot[1]].map(x => +x.toFixed(2));
+    const r2 = v => [v.ncs[0], v.disc, ...(showMan ? [v.man] : []), v.dcs[0], v.tot[0], v.tot[1]].map(x => +x.toFixed(2));
     const toIds = toParts.map(p => p.id);
-    anValRows = {price, header: ['Company / asset', `NCS fields, ${pct(CF_RATES[0])}`, 'Discoveries', `DCS fields, ${pct(CF_RATES[0])}`,
-        `Total, ${pct(CF_RATES[0])}`, `Total, ${pct(CF_RATES[1])}`],
+    anValRows = {price, header: ['Company / asset', `NCS fields, ${pct(CF_RATES[0])}`, 'Discoveries', ...(showMan ? ['Manual assets'] : []),
+        `DCS fields, ${pct(CF_RATES[0])}`, `Total, ${pct(CF_RATES[0])}`, `Total, ${pct(CF_RATES[1])}`],
       rows: [...toParts.map(p => [p.label + (p.deal ? ' (bought)' : ''), ...r2(partVal(p, price))]),
         ...sells.map(d => [`${anAssetInfo(d.a).name} ${anPctTxt(d.f * 100)} % sold by ${anLabel(d.s)}`, ...r2(anValPlus(anValZero(), anValAsset(d.a, d.f, price), -1))]),
         ...fromParts.filter(p => !toIds.includes(p.id)).map(p => [p.label + ' (From only)', ...r2(partVal(p, price))])],
@@ -4597,14 +4812,14 @@ function anValCard(fromParts, toParts, sells, fromName) {
   const chg = vFrom.tot[0] ? (vTo.tot[0] - vFrom.tot[0]) / Math.abs(vFrom.tot[0]) * 100 : null;
   const to = toParts.map(p => p.id), fromOnly = fromParts.filter(p => !to.includes(p.id));
   const row = (name, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${name}</td><td>${n2(v.ncs[0])}</td><td>${n2(v.disc)}</td>
-      <td>${n2(v.dcs[0])}</td><td><strong>${n2(v.tot[0])}</strong></td><td>${n2(v.tot[1])}</td></tr>`;
+      ${showMan ? `<td>${n2(v.man || 0)}</td>` : ''}<td>${n2(v.dcs[0])}</td><td><strong>${n2(v.tot[0])}</strong></td><td>${n2(v.tot[1])}</td></tr>`;
   const nameCell = p => `<i class="an-dot" style="background:${p.color}"></i>${esc(p.label)}${p.deal ? ' <small class="an-sh">bought</small>' : ''}`;
   const ukIn = [...fromParts, ...toParts].some(p => (p.sh || []).includes('uk'));
   const sens = `<table class="res-table">
       <caption>Total value after tax, USD bn · ${esc(fromName)} → pro forma</caption>
       <thead><tr><th>Oil price</th>${CF_RATES.map(r => `<th>${pct(r)}</th>`).join('')}</tr></thead>
       <tbody>${CF_PRICES.map(pr => {
-        const a = sumVal(fromParts, pr), b = sumVal(toParts, pr);
+        const a = sumVal(fromParts, pr, false), b = sumVal(toParts, pr);
         return `<tr${pr === price ? ' class="total-row"' : ''}><td>USD ${pr}</td>${CF_RATES.map((_, k) =>
           `<td>${n1(a.tot[k])} → <strong>${n1(b.tot[k])}</strong></td>`).join('')}</tr>`;
       }).join('')}</tbody></table>`;
@@ -4618,7 +4833,7 @@ function anValCard(fromParts, toParts, sells, fromName) {
       </div>
       <div class="pf-scroll" style="margin-top:12px"><table class="res-table">
         <caption>Indicative value after tax, USD bn · oil price USD ${price} · as at 1 January ${currentYear}</caption>
-        <thead><tr><th>Company / asset</th><th>NCS fields, ${pct(CF_RATES[0])}</th><th>Discoveries</th><th>DCS fields, ${pct(CF_RATES[0])}</th>
+        <thead><tr><th>Company / asset</th><th>NCS fields, ${pct(CF_RATES[0])}</th><th>Discoveries</th>${showMan ? '<th>Manual assets</th>' : ''}<th>DCS fields, ${pct(CF_RATES[0])}</th>
           <th>Total, ${pct(CF_RATES[0])}</th><th>Total, ${pct(CF_RATES[1])}</th></tr></thead>
         <tbody>${toParts.map(p => row(nameCell(p), partVal(p, price))).join('')}
           ${sells.map(d => row(`<i class="an-dot" style="background:#c0392b"></i>${esc(anAssetInfo(d.a).name)} ${anPctTxt(d.f * 100)} %
@@ -4633,7 +4848,8 @@ function anValCard(fromParts, toParts, sells, fromName) {
         Sodir's expected investments, ${pct(CF_ABEX)} of historical capex for abandonment, ${pct(CF_TAX)} tax); discoveries at USD ${VAL_DISC_USD}
         per boe of net contingent resources, after tax; DCS fields: ENS reserves declining from last year's production, USD ${DCS_OPEX_USD}/boe
         opex, ${pct(DCS_TAX)} tax, no capex. All boe at the oil price, ${(CF_INFL * 100).toFixed(1)} % inflation, mid-year discounting.
-        Bought and sold shares are valued the same way, field by field.${ukIn ? ' UKCS is not valued.' : ''} Not included: tariffs,
+        Bought and sold shares are valued the same way, field by field.${showMan ? ` Manual assets: 2P at the USD per boe set for each asset
+        (default USD ${AN_MAN_USD}), 2C at USD ${VAL_DISC_USD} per boe, after tax and the same at every oil price.` : ''}${ukIn ? ' UKCS is not valued.' : ''} Not included: tariffs,
         company-specific costs and tax positions, hedging, debt and cash, and synergies.</div>
     </div>`;
 }
@@ -4714,7 +4930,10 @@ function drawCompanyAnalytics() {
       <div class="pf-map-note">Companies are matched by name across the three shelves (e.g. Vår Energi on the NCS; BlueNord on the DCS and UKCS).
         Each company's portfolio is everything it holds on the shelves switched on in its tag; click a shelf to leave it out,
         or pick e.g. «Shell (NCS)» from the list.</div></div>`;
-  const dealsCard = anDealsCard(to);
+  const dealsCard = anManCard(from, to) + anDealsCard(to);
+  // Manuelle eiendeler i bruk (eid av et valgt selskap eller med i en handel), til notene.
+  const manUsed = anMan().filter(m => [...from, ...to].some(k => anManHeld(k).some(x => x.m.k === m.k)) || deals.some(d => d.a === `x:${m.k}`));
+  const manNote = manUsed.length ? ` Manual assets, not from the sources: ${manUsed.map(m => esc(m.name)).join(', ')}.` : '';
 
   if (!toParts.length && !fromParts.length) {
     setProfile(controls + dealsCard + '<div class="pf-card pf-wide"><div class="status">Add companies to From and To.</div></div>');
@@ -4731,7 +4950,7 @@ function drawCompanyAnalytics() {
     </div><div class="pf-map-note">Reserves: Sodir's estimate at 31 December ${ry} (NCS) and ENS' at 1 January ${ry + 1} (DCS), times today's
       shares. Contingent resources: undeveloped NCS discoveries (Sodir classes 4F, 5F and 7F), today's shares.
       ${ukAny ? 'UKCS has production only: NSTA does not publish field reserves or resources.' : ''}
-      The DCS and UKCS have no contingent resources here.${deals.length ? ' Deals are in the pro forma column.' : ''}${y === est ? ' Production ' + estNote : ''}</div></div>`;
+      The DCS and UKCS have no contingent resources here.${manNote}${deals.length ? ' Deals are in the pro forma column.' : ''}${y === est ? ' Production ' + estNote : ''}</div></div>`;
 
   // Produksjonshistorikken til det sammenslåtte selskapet.
   const years = Array.from({length: last - AN_FROM_YEAR + 1}, (_, i) => AN_FROM_YEAR + i);
@@ -4781,7 +5000,7 @@ function drawCompanyAnalytics() {
   const shown = steps.filter(st => st.total || st.r.tot >= 0.05);
   const rg = anF.rg || 'cmp';
   const base0 = rg === 'og' ? [['liq', 'Liquids', OIL_COLOR], ['gas', 'Gas', GAS_COLOR]]
-    : rg === 'shelf' ? AN_SHELVES.filter(([s2]) => s2 !== 'uk') : [['tot', '', null]];
+    : rg === 'shelf' ? AN_SHELVES.filter(([s2]) => s2 !== 'uk' || steps.some(st => st.r.rr.uk > 0 || st.r.cc.uk > 0)) : [['tot', '', null]];
   // Komponentene: [kilde (rr reserver | cc betingede), nøkkel, navn, farge, lys].
   const comps = [];
   base0.forEach(([k, l, c]) => {
@@ -4849,7 +5068,7 @@ function drawCompanyAnalytics() {
       <div class="chart-container" style="height:340px"><canvas id="anResCanvas"></canvas></div>
       <div class="pf-map-note">${rg === 'cmp' ? `The From and pro forma bars are stacked by company and asset. Steps: each company and bought share added
         (its colour), and each company and sold share taken out (red).` : `Each step split ${rg === 'og' ? 'into liquids and gas' : 'by shelf'};
-        decreases are pale with a red edge.`}${rm === 'both' ? ' The pale part of each bar is contingent resources in discoveries (NCS only).' : ''}
+        decreases are pale with a red edge.`}${rm === 'both' ? ' The pale part of each bar is contingent resources in discoveries (NCS only).' : ''}${manNote}
         Hover a bar for the numbers.</div></div></div>`;
 
   // Tabellen.
@@ -4878,6 +5097,7 @@ function drawCompanyAnalytics() {
   setProfile(controls + dealsCard + bridges + charts + tbl + anValCard(fromParts, toParts, sells, fromName));
   setInfo(`<strong>Method:</strong> net production = field production × equity share (NCS and UKCS monthly, DCS yearly from ENS' ownership history);
     reserves and contingent resources × today's shares; companies matched by name across shelves; deals as pro forma shares;
+    manual assets (2P, 2C) as entered on the page;
     valuation as in Valuation BETA &nbsp;|&nbsp;
     <strong>Sources:</strong> Sodir FactPages; ENS; NSTA; World Bank Pink Sheet; FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
 
@@ -5053,7 +5273,12 @@ function drawCompanyAnalytics() {
     {name: 'Reserve steps', header: ['Step', 'Change, million boe', 'Reserves, million boe', 'Contingent, million boe'], widths: [44, 16, 16, 16],
       rows: wf.map(w => [w.full || w.name, +w.v.toFixed(1), +(w.sign < 0 ? -1 : 1) * +w.r.rr.tot.toFixed(1), +(w.sign < 0 ? -1 : 1) * +w.r.cc.tot.toFixed(1)])},
     ...(anValRows ? [{name: 'Valuation', header: anValRows.header.map(h => `${h}, USD bn`.replace('Company / asset, USD bn', 'Company / asset')),
-      widths: [40, 16, 16, 16, 16, 16], rows: [...anValRows.rows, ...anValRows.foot]}] : []),
+      widths: [40, ...anValRows.header.slice(1).map(() => 16)], rows: [...anValRows.rows, ...anValRows.foot]}] : []),
+    ...(anMan().length ? [{name: 'Manual assets', header: ['Asset', 'Shelf', 'Holder', 'Share, %', '2P, million boe', '2C, million boe', 'Gas, %', '2P value, USD/boe'],
+      widths: [30, 8, 28, 10, 14, 14, 8, 14],
+      rows: anMan().flatMap(m => [[m.name, anShelfLabel(m.shelf), 'Gross', 100, anR(m.p2, 2), anR(m.c2, 2), m.gas, m.usd],
+        ...anHolds().filter(h => h.k === m.k).map(h => [m.name, anShelfLabel(m.shelf), anName(h.c), anR(h.p, 2),
+          anR(m.p2 * h.p / 100, 2), anR(m.c2 * h.p / 100, 2), m.gas, m.usd])])}] : []),
   ];
   document.getElementById('downloadBtn').disabled = false;
 }
