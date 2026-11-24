@@ -21,6 +21,11 @@ og EIA-delen), til disse filene:
   (regular, USD/gallon) og NY Harbor nr. 2 fyringsolje/diesel (USD/gallon),
   samme serier som Refining-visningen i eia-repoet. Brent (RBRTE) er med til
   varianten mot Brent. Marginen regnes ut i appen.
+- data/eu_gas_flows.json: daglig gass inn i EU etter opprinnelse, GWh/d:
+  rørgass ved EUs yttergrense (ENTSOG) per leverandør og LNG-utsendelse
+  (ALSI), og russisk rørgass per rute. Bygget fra data/gas_flows.json i
+  eia-repoet med samme gruppering og dagsutvalg som gassimport.html der
+  (Import etter opprinnelse og Russisk gass etter rute). Til EU gas-fanen i Macro.
 - data/steo.json: EIAs Short-Term Energy Outlook, tabell 3a og 3c (verdens
   oljebalanse: produksjon, forbruk, lagertrekk og OECD-lagre; månedlig,
   kvartalsvis og årlig, historikk og prognose). Kopieres uendret fra
@@ -155,10 +160,50 @@ def steo():
     print(f'eugas: STEO {src.get("release")}, historikk til {src["lastHistMonth"]}, {len(src.get("meta") or {})} serier')
 
 
+# Grupperingen fra gassimport.html i eia-repoet. LNG er egen serie i kilden.
+FLOW_GROUPS = {'NO': ['NO'], 'RU': ['RU_NS', 'RU_UA', 'RU_YA', 'RU_TS', 'RU_BALT'],
+               'DZ': ['DZ'], 'AZ': ['AZ'], 'OTH': ['UK', 'LY']}
+RU_ROUTES = ['RU_NS', 'RU_UA', 'RU_YA', 'RU_TS', 'RU_BALT']
+
+
+def gas_flows(src=None):
+    src = src or get('gas_flows.json')
+    if not src or not src.get('routes') or not src.get('lng') or not src.get('start'):
+        print('eugas: ingen gasstrømmer i kilden; beholder forrige fil', file=sys.stderr)
+        return
+    pts, routes, lng = src['points'], src['routes'], src['lng']
+    n = len(lng)
+
+    def route(rk, i):
+        return sum((pts.get(p) or [None] * n)[i] or 0 for p in routes.get(rk, {}).get('points', []))
+
+    from datetime import date, timedelta
+    d0 = date.fromisoformat(src['start'])
+    days, groups, ru = [], {k: [] for k in list(FLOW_GROUPS) + ['LNG']}, {k: [] for k in RU_ROUTES}
+    for i in range(n):
+        # Som i gassimport.html: bare dager der Norge er rapportert og LNG finnes.
+        if lng[i] is None or not any((pts.get(p) or [None] * n)[i] is not None for p in routes['NO']['points']):
+            continue
+        days.append((d0 + timedelta(days=i)).isoformat())
+        for g, rks in FLOW_GROUPS.items():
+            groups[g].append(round(sum(route(rk, i) for rk in rks), 1))
+        groups['LNG'].append(round(lng[i], 1))
+        for rk in RU_ROUTES:
+            ru[rk].append(round(route(rk, i), 1))
+    if not days:
+        print('eugas: ingen gyldige dager i gasstrømmene; beholder forrige fil', file=sys.stderr)
+        return
+    write('eu_gas_flows.json', {'updated': src.get('updatedAt'), 'unit': 'GWh/d', 'days': days,
+                                'groups': groups, 'russia': ru,
+                                'source': 'ENTSOG Transparency Platform (pipeline entry flows) and GIE ALSI (LNG send-out), via sheffielddivided/eia'})
+    print(f'eugas: gasstrømmer {len(days)} dager, {days[0]}–{days[-1]}')
+
+
 if __name__ == '__main__':
     ttf()
     storage()
     lng()
     us_supply()
     refining()
+    gas_flows()
     steo()

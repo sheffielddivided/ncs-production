@@ -3431,3 +3431,16 @@ uten historikk vises dagens kart (`licCompanyMap`).
 
 **Faktaark for DCS/UKCS-felt ved navigering:** `popstate` tømmer `dcsF.fs/wl`
 og `ukF.fs` når adressen peker til en annen side, så arket lukkes.
+
+#### Macro → EU gas
+
+Fanen (id `storage`, tidligere «EU storage») viser gasslagre og LNG-utsendelse
+som før, og under dem to grafer fra `gassimport.html` i eia-repoet:
+**Imports by origin** (daglig gass inn i EU per leverandør — Norge, Russland,
+Algerie, Aserbajdsjan, andre rør — og LNG, snitt per døgn per dag/uke/måned,
+1 år/2 år/alt, GWh/d eller mcm/d; `qa`, `qr`, `qu` i lenken) og **Russian gas
+by route** (russisk rørgass per rute, månedssnitt), pluss et kort med andelene
+siste 30 dager mot samme periode i fjor. Data: `data/eu_gas_flows.json`, bygget
+av `gas_flows()` i `fetch_eugas.py` fra eia-repoets `data/gas_flows.json`
+(ENTSOG og GIE ALSI) med samme gruppering og dagsutvalg som `gassimport.html`.
+Tegnes av `drawGasFlowCards`; begge grafene er med i PowerPoint-eksporten.
