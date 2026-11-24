@@ -20,6 +20,15 @@
       "purpose": "WILDCAT",
       "when": "q4 2026",
       "added": "2026-11-24"
+    },
+    {
+      "id": "mwv1wufp",
+      "name": "Schrøder",
+      "operator": "Equinor Energy AS",
+      "licence": "1177",
+      "purpose": "WILDCAT",
+      "when": "2027",
+      "added": "2026-11-24"
     }
   ]
 }
