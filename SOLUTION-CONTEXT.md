@@ -3406,7 +3406,10 @@ prosentene). Står tom når ett av de tre årene mangler; tom i totalraden.
 
 **Recent transactions** (`licenceDealsCard`): overføringer mellom de samme
 partene (konsern, `concernKey`) på samme dato slås sammen til én transaksjon
-og én rad, uavhengig av retning. Raden lister lisensene med andel; går andeler
-begge veier, vises den som bytte (selger ⇄ kjøper over begge kolonnene) med
-lisensene gruppert etter hvem som kjøpte. Antallet i oppsummeringen er
-transaksjoner, med antall lisensoverføringer i parentes.
+uavhengig av retning. Hver transaksjon er en egen `tbody.tx-grp` (tydelig
+skillelinje, annenhver grå), med én linje per retning: i et bytte står det
+selskapet kjøpte og det det solgte på hver sin linje, med lisenser og andeler,
+selger, kjøper og felt/funn. Antallet i oppsummeringen er transaksjoner, med
+antall lisensoverføringer i parentes. Felt/funn-kolonnen (`licContentHtml`,
+også i lisenstabellen) viser bare funnets eget navn (`explDiscoveryLabel`);
+funn uten navn beholder betegnelsen.
