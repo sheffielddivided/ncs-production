@@ -42,6 +42,10 @@
     .mode-switcher{display:flex;flex-wrap:wrap;max-width:100%;background:var(--light);border-radius:8px;padding:3px;gap:2px;}
     .mode-btn{padding:6px 14px;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;background:none;color:var(--muted);transition:all 0.15s;letter-spacing:0.01em;}
     .mode-btn.active{background:var(--blue);color:#fff;}
+    /* Lenke til en annen app i menyen (Mapmaker): ser ut som en menyknapp, med pil og skillestrek foran. */
+    a.mode-btn{display:inline-flex;align-items:center;gap:4px;text-decoration:none;}
+    .mode-ext{margin-left:4px;box-shadow:inset 1px 0 0 rgba(125,34,72,0.18);border-top-left-radius:0;border-bottom-left-radius:0;}
+    @media (hover:hover){ .mode-ext:hover{color:var(--blue);} }
 
     .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
     .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
@@ -1040,6 +1044,8 @@
       <button class="mode-btn" id="modeBtnPrices" onclick="switchMode('prices')">Market</button>
       <button class="mode-btn" id="modeBtnDcs" onclick="switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS</button>
       <button class="mode-btn" id="modeBtnUkcs" onclick="switchMode('ukcs')" title="UK Continental Shelf (data from the North Sea Transition Authority)">UKCS</button>
+      <!-- Mapmaker er en egen app (sheffielddivided/mapmaker) og åpnes i ny fane. -->
+      <a class="mode-btn mode-ext" href="https://map.kbak.no/" target="_blank" rel="noopener" title="NCS Mapmaker: custom maps for presentations (opens in a new tab)">Mapmaker <span aria-hidden="true">↗</span></a>
     </div>
 </nav>
 
