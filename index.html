@@ -45,7 +45,9 @@
     /* Lenke til en annen app i menyen (Mapmaker): ser ut som en menyknapp, med pil og skillestrek foran. */
     a.mode-btn{display:inline-flex;align-items:center;gap:4px;text-decoration:none;}
     /* Skillestrek foran en menyknapp (foran Macro og Mapmaker). */
-    .mode-sep{margin-left:4px;box-shadow:inset 1px 0 0 rgba(125,34,72,0.18);border-top-left-radius:0;border-bottom-left-radius:0;}
+    /* Streken ligger i mellomrommet foran knappen, så den synes også når knappen er aktiv. */
+    .mode-sep{position:relative;margin-left:7px;}
+    .mode-sep::before{content:"";position:absolute;left:-5px;top:3px;bottom:3px;width:1px;background:rgba(125,34,72,0.18);pointer-events:none;}
     @media (hover:hover){ .mode-ext:hover{color:var(--blue);} }
 
     .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
@@ -3365,12 +3367,13 @@ function applyHash() {
     ncsF.cum = q.get('nu') === '1';
     ncsF.vol = q.get('nv') === '1';
     if (/^\d{4}$/.test(q.get('n0') || '')) ncsF.from = q.get('n0');
+    if (/^\d{4}$/.test(q.get('n1') || '')) ncsF.rf = q.get('n1');
     if (/^\d{4}$/.test(q.get('ny') || '')) ncsF.year = q.get('ny');
     if (['all', 'prod', 'rp', 'rl', 'count'].includes(q.get('nk'))) ncsF.rank = q.get('nk');
     if (q.get('nc') === 'year') ncsF.cr = 'year';
     if (q.get('nx') === 'infra') ncsF.gx = 'infra';
     ncsF.crArea = q.get('na') === '1';
-    if (['rem', 'orig', 'life', 'change', 'timeline'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
+    if (['rem', 'orig', 'life', 'change'].includes(q.get('nf'))) ncsF.fl = q.get('nf');
     if (['rem', 'orig', 'life', 'change'].includes(q.get('nh'))) ncsF.hb = q.get('nh');
     if (['mboe', 'scatter'].includes(q.get('nd'))) ncsF.chg = q.get('nd');
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
@@ -9681,7 +9684,6 @@ const NCS_TABS = [
   {id:'fields',      label:'Fields'},
   {id:'hubs',        label:'Hubs'},
   {id:'companies',   label:'Companies'},
-  {id:'water',       label:'Water'},
   {id:'replacement', label:'Replacement'},
   {id:'exploration', label:'Exploration'},
   {id:'creaming',    label:'Creaming'},
@@ -9690,16 +9692,16 @@ const NCS_TABS = [
   {id:'economy',     label:'Economy'},
 ];
 let ncsSubView = 'production';
-// prod: 'product' | 'area' | 'operator' · gx: Gas exports → 'outages' | 'infra' · grp: lisenshavere telles per konsern · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen
+// prod: 'product' | 'area' | 'operator' · gx: Gas exports → 'outages' | 'infra' · grp: lisenshavere telles per konsern · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen · rf: startår i reservegrafen
 // · year: valgt år i letegrafen · rank: 'res' | 'all' (med ressurser i funn) | 'prod' | 'rp' (reserve life) | 'rl' (resource life, med ressurser i funn)
-// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'life' | 'change' | 'timeline' · hb: samme uten 'timeline' (NCS → Hubs)
+// · cr: 'curve' | 'year' · crArea: per havområde · fl: 'rank' | 'rem' | 'orig' | 'life' | 'change' · hb: det samme for NCS → Hubs
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
-const ncsDefaults = () => ({prod: 'product', tot: false, grp: false, gx: 'outages', sc: false, res: 'oe', cum: false, vol: false, from: '2000', year: '', rank: 'res', all: false,
+const ncsDefaults = () => ({prod: 'product', tot: false, grp: false, gx: 'outages', sc: false, res: 'oe', cum: false, vol: false, from: '2000', rf: '2001', year: '', rank: 'res', all: false,
                             cr: 'curve', crArea: false, fl: 'rank', hb: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
-const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['grp', 'ng'], ['gx', 'nx'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['year', 'ny'], ['rank', 'nk'],
+const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['grp', 'ng'], ['gx', 'nx'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['rf', 'n1'], ['year', 'ny'], ['rank', 'nk'],
                     ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['hb', 'nh'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
@@ -9743,7 +9745,7 @@ function ncsToggleAbove(html) {
 async function refreshNcs() {
   showSpinner();
   const v = ncsSubView;
-  if (v === 'production' || v === 'water') await loadProdForFields(ncsFieldIds());
+  if (v === 'production') await loadProdForFields(ncsFieldIds());
   else if (v === 'fields' || v === 'hubs') await Promise.all([loadProdForFields(ncsFieldIds()), loadFieldReserves()]);
   else if (v === 'creaming') await Promise.all([loadExploration(), loadFieldReserves(), loadDiscoveries()]);
   else if (v === 'economy') await loadSsb();
@@ -9765,7 +9767,6 @@ function drawNcs() {
   else if (v === 'investments') drawNcsInvestments();
   else if (v === 'creaming') drawNcsCreaming();
   else if (v === 'fields' || v === 'hubs') drawNcsFields();
-  else if (v === 'water') drawNcsWater();
   else if (v === 'economy') drawNcsEconomy();
   else if (v === 'outage') drawNcsOutage();
   else drawNcsProduction();
@@ -10086,10 +10087,14 @@ function drawNcsReserves() {
     });
   });
   const prodSum = y => Object.values(prod[y]).reduce((t, v) => t + v, 0);
-  // Alle år fra første til siste på aksen; år uten regnskap får ingen stolpe.
-  const axis = [];
-  for (let y = years[0]; y <= years[years.length - 1]; y++) axis.push(y);
-  const has = new Set(years);
+  // Alle år fra startåret (rf, standard 2001) til siste på aksen; år uten
+  // regnskap får ingen stolpe. Startåret kan ikke ligge etter siste årgang.
+  const last = years[years.length - 1], prev = years[years.length - 2];
+  const y0 = Math.min(Math.max(years[0], +ncsF.rf || years[0]), last);
+  const fromOpts = [];
+  for (let y = years[0]; y <= last; y++) fromOpts.push(y);
+  const axis = fromOpts.filter(y => y >= y0);
+  const has = new Set(years.filter(y => y >= y0));
   const datasets = areas.map(z => ({label: z.label, data: axis.map(y => has.has(y) ? +(per[y][z.key] || 0).toFixed(1) : null),
     backgroundColor: rgba(z.color, 0.85), borderWidth: 0, stack: 's'})).filter(d => hasAnyValue(d.data));
   const legend = areas.filter(z => datasets.some(d => d.label === z.label)).map(z => ({label: z.label, color: rgba(z.color, 0.85)}));
@@ -10100,17 +10105,17 @@ function drawNcsReserves() {
       backgroundColor: PRODUCED_COLOR, borderWidth: 0, stack: 's'});
     legend.push({label: 'Cumulative produced', color: PRODUCED_COLOR});
   }
-  const last = years[years.length - 1], prev = years[years.length - 2];
   const gaps = axis.filter(y => !has.has(y));
   const gapTxt = gaps.reduce((out, y) => { const r = out[out.length - 1]; if (r && r[1] === y - 1) r[1] = y; else out.push([y, y]); return out; }, [])
     .map(([a, b]) => a === b ? `${a}` : `${a}–${String(b).slice(2)}`).join(', ');
-  const reclass = hist && has.has(NCS_RECLASS_YEAR) && years[0] < NCS_RECLASS_YEAR;
+  const reclass = hist && has.has(NCS_RECLASS_YEAR) && y0 < NCS_RECLASS_YEAR;
+  const y0Acc = years.find(y => y >= y0);
   setChartTitle(`Norwegian Continental Shelf · Remaining reserves${cum ? ' and cumulative production' : ''}`,
     `${ncsResLabel(k)} by sea area${cum ? ', produced to date on top' : ''} · million boe`);
   setInfo(`<strong>Scope:</strong> All fields &nbsp;|&nbsp; <strong>Series:</strong> Remaining ${ncsResNoun(k)} reserves per sea area` +
     (cum ? `, with cumulative ${ncsResNoun(k)} production on top (original recoverable − remaining in each vintage, shut-down fields included), so the full bar is original recoverable reserves` : '') +
-    ` &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${years[0]}–${last}, as of 31 Dec of each vintage. Liquids = oil, NGL and condensate; contingent resources in discoveries are not included` +
-    (hist ? ` &nbsp;|&nbsp; <strong>Before 2004:</strong> Sodir resource accounts, fields only (original recoverable per field; remaining = recoverable − cumulative production). ` +
+    ` &nbsp;|&nbsp; <strong>Unit:</strong> million boe &nbsp;|&nbsp; <strong>Basis:</strong> Sodir annual reserve estimates ${y0Acc}–${last}, as of 31 Dec of each vintage. Liquids = oil, NGL and condensate; contingent resources in discoveries are not included` +
+    (hist && y0 < 2004 ? ` &nbsp;|&nbsp; <strong>Before 2004:</strong> Sodir resource accounts, fields only (original recoverable per field; remaining = recoverable − cumulative production). ` +
       `Sodir's own totals for those years also count discoveries the licensees had decided to develop before the plan was approved, so they are somewhat higher (about 9 % in 2003)` +
       (gapTxt ? `. No accounts for ${gapTxt}; those years are left empty, so fields approved in a gap (Troll, Oseberg, Snorre and Heidrun in 1986–89) appear in the next account` : '') +
       (reclass ? `. <strong>${NCS_RECLASS_YEAR}:</strong> gas in Troll and Visund was reclassified as reserves, about 6,000 million boe at once` : '') +
@@ -10126,7 +10131,9 @@ function drawNcsReserves() {
   }}] : [];
   renderChart(axis.map(String), datasets, legend, 'million boe', {xTitle: 'Year', allTicks: true, plugins: mark, padTop: reclass ? 14 : 0});
   ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('res', NCS_RES)}${
-    ncsPills('cum', [[false, 'Remaining'], [true, 'Remaining + produced']])}</div>`);
+    ncsPills('cum', [[false, 'Remaining'], [true, 'Remaining + produced']])}
+    <select class="year-select" onchange="ncsSet('rf', this.value)" aria-label="Start year">${fromOpts.map(y =>
+      `<option value="${y}"${y === y0 ? ' selected' : ''}>From ${y}</option>`).join('')}</select></div>`);
 
   // Tabell: siste årgang per område og de største feltene.
   const n = v => v.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
@@ -10191,40 +10198,63 @@ function drawNcsReplacement() {
   const added = ys.map(y => +(rem[y] - rem[y - 1] + prod[y]).toFixed(1));
   const ratio = ys.map((y, i) => +(added[i] / produced[i] * 100).toFixed(0));
   const labels = ys.map(String);
-  const PROD_C = 'rgba(148,163,184,0.8)', ADD_C = 'rgba(0,179,115,0.85)', RATIO_C = '#ce0f69';
+  // Erstatningsgraden er hovedtallet: stolper per år, grønne når reservene er
+  // erstattet (≥ 100 %), røde ellers, med en tydelig strek på 100 %. Tilført og
+  // produsert står i tabellen under.
+  const UP_C = 'rgba(0,179,115,0.85)', DOWN_C = 'rgba(206,15,105,0.75)', LINE_C = '#1a2332';
 
   setChartTable(''); setProfile('');
   lastLabels = labels; lastXTitle = 'Year';
-  lastDatasets = [{label: 'Produced, million boe', data: produced}, {label: 'Added, million boe', data: added},
-                  {label: 'Replacement ratio, %', data: ratio}];
-  const legend = [['Produced', PROD_C], ['Added to reserves', ADD_C], ['Replacement ratio (right axis)', RATIO_C]];
+  lastDatasets = [{label: 'Replacement ratio, %', data: ratio}, {label: 'Produced, million boe', data: produced},
+                  {label: 'Added, million boe', data: added}];
+  const legend = [['100 % or more replaced', UP_C], ['Less than 100 % replaced', DOWN_C]];
   document.getElementById('chartArea').innerHTML = `${ncsPills('res', NCS_RES)}
     <div class="chart-container"><canvas id="prodChart"></canvas></div>
     <div class="legend-row">${legend.map(([l, c]) => `
-      <div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>`;
+      <div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
+      <div class="legend-item"><div style="width:16px;height:0;border-top:2px solid ${LINE_C};margin-right:5px"></div>100 % = production replaced</div></div>`;
   if (chartInstance) chartInstance.destroy();
   const r50 = v => Math.ceil(Math.abs(v) / 50) * 50 * Math.sign(v);
+  // Streken på 100 % tegnes over stolpene, med etikett ytterst til høyre.
+  const line100 = {id: 'ncsRepl100', afterDatasetsDraw(ch) {
+    const {ctx: c, chartArea: a, scales: {y}} = ch, py = Math.round(y.getPixelForValue(100)) + 0.5;
+    c.save(); c.strokeStyle = LINE_C; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(a.left, py); c.lineTo(a.right, py); c.stroke();
+    c.fillStyle = LINE_C; c.font = '700 10px sans-serif'; c.textAlign = 'right'; c.textBaseline = 'bottom';
+    c.fillText('100 %', a.right - 2, py - 3); c.restore();
+  }};
+  // Verdien over (eller under) hver stolpe.
+  const valLabels = {id: 'ncsReplLabels', afterDatasetsDraw(ch) {
+    const m = ch.getDatasetMeta(0), c = ch.ctx;
+    c.save(); c.fillStyle = '#4a5568'; c.strokeStyle = '#fff'; c.lineWidth = 3; c.lineJoin = 'round';
+    c.font = '600 9px sans-serif'; c.textAlign = 'center';
+    m.data.forEach((b, i) => {
+      const v = ratio[i], neg = v < 0, ty = b.y + (neg ? 3 : -3);
+      c.textBaseline = neg ? 'top' : 'bottom';
+      c.strokeText(v + '%', b.x, ty); c.fillText(v + '%', b.x, ty);
+    });
+    c.restore();
+  }};
   chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'bar',
     data: {labels, datasets: [
-      {type: 'line', label: 'Replacement ratio', data: ratio, yAxisID: 'y1', borderColor: RATIO_C, backgroundColor: RATIO_C,
-       borderWidth: 2, pointRadius: 3, tension: 0.2, order: 0},
-      {type: 'bar', label: 'Produced', data: produced, backgroundColor: PROD_C, borderWidth: 0, order: 1},
-      {type: 'bar', label: 'Added to reserves', data: added, backgroundColor: ADD_C, borderWidth: 0, order: 1},
+      {label: 'Replacement ratio', data: ratio, backgroundColor: ratio.map(v => v >= 100 ? UP_C : DOWN_C), borderWidth: 0},
     ]},
+    plugins: [line100, valLabels],
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: {padding: {top: 14}},
       interaction: {mode: 'index', intersect: false},
       plugins: {legend: {display: false}, tooltip: {callbacks: {
-        label: ctx => ctx.dataset.type === 'line' ? ` Replacement ratio: ${ctx.parsed.y} %`
-          : ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en', {maximumFractionDigits: 0})} million boe`,
+        label: ctx => ` Replacement ratio: ${ctx.parsed.y} %`,
+        afterLabel: ctx => [` Added: ${added[ctx.dataIndex].toLocaleString('en', {maximumFractionDigits: 0})} million boe`,
+                            ` Produced: ${produced[ctx.dataIndex].toLocaleString('en', {maximumFractionDigits: 0})} million boe`],
       }}},
       scales: {
-        x: {ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
-        y: {title: {display: true, text: 'million boe', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
-            grid: {color: 'rgba(0,0,0,0.05)'}},
-        y1: {position: 'right', min: Math.min(0, r50(Math.min(...ratio))), max: Math.max(150, r50(Math.max(...ratio))),
-             title: {display: true, text: 'replacement ratio, %', color: RATIO_C, font: {size: 10}},
-             ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
+        x: {ticks: {font: {size: 9}}, grid: {display: false}},
+        y: {min: Math.min(0, r50(Math.min(...ratio))), max: Math.max(150, r50(Math.max(...ratio))),
+            title: {display: true, text: 'replacement ratio, %', color: '#4a5568', font: {size: 10}},
+            ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {color: 'rgba(0,0,0,0.05)'}},
       },
     },
   });
@@ -10232,7 +10262,7 @@ function drawNcsReplacement() {
 
   const sumP = produced.reduce((a, b) => a + b, 0), sumA = added.reduce((a, b) => a + b, 0);
   const n0 = v => Math.round(v).toLocaleString('en');
-  setChartTitle('Norwegian Continental Shelf · Reserve replacement', `${ncsResLabel(k)} · added vs produced per year · million boe`);
+  setChartTitle('Norwegian Continental Shelf · Reserve replacement', `${ncsResLabel(k)} · reserves added as a share of production per year · %`);
   setInfo(`<strong>Added</strong> = remaining reserves at year end − remaining a year earlier + production in the year &nbsp;|&nbsp; <strong>Replacement ratio</strong> = added / produced &nbsp;|&nbsp; <strong>${ys[0]}–${ys[ys.length - 1]}:</strong> ${n0(sumA)} added vs ${n0(sumP)} produced, ${(sumA / sumP * 100).toFixed(0)} % replaced &nbsp;|&nbsp; <strong>Basis:</strong> Sodir field reserve vintages and field production. New fields enter when they get an approved development plan; volumes still in discoveries are not counted`);
   setChartTable(`
     <table class="res-table">
@@ -10512,10 +10542,9 @@ function drawNcsFields() {
   const mode = hubMode ? ncsF.hb : ncsF.fl;
   const opts = [['rank', 'Production'], ['rem', 'Remaining reserves'], ['orig', 'Original reserves'],
                 ['life', 'Reserve life'], ['change', 'Reserve change']];
-  const toggle = hubMode ? ncsPills('hb', opts) : ncsPills('fl', opts.concat([['timeline', 'Start-ups & shutdowns']]));
+  const toggle = ncsPills(hubMode ? 'hb' : 'fl', opts);
   setProfile(''); setChartTable('');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-  if (mode === 'timeline' && !hubMode) return drawNcsFieldTimeline(ids, toggle);
   if (mode === 'change') return drawNcsReserveChange(toggle, hubMode);
   if (mode === 'life') return drawNcsReserveLife(ids, toggle, hubMode);
 
@@ -10919,129 +10948,6 @@ function drawNcsReserveLife(ids, toggle, hubMode) {
   pptSpec = {kind: 'cat', dir: 'bar', stacked: false, labels: shown.map(f => f.name), yTitle: 'years',
     series: [{name: 'Reserve life, years', type: 'bar', color: pptHex(C), values: shown.map(f => r1(f.life))}]};
   document.getElementById('downloadBtn').disabled = false;
-}
-
-function drawNcsFieldTimeline(ids, toggle) {
-  const annual = id => (fieldProdCache[id] || []).map(r => r.attributes).filter(a => a.prfMonth === 0 && (a.prfPrdOeNetMillSm3 || 0) > 0);
-  const starts = {}, stops = {}, producing = {};
-  const push = (o, y, name) => { (o[y] = o[y] || []).push(name); };
-  ids.forEach(id => {
-    const p = profileRow(id) || {}, rows = annual(id), name = fieldNameOf(id);
-    rows.forEach(a => { producing[a.prfYear] = (producing[a.prfYear] || 0) + 1; });
-    const sy = p.productionStart ? new Date(p.productionStart).getUTCFullYear() : rows.length ? rows[0].prfYear : null;
-    if (sy) push(starts, sy, name);
-    if (p.status === 'Shut down' && rows.length) push(stops, rows[rows.length - 1].prfYear, name);
-  });
-  const ys = Object.keys(starts).concat(Object.keys(stops), Object.keys(producing)).map(Number);
-  const labels = [];
-  for (let y = Math.min(...ys); y <= Math.max(currentYear, ...ys); y++) labels.push(String(y));
-  const up = labels.map(y => (starts[y] || []).length), down = labels.map(y => -(stops[y] || []).length);
-  // Inneværende år har ufullstendige årsrader; antall producerende vises ikke for det.
-  const prod = labels.map(y => +y < currentYear ? producing[y] || 0 : null);
-  const UP_C = 'rgba(0,179,115,0.85)', DOWN_C = 'rgba(154,165,177,0.9)', LINE_C = '#003057';
-  document.getElementById('chartArea').innerHTML = `${toggle}
-    <div class="chart-container"><canvas id="prodChart"></canvas></div>
-    <div class="legend-row">${[['Came on stream', UP_C], ['Shut down', DOWN_C], ['Producing fields (right axis)', LINE_C]]
-      .map(([l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>`;
-  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
-    data: {labels, datasets: [
-      {type: 'line', label: 'Producing fields', data: prod, yAxisID: 'y1', borderColor: LINE_C, backgroundColor: LINE_C,
-       borderWidth: 2, pointRadius: 0, tension: 0.2, order: 0},
-      {type: 'bar', label: 'Came on stream', data: up, backgroundColor: UP_C, borderWidth: 0, stack: 's', order: 1},
-      {type: 'bar', label: 'Shut down', data: down, backgroundColor: DOWN_C, borderWidth: 0, stack: 's', order: 1},
-    ]},
-    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
-      plugins: {legend: {display: false}, tooltip: {callbacks: {
-        label: ctx => ctx.dataset.type === 'line' ? (ctx.parsed.y == null ? null : ` Producing fields: ${ctx.parsed.y}`)
-          : ctx.parsed.y ? ` ${ctx.dataset.label}: ${Math.abs(ctx.parsed.y)}` : null,
-        afterBody: items => {
-          const y = labels[items[0].dataIndex], out = [];
-          if (starts[y]) out.push('On stream: ' + starts[y].join(', '));
-          if (stops[y]) out.push('Shut down: ' + stops[y].join(', '));
-          return out;
-        }}}},
-      scales: {
-        x: {stacked: true, ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
-        y: {stacked: true, title: {display: true, text: 'fields per year', color: '#4a5568', font: {size: 10}}, ticks: {precision: 0, font: {size: 9}}},
-        y1: {position: 'right', beginAtZero: true, title: {display: true, text: 'producing fields', color: LINE_C, font: {size: 10}},
-             ticks: {precision: 0, font: {size: 9}}, grid: {display: false}},
-      }},
-  });
-  lastLabels = labels; lastXTitle = 'Year';
-  lastDatasets = [{label: 'Came on stream', data: up}, {label: 'Shut down', data: down.map(Math.abs)}, {label: 'Producing fields', data: prod.map(v => v ?? '')}];
-  document.getElementById('downloadBtn').disabled = false;
-  const nS = Object.values(starts).flat().length, nD = Object.values(stops).flat().length;
-  setChartTitle('Norwegian Continental Shelf · Fields', 'Fields coming on stream and shutting down per year');
-  setInfo(`<strong>On stream:</strong> ${nS} fields, by Sodir's production start date &nbsp;|&nbsp; <strong>Shut down:</strong> ${nD} fields with status «Shut down», on their last year of production &nbsp;|&nbsp; <strong>Producing:</strong> fields with production in the year (complete years only) &nbsp;|&nbsp; Hover a year for the field names`);
-}
-
-// ── NCS: WATER ──
-// Produsert vann mot olje (væske) per år, og vannkuttet: vannets andel av
-// væsken som kommer opp, vann / (vann + olje). Et stigende vannkutt er et
-// modningstegn. Bare hele år.
-function drawNcsWater() {
-  const ids = ncsFieldIds();
-  const per = {}, perField = {};
-  ids.forEach(id => (fieldProdCache[id] || []).forEach(r => {
-    const a = r.attributes;
-    if (a.prfMonth !== 0 || a.prfYear >= currentYear) return;
-    const liq = Math.max(0, (a.prfPrdOeNetMillSm3 || 0) - (a.prfPrdGasNetBillSm3 || 0)), wat = a.prfPrdProducedWaterInFieldMillS || 0;
-    const o = per[a.prfYear] = per[a.prfYear] || {liq: 0, wat: 0};
-    o.liq += liq; o.wat += wat;
-    if (a.prfYear === currentYear - 1) perField[id] = {liq, wat};
-  }));
-  // Sodir har produsert vann for de fleste felt først fra 2000; før det
-  // rapporterer bare en håndfull felt, og vannkuttet ville sett ut som 0 %.
-  // Grafen starter derfor ved første år med minst en tidel av det høyeste
-  // årlige vannvolumet.
-  const maxWat = Math.max(...Object.values(per).map(o => o.wat));
-  const firstWat = Math.min(...Object.keys(per).map(Number).filter(y => per[y].wat >= maxWat / 10));
-  const ys = Object.keys(per).map(Number).filter(y => y >= firstWat && per[y].liq + per[y].wat > 0).sort((a, b) => a - b);
-  if (!ys.length) { setChartEmpty('No production data available.'); setInfo(''); return; }
-  const labels = ys.map(String);
-  const toBd = (v, y) => v * 1e6 * BBL_PER_SM3 / daysInYear(y);
-  const liqD = ys.map(y => Math.round(toBd(per[y].liq, y))), watD = ys.map(y => Math.round(toBd(per[y].wat, y)));
-  const cut = ys.map(y => +(per[y].wat / (per[y].wat + per[y].liq) * 100).toFixed(1));
-  const CUT_C = '#003057';
-  setChartTable(''); setProfile('');
-  lastLabels = labels; lastXTitle = 'Year';
-  lastDatasets = [{label: 'Oil, bbl/day', data: liqD}, {label: 'Produced water, bbl/day', data: watD}, {label: 'Water cut, %', data: cut}];
-  document.getElementById('chartArea').innerHTML = `
-    <div class="chart-container"><canvas id="prodChart"></canvas></div>
-    <div class="legend-row">${[['Oil (incl. NGL, condensate)', OIL_COLOR], ['Produced water', WATER_COLOR], ['Water cut (right axis)', CUT_C]]
-      .map(([l, c]) => `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}</div>`;
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
-    data: {labels, datasets: [
-      {type: 'line', label: 'Water cut', data: cut, yAxisID: 'y1', borderColor: CUT_C, backgroundColor: CUT_C, borderWidth: 2, pointRadius: 0, tension: 0.2, order: 0},
-      {type: 'bar', label: 'Oil', data: liqD, backgroundColor: OIL_COLOR, borderWidth: 0, order: 1},
-      {type: 'bar', label: 'Produced water', data: watD, backgroundColor: WATER_COLOR, borderWidth: 0, order: 1},
-    ]},
-    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
-      plugins: {legend: {display: false}, tooltip: {callbacks: {
-        label: ctx => ctx.dataset.type === 'line' ? ` Water cut: ${ctx.parsed.y} %` : ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en')} bbl/day`}}},
-      scales: {
-        x: {ticks: {maxRotation: 45, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
-        y: {beginAtZero: true, title: {display: true, text: 'bbl/day', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}},
-        y1: {position: 'right', min: 0, max: 100, title: {display: true, text: 'water cut, %', color: CUT_C, font: {size: 10}},
-             ticks: {font: {size: 9}, callback: v => v + ' %'}, grid: {display: false}},
-      }},
-  });
-  document.getElementById('downloadBtn').disabled = false;
-  const ly = ys[ys.length - 1];
-  setChartTitle('Norwegian Continental Shelf · Produced water', 'Oil and produced water · bbl/day · water cut');
-  setInfo(`<strong>Water cut</strong> = produced water / (produced water + oil), by volume &nbsp;|&nbsp; <strong>${ly}:</strong> ${cut[cut.length - 1]} % — ${(per[ly].wat / per[ly].liq).toFixed(1)} barrels of water per barrel of oil &nbsp;|&nbsp; <strong>Oil</strong> includes NGL and condensate (OE minus gas) &nbsp;|&nbsp; <strong>Basis:</strong> Sodir field production, complete years; produced water is reported from ${ys[0]}`);
-  const n0 = v => Math.round(v).toLocaleString('en');
-  const top = Object.entries(perField).map(([id, v]) => ({id: +id, name: fieldNameOf(+id), ...v}))
-    .filter(f => f.wat > 0).sort((a, b) => b.wat - a.wat).slice(0, 15);
-  if (top.length) setChartTable(`
-    <table class="res-table">
-      <caption>Largest producers of water, ${currentYear - 1} · bbl/day</caption>
-      <thead><tr><th>Field</th><th>Produced water</th><th>Oil</th><th>Water cut</th></tr></thead>
-      <tbody>${top.map(f => `<tr><td><a class="row-link" href="#" onclick="openFieldProfile(${f.id});return false;">${esc(f.name)}</a></td>
-        <td>${n0(toBd(f.wat, currentYear - 1))}</td><td>${n0(toBd(f.liq, currentYear - 1))}</td>
-        <td>${(f.wat / (f.wat + f.liq) * 100).toFixed(0)} %</td></tr>`).join('')}</tbody>
-    </table>`);
 }
 
 // ── NCS: ECONOMY (SSB) ──
