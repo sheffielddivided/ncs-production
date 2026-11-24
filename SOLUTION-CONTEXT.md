@@ -1031,7 +1031,7 @@ over (ingen nettkall): siste produksjonsmåned (`top` = år × 12 + måned − 1
 antall produserende felt, aktive lisenser, selskaper og de tre siste
 produksjonsmeldingene. Tallene regnes som i `homeCompute()` i `index.html`.
 
-Oppstarten i `init()` er delt: startsiden tegnes fra denne fila, og Market og
+Oppstarten i `init()` er delt: startsiden tegnes fra denne fila, og Macro og
 DCS, som laster egne data, tegnes med en gang. Kjernedataene (om lag 4 MB)
 lastes deretter i bakgrunnen, og `refresh()` venter med de øvrige seksjonene
 til `coreDone` er satt. ExcelJS hentes først når noen laster ned Excel
@@ -1742,9 +1742,9 @@ PowerPoint-tabell (`kind: 'table'`) med cellefargene blandet mot hvitt og
 skrift som krymper med antall selskaper. Kurven lagres i localStorage og lastes ned som én fil
 med ett lysbilde per element, i den rekkefølgen panelet viser.
 
-#### Market → Brent: opplasting av normpris-filer
+#### Macro → Brent: opplasting av normpris-filer
 
-Tannhjulet i Market → Brent (`openNpUpload`) laster opp normpris-xlsx til
+Tannhjulet i Macro → Brent (`openNpUpload`) laster opp normpris-xlsx til
 `data/normpris-raw/`, som ellers måtte pushes for hånd (regjeringen.no ligger
 bak Cloudflare).
 
@@ -1763,7 +1763,7 @@ bak Cloudflare).
   den (feil vises med lenke), ellers om `normpris_*.json` har ny blob-sha. De nye
   filene leses rett fra repoet og grafene tegnes på nytt, før nettstedet har hentet dem.
 
-#### Market → Power
+#### Macro → Power
 
 `drawPricePower`, data fra `data/power.json` (`fetch_nve.py`, som leser nve-løsningen `sheffielddivided/nve`; lastes først når fanen åpnes). Områdevelger Norge / NO1–NO5 (`pw`), periode for prisgrafen (`pz`: 1y, 3y, 5y, all) og enhet (`pe`: €/MWh eller `ore` for øre/kWh). Øre/kWh = €/MWh × EURNOK / 10, med Norges Banks kurs fra `data/fx.json` (snitt av dagskursene i ISO-uken, `pwEurNok`; uker uten kurs får siste kjente ukesnitt). Kursene lastes bare når øre/kWh velges. Omregningen skjer i `pwPrices`, så nøkkeltall, graf og tabell følger samme enhet; uten moms og nettleie.
 
