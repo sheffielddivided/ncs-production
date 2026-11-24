@@ -4249,8 +4249,8 @@ function anToggleShelf(side, item, s) {
   const next = sh.includes(s) ? sh.filter(x => x !== s) : [...sh, s];
   anSet(side, anKeys(side).map(it => it !== item ? it : next.length ? anItem(key, next) : null).filter(Boolean).join(SEP));
 }
-function anPick(side, inp) {
-  let v = inp.value.trim().toLowerCase();
+function anPick(side, val) {
+  let v = String(val || '').trim().toLowerCase();
   if (!v) return;
   // «Shell (NCS)»: bare den sokkelen.
   const m = v.match(/^(.*\S)\s*\((ncs|dcs|ukcs)\)$/);
@@ -4259,7 +4259,6 @@ function anPick(side, inp) {
   const L = anList(), names = x => [x.label, ...x.names].map(n => n.toLowerCase());
   const e = L.find(x => names(x).includes(v)) || L.find(x => names(x).some(n => n.startsWith(v)))
     || L.find(x => names(x).some(n => n.includes(v)));
-  inp.value = '';
   if (e) anAdd(side, only && anShelfIds(e.key).includes(only) ? `${e.key}:${only}` : e.key);
 }
 function anCopyFrom() { anSet('to', anF.from); }
@@ -4315,9 +4314,16 @@ function anChipBox(side, title, keys, color) {
     return `<span class="an-chip"><i style="background:${color(k)}"></i>${esc(anName(key))}${shelves}
       <button type="button" class="an-x" aria-label="Remove ${esc(anLabel(k))}" onclick="anRemove('${side}', ${esc(jsStr(k))})">×</button></span>`;
   }).join('');
+  // Søkelisten (pickerHtml), ikke nettleserens datalist: den viser ikke valgene på mobil.
   return `<div class="an-side"><h4>${title}</h4><div class="an-chips">${chips || '<span class="an-none">No companies</span>'}</div>
-    <input class="an-in" list="anCmpList" placeholder="Add company…" aria-label="Add company to ${title}"
-      onchange="anPick('${side}', this)" onkeydown="if(event.key==='Enter'){event.preventDefault();anPick('${side}', this)}"></div>`;
+    ${pickerHtml({id: `anCmp_${side}`, value: '', placeholder: 'Add company…', label: `Add company to ${title}`,
+      items: anCmpItems(), pick: v => anPick(side, v)})}</div>`;
+}
+// Valgene i selskapsvelgeren: hvert selskap, og for selskap på flere sokler også
+// hver sokkel for seg («Shell (NCS)»). Andre navn (Noreco, Statoil) er søkbare.
+function anCmpItems() {
+  return anList().flatMap(e => [{v: e.label, sub: e.shelves.join(' · '), q: e.names.join(' ')},
+    ...(e.shelves.length > 1 ? e.shelves.map(l => ({v: `${e.label} (${l})`, sub: `${l} only`, q: e.names.join(' ')})) : [])]);
 }
 
 // ── Analytics: kjøp og salg av enkeltfelt og funn ──
@@ -4438,10 +4444,12 @@ const anDeals = () => (anF.deals || '').split(SEP).filter(Boolean).map(x => {
 const anDealStr = ds => ds.map(d => [d.t, d.a, +(+d.p).toFixed(3), d.t === 's' ? d.s : ''].join('*')).join(SEP);
 const anPctTxt = v => (+v).toLocaleString('en', {maximumFractionDigits: 2});
 
+// Valgt eiendel i Deals-kortet og koblet felt for en ny manuell eiendel, fra søkelistene.
+let anDealSel = '', anManLinkSel = '';
 function anDealAdd() {
-  const t = document.getElementById('anDealType').value, inp = document.getElementById('anDealAsset');
+  const t = document.getElementById('anDealType').value;
   const pctIn = document.getElementById('anDealPct').value.trim(), msg = document.getElementById('anDealMsg');
-  const v = inp.value.trim().toLowerCase(), L = anAllAssets();
+  const v = anDealSel.trim().toLowerCase(), L = anAllAssets();
   const a = L.find(x => x.label.toLowerCase() === v) || L.find(x => x.name.toLowerCase() === v)
     || L.find(x => x.name.toLowerCase().startsWith(v)) || L.find(x => x.label.toLowerCase().includes(v));
   if (!v || !a) { msg.textContent = 'Pick a field, discovery or manual asset from the list.'; return; }
@@ -4453,6 +4461,7 @@ function anDealAdd() {
     if (p == null) p = held[0].s * 100;
   } else if (p == null) p = Math.max(0, 100 - held.reduce((t2, x) => t2 + x.s, 0) * 100);   // kjøper ut partnerne
   if (!(p > 0)) { msg.textContent = 'Enter a share above 0 %.'; return; }
+  anDealSel = '';
   anSet('deals', anDealStr([...anDeals(), {t, a: a.id, p, s}]));
 }
 function anDealSet(i, k, v) {
@@ -4484,10 +4493,10 @@ function anDealsCard(to) {
       <button type="button" class="an-x" aria-label="Remove deal" onclick="anDealRemove(${i})">×</button></div>`;
   }).join('');
   return `<div class="pf-card pf-wide"><h3>Field and discovery deals · pro forma</h3>${rows || '<div class="an-none">No deals.</div>'}
-    <datalist id="anAssetList">${anAllAssets().map(a => `<option value="${esc(a.label)}"></option>`).join('')}</datalist>
     <div class="an-opts">
       <select id="anDealType" class="year-select" aria-label="Buy or sell"><option value="b">Buy</option><option value="s">Sell</option></select>
-      <input id="anDealAsset" class="an-in" style="flex:1 1 220px;width:auto" list="anAssetList" placeholder="Field, discovery or manual asset…" aria-label="Field, discovery or manual asset">
+      ${pickerHtml({id: 'anDealAsset', value: anDealSel, placeholder: 'Field, discovery or manual asset…', label: 'Field, discovery or manual asset',
+        allowEmpty: true, items: anAllAssets().map(a => ({v: a.label})), pick: v => { anDealSel = v; }})}
       <input id="anDealPct" class="an-in an-pct" type="number" min="0" max="100" step="0.01" placeholder="%" aria-label="Share in percent">
       <button type="button" class="grp-btn" onclick="anDealAdd()">Add</button>
       <span id="anDealMsg" class="an-warn" role="alert"></span>
@@ -4594,8 +4603,8 @@ function anManSet(k, f, v) {
 // Netto inn: brutto = netto / andel.
 function anManNet(k, f, pct, v) { if (pct > 0) anManPatch(k, {[f]: anNum(v) / (pct / 100)}); }
 function anManAdd() {
-  const nameIn = document.getElementById('anManName'), linkIn = document.getElementById('anManLink'), msg = document.getElementById('anManMsg');
-  const lv = linkIn.value.trim().toLowerCase(), L = anAssets();
+  const nameIn = document.getElementById('anManName'), msg = document.getElementById('anManMsg');
+  const lv = anManLinkSel.trim().toLowerCase(), L = anAssets();
   const a = !lv ? null : L.find(x => x.label.toLowerCase() === lv) || L.find(x => x.name.toLowerCase() === lv)
     || L.find(x => x.name.toLowerCase().startsWith(lv)) || L.find(x => x.label.toLowerCase().includes(lv));
   if (lv && !a) { msg.textContent = 'Pick the linked field or discovery from the list, or leave it empty.'; return; }
@@ -4607,6 +4616,7 @@ function anManAdd() {
   const holds = a ? [...new Set([...anKeys('from'), ...anKeys('to')].map(x => anParse(x).key))]
     .map(c => ({c, k, p: anOwnShare(c, a.id) * 100})).filter(h => h.p > 0) : [];
   anF.ah = anHoldStr([...anHolds(), ...holds]);
+  anManLinkSel = '';
   anSet('ax', anManStr([...ms, m]));
 }
 function anManRemove(k) {
@@ -4670,7 +4680,8 @@ function anManCard(from, to) {
   return `<div class="pf-card pf-wide"><h3>Manual assets · 2P and 2C</h3>${blocks || '<div class="an-none">No manual assets.</div>'}
     <div class="an-opts">
       <input id="anManName" class="an-in" style="flex:1 1 180px;width:auto" placeholder="Name, e.g. Ekofisk PPF" aria-label="Name of new manual asset">
-      <input id="anManLink" class="an-in" style="flex:1 1 220px;width:auto" list="anAssetList" placeholder="Linked field or discovery (optional)…" aria-label="Linked field or discovery, optional">
+      ${pickerHtml({id: 'anManLink', value: anManLinkSel, placeholder: 'Linked field or discovery (optional)…', label: 'Linked field or discovery, optional',
+        allowEmpty: true, items: anAssets().map(a => ({v: a.label})), pick: v => { anManLinkSel = v; }})}
       <button type="button" class="grp-btn" onclick="anManAdd()">Add asset</button>
       <span id="anManMsg" class="an-warn" role="alert"></span>
     </div>
@@ -4919,9 +4930,6 @@ function drawCompanyAnalytics() {
 
   const controls = `<div class="pf-card pf-wide"><h3>Merger simulation</h3>
       <div class="an-sides">${anChipBox('from', 'From', from, color)}${anChipBox('to', 'To (pro forma)', to, color)}</div>
-      <datalist id="anCmpList">${anList().map(e => `<option value="${esc(e.label)}">${esc(e.shelves.join(' · ')
-        + (e.names.length ? ' · also ' + e.names.slice(0, 3).join(', ') : ''))}</option>` + (e.shelves.length > 1
-        ? e.shelves.map(l => `<option value="${esc(`${e.label} (${l})`)}">${l} only</option>`).join('') : '')).join('')}</datalist>
       <div class="an-opts">
         <button type="button" class="grp-btn" onclick="anCopyFrom()">Copy From to To</button>
         <label>Production year <select class="year-select" onchange="anSet('yr', this.value)">${
@@ -19536,7 +19544,8 @@ function explRenderBar() {
 // Enter og Escape virker. Valgene ligger i cbReg, ikke i markupen, så
 // filterlinjen kan tegnes på nytt uten å bygge listen i DOM-en.
 //
-// opts: {id, value, placeholder, label, items: [{v, sub}], pick: v => …,
+// opts: {id, value, placeholder, label, items: [{v, sub, q}], pick: v => …,
+//        (q: ekstra søketekst, f.eks. andre navn; treff der kommer etter treff i v)
 //        allowEmpty: tomt felt betyr «alle» og sendes til pick('')}
 const cbReg = {};
 const CB_MAX = 200;   // flere vises ikke på en gang; skriv for å snevre inn
@@ -19568,13 +19577,14 @@ function cbFilter(inp, typed) {
     const pre = [], mid = [];
     o.items.forEach(it => {
       const k = String(it.v).toLowerCase().indexOf(q);
-      if (k === 0) pre.push(it); else if (k > 0) mid.push(it);
+      if (k === 0) pre.push(it); else if (k > 0 || (it.q && String(it.q).toLowerCase().includes(q))) mid.push(it);
     });
     hits = pre.concat(mid);
   }
   const mark = v => {
     if (!q) return esc(v);
     const k = String(v).toLowerCase().indexOf(q);
+    if (k < 0) return esc(v);
     return esc(v.slice(0, k)) + '<mark>' + esc(v.slice(k, k + q.length)) + '</mark>' + esc(v.slice(k + q.length));
   };
   box._hits = hits.slice(0, CB_MAX);
