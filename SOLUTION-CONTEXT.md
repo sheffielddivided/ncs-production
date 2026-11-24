@@ -1763,7 +1763,7 @@ bak Cloudflare).
   den (feil vises med lenke), ellers om `normpris_*.json` har ny blob-sha. De nye
   filene leses rett fra repoet og grafene tegnes på nytt, før nettstedet har hentet dem.
 
-#### Macro → Power
+#### Macro → NO power
 
 `drawPricePower`, data fra `data/power.json` (`fetch_nve.py`, som leser nve-løsningen `sheffielddivided/nve`; lastes først når fanen åpnes). Områdevelger Norge / NO1–NO5 (`pw`), periode for prisgrafen (`pz`: 1y, 3y, 5y, all) og enhet (`pe`: €/MWh eller `ore` for øre/kWh). Øre/kWh = €/MWh × EURNOK / 10, med Norges Banks kurs fra `data/fx.json` (snitt av dagskursene i ISO-uken, `pwEurNok`; uker uten kurs får siste kjente ukesnitt). Kursene lastes bare når øre/kWh velges. Omregningen skjer i `pwPrices`, så nøkkeltall, graf og tabell følger samme enhet; uten moms og nettleie.
 
