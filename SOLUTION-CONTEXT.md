@@ -1763,7 +1763,7 @@ bak Cloudflare).
   den (feil vises med lenke), ellers om `normpris_*.json` har ny blob-sha. De nye
   filene leses rett fra repoet og grafene tegnes på nytt, før nettstedet har hentet dem.
 
-#### Macro → Power
+#### Macro → NO power
 
 `drawPricePower`, data fra `data/power.json` (`fetch_nve.py`, som leser nve-løsningen `sheffielddivided/nve`; lastes først når fanen åpnes). Områdevelger Norge / NO1–NO5 (`pw`), periode for prisgrafen (`pz`: 1y, 3y, 5y, all) og enhet (`pe`: €/MWh eller `ore` for øre/kWh). Øre/kWh = €/MWh × EURNOK / 10, med Norges Banks kurs fra `data/fx.json` (snitt av dagskursene i ISO-uken, `pwEurNok`; uker uten kurs får siste kjente ukesnitt). Kursene lastes bare når øre/kWh velges. Omregningen skjer i `pwPrices`, så nøkkeltall, graf og tabell følger samme enhet; uten moms og nettleie.
 
@@ -3431,3 +3431,16 @@ uten historikk vises dagens kart (`licCompanyMap`).
 
 **Faktaark for DCS/UKCS-felt ved navigering:** `popstate` tømmer `dcsF.fs/wl`
 og `ukF.fs` når adressen peker til en annen side, så arket lukkes.
+
+#### Macro → EU gas
+
+Fanen (id `storage`, tidligere «EU storage») viser gasslagre og LNG-utsendelse
+som før, og under dem to grafer fra `gassimport.html` i eia-repoet:
+**Imports by origin** (daglig gass inn i EU per leverandør — Norge, Russland,
+Algerie, Aserbajdsjan, andre rør — og LNG, snitt per døgn per dag/uke/måned,
+1 år/2 år/alt, GWh/d eller mcm/d; `qa`, `qr`, `qu` i lenken) og **Russian gas
+by route** (russisk rørgass per rute, månedssnitt), pluss et kort med andelene
+siste 30 dager mot samme periode i fjor. Data: `data/eu_gas_flows.json`, bygget
+av `gas_flows()` i `fetch_eugas.py` fra eia-repoets `data/gas_flows.json`
+(ENTSOG og GIE ALSI) med samme gruppering og dagsutvalg som `gassimport.html`.
+Tegnes av `drawGasFlowCards`; begge grafene er med i PowerPoint-eksporten.

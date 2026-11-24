@@ -3261,6 +3261,7 @@ const SOURCES = {
   eex:      ['EEX, TTF Neutral Gas Price', 'https://www.eex.com', ''],
   gie:      ['AGSI+, Gas Infrastructure Europe', 'https://agsi.gie.eu', ''],
   gie_lng:  ['ALSI+, Gas Infrastructure Europe', 'https://alsi.gie.eu', ''],
+  entsog:   ['ENTSOG Transparency Platform', 'https://transparency.entsog.eu', ''],
 };
 function pageSources() {
   const m = topMode, v = currentSubView(), out = [];
@@ -3269,7 +3270,7 @@ function pageSources() {
     if (v === 'brent' || v === 'oilgas') add('ppb', 'eia', 'fred');
     if (v === 'gas' || v === 'oilgas') add('ssb', 'imf', 'eia', 'nb');
     if (v === 'gas' && priceData && priceData.ttfd) add('eex');
-    if (v === 'storage') add('gie', 'gie_lng');
+    if (v === 'storage') add('gie', 'gie_lng', 'entsog');
     if (v === 'power') add('nve', 'entsoe', ...(prF.pe === 'ore' ? ['nb'] : []));
     if (v === 'us' || v === 'refining' || v === 'oilmarket') add('eia');
     if (v === 'forex') add('nb');
@@ -7342,8 +7343,8 @@ const PRICE_TABS = [
   {id: 'gas',     label: 'Gas'},
   {id: 'oilgas',  label: 'Oil vs gas'},
   {id: 'oilmarket', label: 'Oil market'},
-  {id: 'storage', label: 'EU storage'},
-  {id: 'power',   label: 'Power'},
+  {id: 'storage', label: 'EU gas'},
+  {id: 'power',   label: 'NO power'},
   {id: 'us',      label: 'US supply'},
   {id: 'refining', label: 'Refining'},
   {id: 'forex',   label: 'Forex'},
@@ -8068,7 +8069,7 @@ function drawPriceGas() {
     `<strong>Sources:</strong> Statistics Norway (SSB), table 11008; IMF Primary Commodity Prices («Natural gas, EU») via FRED; Henry Hub spot, ${hhSrc}; Norges Bank${td ? '; EEX TTF Neutral Gas Price (day-ahead), collected daily by eugas' : ''}`);
 }
 
-// ── MARKET: EU STORAGE ──
+// ── MARKET: EU GAS (lagre, LNG og import etter opprinnelse) ──
 // To sesonggrafer fra eugas (data fra fetch_eugas.py), begge per dag gjennom
 // året: i år som linje, i fjor som svakere linje, og snitt og spenn (min–maks)
 // for de fem siste hele årene.
@@ -8492,8 +8493,8 @@ function drawPricePower() {
 function drawPriceStorage() {
   if (priceData.storage === undefined || priceData.lng === undefined) {
     document.getElementById('chartArea').innerHTML = '<div class="status"><div class="spinner"></div><div>Loading…</div></div>';
-    storageLoading = storageLoading || Promise.all([fetchBundle('eu_storage'), fetchBundle('eu_lng')])
-      .then(([st, lng]) => { priceData.storage = st || false; priceData.lng = lng || false; });
+    storageLoading = storageLoading || Promise.all([fetchBundle('eu_storage'), fetchBundle('eu_lng'), fetchBundle('eu_gas_flows')])
+      .then(([st, lng, fl]) => { priceData.storage = st || false; priceData.lng = lng || false; priceData.flows = fl || false; });
     storageLoading.then(() => { if (topMode === 'prices' && priceSubView === 'storage') drawChart(); });
     return;
   }
@@ -8510,7 +8511,9 @@ function drawPriceStorage() {
       <div class="np-bar">${pills}</div>
       <div class="chart-container"><canvas id="prodChart"></canvas></div><div class="legend-row" id="storageLegend"></div>
       <div class="pf-map-note" id="storageNote"></div></div>
-    <div class="om-chart" id="lngCard"></div></div>`;
+    <div class="om-chart" id="lngCard"></div></div>
+    <div class="om-chart" id="flowCard" style="margin-top:12px"></div>
+    <div class="dual-charts" style="margin-top:12px"><div class="om-chart" id="ruCard"></div><div class="om-chart" id="flowNoteCard"></div></div>`;
   if (chartInstance) chartInstance.destroy();
   const pct = x => x == null ? '—' : x.toFixed(1) + ' %';
   const ppDiff = (a, b) => a == null || b == null ? '' : ` (${a - b >= 0 ? '+' : '−'}${Math.abs(a - b).toFixed(1)} pp)`;
@@ -8526,11 +8529,126 @@ function drawPriceStorage() {
   lastDatasets = [{label: `${S.cur}, %`, data: S.curD.map(v => v ?? '')}, {label: `${S.cur - 1}, %`, data: S.prevD.map(v => v ?? '')},
     {label: `Min ${S.span}, %`, data: S.minD.map(v => v ?? '')}, {label: `Average ${S.span}, %`, data: S.avgD.map(v => v ?? '')},
     {label: `Max ${S.span}, %`, data: S.maxD.map(v => v ?? '')}];
-  setChartTitle('EU gas storage and LNG send-out', 'Daily data from Gas Infrastructure Europe (AGSI+ and ALSI+)');
+  setChartTitle('EU gas', 'Storage, LNG send-out and imports by origin · daily data from Gas Infrastructure Europe and ENTSOG');
   const upd = st.updated ? fmtShort(st.updated.slice(0, 10)) : '';
   document.getElementById('storageNote').innerHTML = seasonalSummary(S, pct, ppDiff);
-  setInfo(`<strong>Sources:</strong> AGSI+, Gas Infrastructure Europe; filling level of the storage facilities that report to AGSI+; ALSI+, Gas Infrastructure Europe; send-out of the LNG terminals that report to ALSI+. Both collected daily by eugas${upd ? `, updated ${upd}` : ''}`);
+  setInfo(`<strong>Sources:</strong> AGSI+, Gas Infrastructure Europe; filling level of the storage facilities that report to AGSI+; ALSI+, Gas Infrastructure Europe; send-out of the LNG terminals that report to ALSI+. Both collected daily by eugas${upd ? `, updated ${upd}` : ''} &nbsp;|&nbsp; <strong>Imports by origin:</strong> ENTSOG Transparency Platform (pipeline entry flows into the EU) and GIE ALSI (LNG send-out), via the eia repository`);
   drawLngCard();
+  drawGasFlowCards();
+}
+
+// ── EU gas: import etter opprinnelse og russisk gass etter rute ─────────────
+// Fra gassimport.html i eia-repoet (data/eu_gas_flows.json, se fetch_eugas.py):
+// daglig rørgass ved EUs yttergrense per leverandør (ENTSOG) og LNG-utsendelse
+// fra terminalene (ALSI), GWh/d. Snitt per døgn innen dag/uke/måned.
+const GF_GROUPS = [
+  {key: 'NO',  label: 'Norway',                   color: '#2a6fa8'},
+  {key: 'RU',  label: 'Russia (pipeline)',        color: '#c0392b'},
+  {key: 'DZ',  label: 'Algeria (pipeline)',       color: '#3fa76a'},
+  {key: 'AZ',  label: 'Azerbaijan',               color: '#8e6bbf'},
+  {key: 'OTH', label: 'Other pipelines (UK, Libya)', color: '#9aa5b1'},
+  {key: 'LNG', label: 'LNG (all origins)',        color: '#e3a73a'},
+];
+const GF_RU = [
+  {key: 'RU_NS',   label: 'Nord Stream',            color: '#2a6fa8'},
+  {key: 'RU_UA',   label: 'Via Ukraine',            color: '#e8731f'},
+  {key: 'RU_YA',   label: 'Yamal (Belarus/Poland)', color: '#3fa7a0'},
+  {key: 'RU_TS',   label: 'TurkStream',             color: '#e3c23a'},
+  {key: 'RU_BALT', label: 'Finland and Baltics',    color: '#ce0f69'},
+];
+const GF_KWH_PER_M3 = 10.55;   // som i eia-repoet: 1 mill. m³ = 10,55 GWh
+let gasFlowCharts = [];
+
+// Dager -> bøtter (dag, ISO-uke eller måned) med snitt per døgn.
+function gfBuckets(F, agg, from) {
+  const out = [], idx = {};
+  F.days.forEach((d, i) => {
+    if (d < from) return;
+    let k = d;
+    if (agg === 'm') k = d.slice(0, 7);
+    else if (agg === 'w') { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - (t.getUTCDay() + 6) % 7); k = t.toISOString().slice(0, 10); }
+    let b = idx[k];
+    if (!b) { b = idx[k] = {k, first: d, ix: []}; out.push(b); }
+    b.ix.push(i);
+  });
+  return out;
+}
+
+function drawGasFlowCards() {
+  gasFlowCharts.forEach(c => c.destroy()); gasFlowCharts = [];
+  const F = priceData.flows, box = document.getElementById('flowCard'), ruBox = document.getElementById('ruCard');
+  if (!box || !ruBox) return;
+  if (!F) { box.innerHTML = '<h4>Imports by origin</h4><div class="om-csub">Could not load the gas flow data.</div>'; ruBox.innerHTML = ''; return; }
+  const agg = prF.qa || 'w', rng = prF.qr || 'all', mcm = (prF.qu || 'gwh') === 'mcm';
+  const U = mcm ? 'mcm/d' : 'GWh/d', conv = v => mcm ? v / GF_KWH_PER_M3 : v;
+  const last = F.days[F.days.length - 1];
+  const from = rng === 'all' ? '' : `${+last.slice(0, 4) - +rng}${last.slice(4)}`;
+  const avg = (b, a) => b.ix.reduce((t, i) => t + (a[i] || 0), 0) / b.ix.length;
+  const pills = (k, opts, cur) => `<div class="pill-group">${opts.map(([v, l]) =>
+    `<button class="pill-btn${cur === v ? ' active' : ''}" onclick="priceSet('${k}','${v}')">${l}</button>`).join('')}</div>`;
+  const f0 = v => Math.round(v).toLocaleString('en');
+  const monL = k => `${STORAGE_MON[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`;
+  const labOf = b => agg === 'm' ? monL(b.k) : b.k;
+  const titleOf = b => agg === 'm' ? monL(b.k) : agg === 'w' ? `Week from ${fmtShort(b.k)}` : fmtShort(b.k);
+  const bars = (canvas, B, series, getArr, footer) => new Chart(document.getElementById(canvas).getContext('2d'), {type: 'bar',
+    data: {labels: B.map(labOf), datasets: series.map(g => ({label: g.label, data: B.map(b => +conv(avg(b, getArr(g))).toFixed(1)),
+      backgroundColor: g.color, borderWidth: 0, stack: 's', barPercentage: agg === 'd' ? 1 : 0.9, categoryPercentage: agg === 'd' ? 1 : 0.9}))},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        title: it => (B === Bflow ? titleOf : b => monL(b.k))(B[it[0].dataIndex]),
+        label: c => c.parsed.y ? ` ${c.dataset.label}: ${f0(c.parsed.y)} ${U}` : null,
+        footer: it => footer(B[it[0].dataIndex])}}},
+      scales: {x: {stacked: true, ticks: {maxRotation: 0, autoSkipPadding: 18, font: {size: 9},
+                 callback: function (v) { const l = this.getLabelForValue(v); return agg === 'm' || B !== Bflow ? l : l.slice(0, 7); }}, grid: {display: false}},
+               y: {stacked: true, beginAtZero: true, title: {display: true, text: U, color: '#4a5568', font: {size: 10}},
+                   ticks: {font: {size: 9}, callback: v => v.toLocaleString('en')}, grid: {color: 'rgba(0,0,0,0.05)'}}}}});
+  const legend = list => list.map(g => `<div class="legend-item"><div class="legend-dot" style="background:${g.color}"></div>${esc(g.label)}</div>`).join('');
+  const total = b => GF_GROUPS.reduce((t, g) => t + avg(b, F.groups[g.key]), 0);
+
+  // Import etter opprinnelse.
+  const Bflow = gfBuckets(F, agg, from);
+  box.innerHTML = `<h4>Imports by origin</h4>
+    <div class="om-csub">Gas into the EU, average per day (${U}) · ${agg === 'd' ? 'daily' : agg === 'w' ? 'weekly average' : 'monthly average'} · latest day ${fmtShort(last)}</div>
+    <div class="np-bar">${pills('qa', [['d', 'Day'], ['w', 'Week'], ['m', 'Month']], agg)}${pills('qr', [['1', '1 year'], ['2', '2 years'], ['all', 'All']], rng)}${
+      pills('qu', [['gwh', 'GWh/d'], ['mcm', 'mcm/d']], mcm ? 'mcm' : 'gwh')}</div>
+    <div class="chart-container"><canvas id="gfFlows"></canvas></div><div class="legend-row">${legend(GF_GROUPS)}</div>
+    <div class="pf-map-note">Norway, Russia, Algeria, Azerbaijan and other are pipeline gas measured where it first enters the EU;
+      LNG is send-out from the EU's regasification terminals, all origins together.</div>`;
+  const flowChart = bars('gfFlows', Bflow, GF_GROUPS, g => F.groups[g.key], b => `Total: ${f0(conv(total(b)))} ${U}`);
+
+  // Russisk rørgass per rute, månedssnitt, hele perioden.
+  const Bm = gfBuckets(F, 'm', '');
+  const present = GF_RU.filter(r => Bm.some(b => avg(b, F.russia[r.key]) > 1));
+  ruBox.innerHTML = `<h4>Russian gas by route</h4>
+    <div class="om-csub">Russian pipeline gas into the EU by route, monthly average, ${U}. Russian LNG comes on top but cannot be separated out daily.</div>
+    <div class="chart-container"><canvas id="gfRussia"></canvas></div><div class="legend-row">${legend(present)}</div>`;
+  const ruChart = bars('gfRussia', Bm, present, r => F.russia[r.key], b => `Total: ${f0(conv(avg(b, F.groups.RU)))} ${U}`);
+  gasFlowCharts = [flowChart, ruChart];
+
+  // Nøkkeltall: siste 30 dager mot samme periode i fjor.
+  const n = F.days.length, i0 = Math.max(0, n - 30);
+  const share = (k, a, b) => { let x = 0, t = 0; for (let i = a; i < b; i++) { x += F.groups[k][i] || 0; t += GF_GROUPS.reduce((s, g) => s + (F.groups[g.key][i] || 0), 0); } return t ? x / t * 100 : null; };
+  const lyFrom = `${+F.days[i0].slice(0, 4) - 1}${F.days[i0].slice(4)}`, lyTo = `${+last.slice(0, 4) - 1}${last.slice(4)}`;
+  const ly0 = F.days.findIndex(d => d >= lyFrom), ly1 = F.days.findIndex(d => d > lyTo);
+  const hasLy = ly0 >= 0 && ly1 > ly0 + 20;
+  const pc = v => v == null ? '—' : v.toFixed(0) + ' %';
+  const fact = (k, l) => `<div class="pf-fact"><span>${l}</span><strong>${pc(share(k, i0, n))}</strong>${hasLy ? `<small style="display:block;color:var(--muted);font-size:0.7rem">a year ago: ${pc(share(k, ly0, ly1))}</small>` : ''}</div>`;
+  const upd = F.updated ? fmtShort(F.updated.slice(0, 10)) : '';
+  document.getElementById('flowNoteCard').innerHTML = `<h4>Share of imports, last 30 days</h4>
+    <div class="om-csub">Share of total imports (pipeline + LNG), ${fmtShort(F.days[i0])}–${fmtShort(last)}</div>
+    <div class="pf-facts">${fact('NO', 'Norway')}${fact('LNG', 'LNG')}${fact('RU', 'Russia (pipeline)')}${fact('DZ', 'Algeria')}${fact('AZ', 'Azerbaijan')}</div>
+    <div class="pf-map-note"><strong>Method</strong> (as in the eia repository's gas import page): physical flows where pipeline gas first enters
+      the EU, grouped by supplier. Norway: Dunkerque, Zeebrugge, Emden, Dornum and Baltic Pipe. Russia: Nord Stream, transit via Ukraine
+      (until 1 Jan 2025), Yamal, TurkStream (Strandzha 2) and the border points to Finland and the Baltics. Algeria: Mazara (via Tunisia),
+      Almería and Tarifa. Azerbaijan: TAP into Greece. Other: Libya (Gela) and the UK (BBL, IZT, Moffat). Yamal is measured at Mallnow
+      until the stop in May 2022, so Poland's own offtake is missing; TurkStream includes gas going on to Serbia; gas from the UK is
+      partly Norwegian gas via British pipelines. 1 million m³ = 10.55 GWh. Sources: ENTSOG Transparency Platform and GIE ALSI, via
+      the eia repository${upd ? `, updated ${upd}` : ''}.</div>`;
+  pptExtra = pptExtra.filter(x => x.id !== 'gas-origin' && x.id !== 'gas-russia').concat([
+    {id: 'gas-origin', spec: pptSpecFromChart(flowChart), meta: {title: 'EU gas imports by origin',
+      subtitle: `Average per day, ${U}, ${agg === 'd' ? 'daily' : agg === 'w' ? 'weekly' : 'monthly'}`, source: 'Source: ENTSOG Transparency Platform, GIE ALSI'}},
+    {id: 'gas-russia', spec: pptSpecFromChart(ruChart), meta: {title: 'Russian pipeline gas into the EU by route',
+      subtitle: `Monthly average, ${U}`, source: 'Source: ENTSOG Transparency Platform'}}]);
 }
 
 // LNG-kortet ved siden av lagergrafen (under på mobil), med eget landvalg (prF.lk).
@@ -8589,7 +8707,9 @@ const US_PARAMS = [['uc', 'uc', 'WCRSTUS1', US_CRUDE.map(x => x[0])], ['ucy', 'u
                    ['rfy', 'kp', '2', ['1', '2', '5', '10', '20', 'all']],
                    // Oil market-fanen: frekvens, periode og nivå / endring.
                    ['omf', 'of', 'quarterly', ['quarterly', 'monthly', 'annual']], ['omr', 'or', '3', ['3', '5', '10', 'all']],
-                   ['omm', 'om', 'level', ['level', 'yoy']]];
+                   ['omm', 'om', 'level', ['level', 'yoy']],
+                   // EU gas-fanen: gass inn i EU etter opprinnelse — oppløsning, periode og enhet.
+                   ['qa', 'qa', 'w', ['d', 'w', 'm']], ['qr', 'qr', 'all', ['1', '2', 'all']], ['qu', 'qu', 'gwh', ['gwh', 'mcm']]];
 let usCharts = [];
 
 function usWeekly(rows, yearsBack) {
