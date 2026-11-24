@@ -165,6 +165,10 @@
     body.lic .select-fab, body.lic #downloadBtn, body.lic #pptBtn, body.lic #pptAddBtn{display:none !important;}
     body.expl .chart-wrap, body.expl #chartTable, body.expl .profile-wrap, body.expl .info-box,
     body.expl .select-fab, body.expl #downloadBtn, body.expl #pptBtn, body.expl #pptAddBtn{display:none !important;}
+    /* Exploration → Activity bruker det felles grafkortet. */
+    body.expl.expl-chart .chart-wrap, body.expl.expl-chart #chartTable, body.expl.expl-chart .info-box{display:block !important;}
+    body.expl.expl-chart #downloadBtn, body.expl.expl-chart #pptBtn, body.expl.expl-chart #pptAddBtn{display:flex !important;}
+    body.expl.expl-chart #explBox{display:none !important;}
     .ppt-card{position:relative;}
     .ppt-add{position:absolute;top:8px;right:8px;z-index:2;padding:2px 8px;border:1px solid var(--green);border-radius:6px;
       background:#fff;color:var(--green);font-size:0.68rem;font-weight:600;cursor:pointer;opacity:0.75;}
@@ -2156,6 +2160,7 @@ function renderViewTabs() {
   const cur  = currentSubView();
   document.body.classList.toggle('home', topMode === 'home');
   document.body.classList.toggle('expl', explMode());
+  document.body.classList.toggle('expl-chart', topMode === 'exploration' && explSubView === 'yearly');
   document.body.classList.toggle('lic', topMode === 'licences');
   document.body.classList.toggle('ncs', topMode === 'ncs');
   document.body.classList.toggle('prices', topMode === 'prices');
@@ -2806,7 +2811,7 @@ const HOME_SECTIONS = [
     '<path d="M12 2s6 7 6 12a6 6 0 01-12 0c0-5 6-12 6-12z"/>'],
   ['discoveries', 'Discoveries', 'Undeveloped discoveries, contingent resources and how far each has matured.',
     '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>'],
-  ['exploration', 'Exploration', 'Exploration wells on a map and in a list, with results, prospects, success by company and news.',
+  ['exploration', 'Exploration', 'Exploration wells on a map and in a list, with results, prospects, activity per year, success by company and news.',
     '<path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><path d="M5 22h14M8 22l4-6 4 6"/>'],
   ['drilling', 'Drilling', 'Where the drilling rigs are, what they are doing and how they perform.',
     '<path d="M12 2l4 9H8z"/><path d="M10 11l-3 11M14 11l3 11M8.5 17h7"/>'],
@@ -3058,6 +3063,9 @@ function stateToHash() {
     if (!explF.aisOnly) q.set('xo', '0');
     if (explF.fixed) q.set('xf', '1');
     if (!explF.modu) q.set('xm', '0');
+    // Exploration → Activity bruker NCS-tilstanden (brønner/volum, startår, valgt år).
+    if (explSubView === 'yearly') [['vol', 'nv'], ['from', 'n0'], ['year', 'ny']].forEach(([k, p]) => {
+      if (ncsF[k] !== ncsDefaults()[k]) q.set(p, ncsF[k] === true ? '1' : ncsF[k]); });
     if (!explF.contracts) q.set('xk', '0');
     if (topMode === 'exploration' && explSubView === 'success') {
       const ed = epDefaults();
@@ -3303,6 +3311,8 @@ function applyHash() {
     topMode = m;
     // Gamle lenker til Exploration → Rigs/Fleet bor nå under Drilling.
     if (m === 'exploration' && ['rigs', 'fleet'].includes(q.get('v'))) topMode = 'drilling';
+    // NCS → Exploration er flyttet til Exploration → Activity; gamle lenker sendes dit.
+    if (m === 'ncs' && q.get('v') === 'exploration') topMode = 'exploration';
     explFixSubView();
     syncModeButtons();
   }
@@ -3317,7 +3327,8 @@ function applyHash() {
              : topMode === 'dcs' ? DCS_TABS : topMode === 'ukcs' ? UKCS_TABS : COMPANY_TABS;
   // Prices / Heatmap er erstattet av Oil vs gas; gamle lenker sendes dit.
   // Differentials er flyttet nederst på Brent-siden; gamle lenker sendes dit.
-  const v = topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas'
+  const v = m === 'ncs' && q.get('v') === 'exploration' ? 'yearly'
+          : topMode === 'prices' && q.get('v') === 'heatmap' ? 'oilgas'
           : topMode === 'prices' && q.get('v') === 'diff' ? 'brent' : prodResolve(q.get('v'));
   if (tabs.some(t => t.id === v) || isProdView(v)) {
     if (topMode === 'fields') fieldSubView = v;
@@ -3353,6 +3364,9 @@ function applyHash() {
     if (['planned','drilling','completed','active'].includes(g('xs'))) explF.status = g('xs');
     if (['hc','oil','gas','oilgas','shows','dry'].includes(g('xz'))) explF.result = g('xz');
     if (['WILDCAT','APPRAISAL'].includes(g('xp'))) explF.purpose = g('xp');
+    ncsF.vol = g('nv') === '1';
+    ncsF.from = /^\d{4}$/.test(g('n0') || '') ? g('n0') : ncsDefaults().from;
+    ncsF.year = /^\d{4}$/.test(g('ny') || '') ? g('ny') : '';
     if (g('xy') === 'all') explF.from = '';
     else if (/^\d{4}$/.test(g('xy') || '')) explF.from = g('xy');
     drillF = {...drillDefaults()};
@@ -3885,6 +3899,9 @@ function drawChartView() {
     if (isProdView(hubSubView)) ncsToggleAbove(prodPills());
   } else if (topMode === 'ncs') {
     drawNcs();
+  } else if (explMode()) {
+    // Bare Exploration → Activity bruker det felles grafkortet; resten tegnes i explBody.
+    if (explSubView === 'yearly') drawNcsExploration();
   } else if (topMode === 'prices') {
     drawPrices();
   } else if (topMode === 'dcs') {
@@ -9723,9 +9740,8 @@ const NCS_TABS = [
   {id:'fields',      label:'Fields'},
   {id:'hubs',        label:'Hubs'},
   {id:'companies',   label:'Companies'},
-  {id:'replacement', label:'Replacement'},
-  {id:'exploration', label:'Exploration'},
-  {id:'creaming',    label:'Creaming'},
+  {id:'replacement', label:'Reserve replacement'},
+  {id:'creaming',    label:'Creaming curve'},
   {id:'investments', label:'Investments'},
   {id:'outage',      label:'Gas exports'},
   {id:'economy',     label:'Economy'},
@@ -9789,7 +9805,6 @@ async function refreshNcs() {
   else if (v === 'creaming') await Promise.all([loadExploration(), loadFieldReserves(), loadDiscoveries()]);
   else if (v === 'economy') await loadSsb();
   else if (v === 'reserves' || v === 'replacement') await loadFieldReserves();
-  else if (v === 'exploration') await Promise.all([loadExploration(), ...(ncsF.vol ? [loadFieldReserves(), loadDiscoveries()] : [])]);
   else if (v === 'investments') { if (!ncsCpi) ncsCpi = await fetchBundle('cpi'); }
   else if (v === 'companies' && ncsF.rank === 'count') await ncsLoadLicHist();
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries(), loadProdForFields(ncsFieldIds())]);
@@ -9801,7 +9816,6 @@ function drawNcs() {
   const v = ncsSubView;
   if (v === 'reserves') drawNcsReserves();
   else if (v === 'replacement') drawNcsReplacement();
-  else if (v === 'exploration') drawNcsExploration();
   else if (v === 'companies') drawNcsCompanies();
   else if (v === 'investments') drawNcsInvestments();
   else if (v === 'creaming') drawNcsCreaming();
@@ -10361,7 +10375,7 @@ function drawNcsExploration() {
         <select class="year-select" onchange="ncsSet('from', this.value)" aria-label="Start year">${fromOpts.map(y =>
           `<option value="${y}"${y === ncsF.from ? ' selected' : ''}>From ${y}</option>`).join('')}</select></div>`
     : ncsPills('vol', [[false, 'Wells'], [true, 'Discovered volume']]);
-  setChartTitle('Norwegian Continental Shelf · Exploration', ncsF.vol
+  setChartTitle('Norwegian Continental Shelf · Exploration activity', ncsF.vol
     ? 'Discovered volume per year, exploration wells · oil and gas · produced volume · million boe'
     : 'Exploration wells per year · discovery rate');
   if (!rows.length) { setChartEmpty('No exploration wells available.'); ncsToggleAbove(toggle); setInfo(''); return; }
@@ -16740,30 +16754,55 @@ function licenceDealsCard(name) {
     const buy = !!t.buyer && concernKey(t.buyer) === key, sell = !!t.seller && concernKey(t.seller) === key;
     return buy !== sell;
   }).sort((a, b) => b.day - a.day || b.lic - a.lic);
+  // Overføringer mellom de samme partene på samme dato er én transaksjon for
+  // selskapene (en pakke med flere lisenser, eller et bytte der andeler går
+  // begge veier), så de slås sammen til én rad.
+  const pkgMap = new Map(), pkgs = [];
+  deals.forEach(t => {
+    const k = t.day + '|' + [t.seller ? concernKey(t.seller) : '', t.buyer ? concernKey(t.buyer) : ''].sort().join('|');
+    let g = pkgMap.get(k);
+    if (!g) { g = {day: t.day, seller: t.seller, buyer: t.buyer, items: []}; pkgMap.set(k, g); pkgs.push(g); }
+    g.items.push(t);
+  });
+  pkgs.forEach(g => g.items.sort((a, b) => licName(a.lic).localeCompare(licName(b.lic), 'en', {numeric: true})));
   if (!deals.length) return `<div class="pf-card pf-wide"><h3>Recent transactions</h3>
     <div class="pf-map-note">No licence transactions found for the company's group. Source: Sodir layer 3003.</div></div>`;
-  const thisYear = deals.filter(t => licDayYear(t.day) === currentYear).length;
+  const thisYear = pkgs.filter(g => licDayYear(g.day) === currentYear).length;
   const shown = Math.max(5, thisYear);
   const {byField, byDisc} = licenceInfo();
-  const chip = t => { const k = licKindOf(t.kind) || {label: t.kind, color: '#9aa5b1'};
+  const chip = kind => { const k = licKindOf(kind) || {label: kind, color: '#9aa5b1'};
     return `<span class="lc-kind" style="--c:${k.color}">${esc(k.label.replace(/s$/, ''))}</span>`; };
-  const row = t => { const ln = licName(t.lic);
-    return `<tr><td class="ex-l">${licDayStr(t.day)}</td><td class="ex-l"><strong>${licenceLink(ln)}</strong></td>
-      <td>${licPct(t.share)}</td><td class="ex-l">${t.seller ? companyLink(t.seller) : '—'}</td>
-      <td class="ex-l">${t.buyer ? companyLink(t.buyer) : '—'}</td><td class="ex-l">${chip(t)}</td>
-      <td class="ex-l lic-info">${licContentHtml(byField[ln] || [], byDisc[ln] || [])}</td></tr>`; };
+  const row = g => {
+    const one = g.items.length === 1;
+    // Bytte: andeler går begge veier mellom de to partene.
+    const swap = g.items.some(t => concernKey(t.seller || '') !== concernKey(g.seller || ''));
+    // Flere lisenser: hver lisens med sin andel (og retning i et bytte), og feltene/funnene samlet.
+    const licList = items => items.map(t => `<strong>${licenceLink(licName(t.lic))}</strong>${one ? '' : ` (${licPct(t.share)})`}`).join(', ');
+    const lics = !swap ? licList(g.items)
+      : [...new Set(g.items.map(t => t.buyer))].map(by => `<div style="min-width:240px"><small>To ${esc(by || '—')}:</small> ${
+          licList(g.items.filter(t => t.buyer === by))}</div>`).join('');
+    const info = g.items.map(t => { const ln = licName(t.lic); return licContentHtml(byField[ln] || [], byDisc[ln] || []); })
+      .filter(Boolean).join(', ');
+    return `<tr><td class="ex-l">${licDayStr(g.day)}</td><td class="ex-l"${one ? '' : ' style="min-width:240px"'}>${lics}${one ? '' : `<small>${g.items.length} licences, one transaction</small>`}</td>
+      <td>${one ? licPct(g.items[0].share) : '<span class="ex-none">see licences</span>'}</td>${swap
+        ? `<td class="ex-l" colspan="2">${g.seller ? companyLink(g.seller) : '—'} ⇄ ${g.buyer ? companyLink(g.buyer) : '—'}<small>swap, shares both ways</small></td>`
+        : `<td class="ex-l">${g.seller ? companyLink(g.seller) : '—'}</td><td class="ex-l">${g.buyer ? companyLink(g.buyer) : '—'}</td>`}
+      <td class="ex-l">${[...new Set(g.items.map(t => t.kind))].map(chip).join(' ')}</td>
+      <td class="ex-l lic-info">${info}</td></tr>`; };
   const table = rows => `<div class="pf-scroll"><table class="res-table ex-table"><thead><tr>
       <th class="ex-l">Date</th><th class="ex-l">Licence</th><th>Share</th><th class="ex-l">Seller</th>
       <th class="ex-l">Buyer</th><th class="ex-l">Type</th><th class="ex-l">Field / discoveries</th></tr></thead>
       <tbody>${rows.map(row).join('')}</tbody></table></div>`;
-  const rest = deals.slice(shown);
+  const rest = pkgs.slice(shown);
   return `<div class="pf-card pf-wide"><h3>Recent transactions</h3>
     <div class="ex-sum"><strong>${thisYear}</strong> ${thisYear === 1 ? 'transaction' : 'transactions'} in ${currentYear} ·
-      ${deals.length} in total</div>
-    ${table(deals.slice(0, shown))}
+      ${pkgs.length} in total${pkgs.length < deals.length ? ` (${deals.length} licence transfers)` : ''}</div>
+    ${table(pkgs.slice(0, shown))}
     ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} earlier</summary>${table(rest)}</details>` : ''}
     <div class="pf-map-note">Licence stakes the company's group bought or sold: transfers, state (SDFI) transfers,
-      withdrawals and mergers. Name changes and transfers within the group are left out. All transactions this year
+      withdrawals and mergers. Name changes and transfers within the group are left out. Transfers between the same parties
+      on the same date are one transaction and shown as one row, with each licence's share; when shares go both ways it is
+      shown as a swap, with the buyer of each licence. All transactions this year
       are shown, and at least the five latest. The last column is the same as in the licence table below.
       Source: Sodir layer 3003.</div></div>`;
 }
@@ -17124,26 +17163,37 @@ function reserveAccountingHtml(closing, prod) {
     const open = closing[y - 1], close = closing[y], p = prod[y], add = close - open + p;
     return {y, open, close, p, add, rp: close / p, rrr: add / p * 100};
   });
+  // Treårs glidende RRR: sum tilgang ÷ sum produksjon i året og de to før.
+  // Krever alle tre årene; ellers står cellen tom.
+  const byY = Object.fromEntries(rows.map(r => [r.y, r]));
+  rows.forEach(r => {
+    const w = [byY[r.y], byY[r.y - 1], byY[r.y - 2]];
+    r.rrr3 = w.every(Boolean) ? w.reduce((t, x) => t + x.add, 0) / w.reduce((t, x) => t + x.p, 0) * 100 : null;
+  });
+  const pctCell = v => v == null ? '<td>—</td>' : `<td${v < 100 ? ' style="color:#b42318"' : ''}>${(Math.round(v) || 0)} %</td>`;
   const LIMIT = 10;
   const body = rows.slice().reverse().map((r, i) => `<tr${i >= LIMIT ? ' class="more-row" hidden' : ''}>
       <td>${r.y}</td><td>${n(r.open)}</td><td>${n(r.p)}</td><td${r.add < 0 ? ' style="color:#b42318"' : ''}>${n(r.add)}</td>
-      <td><strong>${n(r.close)}</strong></td><td>${r.rp.toFixed(1)}</td><td${r.rrr < 100 ? ' style="color:#b42318"' : ''}>${(Math.round(r.rrr) || 0)} %</td></tr>`).join('');
+      <td><strong>${n(r.close)}</strong></td><td>${r.rp.toFixed(1)}</td>${pctCell(r.rrr)}${pctCell(r.rrr3)}</tr>`).join('');
   const sp = rows.reduce((t, r) => t + r.p, 0), sa = rows.reduce((t, r) => t + r.add, 0);
   const first = rows[0], last = rows[rows.length - 1];
   return `<h3 class="tbl-sec">Reserve accounting<small>Equity-adjusted · million boe · newest year first</small></h3>
     <table class="res-table res-acct">
       <thead><tr><th>Year</th><th>Reserves 1 Jan</th><th>Produced</th><th>Net additions / revisions</th><th>Reserves 31 Dec</th>
         <th title="Reserve life: reserves at year end ÷ production in the year">Reserve life (R/P), years</th>
-        <th title="Reserve replacement ratio: net additions/revisions ÷ production in the year">RRR</th></tr></thead>
+        <th title="Reserve replacement ratio: net additions/revisions ÷ production in the year">RRR</th>
+        <th title="Three-year rolling reserve replacement ratio: net additions/revisions ÷ production over the year and the two before">RRR, 3-yr avg</th></tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr class="total-row"><td>${first.y}–${last.y}</td><td>${n(first.open)}</td><td>${n(sp)}</td><td>${n(sa)}</td>
-        <td>${n(last.close)}</td><td>${last.rp.toFixed(1)}</td><td>${(Math.round(sa / sp * 100) || 0)} %</td></tr></tfoot>
+        <td>${n(last.close)}</td><td>${last.rp.toFixed(1)}</td><td>${(Math.round(sa / sp * 100) || 0)} %</td><td>—</td></tr></tfoot>
     </table>${rows.length > LIMIT ? `<button class="grp-btn ex-more" onclick="showAllRows(this)">Show all ${rows.length} years</button>` : ''}
     <div class="pf-map-note" style="margin:6px 2px 0">Reserves 31 Dec are Sodir's remaining reserves for each vintage, weighted by the companies'
       interest at year end; reserves 1 Jan are the previous year's closing figure. Produced = net production in the year (monthly total OE ×
       interest). Net additions / revisions = reserves 31 Dec − reserves 1 Jan + produced, so it also includes acquisitions and divestments.
       Reserve life (R/P) = reserves 31 Dec ÷ produced. Reserve replacement ratio (RRR) = net additions / revisions ÷ produced; below 100 % (red)
-      means reserves were not replaced. The total row covers the whole period (RRR = sum of additions ÷ sum of production).</div>`;
+      means reserves were not replaced. RRR, 3-yr avg = net additions / revisions ÷ produced over the year and the two before (sums, so
+      larger years weigh more); it smooths out single-year revisions and is left empty when one of the three years is missing.
+      The total row covers the whole period (RRR = sum of additions ÷ sum of production).</div>`;
 }
 
 // Tabell under grafen: reserver per felt, gruppert under huben feltet tilhører.
@@ -19203,6 +19253,7 @@ async function npWatch(token, commit, before) {
 const EXPL_TABS = [
   {id:'wells', label:'Wells'},
   {id:'map',   label:'Map'},
+  {id:'yearly', label:'Activity'},
   {id:'success', label:'Performance'},
   {id:'news',  label:'News'},
 ];
@@ -19437,7 +19488,7 @@ function explSet(key, val, rebuildBar) {
 
 function explRenderBar() {
   if (explSubView === 'perf') return drillRenderBar();
-  if (explSubView === 'trends' || explSubView === 'activity') return setBar('explBar', '');
+  if (explSubView === 'trends' || explSubView === 'activity' || explSubView === 'yearly') return setBar('explBar', '');
   if (explSubView === 'success') return epRenderBar();
   if (explSubView === 'rignews') return setBar('explBar', `
     <div class="ex-bar">
@@ -20243,6 +20294,13 @@ async function refreshExploration() {
     box.innerHTML = '<div class="status">No exploration well data available.</div>'; dockBar('explBody');
     return;
   }
+  if (explSubView === 'yearly') {
+    if (ncsF.vol) await Promise.all([loadFieldReserves(), loadDiscoveries()]);
+    setBar('explBar', ''); box.innerHTML = '';
+    drawChart();
+    if (explF.open) openWell(explF.open, true);
+    return;
+  }
   explRenderBar();
   explRenderBody();
   if (explF.open) openWell(explF.open, true);
@@ -20251,6 +20309,7 @@ async function refreshExploration() {
 
 function explRenderBody() {
   drillTrendKill();
+  if (explSubView === 'yearly') return drawChart();
   if (explSubView === 'perf') return drillRenderPerf();
   if (explSubView === 'trends') return drillRenderTrends();
   if (explSubView === 'activity') return drillRenderActivity();
