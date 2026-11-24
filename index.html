@@ -1060,7 +1060,7 @@
     <div class="gs-box">
       <svg class="gs-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
       <input class="gs-in" id="gsIn" type="search" placeholder="Search fields, companies, wells…" autocomplete="off" spellcheck="false"
-        aria-label="Search fields, hubs, companies, licences, discoveries, wells and rigs" role="combobox" aria-autocomplete="list"
+        aria-label="Search fields (NCS, DCS, UKCS), hubs, companies, licences, discoveries, wells and rigs" role="combobox" aria-autocomplete="list"
         aria-expanded="false" aria-controls="gsList"
         onfocus="gsShow()" oninput="gsRender()" onkeydown="gsKey(event)"/>
       <span class="gs-kbd" aria-hidden="true">/</span>
@@ -24866,12 +24866,13 @@ document.addEventListener('keydown', e => {
 });
 
 // ── GLOBAL SEARCH ────────────────────────────────────────────────────────────
-// One field in the top bar that finds fields, hubs, companies, licences,
-// discoveries, exploration wells and rigs and opens the factsheet. Fields,
+// One field in the top bar that finds fields (Norwegian, Danish and British),
+// hubs, companies, licences, discoveries, exploration wells and rigs and opens
+// the factsheet. Fields,
 // hubs, companies and licences come from the data loaded at start; wells,
-// discoveries and rigs are fetched the first time the search is used.
+// discoveries, rigs and the DCS/UKCS fields are fetched the first time the search is used.
 const GS_MAX = 14;
-const GS_ORDER = ['Field', 'Hub', 'Company', 'Licence', 'Discovery', 'Well', 'Rig'];
+const GS_ORDER = ['Field', 'DCS field', 'UK field', 'Hub', 'Company', 'Licence', 'Discovery', 'Well', 'Rig'];
 let gsIndex = null, gsHits = [], gsOn = 0, gsExtra = null, gsRigs = [];
 function gsBuild() {
   const out = [];
@@ -24888,7 +24889,20 @@ function gsBuild() {
   explWells.forEach(w => add('Well', w.title, [w.sub, w.operator].filter(Boolean).join(' · '),
     () => openExplorationWell(w.id), [w.name, w.well, w.discovery].filter(Boolean).join(' ')));
   gsRigs.forEach(n => add('Rig', n, '', () => openRigProfile(n)));
+  // Danske og britiske felt: åpner sokkelens produksjonsvisning for feltet med faktaarket over.
+  if (dcsReady()) dcsData.fields.forEach(f => add('DCS field', f.name, ['Denmark', f.operator].filter(Boolean).join(' · '),
+    () => gsOpenShelfField('dcs', f.slug), 'denmark danish dcs'));
+  if (ukReady()) ukData.fields.forEach(f => add('UK field', f.name,
+    ['UK', f.area, f.operator, /ceased/i.test(f.status || '') ? 'ceased' : ''].filter(Boolean).join(' · '),
+    () => gsOpenShelfField('ukcs', f.slug), 'uk united kingdom british ukcs'));
   gsIndex = out;
+}
+function gsOpenShelfField(shelf, slug) {
+  if (overlayOpen()) closeWell(true);
+  if (shelf === 'dcs') { dcsSubView = 'production'; dcsF.prod = 'product'; dcsF.field = slug; dcsF.fs = slug; dcsF.wl = ''; }
+  else { ukSubView = 'production'; ukF.prod = 'product'; ukF.field = slug; ukF.fs = slug; }
+  if (topMode === shelf) { markNav(); renderViewTabs(); refresh(); }
+  else switchMode(shelf);
 }
 function gsLoadExtra() {
   if (gsExtra) return gsExtra;
@@ -24896,6 +24910,7 @@ function gsLoadExtra() {
     Promise.resolve(coreReady).then(() => loadDiscoveries()).catch(() => {}),
     loadExploration().catch(() => {}),
     fetchBundle('rig_now').then(b => { gsRigs = b && b.rigs ? Object.keys(b.rigs).sort() : []; }).catch(() => {}),
+    loadDcs().catch(() => {}), loadUk().catch(() => {}),
   ]).then(() => { gsIndex = null; if (document.getElementById('gs').classList.contains('open')) gsRender(); });
   return gsExtra;
 }
@@ -24929,7 +24944,7 @@ function gsRender() {
     const k = q ? v.toLowerCase().indexOf(q.toLowerCase()) : -1;
     return k < 0 ? esc(v) : esc(v.slice(0, k)) + '<mark>' + esc(v.slice(k, k + q.length)) + '</mark>' + esc(v.slice(k + q.length));
   };
-  list.innerHTML = !q ? '<div class="gs-none">Type a field, hub, company, licence, discovery, well or rig.</div>'
+  list.innerHTML = !q ? '<div class="gs-none">Type a field (NCS, DCS or UKCS), hub, company, licence, discovery, well or rig.</div>'
     : gsHits.length ? gsHits.map((it, i) => `<div class="gs-opt${i === 0 ? ' on' : ''}" role="option" id="gsOpt${i}" aria-selected="${i === 0}"
         onmousedown="event.preventDefault()" onclick="gsPick(${i})" onmousemove="gsMove(${i})"><span>${mark(it.name)}${
         it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span><b class="gs-kind">${it.kind}</b></div>`).join('')
