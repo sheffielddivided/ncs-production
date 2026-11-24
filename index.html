@@ -522,6 +522,8 @@
        (discoveryFitMap), så det ikke blir tomme striper over og under. Det
        gamle tittelkortet (grafkortet) skjules; tittelen står i det første kortet. */
     body.disc-sheet .chart-wrap{display:none;}
+    body.no-chart-card .chart-wrap{display:none;}
+    body.no-chart-card .profile-wrap{margin-top:12px;}   /* luften grafkortet ellers gir */
     /* Feltfaktaark: produksjonsgrafen i halv bredde og kartet til høyre, like
        høyt. Grafkortet og kartkortet står i et rutenett med to like spalter og
        strekkes til samme høyde; kartet fyller kortet (.pf-map-box) og tegnes på
@@ -3880,6 +3882,7 @@ function drawChart() {
 }
 function drawChartView() {
   pptSpec = null; pptExtra = []; pptMainMeta = null; xlsExtra = [];
+  document.body.classList.remove('no-chart-card');   // settes av visninger uten graf (Company → Licences)
   if (topMode === 'fields') {
     const sv = fieldSubView;
     if (sv === 'oilgas')          drawFieldsOilGas();
@@ -16883,7 +16886,7 @@ function licPortfolioTableHtml(c, rows, {sort, sortJs, lim = rows.length, moreJs
 // ganget med selskapets andel — samme definisjon som i Licences. Hele tabellen
 // ligger i fanen Licences.
 const SEA_ORDER = ['North sea', 'Norwegian sea', 'Barents sea'];
-function licenceSummaryCard(name, rows, link = true) {
+function licenceSummaryCard(name, rows, link = true, title = 'Licences') {
   if (!rows.length) return '';
   const blank = () => ({n: 0, op: 0, gross: 0, net: 0});
   const by = {}, tot = blank();
@@ -16903,7 +16906,7 @@ function licenceSummaryCard(name, rows, link = true) {
   const km = v => Math.round(v).toLocaleString('en');
   const row = (label, x, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${label}</td><td>${x.n}</td><td>${x.op}</td>
     <td>${km(x.gross)}</td><td>${km(x.net)}</td></tr>`;
-  return `<div class="pf-card pf-wide"><h3>Licences</h3>
+  return `<div class="pf-card pf-wide"><h3>${title}</h3>
     <div class="pf-scroll"><table class="res-table">
       <caption>Active production licences · areas in km²</caption>
       <thead><tr><th>Area</th><th>Licences</th><th>Operated</th><th>Gross area</th><th>Net area</th></tr></thead>
@@ -16927,17 +16930,19 @@ function drawCompanyLicences() {
   licenceRows = buildLicenceRows(name);
   companyLicAll = false;
   setChartNone();
+  // Grafkortet ville bare hatt en tittel; selskapsnavnet står i stedet i det første kortet.
+  document.body.classList.add('no-chart-card');
   const op = licenceRows.filter(r => r.operator === name).length;
   setChartTitle(name, `Licences · ${licenceRows.length} active production licence${licenceRows.length === 1 ? '' : 's'}, ${op} operated`);
   setInfo(`<strong>Company:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Source:</strong> Sodir layers 3000 and 3007`);
   setProfile(licenceRows.length ? `
-    ${licenceSummaryCard(name, licenceRows, false)}
+    ${licenceSummaryCard(name, licenceRows, false, `${esc(name)} · Licences`)}
     ${licenceDealsCard(name)}
     <div class="pf-card pf-wide"><h3>Licence map</h3>${licCompanyMap(licenceRows.map(r => ({name: r.name, isOp: r.operator === name})))}</div>
     <div class="pf-card pf-wide"><h3>All licences</h3>
       <div id="licenceBox" data-company="${esc(name)}">${companyLicBoxHtml(name)}</div>
       <div class="lc-links"><button class="grp-btn" onclick="openLicencesFor(${esc(jsStr(name))})">Licence portfolio, map and deals in Licence →</button></div></div>`
-    : '<div class="pf-card pf-wide"><div class="pf-map-note">The company holds no active production licences.</div></div>'
+    : `<div class="pf-card pf-wide"><h3>${esc(name)} · Licences</h3><div class="pf-map-note">The company holds no active production licences.</div></div>`
       + licenceDealsCard(name));
 }
 
