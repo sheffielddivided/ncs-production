@@ -7057,6 +7057,18 @@ function ukNet12(cmp) {
   const boe = v => dcsBoe(v, days);
   return {per, boe, span: win.length ? `${ukMonthTxt(win[0])}–${ukMonthTxt(win[win.length - 1])}` : ''};
 }
+// Rekkefølgen i selskapsvelgeren: størst netto produksjon siste rapporterte
+// måned først, deretter alfabetisk for konsernene uten produksjon den måneden.
+function ukCompanyOrder() {
+  if (ukData._cmpOrder) return ukData._cmpOrder;
+  const last = ukData.months[ukData.months.length - 1], net = {};
+  ukData.fields.forEach(f => (ukData.monthly[f.slug] || []).forEach(([ym, oil, gas]) => {
+    if (ym !== last) return;
+    Object.entries(ukSharesAt(f.slug, ym)).forEach(([g, p]) => { net[g] = (net[g] || 0) + (oil + gas) * p / 100; });
+  }));
+  const v = c => net[c] > 0 ? net[c] : 0;
+  return (ukData._cmpOrder = ukCompanies().slice().sort((a, b) => v(b) - v(a) || a.localeCompare(b, 'en')));
+}
 function ukDefaultCompany() {
   if (ukData._big) return ukData._big;
   const {per} = ukNet12();
@@ -7097,7 +7109,7 @@ function drawUkCompanies() {
   setChartTitle(`UK Continental Shelf · ${one ? esc(one) : 'Companies'}`,
     one ? 'Net production by field · boe/day' : 'Net production by company · boe/day');
   setInfo(`<strong>Net production:</strong> field oil + gas × the company's equity share that month (NSTA Field Partners, dated shares) &nbsp;|&nbsp; <strong>Companies:</strong> equity groups as NSTA groups the licensees; companies that no longer hold licences keep their own name &nbsp;|&nbsp; <strong>From ${from}:</strong> Field Partners covers less than 95 % of production before that &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; ${UK_BASIS}`);
-  const bar = dcsBar(ukSelect('cmp', '', [['*', 'All companies']].concat(ukCompanies().map(c => [c, c])), 'Company', all ? '*' : one));
+  const bar = dcsBar(ukSelect('cmp', '', [['*', 'All companies']].concat(ukCompanyOrder().map(c => [c, c])), 'Company', all ? '*' : one));
   if (!t.labels.length || !t.datasets.length) setChartEmpty(`No company data for the selected period. Ownership data starts in ${from}.`);
   else renderChart(t.labels, t.datasets, series.filter(s => t.datasets.some(d => d.label === s.label)), 'boe/day');
   ncsToggleAbove(bar);
