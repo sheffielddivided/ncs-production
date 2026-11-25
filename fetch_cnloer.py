@@ -1077,7 +1077,10 @@ def main():
     os.makedirs('data', exist_ok=True)
     for path, obj in ((OUT_FILE, payload), (OUTLINE_FILE, outlines)):
         with open(path, 'w', encoding='utf-8') as fh:
-            json.dump(obj, fh, ensure_ascii=False, separators=(',', ':'))
+            # Omrissene er oppslag etter navn; ArcGIS-søket gir bassengene i
+            # varierende rekkefølge, så nøklene sorteres for å unngå commits
+            # uten reelle endringer
+            json.dump(obj, fh, ensure_ascii=False, separators=(',', ':'), sort_keys=path == OUTLINE_FILE)
             fh.write('\n')
         print(f'Wrote {path} ({os.path.getsize(path) / 1024:.0f} KB)')
     return 0
