@@ -42,9 +42,11 @@
       "id": "mwv2ljn0",
       "name": "Ringhorne Nord appraisal",
       "operator": "Vår Energi ASA",
-      "licence": "596",
+      "licence": "956",
       "purpose": "APPRAISAL",
       "when": "q1 2027",
+      "rig": "COSLProspector",
+      "well": "25/8-25",
       "source": "https://varenergi.no/wp-content/uploads/2026/11/Third-quarter-2026-Var-Energi-ASA-presentation.pdf",
       "note": "Vår Energi Q3-26",
       "added": "2026-11-24"
