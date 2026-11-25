@@ -81,6 +81,12 @@ som statiske JSON-filer i dette repoet.
 | `data/canada_nl_outlines.json` | Omriss av lisensene (PL, SDL, EL) og de sedimentære bassengene, til kartene i `canada.html` |
 | `data/canada_nl_manual.json` | Håndført tillegg til `canada.html`, med kilde per oppføring: stans for FPSO-ombygging (skraveres i produksjonsgrafene), forventet levetid, reservoaregenskaper per formasjon (provinsens faktaark 2023), prosjekter under utvikling (Bay du Nord med milepæler) og navn på C-NLOERs landområder. Endres for hånd; `fetch_cnloer.py` rører den ikke |
 | `data/canada_nl_coast.json` | Kystlinje for Newfoundland og Labrador (Natural Earth 10m), bygget én gang med `make_coastline.py --box` |
+| `gom.html` | Egen side for amerikansk del av Mexicogolfen (føderalt område, BOEMs «Gulf of America OCS Region»): Production (vanndyp, felt, total), Fields (med faktaark), Reserves, Company (opererte volumer og nettoandel), Drilling og Map. Samme designsystem som `canada.html`. Lenken i menyen i `index.html` (`modeBtnGom`) er skjult til siden er klar |
+| `fetch_boem.py` | Henter fra BOEM Data Center: produksjon per brønnkomplettering (OGOR-A, 1947–) summert per felt, operatør, lease og totalt; reserveestimatene (siste utgave, tabell 4 og 9 og historikk per felt); brønner (borehole), innretninger, selskaper og dagens lease-eiere. Kontrollerer blant annet at akkumulert produksjon per felt stemmer med BOEMs reservetabell (290 av 293 store felt innenfor 3 %). `--cache D` gjenbruker filer BOEM ikke har endret. Krever `requests` og `openpyxl` |
+| `data/gom.json` | Månedlig totalproduksjon fra 1947 (olje, gass, vann) og per vanndypsklasse, felt som rader (`fieldCols`) med vanndyp, funnår, operatør, reserver P10/P50/P90/snitt, produksjon siste 12 måneder og posisjon; opererte volumer per konsern fra 1985, netto produksjon etter dagens lease-eiere, reserver for hele området per år, stående innretninger og brønntall per år, type og vanndyp |
+| `data/gom_prod.json` | Serier per felt fra 1990 (månedlig for felt i produksjon, årlig for avsluttede) og reservehistorikk per felt. Lastes først når gom.html trenger den |
+| `data/gom_wells.json` | Brønner spuddet fra 2015 med detaljer, til Drilling, kart og faktaark. Lastes ved behov |
+| `data/gom_coast.json` | Kystlinje for Mexicogolfen (Natural Earth 10m, `make_coastline.py --box`) |
 | `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
 | `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |
 | `data/rig_health.json` | Driftsrapport fra AIS-steget: rigger uten kobling, rigger som bores uten signal, mistenkelige MMSI og om kilden feiler |
@@ -200,6 +206,10 @@ PPRS-produksjonsrapporter, Field Partners, field determinations og lisensunderom
 Kanadiske data (canada.html): [Canada-Newfoundland and Labrador Offshore Energy Regulator (C-NLOER)](https://www.cnloer.ca/information/statistics/) —
 produksjonsstatistikk, ressursanslag og [Data and Information Hub](https://home-cnlopb.hub.arcgis.com/).
 Oppdateres av `update-cnloer.yml` mandag og torsdag.
+
+Amerikanske data (gom.html): [Bureau of Ocean Energy Management (BOEM) Data Center](https://www.data.boem.gov/) —
+OGOR-A-produksjon, reserveestimater, brønner, innretninger og lease-eiere for Gulf of America OCS Region
+(føderalt område; delstatsfarvann er ikke med). Oppdateres av `update-boem.yml` hver lørdag.
 
 Tilsynssaker: [Havindustritilsynet (Havtil)](https://www.havtil.no). Havtils
 materiale kan gjenbrukes fritt i alle formater og medier når Havtil krediteres.

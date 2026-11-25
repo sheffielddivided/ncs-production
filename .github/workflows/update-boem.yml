@@ -1,0 +1,59 @@
+name: Oppdater US Gulf of Mexico (BOEM)
+
+# gom.html: produksjon, reserver, brønner, innretninger og eierskap fra BOEM
+# (fetch_boem.py). BOEM legger ut nye produksjonstall om lag én gang i
+# måneden, så én kjøring i uka holder. Nedlastingene (om lag 200 MB, mest
+# OGOR-A for eldre år, som ikke endres) mellomlagres med actions/cache;
+# skriptet laster bare ned filer der størrelse eller Last-Modified har endret
+# seg. Kontrollene i skriptet stopper jobben uten å skrive noe ved avvik.
+on:
+  schedule:
+    - cron: '17 6 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: boem
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Mellomlager for BOEM-filene
+        uses: actions/cache@v4
+        with:
+          path: .boem-cache
+          key: boem-${{ github.run_id }}
+          restore-keys: boem-
+
+      - name: Installer avhengigheter
+        run: pip install requests openpyxl
+
+      - name: Hent data fra BOEM
+        run: python fetch_boem.py --cache .boem-cache
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/gom.json data/gom_prod.json data/gom_wells.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Oppdater US Gulf of Mexico/BOEM ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1
