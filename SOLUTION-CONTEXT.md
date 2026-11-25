@@ -1015,6 +1015,65 @@ netto produksjon per konsern), Fields (rangering etter produksjon siste 12
 måneder eller produsert til nå; klikk åpner faktaarket) og Map.
 Lenkeparametre: `up`, `uf`, `uc`, `ul`, `us`.
 
+### `data/canada_nl.json`, `data/canada_nl_outlines.json`, `data/canada_nl_coast.json` — Canada, Newfoundland and Labrador (`canada.html`)
+
+Egen side, ikke en seksjon i `index.html`. Lenken i menyen (`modeBtnCanada`)
+står med `style="display:none"` til siden er klar (`hidden` virker ikke, fordi
+`a.mode-btn` har `display:inline-flex`). Siden har `noindex`.
+
+Bygges av `fetch_cnloer.py` (workflow `update-cnloer.yml`, mandag og torsdag
+05:41 UTC). Kilden er C-NLOER (tidligere C-NLOPB):
+
+| Kilde | Brukes til |
+|---|---|
+| Statistikksiden: `{år}{kode}pro.pdf` (h, t, w, n, he) | Månedlig olje, gass og vann per felt og reservoar, 2002– |
+| `{år}mpro.pdf` | Månedlige totaler for området — kontroll |
+| `off_prod-1.pdf` | Årlig produksjon per felt og reservoar — fordeling og kontroll av brønntallene |
+| `{brønnkode}_oil_{år}.pdf` (hib, na, …) | Produksjon per brønn; brukes bare for år uten feltfil (Hibernia 1997–2001, North Amethyst 2010, der `2010npro.pdf` mangler) |
+| Ressurssiden: `estrr_{felt}.pdf`, `disc_rr*.pdf`, `dp_auth.pdf` | EUR, produsert, reserver og betingede ressurser per reservoar/pool; 2P EUR og 2C for felt og funn; godkjente utbyggingsplaner |
+| `/offshore/` | Funnår per felt |
+| ArcGIS (org `JZPISF0sj1UatnZ8`) | Brønnlagene (leting, avgrensning, utvikling, dobbeltklassifisert), `Installations_view`, `LicenceTable` + én tjeneste per lisens (omriss og `IntHold1…` med andeler), bassengene |
+
+- **PDF-lesingen** (`pdftotext -layout`): månedsnavnet står midt i blokken
+  når feltet har flere reservoarer, og noen filer har «Total» per måned, andre
+  ikke. Radene samles derfor i blokker (ny blokk ved «Total» eller når et
+  reservoar går igjen). Endringsdatoer i radene (`7/9/2026`, `July 14/2006`,
+  `Jan. 29/08`) fjernes før tallene leses, og doble linjer (fet skrift) hoppes
+  over. North Amethyst skriver årstotalen for første reservoar uten «Total»;
+  en blokk uten måned etter desember er derfor årstotal. 2019npro har «FALSE»
+  i en totalrad (regnearkfeil hos kilden); slike rader brukes ikke til kontroll.
+- **Kontroller** (exit 1, ingenting skrives): hver måned skal ha seks tall der
+  bbl ≈ m³ × 6,2898 og MMscf ≈ 10³ m³ × 0,0353; månedene skal summere til
+  årstotalen per reservoar; feltene skal summere til mpro (største avvik i dag
+  0,002 %); brønnsummene skal stemme med off_prod. Akkumulert produksjon fra
+  månedstallene treffer C-NLOERs «Cumulative Oil Production» i reservetabellene.
+- **Botvern:** C-NLOER svarer av og til med en side som laster seg selv på
+  nytt i stedet for PDF-en eller siden. `get` og `get_page` kjenner den igjen
+  og prøver på nytt med økende ventetid.
+- **Reserver:** lagres metrisk (10⁶ m³, gass 10⁹ m³) og som publisert i fat/bcf
+  (`eurI`, `remI`, `cumI`, `oilI`, `gasI`, …). Siden bruker kildens fat/bcf når
+  enheten er fat, fordi C-NLOER regner gass om med en annen faktor (~35,5 bcf
+  per mrd. m³) enn 35,31; ellers ville summene avvike fra kilden.
+- **Eierskap:** bare dagens andeler (C-NLOER publiserer ingen historikk).
+  Feltandelene er hovedlisensens (`FIELDS` i skriptet: Hibernia PL 1001, Terra
+  Nova PL 1002, White Rose PL 1006, North Amethyst PL 1008, Hebron PL 1012).
+  Company-fanen bruker dagens andeler for alle måneder og sier det tydelig.
+- **Uendret innhold** gir ingen commit: skriptet beholder forrige `fetched`
+  når alt annet er likt.
+
+Frontend (`canada.html`): fanene Production (felt eller reservoar, olje/gass/
+vann, måned/år, fat/m³, nøkkeltall og felttabell), Fields (rangering og
+tabell), Resources (produsert/gjenværende per felt, 2C per funn), Company
+(netto produksjon per konsern eller per felt for ett konsern, lisensportefølje),
+Drilling (brønner per spud-år, liste per år) og Map (SVG med zoom/panorering:
+lisenser, bassenger, innretninger og valgfrie brønner). Faktaarket (`openSheet`)
+har fakta, produksjon per reservoar, reserver og betingede ressurser, eierkake,
+kart og utviklingsbrønner. Feltfargene er faste (`FIELD_COLORS`; Hebron og
+Hibernia, som ofte står stablet sammen, får størst kontrast), reservoarfargene
+faste per formasjon (`RES_COLORS`). Lenkeparametre: `v` (fane), `g`, `f`, `p`,
+`per`, `u`, `rk`, `rp`, `c`, `wc`, `dy`, `mw`, `mx`, `fs` (felt i faktaarket),
+`sp`.
+
 ### `data/meta.json`
 
 ```json

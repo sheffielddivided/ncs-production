@@ -75,6 +75,11 @@ som statiske JSON-filer i dette repoet.
 | `data/ukcs.json` | Britiske felt: område, status, operatør, gjeldende og historiske eierandeler per konsern, og månedlig produksjon (olje inkl. kondensat, gass, vann) fra juni 1975 i kompakt form |
 | `data/ukcs_outlines.json` | Omriss av de britiske feltene (NSTA field determinations, forenklet) |
 | `data/ukcs_licences.json` | Gjeldende britiske lisenser og underområder med eiergruppe, andel og omriss, til UKCS → Company |
+| `canada.html` | Egen side for kanadisk sokkel, foreløpig bare Newfoundland and Labrador: Production, Fields (med faktaark), Resources, Company, Drilling og Map. Samme designsystem som `index.html`, men egen fil uten byggesteg. Lenken i menyen i `index.html` (`modeBtnCanada`) er skjult til siden er klar |
+| `fetch_cnloer.py` | Henter data fra Canada-Newfoundland and Labrador Offshore Energy Regulator (C-NLOER): månedlig produksjon per felt og reservoar fra PDF-ene på statistikksiden (2002–; Hibernia 1997–2001 og North Amethyst 2010 summert fra produksjonen per brønn), reserver og betingede ressurser per felt og funn, og brønner, innretninger, lisenser med eierandeler og bassenger fra ArcGIS-huben. Kontrollerer månedene mot årstotalene, fat mot m³, feltene mot områdetotalen og brønntallene mot årsproduksjonen; avvik gir exit 1 uten at noe skrives. Krever `requests` og `pdftotext` (poppler-utils). `--cache D` gjenbruker nedlastede PDF-er |
+| `data/canada_nl.json` | Newfoundland and Labrador: feltene med fakta, månedlig produksjon per reservoar (olje og vann i m³, gass i 1000 m³), reserver (1P/2P/3P, metrisk og C-NLOERs egne fat/bcf), betingede ressurser (2C) for felt og funn, innretninger, lisenser med dagens eierandeler (C-NLOER publiserer ikke historikk) og alle brønner til havs |
+| `data/canada_nl_outlines.json` | Omriss av lisensene (PL, SDL, EL) og de sedimentære bassengene, til kartene i `canada.html` |
+| `data/canada_nl_coast.json` | Kystlinje for Newfoundland og Labrador (Natural Earth 10m), bygget én gang med `make_coastline.py --box` |
 | `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
 | `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |
 | `data/rig_health.json` | Driftsrapport fra AIS-steget: rigger uten kobling, rigger som bores uten signal, mistenkelige MMSI og om kilden feiler |
@@ -88,7 +93,7 @@ som statiske JSON-filer i dette repoet.
 | `data/licence_areas.json` | Lisensenes areal og omriss over tid (lag 3002) — til Rounds, Map og lisensprofilen. Lastes lazy |
 | `data/companies.json` | Selskapsfakta (lag 1200) — konsern, orgnr., roller |
 | `data/coastline.json` | Kystlinje til profilkartet — Natural Earth, bygget én gang |
-| `make_coastline.py` | Engangsscript som bygger `data/coastline.json` |
+| `make_coastline.py` | Engangsscript som bygger `data/coastline.json`; med `--box` og `--out` også andre utsnitt (`data/canada_nl_coast.json`) |
 | `seed_hubs.py` | Engangsscript som foreslår hub-mapping fra Sodirs feltbeskrivelser |
 | `.github/workflows/update-sodir-data.yml` | Kjører hentejobben daglig |
 | `.htaccess` | Apache-oppsett for energy.kbak.no: skjuler skript og rådata, kort cache og komprimering av datafilene |
@@ -190,6 +195,10 @@ via ENS-løsningen [`sheffielddivided/ens`](https://github.com/sheffielddivided/
 
 Britiske data (UKCS): [North Sea Transition Authority (NSTA)](https://www.nstauthority.co.uk/data-and-insights/data/themes/fields/) —
 PPRS-produksjonsrapporter, Field Partners, field determinations og lisensunderområder.
+
+Kanadiske data (canada.html): [Canada-Newfoundland and Labrador Offshore Energy Regulator (C-NLOER)](https://www.cnloer.ca/information/statistics/) —
+produksjonsstatistikk, ressursanslag og [Data and Information Hub](https://home-cnlopb.hub.arcgis.com/).
+Oppdateres av `update-cnloer.yml` mandag og torsdag.
 
 Tilsynssaker: [Havindustritilsynet (Havtil)](https://www.havtil.no). Havtils
 materiale kan gjenbrukes fritt i alle formater og medier når Havtil krediteres.

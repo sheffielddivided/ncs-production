@@ -12,8 +12,18 @@ sokkel ligger i, og forenkler til ~6 km nojaktighet — kartet er en miniatyr,
 sa mer detalj er bortkastede byte.
 
     python make_coastline.py ../map/data/basemap.json
+
+Med --box og --out lages andre utsnitt, f.eks. Newfoundland til canada.html
+fra world-atlas (Natural Earth 10m i samme TopoJSON-format):
+
+    python make_coastline.py land-10m.json --box=-68,40,-40,61 \\
+        --out data/canada_nl_coast.json --source "Natural Earth 10m via world-atlas"
+
+Ringer som går ut av vinduet klippes mot kanten, så store landmasser
+(Nord-Amerika) ikke tas med i sin helhet.
 """
 
+import argparse
 import json
 import math
 import os
@@ -82,8 +92,54 @@ def simplify(points, tol):
     return [points[i] for i in sorted(keep)]
 
 
+def clip(ring, box):
+    """Klipper en ring mot vinduet (Sutherland-Hodgman). Biter av kysten
+    langs kanten blir rette linjer, som ikke synes når kartet viser vinduet."""
+    w, s, e, n = box
+    edges = [
+        (lambda p: p[0] >= w, lambda a, b: _cut_x(a, b, w)),
+        (lambda p: p[0] <= e, lambda a, b: _cut_x(a, b, e)),
+        (lambda p: p[1] >= s, lambda a, b: _cut_y(a, b, s)),
+        (lambda p: p[1] <= n, lambda a, b: _cut_y(a, b, n)),
+    ]
+    pts = list(ring)
+    for inside, cut in edges:
+        if not pts:
+            break
+        out = []
+        prev = pts[-1]
+        for p in pts:
+            if inside(p):
+                if not inside(prev):
+                    out.append(cut(prev, p))
+                out.append(p)
+            elif inside(prev):
+                out.append(cut(prev, p))
+            prev = p
+        pts = out
+    return pts
+
+
+def _cut_x(a, b, x):
+    t = (x - a[0]) / (b[0] - a[0])
+    return (x, a[1] + t * (b[1] - a[1]))
+
+
+def _cut_y(a, b, y):
+    t = (y - a[1]) / (b[1] - a[1])
+    return (a[0] + t * (b[0] - a[0]), y)
+
+
 def main():
-    src = sys.argv[1] if len(sys.argv) > 1 else '../map/data/basemap.json'
+    ap = argparse.ArgumentParser()
+    ap.add_argument('src', nargs='?', default='../map/data/basemap.json')
+    ap.add_argument('--box', help='vest,sor,ost,nord (standard: norsk sokkel)')
+    ap.add_argument('--out', default=OUT_FILE)
+    ap.add_argument('--source', default='Natural Earth 10m (public domain), via sheffielddivided/map')
+    args = ap.parse_args()
+    src = args.src
+    box = tuple(float(v) for v in args.box.split(',')) if args.box else BOX
+    out_file = args.out
     if not os.path.exists(src):
         print(f"Finner ikke {src}. Angi stien til basemap.json fra sheffielddivided/map.",
               file=sys.stderr)
@@ -93,7 +149,7 @@ def main():
         topo = json.load(fh)
     arcs = decode_arcs(topo)
 
-    w, s, e, n = BOX
+    w, s, e, n = box
     out = []
     for geom in topo['objects']['land']['geometries']:
         for ring in rings_of(geom, arcs):
@@ -101,24 +157,28 @@ def main():
             ys = [p[1] for p in ring]
             if max(xs) < w or min(xs) > e or max(ys) < s or min(ys) > n:
                 continue
+            if args.box:
+                ring = clip(ring, box)
+                if len(ring) < 3:
+                    continue
             simp = simplify(ring, TOLERANCE)
             if len(simp) < MIN_POINTS:
                 continue
             out.append([[round(x, DECIMALS), round(y, DECIMALS)] for x, y in simp])
 
     payload = {
-        'source': 'Natural Earth 10m (public domain), via sheffielddivided/map',
-        'box': list(BOX),
+        'source': args.source,
+        'box': list(box),
         'tolerance': TOLERANCE,
         'rings': out,
     }
-    os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
-    with open(OUT_FILE, 'w', encoding='utf-8') as fh:
+    os.makedirs(os.path.dirname(out_file), exist_ok=True)
+    with open(out_file, 'w', encoding='utf-8') as fh:
         json.dump(payload, fh, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
         fh.write('\n')
     pts = sum(len(r) for r in out)
-    size = os.path.getsize(OUT_FILE) / 1024
-    print(f"Skrev {OUT_FILE}: {len(out)} ringer, {pts} punkter, {size:.0f} KB")
+    size = os.path.getsize(out_file) / 1024
+    print(f"Skrev {out_file}: {len(out)} ringer, {pts} punkter, {size:.0f} KB")
     return 0
 
 

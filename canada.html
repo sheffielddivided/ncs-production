@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Newfoundland & Labrador offshore – NCS Insight</title>
+  <meta name="description" content="Production, reserves, resources, licences and wells offshore Newfoundland and Labrador, built on public data from the Canada-Newfoundland and Labrador Offshore Energy Regulator (C-NLOER)."/>
+  <!-- Ikke lenket fra menyen ennå: holdes utenfor søkemotorene til siden er klar -->
+  <meta name="robots" content="noindex"/>
+  <meta name="theme-color" content="#7d2248"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <!--
+    Canada · Newfoundland and Labrador. Egen side, foreløpig adskilt fra
+    index.html, men med samme designsystem (farger, kort, knapper, tabeller)
+    og samme mønster som DCS og UKCS: faner øverst, valg over grafen, tabell
+    under, faktaark for feltene i et panel over siden.
+
+    Data: data/canada_nl.json (fetch_cnloer.py), data/canada_nl_outlines.json
+    (lisens- og bassengomriss) og data/canada_nl_coast.json (kystlinje).
+    Valgene står i adressen, så tilbake-knappen virker og lenker kan deles.
+  -->
+  <style>
+    :root {
+      --bg:#f1f1f1; --card:#fff;
+      --navy:#7d2248;
+      --blue:#ce0f69;
+      --border:#d5d5d5;
+      --muted:#828282;
+      --light:#f5cfe1;
+      --green:#00b373;
+      --topbar-h:46px; --cw:1100px;
+    }
+    @media (min-width: 1400px){ :root{ --cw:1320px; } }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{min-height:100%;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1a2332;}
+    body.sheet-open{overflow:hidden;}
+
+    .topbar{background:var(--navy);color:#fff;height:var(--topbar-h);padding:0 16px;display:flex;align-items:center;
+      justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;}
+    .topbar a{color:#fff;text-decoration:none;}
+    .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;white-space:nowrap;}
+    .topbar-sub{font-size:0.78rem;opacity:0.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    .mode-bar{position:sticky;top:var(--topbar-h);z-index:49;background:var(--card);border-bottom:1px solid var(--border);padding:8px 12px;}
+    .mode-switcher{display:flex;flex-wrap:nowrap;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none;
+      background:var(--light);border-radius:8px;padding:3px;gap:2px;}
+    .mode-switcher::-webkit-scrollbar{display:none;}
+    .mode-btn{flex:0 0 auto;white-space:nowrap;padding:6px 14px;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;
+      cursor:pointer;background:none;color:var(--muted);letter-spacing:0.01em;font-family:inherit;}
+    .mode-btn.active{background:var(--blue);color:#fff;}
+    a.mode-btn{text-decoration:none;display:inline-flex;align-items:center;}
+    .mode-sep{position:relative;margin-left:7px;}
+    .mode-sep::before{content:"";position:absolute;left:-5px;top:3px;bottom:3px;width:1px;background:rgba(125,34,72,0.18);}
+
+    .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;}
+    .controls-bar:empty{display:none;}
+    .ctrl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+    .ctrl-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+    .pill-group{display:flex;flex-wrap:wrap;gap:1.5px;background:var(--border);border:1.5px solid var(--border);border-radius:7px;overflow:hidden;width:fit-content;max-width:100%;}
+    .pill-btn{flex:1 1 auto;padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;}
+    .pill-btn.active{background:var(--blue);color:#fff;}
+    .pill-btn:disabled{color:#c3c9d1;cursor:default;}
+    .year-select{padding:6px 24px 6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;color:#1a2332;font-family:inherit;
+      background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 6px center;
+      appearance:none;-webkit-appearance:none;cursor:pointer;max-width:100%;}
+    .grp-btn{padding:3px 10px;border:1px solid var(--border);border-radius:11px;background:#fff;font-size:0.68rem;color:var(--muted);cursor:pointer;font-family:inherit;}
+    .grp-btn:hover{border-color:var(--blue);color:var(--blue);}
+
+    main{padding:12px 12px 0;}
+    @media (min-width: 1148px){
+      .mode-bar,.controls-bar{padding-left:calc((100% - var(--cw)) / 2);padding-right:calc((100% - var(--cw)) / 2);}
+      main{max-width:calc(var(--cw) + 24px);margin:0 auto;}
+    }
+    .card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 10px 10px;margin-bottom:10px;min-width:0;}
+    .chart-title{font-size:0.85rem;font-weight:700;color:var(--navy);padding:2px 2px 8px;line-height:1.3;}
+    .chart-title .ct-sub{font-weight:400;color:var(--muted);font-size:0.78rem;display:block;margin-top:2px;}
+    .chart-container{position:relative;height:320px;}
+    .chart-container.tall{height:380px;}
+    .chart-container.short{height:220px;}
+    .legend-row{display:flex;gap:8px 14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--muted);}
+    .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+    .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start;}
+    .grid2 > .card{margin-bottom:10px;}
+    @media (max-width: 820px){ .grid2{grid-template-columns:minmax(0,1fr);} }
+
+    .info-box{margin:0 0 10px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
+    .info-box a,.row-link{color:inherit;font:inherit;text-decoration:underline;text-decoration-color:var(--blue);text-underline-offset:2px;cursor:pointer;background:none;border:0;padding:0;text-align:left;}
+    .row-link:hover,.info-box a:hover{color:var(--blue);}
+    .source-note{padding:6px 2px 40px;font-size:0.68rem;color:#a0aab8;text-align:right;line-height:1.5;}
+    .source-note a{color:inherit;}
+    .status{text-align:center;padding:60px 20px;color:var(--muted);font-size:0.9rem;}
+    .spinner{display:inline-block;width:30px;height:30px;border:3px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* Nøkkeltall over produksjonsgrafen, som kortene på startsiden */
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px;}
+    .kpi{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:10px 12px;}
+    .kpi span{display:block;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);}
+    .kpi strong{display:block;font-size:1.2rem;font-weight:700;margin-top:3px;color:var(--navy);font-variant-numeric:tabular-nums;}
+    .kpi small{display:block;font-size:0.68rem;color:var(--muted);margin-top:1px;}
+
+    .tbl-sec{font-size:0.86rem;font-weight:700;color:var(--navy);margin:16px 2px 8px;}
+    .tbl-sec small{display:block;font-size:0.7rem;font-weight:400;color:var(--muted);margin-top:2px;}
+    .table-wrap{overflow-x:auto;margin-bottom:10px;border-radius:10px;}
+    .table-wrap.scroll{max-height:420px;overflow-y:auto;}
+    .res-table{width:100%;border-collapse:collapse;font-size:0.72rem;background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);}
+    .res-table th,.res-table td{padding:5px 8px;text-align:right;white-space:nowrap;}
+    .res-table th:first-child,.res-table td:first-child{text-align:left;white-space:normal;}
+    .res-table td.l,.res-table th.l{text-align:left;}
+    .res-table td:first-child{white-space:nowrap;}
+    .res-table thead th{background:#e8eef5;color:var(--navy);font-weight:700;font-size:0.68rem;position:sticky;top:0;z-index:1;}
+    .res-table tbody tr:nth-child(even){background:#fafafa;}
+    .res-table tr.total-row{background:#e8eef5 !important;font-weight:700;color:var(--navy);}
+    .res-table tr.total-row td{border-top:2px solid var(--border);}
+    .res-table tr.sub-row td:first-child{padding-left:22px;color:var(--muted);}
+    .res-table tr.hub-row{background:var(--light) !important;font-weight:700;}
+    .res-table tr.sel{background:var(--light) !important;}
+    .res-table tbody tr.click{cursor:pointer;}
+    .res-table tbody tr.click:hover{background:#f0c3d8;}
+    .tag{display:inline-block;padding:1px 6px;border-radius:9px;font-size:0.62rem;font-weight:600;background:#eef1f4;color:#4a5568;}
+    .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:baseline;}
+
+    /* Faktaarket: panel over siden, som brønn- og feltarkene i DCS/UKCS */
+    .wd-overlay{position:fixed;inset:0;background:rgba(26,16,24,0.5);z-index:300;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    .wd-overlay.open{display:block;}
+    .wd-panel{max-width:860px;margin:14px auto;background:var(--bg);border-radius:14px;padding:12px 12px 2px;}
+    @media (max-width: 880px){ .wd-panel{margin:0;border-radius:0;min-height:100%;} }
+    .wd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+    .wd-head h2{font-size:1.15rem;color:var(--navy);line-height:1.2;}
+    .wd-sub{font-size:0.74rem;color:var(--muted);margin-top:3px;}
+    .wd-close{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:#fff;font-size:1rem;cursor:pointer;color:#4a5568;}
+    .wd-close:hover{border-color:var(--blue);color:var(--blue);}
+    .pf-card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 12px 14px;margin-bottom:10px;min-width:0;}
+    .pf-card h3{margin:0 0 9px;font-size:0.78rem;font-weight:700;color:var(--navy);letter-spacing:0.01em;}
+    .pf-card h3 small{font-weight:400;color:var(--muted);}
+    .pf-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px 14px;}
+    .pf-fact span{display:block;font-size:0.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px;}
+    .pf-fact strong{font-size:0.82rem;color:#1a2332;font-weight:600;}
+    .pf-note{font-size:0.66rem;color:var(--muted);margin-top:8px;line-height:1.45;}
+    .pf-own{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+    .pf-pie{width:150px;height:150px;flex:0 0 150px;}
+    .pf-own-list{flex:1 1 220px;display:flex;flex-direction:column;gap:7px;min-width:0;}
+    .pf-own-row{display:grid;grid-template-columns:auto 1fr auto;gap:0 8px;align-items:baseline;}
+    .pf-own-dot{width:9px;height:9px;border-radius:2px;align-self:center;}
+    .pf-own-name{font-size:0.74rem;min-width:0;}
+    .pf-own-pct{font-size:0.74rem;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;}
+    .pf-op-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:9px;background:var(--light);color:var(--navy);font-size:0.6rem;font-weight:700;text-transform:uppercase;}
+    .bar-track{display:flex;height:14px;border-radius:4px;overflow:hidden;background:#f3f3f3;gap:2px;}
+    .bar-track span{display:block;height:100%;}
+    .counts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+
+    /* Kart */
+    .map-box{position:relative;background:#eef3f8;border-radius:8px;overflow:hidden;}
+    .map-box svg{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
+    .map-box svg.drag{cursor:grabbing;}
+    .map-main{height:min(72vh,640px);min-height:360px;}
+    .map-small{height:300px;}
+    .map-ctl{position:absolute;left:8px;bottom:8px;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,0.12);}
+    .map-ctl button{width:30px;height:30px;border:none;background:#fff;color:#1a2332;font-size:1.05rem;cursor:pointer;}
+    .map-ctl button + button{border-top:1px solid var(--border);}
+    .map-ctl button:hover{background:var(--light);}
+    .map-tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:0.7rem;
+      box-shadow:0 2px 10px rgba(0,0,0,0.15);max-width:260px;line-height:1.45;display:none;z-index:3;}
+    .map-tip b{color:var(--navy);}
+    .lic{vector-effect:non-scaling-stroke;stroke-width:1;}
+    .lic:hover{stroke-width:2.2;}
+    .lic.hl{stroke-width:2.4;}
+    .map-lbl{font-size:10px;fill:#1a2332;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none;}
+    .map-lbl.basin{font-weight:500;fill:#8a96a6;font-style:italic;}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="topbar-title" href="index.html" title="NCS Insight">NCS Insight</a>
+  <span class="topbar-sub">Canada · Newfoundland &amp; Labrador offshore</span>
+</div>
+
+<nav class="mode-bar" aria-label="Sections">
+  <div class="mode-switcher" id="tabs"></div>
+</nav>
+<div class="controls-bar" id="controls"></div>
+
+<main>
+  <div id="view"><div class="status"><div class="spinner"></div><div>Loading data…</div></div></div>
+  <div class="source-note" id="sourceNote"></div>
+</main>
+
+<div class="wd-overlay" id="sheet" onclick="if(event.target===this)closeSheet()">
+  <div class="wd-panel" id="sheetPanel"></div>
+</div>
+
+<script>
+'use strict';
+// ── KONSTANTER ───────────────────────────────────────────────────────────────
+const BBL_PER_M3 = 6.2898;
+const MMSCF_PER_E3M3 = 0.0353147;
+// Samme farger som index.html (PALETTE der), i samme rekkefølge som UKCS
+const PALETTE = ['#ce0f69', '#f68d2e', '#00b373', '#4993b4', '#d14f4e', '#e8c942', '#7d2248', '#6b7a8f'];
+const OTHER_COLOR = '#b9c0c9';
+const OIL_COLOR = 'rgba(206,15,105,0.85)', GAS_COLOR = 'rgba(246,141,46,0.85)', WATER_COLOR = 'rgba(73,147,180,0.85)';
+const REMAINING_COLOR = 'rgba(0,179,115,0.85)', PRODUCED_COLOR = 'rgba(148,163,184,0.75)';
+// Brønntyper som DCS → Drilling: leting grønn, avgrensning blå, utvikling magenta
+const WELL_CLS = {
+  exploration: {label: 'Exploration', color: '#00b373'},
+  delineation: {label: 'Delineation', color: '#4993b4'},
+  development: {label: 'Development', color: '#ce0f69'},
+  dual:        {label: 'Dual classified', color: '#9aa3ad'},
+};
+const LIC_TYPES = {
+  Production:              {short: 'PL',  label: 'Production licence',  fill: 'rgba(206,15,105,0.30)', stroke: '#ce0f69'},
+  'Significant Discovery': {short: 'SDL', label: 'Significant discovery licence', fill: 'rgba(246,141,46,0.28)', stroke: '#d9731a'},
+  Exploration:             {short: 'EL',  label: 'Exploration licence', fill: 'rgba(0,179,115,0.16)', stroke: '#00936a'},
+};
+const TABS = [
+  ['production', 'Production'], ['fields', 'Fields'], ['resources', 'Resources'],
+  ['company', 'Company'], ['drilling', 'Drilling'], ['map', 'Map'],
+];
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// ── TILSTAND ─────────────────────────────────────────────────────────────────
+// Kort navn i adressen. fs = felt i faktaarket.
+const DEFAULTS = {v: 'production', g: 'field', f: '', p: 'oil', per: 'm', u: 'bbl', rk: '12m', rp: 'oil',
+                  c: '', wc: '', dy: '', mw: '', mx: 'gb', fs: '', sp: 'oil'};
+let S = {...DEFAULTS};
+let D = null, OUT = null, COAST = null;
+const charts = {};
+
+function readUrl() {
+  const q = new URLSearchParams(location.search);
+  S = {...DEFAULTS};
+  for (const k of Object.keys(DEFAULTS)) if (q.has(k)) S[k] = q.get(k);
+  if (!TABS.some(t => t[0] === S.v)) S.v = 'production';
+}
+function writeUrl(push) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(S)) if (v !== DEFAULTS[k]) q.set(k, v);
+  const url = location.pathname + (q.toString() ? '?' + q : '');
+  if (url !== location.pathname + location.search) history[push ? 'pushState' : 'replaceState'](null, '', url);
+}
+function set(patch, push = true) {
+  Object.assign(S, patch);
+  writeUrl(push);
+  render();
+}
+window.addEventListener('popstate', () => { readUrl(); render(); });
+
+// ── HJELPERE ─────────────────────────────────────────────────────────────────
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const jsq = s => esc(JSON.stringify(String(s)));
+const fmt = (v, d = 0) => v == null || isNaN(v) ? '–' : Number(v).toLocaleString('en', {minimumFractionDigits: d, maximumFractionDigits: d});
+const daysIn = (y, m) => new Date(y, m, 0).getDate();   // m: 1–12
+const ymTxt = ym => { const [y, m] = ym.split('-'); return `${MONTH_ABBR[+m - 1]} ${y}`; };
+const dateTxt = d => {
+  if (!d) return '–';
+  const [y, m, dd] = d.split('-');
+  return m ? `${dd ? +dd + ' ' : ''}${MONTH_ABBR[+m - 1]} ${y}` : y;
+};
+const field = id => D.fields.find(f => f.id === id);
+// Andel av 2P EUR som er utvunnet. Står ikke for totalen i alle
+// reservefilene (Hebron, Hibernia, North Amethyst); regnes da ut.
+const pct2 = x => x.pct ? x.pct[1] : x.cum != null && x.eur && x.eur[1] ? x.cum / x.eur[1] * 100 : null;
+// [1997, 1998, 1999, 2001] → «1997–1999, 2001»
+function yearSpan(ys) {
+  const out = [];
+  ys.forEach(y => { const l = out[out.length - 1]; if (l && l[1] === y - 1) l[1] = y; else out.push([y, y]); });
+  return out.map(([a, b]) => a === b ? a : `${a}–${b}`).join(', ');
+}
+
+function pills(key, opts, label) {
+  return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<div class="pill-group">${opts.map(([v, t, dis]) =>
+    `<button class="pill-btn${S[key] === v ? ' active' : ''}" ${dis ? 'disabled' : ''} onclick="set({${key}:${jsq(v)}})">${t}</button>`).join('')}</div></div>`;
+}
+function select(key, opts, label) {
+  return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<select class="year-select" onchange="set({${key}:this.value})">${opts.map(([v, t]) =>
+    `<option value="${esc(v)}"${S[key] === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
+}
+function legend(items) {
+  return `<div class="legend-row">${items.map(l => `<div class="legend-item"><div class="legend-dot" style="background:${l.color}"></div>${esc(l.label)}</div>`).join('')}</div>`;
+}
+function chartCard(id, title, sub, opts = {}) {
+  return `<div class="card"><div class="chart-title">${title}${sub ? `<span class="ct-sub">${sub}</span>` : ''}</div>
+    <div class="chart-container ${opts.cls || ''}"${opts.h ? ` style="height:${opts.h}px"` : ''}><canvas id="${id}"></canvas></div><div id="${id}Leg"></div></div>`;
+}
+
+// Stablede søyler med samme stil som renderChart i index.html.
+function barChart(id, labels, datasets, unit, opts = {}) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (charts[id]) charts[id].destroy();
+  const horiz = !!opts.horizontal;
+  const dec = opts.dec || 0;
+  const valAxis = {stacked: opts.stacked !== false, beginAtZero: true,
+    title: {display: !!unit, text: unit, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}};
+  const catAxis = {stacked: opts.stacked !== false, ticks: {font: {size: horiz ? 10 : 9}, autoSkip: !horiz, maxTicksLimit: opts.ticks || 14, maxRotation: 45}, grid: {color: 'rgba(0,0,0,0.04)'}};
+  charts[id] = new Chart(el.getContext('2d'), {
+    type: 'bar', data: {labels, datasets},
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: horiz ? 'y' : 'x',
+      interaction: {mode: 'index', intersect: false, axis: horiz ? 'y' : 'x'},
+      onClick: opts.onClick ? (e, els) => { if (els.length) opts.onClick(els[0].index); } : undefined,
+      onHover: opts.onClick ? (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; } : undefined,
+      plugins: {
+        legend: {display: false},
+        tooltip: {
+          filter: (c, i, items) => (c.parsed[horiz ? 'x' : 'y'] || 0) !== 0 || items.every(x => !(x.parsed[horiz ? 'x' : 'y'])),
+          callbacks: {
+            title: items => opts.titleFn ? opts.titleFn(items[0].dataIndex) : items[0].label,
+            label: c => ` ${c.dataset.label}: ${fmt(c.parsed[horiz ? 'x' : 'y'], dec)} ${unit}`,
+            footer: items => opts.noFooter || items.length < 2 ? '' : `Total: ${fmt(items.reduce((t, i) => t + (i.parsed[horiz ? 'x' : 'y'] || 0), 0), dec)} ${unit}`,
+          }}},
+      scales: horiz ? {x: valAxis, y: catAxis} : {x: catAxis, y: valAxis},
+    },
+  });
+  const leg = document.getElementById(id + 'Leg');
+  if (leg) leg.innerHTML = opts.legend === false ? '' : legend(opts.legend || datasets.map(d => ({label: d.label, color: d.backgroundColor})));
+}
+
+// ── PRODUKSJON: SERIER ───────────────────────────────────────────────────────
+// Alle felt på én felles månedsakse fra første produksjonsmåned.
+let G = null;   // {start: [y, m], n, labels: ['YYYY-MM', …]}
+function buildAxis() {
+  let s = null, e = null;
+  D.fields.forEach(f => {
+    const [y, m] = f.start.split('-').map(Number);
+    const n = Object.values(f.prod)[0][0].length;
+    const a = y * 12 + m - 1, b = a + n - 1;
+    s = s == null ? a : Math.min(s, a); e = e == null ? b : Math.max(e, b);
+  });
+  const labels = [];
+  for (let k = s; k <= e; k++) labels.push(`${Math.floor(k / 12)}-${String(k % 12 + 1).padStart(2, '0')}`);
+  G = {s, e, n: labels.length, labels};
+}
+const PIDX = {oil: 0, gas: 1, water: 2};
+// Månedsvolumer (m³ eller 10³ m³) for ett felt på den felles aksen.
+function fieldMonthly(f, prod, res) {
+  const out = new Array(G.n).fill(0);
+  const [y, m] = f.start.split('-').map(Number), off = y * 12 + m - 1 - G.s;
+  const k = PIDX[prod];
+  Object.entries(f.prod).forEach(([r, arr]) => {
+    if (res && r !== res) return;
+    arr[k].forEach((v, i) => { out[off + i] += v; });
+  });
+  return out;
+}
+function unitOf(prod) {
+  const bbl = S.u === 'bbl';
+  if (prod === 'gas') return bbl ? 'MMscf/day' : '1000 m³/day';
+  return bbl ? 'bbl/day' : 'm³/day';
+}
+function factor(prod) {
+  if (S.u !== 'bbl') return 1;
+  return prod === 'gas' ? MMSCF_PER_E3M3 : BBL_PER_M3;
+}
+// Siste måned med tall (felles for alle felt).
+const lastYM = () => G.labels[G.n - 1];
+// Perioder: månedlig eller årlig. Årlig = årsvolum / dager i perioden; for
+// inneværende år bare dagene til og med siste rapporterte måned.
+function periods(per) {
+  if (per === 'm') return G.labels.map((ym, i) => {
+    const [y, m] = ym.split('-').map(Number);
+    return {key: ym, label: ym, idx: [i], days: daysIn(y, m)};
+  });
+  const by = {};
+  G.labels.forEach((ym, i) => {
+    const [y, m] = ym.split('-').map(Number);
+    (by[y] = by[y] || {key: String(y), idx: [], days: 0, months: 0}).idx.push(i);
+    by[y].days += daysIn(y, m); by[y].months++;
+  });
+  return Object.values(by).map(p => {
+    const full = p.months === 12 || +p.key < +lastYM().slice(0, 4);
+    if (full) p.days = (+p.key % 4 === 0 ? 366 : 365);
+    p.label = full ? p.key : p.key + '*';
+    p.ytd = !full;
+    return p;
+  });
+}
+function perDay(monthly, ps, prod) {
+  const fct = factor(prod);
+  return ps.map(p => p.idx.reduce((t, i) => t + monthly[i], 0) * fct / p.days);
+}
+function trimLead(labels, datasets) {
+  let first = labels.length;
+  datasets.forEach(d => { const i = d.data.findIndex(v => v); if (i >= 0 && i < first) first = i; });
+  if (first === labels.length) first = 0;
+  return {labels: labels.slice(first), datasets: datasets.map(d => ({...d, data: d.data.slice(first)}))};
+}
+// Feltfargene følger feltet, ikke rangeringen. De to største produsentene
+// (Hebron og Hibernia) står ofte stablet sammen og får mest kontrast.
+const FIELD_COLORS = {hibernia: '#ce0f69', hebron: '#f68d2e', 'terra-nova': '#00b373', 'white-rose': '#4993b4', 'north-amethyst': '#7d2248'};
+const fieldColor = id => FIELD_COLORS[id] || PALETTE[D.fields.findIndex(f => f.id === id) % PALETTE.length];
+// Reservevolumer: kildens egne fat/bcf når enheten er fat (C-NLOER regner
+// gass om med en annen faktor enn 35,31), ellers metrisk (10⁶ m³ / 10⁹ m³).
+function vol(o, key, i, gas) {
+  if (!o) return null;
+  const m = i == null ? o[key] : (o[key] || [])[i];
+  if (S.u !== 'bbl') return m ?? null;
+  const imp = i == null ? o[key + 'I'] : (o[key + 'I'] || [])[i];
+  if (imp != null) return imp;
+  return m == null ? null : m * (gas ? 35.3147 : BBL_PER_M3);
+}
+// Reservoarfarger: faste per formasjon (navnene går igjen på tvers av
+// feltene), ukjente etter første forekomst
+const RES_COLORS = {Hibernia: '#ce0f69', Avalon: '#f68d2e', 'Ben Nevis': '#f68d2e', 'Ben Nevis/Avalon': '#f68d2e',
+                    "Jeanne d'Arc": '#4993b4', Catalina: '#00b373'};
+let RES_ORDER = [];
+const resColor = r => RES_COLORS[r] || PALETTE[(RES_ORDER.indexOf(r) + 4) % PALETTE.length];
+
+// Nøkkeltall per felt: siste måned, siste 12 måneder, hittil i år, totalt.
+function fieldStats(f) {
+  const oil = fieldMonthly(f, 'oil'), water = fieldMonthly(f, 'water'), gas = fieldMonthly(f, 'gas');
+  const n = G.n, last12 = [...Array(12)].map((_, k) => n - 12 + k);
+  const days12 = last12.reduce((t, i) => { const [y, m] = G.labels[i].split('-').map(Number); return t + daysIn(y, m); }, 0);
+  const [ly, lm] = lastYM().split('-').map(Number);
+  const [y0] = G.labels[n - 1].split('-').map(Number);
+  const ytdIdx = G.labels.map((ym, i) => ym.startsWith(y0 + '-') ? i : -1).filter(i => i >= 0);
+  const ytdDays = ytdIdx.reduce((t, i) => t + daysIn(y0, +G.labels[i].slice(5)), 0);
+  const sum = (a, idx) => idx.reduce((t, i) => t + a[i], 0);
+  const o12 = sum(oil, last12), w12 = sum(water, last12), g12 = sum(gas, last12);
+  return {
+    last: oil[n - 1] / daysIn(ly, lm),
+    avg12: o12 / days12,
+    ytd: ytdDays ? sum(oil, ytdIdx) / ytdDays : 0,
+    cum: oil.reduce((t, v) => t + v, 0),
+    wcut: o12 + w12 ? w12 / (o12 + w12) : 0,
+    gor: o12 ? g12 * 1000 / o12 : 0,
+  };
+}
+
+// ── VISNINGER ────────────────────────────────────────────────────────────────
+function render() {
+  document.getElementById('tabs').innerHTML = TABS.map(([id, t]) =>
+    `<button class="mode-btn${S.v === id ? ' active' : ''}" onclick="set({v:'${id}'})">${t}</button>`).join('') +
+    `<a class="mode-btn mode-sep" href="index.html" title="Back to the Norwegian Continental Shelf">NCS ↗</a>`;
+  if (!D) return;
+  Object.values(charts).forEach(c => c.destroy());
+  for (const k in charts) delete charts[k];
+  ({production: viewProduction, fields: viewFields, resources: viewResources, company: viewCompany,
+    drilling: viewDrilling, map: viewMap})[S.v]();
+  if (S.fs && field(S.fs)) openSheet(S.fs, true); else hideSheet();
+}
+function setControls(html) { document.getElementById('controls').innerHTML = html; }
+function setView(html) { document.getElementById('view').innerHTML = html; }
+
+// ── PRODUCTION ──
+function viewProduction() {
+  const f = S.f && field(S.f);
+  const byRes = S.g === 'res';
+  setControls(
+    pills('g', [['field', 'By field'], ['res', 'By reservoir']], 'Show') +
+    select('f', [['', 'All fields']].concat(D.fields.map(x => [x.id, x.name])), 'Field') +
+    pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']], 'Product') +
+    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') +
+    pills('u', [['bbl', 'Barrels'], ['m3', 'Cubic metres']], 'Unit'));
+  const ps = periods(S.per), unit = unitOf(S.p);
+  const flds = f ? [f] : D.fields;
+  let datasets;
+  if (byRes) {
+    const names = [];
+    flds.forEach(x => x.reservoirs.forEach(r => { if (!names.includes(r)) names.push(r); }));
+    datasets = names.map(r => {
+      const m = new Array(G.n).fill(0);
+      flds.forEach(x => fieldMonthly(x, S.p, r).forEach((v, i) => { m[i] += v; }));
+      return {label: r, data: perDay(m, ps, S.p), backgroundColor: resColor(r), borderWidth: 0, stack: 's'};
+    });
+  } else {
+    datasets = flds.map(x => ({label: x.name, data: perDay(fieldMonthly(x, S.p), ps, S.p), backgroundColor: fieldColor(x.id), borderWidth: 0, stack: 's'}));
+  }
+  datasets = datasets.filter(d => d.data.some(v => v));
+  if (S.per === 'a') datasets.forEach(d => { d.borderWidth = 1; d.borderColor = '#fff'; });
+  const t = trimLead(ps.map(p => p.label), datasets);
+  const prodName = {oil: 'Oil', gas: 'Gas', water: 'Water'}[S.p];
+  const scope = f ? f.name : 'Newfoundland & Labrador offshore';
+
+  // Nøkkeltall: alltid olje, for utvalget
+  const st = flds.map(fieldStats);
+  const sumK = k => st.reduce((t, s) => t + s[k], 0);
+  const o = v => S.u === 'bbl' ? v * BBL_PER_M3 : v;
+  const ou = S.u === 'bbl' ? 'bbl/day' : 'm³/day';
+  const rem2P = flds.reduce((t, x) => t + (vol(x.reserves.total, 'rem', 1) || 0), 0);
+  const cum = sumK('cum') / 1e6;
+  const kpis = `<div class="kpis">
+    <div class="kpi"><span>Oil · ${esc(ymTxt(lastYM()))}</span><strong>${fmt(o(sumK('last')))}</strong><small>${ou}</small></div>
+    <div class="kpi"><span>Oil · last 12 months</span><strong>${fmt(o(sumK('avg12')))}</strong><small>${ou}, average</small></div>
+    <div class="kpi"><span>Oil · ${lastYM().slice(0, 4)} to date</span><strong>${fmt(o(sumK('ytd')))}</strong><small>${ou}, average</small></div>
+    <div class="kpi"><span>Produced to date</span><strong>${fmt(S.u === 'bbl' ? cum * BBL_PER_M3 : cum, S.u === 'bbl' ? 0 : 1)}</strong><small>million ${S.u === 'bbl' ? 'bbl' : 'm³'} oil</small></div>
+    <div class="kpi"><span>Remaining reserves (2P)</span><strong>${fmt(rem2P, S.u === 'bbl' ? 0 : 1)}</strong><small>million ${S.u === 'bbl' ? 'bbl' : 'm³'} oil, ${esc(dateTxt(D.fields[0].reserves.asOf))}</small></div>
+  </div>`;
+
+  const rows = flds.map((x, i) => ({x, s: st[i]})).sort((a, b) => b.s.avg12 - a.s.avg12);
+  const tot = {last: sumK('last'), avg12: sumK('avg12'), ytd: sumK('ytd'), cum: sumK('cum')};
+  const table = `<div class="tbl-sec">Oil by field<small>Average ${ou}; produced to date in million ${S.u === 'bbl' ? 'bbl' : 'm³'}. Water cut and gas–oil ratio over the last 12 months</small></div>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th>${esc(ymTxt(lastYM()))}</th><th>Last 12 months</th><th>${lastYM().slice(0, 4)} to date</th><th>Produced</th><th>Water cut</th><th>GOR (m³/m³)</th><th>First oil</th></tr></thead><tbody>
+    ${rows.map(({x, s}) => `<tr class="click" onclick="openSheet('${x.id}')"><td><span class="dot" style="background:${fieldColor(x.id)}"></span><button class="row-link">${esc(x.name)}</button></td>
+      <td>${fmt(o(s.last))}</td><td>${fmt(o(s.avg12))}</td><td>${fmt(o(s.ytd))}</td><td>${fmt(o(s.cum) / 1e6, 1)}</td><td>${fmt(s.wcut * 100)} %</td><td>${fmt(s.gor)}</td><td>${esc(dateTxt(x.firstOil))}</td></tr>`).join('')}
+    ${flds.length > 1 ? `<tr class="total-row"><td>Total</td><td>${fmt(o(tot.last))}</td><td>${fmt(o(tot.avg12))}</td><td>${fmt(o(tot.ytd))}</td><td>${fmt(o(tot.cum) / 1e6, 1)}</td><td></td><td></td><td></td></tr>` : ''}
+    </tbody></table></div>`;
+
+  const wells = flds.filter(x => x.fromWells.length).map(x => `${x.name} ${yearSpan(x.fromWells)}`);
+  setView(kpis +
+    chartCard('prodChart', `${esc(scope)} · ${prodName} production`,
+      `${byRes ? 'By reservoir' : f ? 'Field total' : 'By field'} · ${unit}, ${S.per === 'm' ? 'monthly' : 'annual average'}`, {cls: 'tall'}) +
+    (f ? `<div style="margin:-4px 0 10px"><button class="grp-btn" onclick="openSheet('${f.id}')">Factsheet →</button></div>` : '') +
+    `<div class="info-box"><strong>Source:</strong> C-NLOER monthly production by field and reservoir, ${esc(ymTxt(G.labels[0]))} to ${esc(ymTxt(lastYM()))} (published about a month after the fact; operators' amendments are included as C-NLOER republishes).
+      ${S.p === 'gas' ? ' <strong>Gas</strong> is produced (associated) gas: there is no gas export from the area, so it is mostly reinjected or used as fuel.' : ''}
+      ${wells.length ? ` <strong>From well data:</strong> ${esc(wells.join(', '))} — C-NLOER has no field file for these years, so the months are summed from its well-by-well production and split by reservoir in proportion to that year's reservoir totals.` : ''}
+      ${S.per === 'a' && ps.some(p => p.ytd) ? ` <strong>${lastYM().slice(0, 4)}*</strong> is the year to date.` : ''}</div>` +
+    table);
+  barChart('prodChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30,
+    titleFn: S.per === 'm' ? i => ymTxt(t.labels[i]) : undefined});
+}
+
+// ── FIELDS ──
+function viewFields() {
+  setControls(pills('rk', [['12m', 'Last 12 months'], ['cum', 'Produced to date'], ['rem', 'Remaining reserves (2P)'], ['eur', 'Ultimate recovery (2P)']], 'Rank by') +
+    pills('u', [['bbl', 'Barrels'], ['m3', 'Cubic metres']], 'Unit'));
+  const bbl = S.u === 'bbl', cv = v => bbl ? v * BBL_PER_M3 : v;
+  const rows = D.fields.map(f => {
+    const s = fieldStats(f), r = f.reserves.total;
+    return {f, s, r, v: {
+      '12m': cv(s.avg12), cum: cv(s.cum / 1e6), rem: vol(r, 'rem', 1) || 0, eur: vol(r, 'eur', 1) || 0}[S.rk]};
+  }).sort((a, b) => b.v - a.v);
+  const unit = S.rk === '12m' ? (bbl ? 'bbl/day' : 'm³/day') : `million ${bbl ? 'bbl' : 'm³'}`;
+  const title = {'12m': 'Oil production, last 12 months', cum: 'Oil produced to date', rem: 'Remaining oil reserves (2P)', eur: 'Estimated ultimate recovery of oil (2P)'}[S.rk];
+  setView(chartCard('rankChart', title, `${unit} · click a field for its factsheet`, {cls: 'short'}) +
+    `<div class="tbl-sec">Producing fields<small>Five fields on the Grand Banks, all in the Jeanne d'Arc Basin. Reserves per ${esc(dateTxt(D.fields[0].reserves.asOf))}; EUR = estimated ultimate recovery, proved + probable (2P)</small></div>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Operator</th><th class="l">Installation</th><th>Discovered</th><th>First oil</th>
+      <th>Last 12 m (${bbl ? 'bbl' : 'm³'}/d)</th><th>Produced (M${bbl ? 'bbl' : 'm³'})</th><th>2P EUR</th><th>2P remaining</th><th>Recovered</th></tr></thead><tbody>
+    ${rows.map(({f, s, r}) => `<tr class="click" onclick="openSheet('${f.id}')"><td><span class="dot" style="background:${fieldColor(f.id)}"></span><button class="row-link">${esc(f.name)}</button></td>
+      <td class="l">${esc(opShort(f.operator))}</td><td class="l">${esc(f.installation || '–')}</td><td>${f.discovered || '–'}</td><td>${esc(dateTxt(f.firstOil))}</td>
+      <td>${fmt(cv(s.avg12))}</td><td>${fmt(cv(s.cum / 1e6), bbl ? 0 : 1)}</td><td>${fmt(vol(r, 'eur', 1), bbl ? 0 : 1)}</td><td>${fmt(vol(r, 'rem', 1), bbl ? 0 : 1)}</td><td>${pct2(r) != null ? fmt(pct2(r), 1) + ' %' : '–'}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="info-box">Production from C-NLOER's monthly field statistics; reserves and EUR from its field resource estimates (updated ${esc(dateTxt(D.fields[0].reserves.updated))}). Produced to date is summed from the monthly figures and matches C-NLOER's cumulative production in the reserve tables.</div>`);
+  barChart('rankChart', rows.map(r => r.f.name), [{label: title, data: rows.map(r => r.v),
+    backgroundColor: rows.map(r => fieldColor(r.f.id)), borderWidth: 0}], unit,
+    {horizontal: true, legend: false, noFooter: true, dec: S.rk === '12m' || bbl ? 0 : 1, onClick: i => openSheet(rows[i].f.id)});
+}
+
+// ── RESOURCES ──
+function viewResources() {
+  setControls(pills('rp', [['oil', 'Oil'], ['gas', 'Gas']], 'Contingent') + pills('u', [['bbl', 'Barrels / cubic feet'], ['m3', 'Cubic metres']], 'Unit'));
+  const bbl = S.u === 'bbl';
+  const ou = bbl ? 'million bbl' : 'million m³', gu = bbl ? 'bcf' : 'billion m³';
+  const R = D.resources;
+  const fl = D.fields.slice().sort((a, b) => (b.reserves.total.eur || [])[1] - (a.reserves.total.eur || [])[1]);
+  const cont = R.contingent2C.filter(r => r[S.rp] > 0).sort((a, b) => b[S.rp] - a[S.rp]);
+  const isField = n => D.fields.some(f => f.name.toLowerCase() === n.toLowerCase());
+  const areaColor = a => a === 'Labrador Shelf' ? '#4993b4' : '#f68d2e';
+  const sum = (k, area) => { const rs = R.contingent2C.filter(r => (!area || r.area === area) && r[k] != null);
+    return rs.length ? rs.reduce((t, r) => t + vol(r, k, null, k === 'gas'), 0) : null; };
+  const cell = (r, k) => fmt(vol(r, k, null, k === 'gas'), bbl ? 0 : 1);
+  setView(`<div class="grid2">` +
+    chartCard('eurChart', 'Producing fields: oil produced and remaining', `Proved + probable (2P) · ${ou} · per ${esc(dateTxt(fl[0].reserves.asOf))}`, {cls: 'short'}) +
+    chartCard('contChart', `Contingent ${S.rp} resources (2C)`, `Discovered, not yet approved for development · ${S.rp === 'oil' ? ou : gu}`, {h: Math.max(220, cont.length * 19 + 50)}) +
+    `</div>
+    <div class="tbl-sec">Contingent resources (2C)<small>Best estimate (50 % probability) of technically recoverable volumes in discoveries and in undeveloped parts of the producing fields. C-NLOER, updated ${esc(dateTxt(R.updated))}</small></div>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Accumulation</th><th class="l">Area</th><th>Oil (${ou})</th><th>Gas (${gu})</th><th>NGL (${ou})</th></tr></thead><tbody>
+    ${['Grand Banks', 'Labrador Shelf'].map(a => `<tr class="hub-row"><td colspan="2">${a}</td><td>${fmt(sum('oil', a), bbl ? 0 : 1)}</td><td>${fmt(sum('gas', a), bbl ? 0 : 1)}</td><td>${fmt(sum('ngl', a), bbl ? 0 : 1)}</td></tr>` +
+      R.contingent2C.filter(r => r.area === a).map(r => {
+        const f = D.fields.find(x => x.name.toLowerCase() === r.name.toLowerCase());
+        return `<tr${f ? ` class="click" onclick="openSheet('${f.id}')"` : ''}><td>${f ? `<button class="row-link">${esc(r.name)}</button> <span class="tag">field</span>` : esc(r.name)}</td><td class="l">${esc(a)}</td>
+          <td>${cell(r, 'oil')}</td><td>${cell(r, 'gas')}</td><td>${cell(r, 'ngl')}</td></tr>`;
+      }).join('')).join('')}
+    <tr class="total-row"><td colspan="2">Total</td><td>${fmt(sum('oil'), bbl ? 0 : 1)}</td><td>${fmt(sum('gas'), bbl ? 0 : 1)}</td><td>${fmt(sum('ngl'), bbl ? 0 : 1)}</td></tr>
+    </tbody></table></div>
+    <div class="info-box">EUR (estimated ultimate recovery) = produced + remaining reserves. Fields are oil fields; their gas is reinjected and counted as a contingent resource, since there is no export solution. A dash means no volume is given. Bay du Nord (Equinor) in the Flemish Pass is the largest undeveloped oil discovery; Labrador Shelf holds only gas discoveries, all from the 1970s and 1980s.</div>`);
+  barChart('eurChart', fl.map(f => f.name), [
+    {label: 'Produced', data: fl.map(f => vol(f.reserves.total, 'cum')), backgroundColor: PRODUCED_COLOR, borderWidth: 0},
+    {label: 'Remaining (2P)', data: fl.map(f => vol(f.reserves.total, 'rem', 1)), backgroundColor: REMAINING_COLOR, borderWidth: 0},
+  ], ou, {horizontal: true, onClick: i => openSheet(fl[i].id)});
+  barChart('contChart', cont.map(r => r.name), [{label: `2C ${S.rp}`,
+    data: cont.map(r => vol(r, S.rp, null, S.rp === 'gas')),
+    backgroundColor: cont.map(r => isField(r.name) ? PRODUCED_COLOR : areaColor(r.area)), borderWidth: 0}],
+    S.rp === 'oil' ? ou : gu, {horizontal: true, noFooter: true, dec: bbl ? 0 : 1,
+      legend: [{label: 'Grand Banks discoveries', color: '#f68d2e'}].concat(S.rp === 'gas' ? [{label: 'Labrador Shelf discoveries', color: '#4993b4'}] : [], [{label: 'Producing fields', color: PRODUCED_COLOR}])});
+}
+
+// ── COMPANY ──
+// Konsern fra navnet på rettighetshaveren i lisensdataene.
+const GROUPS = [
+  [/^ExxonMobil|^Mobil/i, 'ExxonMobil'], [/^Chevron/i, 'Chevron'], [/^Suncor|^Petro-Canada/i, 'Suncor'],
+  [/^Cenovus|^Husky/i, 'Cenovus'], [/^Equinor|^Statoil/i, 'Equinor'], [/^Murphy/i, 'Murphy Oil'],
+  [/^Canada Hibernia Holding/i, 'CHHC (Canada)'], [/^Nalcor|^Newfoundland and Labrador Oil/i, 'Nalcor (NL)'],
+  [/^BP /i, 'bp'], [/^Shell/i, 'Shell'], [/^Imperial/i, 'Imperial'], [/^Hess/i, 'Hess'], [/^Repsol/i, 'Repsol'],
+  [/^ConocoPhillips/i, 'ConocoPhillips'], [/^Mosbacher/i, 'Mosbacher'], [/^Chevron/i, 'Chevron'],
+];
+function grp(name) {
+  for (const [re, g] of GROUPS) if (re.test(name)) return g;
+  return name.replace(/\b(Canada|Energy|Resources|Limited|Ltd\.?|Inc\.?|Corporation|Corp\.?|Company|ULC|Group|Holdings?)\b/gi, '')
+    .replace(/[,.\s]+$/, '').replace(/\s+/g, ' ').trim() || name;
+}
+function opShort(name) {
+  if (!name) return '–';
+  if (/^Hibernia Management/i.test(name)) return 'HMDC (ExxonMobil-led)';
+  return grp(name);
+}
+// Feltandeler per konsern: dagens andeler i feltets hovedlisens.
+function fieldShares(f) {
+  const sh = {};
+  (f.equity || []).forEach(([n, p]) => { if (p) sh[grp(n)] = (sh[grp(n)] || 0) + p; });
+  return sh;
+}
+let CMP = null;
+function companies() {
+  if (CMP) return CMP;
+  const by = {};
+  const get = g => by[g] = by[g] || {name: g, net12: 0, netRem: 0, netRemI: 0, fields: {}, lic: []};
+  D.fields.forEach(f => {
+    const s = fieldStats(f), rem = (f.reserves.total.rem || [])[1] || 0, remI = (f.reserves.total.remI || [])[1];
+    Object.entries(fieldShares(f)).forEach(([g, p]) => {
+      const o = get(g); o.net12 += s.avg12 * p / 100; o.netRem += rem * p / 100; o.netRemI += (remI ?? rem * BBL_PER_M3) * p / 100; o.fields[f.id] = p;
+    });
+  });
+  D.licences.forEach(l => l.holders.forEach(([n, p]) => get(grp(n)).lic.push({l, p, n})));
+  const list = Object.values(by).sort((a, b) => b.net12 - a.net12 || b.lic.length - a.lic.length || a.name.localeCompare(b.name));
+  // Fargene følger konsernet: de største produsentene får hver sin farge
+  list.forEach((c, i) => { c.color = c.net12 > 0 && i < PALETTE.length ? PALETTE[i] : OTHER_COLOR; });
+  return (CMP = list);
+}
+function viewCompany() {
+  const cs = companies(), prodC = cs.filter(c => c.net12 > 0);
+  const cur = cs.find(c => c.name === S.c);
+  setControls(select('c', [['', 'All companies']].concat(cs.map(c => [c.name, c.name])), 'Company') +
+    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') + pills('u', [['bbl', 'Barrels'], ['m3', 'Cubic metres']], 'Unit'));
+  const ps = periods(S.per), unit = unitOf('oil'), bbl = S.u === 'bbl';
+  let datasets, title, sub;
+  if (!cur) {
+    datasets = prodC.map(c => {
+      const m = new Array(G.n).fill(0);
+      D.fields.forEach(f => { const p = c.fields[f.id]; if (p) fieldMonthly(f, 'oil').forEach((v, i) => { m[i] += v * p / 100; }); });
+      return {label: c.name, data: perDay(m, ps, 'oil'), backgroundColor: c.color, borderWidth: 0, stack: 's'};
+    });
+    title = 'Net oil production by company'; sub = `${unit} · today's interests applied to every month`;
+  } else {
+    datasets = D.fields.filter(f => cur.fields[f.id]).map(f => ({label: `${f.name} (${fmt(cur.fields[f.id], 2)} %)`,
+      data: perDay(fieldMonthly(f, 'oil').map(v => v * cur.fields[f.id] / 100), ps, 'oil'), backgroundColor: fieldColor(f.id), borderWidth: 0, stack: 's'}));
+    title = `${esc(cur.name)} · net oil production`; sub = `By field · ${unit} · today's interests applied to every month`;
+  }
+  if (S.per === 'a') datasets.forEach(d => { d.borderWidth = 1; d.borderColor = '#fff'; });
+  const t = trimLead(ps.map(p => p.label), datasets);
+  const caveat = `<div class="info-box"><strong>Interests are today's only.</strong> C-NLOER publishes the current interest holders of each licence, not their history, so net production uses today's shares for every month. Earlier years are therefore indicative: past sales and swaps (Husky → Cenovus 2021, Terra Nova and Hibernia transactions, Petro-Canada → Suncor 2009 and others) are not reflected. Field shares are those of the main production licence (Hibernia PL 1001, Terra Nova PL 1002–1004, White Rose PL 1006, North Amethyst PL 1008, Hebron PL 1012); unitised extensions such as the Hibernia Southern Extension have slightly different shares. Companies are grouped by name (e.g. ExxonMobil Canada Ltd. and ExxonMobil Canada Resources Company).</div>`;
+  const ou = bbl ? 'bbl/day' : 'm³/day', vu = bbl ? 'million bbl' : 'million m³', cv = v => bbl ? v * BBL_PER_M3 : v;
+  let table;
+  if (!cur) {
+    table = `<div class="tbl-sec">Companies<small>Net oil production (last 12 months, ${ou}) and net remaining 2P reserves (${vu}) at today's interests; licences held offshore Newfoundland and Labrador</small></div>
+      <div class="table-wrap"><table class="res-table"><thead><tr><th>Company</th><th>Net production</th><th>Net 2P reserves</th><th>PL</th><th>SDL</th><th>EL</th></tr></thead><tbody>
+      ${cs.map(c => { const n = t => c.lic.filter(x => x.l.type === t).length;
+        return `<tr class="click" onclick="set({c:${jsq(c.name)}})"><td><span class="dot" style="background:${c.color}"></span><button class="row-link">${esc(c.name)}</button></td>
+        <td>${c.net12 ? fmt(cv(c.net12)) : '–'}</td><td>${c.netRem ? fmt(bbl ? c.netRemI : c.netRem, bbl ? 0 : 1) : '–'}</td><td>${n('Production') || '–'}</td><td>${n('Significant Discovery') || '–'}</td><td>${n('Exploration') || '–'}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+  } else {
+    const order = {Production: 0, 'Significant Discovery': 1, Exploration: 2};
+    const lic = cur.lic.slice().sort((a, b) => order[a.l.type] - order[b.l.type] || licNum(a.l.id) - licNum(b.l.id));
+    table = `<div class="kpis"><div class="kpi"><span>Net oil · last 12 months</span><strong>${fmt(cv(cur.net12))}</strong><small>${ou}</small></div>
+      <div class="kpi"><span>Net 2P reserves</span><strong>${fmt(bbl ? cur.netRemI : cur.netRem, bbl ? 0 : 1)}</strong><small>${vu}</small></div>
+      <div class="kpi"><span>Licences</span><strong>${cur.lic.length}</strong><small>${['Production', 'Significant Discovery', 'Exploration'].map(t => `${cur.lic.filter(x => x.l.type === t).length} ${LIC_TYPES[t].short}`).join(' · ')}</small></div></div>
+      <div class="tbl-sec">Licence portfolio<small>Current interests per licence, from C-NLOER's licence register</small></div>
+      <div class="table-wrap scroll"><table class="res-table"><thead><tr><th>Licence</th><th class="l">Type</th><th class="l">Field / discovery well</th><th>Interest</th><th class="l">Representative</th><th>Hectares</th><th class="l">Effective</th></tr></thead><tbody>
+      ${lic.map(({l, p, n}) => `<tr><td>${esc(l.id)}${l.rep && grp(l.rep) === cur.name ? ' <span class="pf-op-tag">Rep.</span>' : ''}</td><td class="l">${LIC_TYPES[l.type].short}</td>
+        <td class="l">${esc(l.area || l.discWell || (l.type === 'Exploration' ? `Call for bids ${l.cfb || ''}` : '–'))}</td><td>${fmt(p, 2)} %${n !== cur.name && grp(n) === cur.name && cur.lic.filter(x => x.l === l).length > 1 ? `<br><small style="color:var(--muted)">${esc(n)}</small>` : ''}</td>
+        <td class="l">${esc(grp(l.rep || ''))}</td><td>${fmt(l.ha)}</td><td class="l">${esc(l.effective || '–')}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }
+  setView((datasets.length ? chartCard('cmpChart', title, sub, {cls: 'tall'}) : `<div class="card"><div class="chart-title">${esc(cur.name)}</div><p style="font-size:0.78rem;color:var(--muted);padding:2px">No interest in a producing field today.</p></div>`) +
+    caveat + table);
+  if (datasets.length) barChart('cmpChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, titleFn: S.per === 'm' ? i => ymTxt(t.labels[i]) : undefined});
+}
+const licNum = id => parseInt(id.replace(/\D/g, ''), 10) || 0;
+
+// ── DRILLING ──
+function viewDrilling() {
+  setControls(pills('wc', [['', 'All wells'], ['exploration', 'Exploration'], ['delineation', 'Delineation'], ['development', 'Development']], 'Type'));
+  const ws = D.wells.filter(w => w.spud && (!S.wc || w.cls === S.wc));
+  const y0 = Math.min(...D.wells.filter(w => w.spud).map(w => +w.spud.slice(0, 4))), y1 = new Date().getFullYear();
+  const years = []; for (let y = y0; y <= y1; y++) years.push(String(y));
+  const classes = Object.keys(WELL_CLS).filter(c => !S.wc || c === S.wc);
+  const datasets = classes.map(c => ({label: WELL_CLS[c].label, backgroundColor: WELL_CLS[c].color, borderWidth: 1, borderColor: '#fff', stack: 's',
+    data: years.map(y => ws.filter(w => w.cls === c && w.spud.startsWith(y)).length)})).filter(d => d.data.some(v => v));
+  let dy = S.dy && years.includes(S.dy) ? S.dy : [...years].reverse().find(y => ws.some(w => w.spud.startsWith(y))) || years[years.length - 1];
+  const list = ws.filter(w => w.spud.startsWith(dy));
+  const cnt = c => D.wells.filter(w => w.cls === c).length;
+  setView(chartCard('drillChart', 'Wells spudded per year', `${S.wc ? WELL_CLS[S.wc].label + ' wells' : 'All offshore wells'} · click a year to list its wells`) +
+    `<div class="tbl-sec">${dy}: ${list.length} well${list.length === 1 ? '' : 's'} spudded<small>Re-entries are counted under the original spud year</small></div>
+    <div class="table-wrap scroll"><table class="res-table nw"><thead><tr><th>Well</th><th class="l">Type</th><th class="l">Operator</th><th class="l">Spud</th><th class="l">Finished</th><th class="l">Status</th><th class="l">Licence</th><th class="l">Rig</th><th>Water depth (m)</th><th>Depth MD (m)</th></tr></thead><tbody>
+    ${list.length ? list.map(w => `<tr${w.field ? ` class="click" onclick="openSheet('${w.field}')"` : ''}><td>${w.field ? `<button class="row-link">${esc(w.name)}</button>` : esc(w.name)}</td>
+      <td class="l"><span class="dot" style="background:${WELL_CLS[w.cls].color}"></span>${WELL_CLS[w.cls].label}</td><td class="l">${esc(w.op || '–')}</td>
+      <td class="l">${esc(dateTxt(w.spud))}</td><td class="l">${esc(dateTxt(w.reTerm || w.term))}${w.re ? ` <span class="tag">${w.re} re-entr${w.re > 1 ? 'ies' : 'y'}</span>` : ''}</td>
+      <td class="l">${esc(w.status || '–')}</td><td class="l">${esc(w.lic || '–')}</td><td class="l">${esc(w.rig || '–')}</td><td>${fmt(w.wd)}</td><td>${fmt(w.md)}</td></tr>`).join('')
+      : '<tr><td colspan="10" style="color:var(--muted)">No wells</td></tr>'}
+    </tbody></table></div>
+    <div class="info-box"><strong>Source:</strong> C-NLOER's well layers (${cnt('exploration')} exploration, ${cnt('delineation')} delineation, ${cnt('development')} development and ${cnt('dual')} dual-classified wells offshore Newfoundland and Labrador since ${y0}). Development wells link to their field's factsheet.</div>`);
+  barChart('drillChart', years, datasets, 'wells', {ticks: 20, onClick: i => set({dy: years[i]}, false)});
+}
+
+// ── KART ─────────────────────────────────────────────────────────────────────
+const EXTENTS = {gb: [-53.3, 45.3, -45.4, 48.9], all: [-66, 42, -42, 60.5]};
+async function loadOutlines() {
+  if (OUT && COAST) return;
+  const [o, c] = await Promise.all([fetch('data/canada_nl_outlines.json').then(r => r.json()), fetch('data/canada_nl_coast.json').then(r => r.json()).catch(() => ({rings: []}))]);
+  OUT = o; COAST = c;
+}
+function viewMap() {
+  setControls(pills('mx', [['gb', 'Grand Banks'], ['all', 'Whole offshore area']], 'Area') +
+    pills('mw', [['', 'No wells'], ['ed', 'Exploration & delineation'], ['development', 'Development'], ['all', 'All wells']], 'Wells'));
+  const counts = Object.entries(LIC_TYPES).map(([t, m]) => `<span class="legend-item"><span class="legend-dot" style="background:${m.fill};border:1px solid ${m.stroke}"></span>${m.label}s (${D.licences.filter(l => l.type === t).length})</span>`).join('');
+  setView(`<div class="card"><div class="chart-title">Licences, installations and wells<span class="ct-sub">Scroll or use the buttons to zoom, drag to pan; hover for details, click a production licence for its field</span></div>
+    <div class="map-box map-main" id="mainMap"><div class="status"><div class="spinner"></div></div></div>
+    <div class="legend-row">${counts}<span class="legend-item"><span class="legend-dot" style="background:#1a2332"></span>Production installations</span>
+    ${S.mw ? Object.entries(WELL_CLS).filter(([c]) => S.mw === 'all' || (S.mw === 'ed' ? c === 'exploration' || c === 'delineation' : c === S.mw)).map(([c, m]) => `<span class="legend-item"><span class="legend-dot" style="background:${m.color};border-radius:50%"></span>${m.label} wells</span>`).join('') : ''}</div></div>
+    <div class="info-box">Current licences from C-NLOER's licence register: production licences (PL) cover the producing fields, significant discovery licences (SDL) hold discoveries without a development plan, and exploration licences (EL) come from the calls for bids. Grey outlines are sedimentary basins. Coastline: Natural Earth.</div>`);
+  loadOutlines().then(() => {
+    if (S.v !== 'map') return;
+    drawMap(document.getElementById('mainMap'), {extent: EXTENTS[S.mx] || EXTENTS.gb, wells: S.mw, basins: true});
+  });
+}
+function wellFilter(mode) {
+  if (!mode) return () => false;
+  if (mode === 'all') return () => true;
+  if (mode === 'ed') return w => w.cls === 'exploration' || w.cls === 'delineation' || w.cls === 'dual';
+  if (mode.startsWith('field:')) { const id = mode.slice(6); return w => w.field === id; }
+  return w => w.cls === mode;
+}
+// Enkel ekvirektangulær projeksjon med cos(midtbredde), tegnet i SVG med
+// zoom og panorering via viewBox. Strektykkelse og prikkstørrelse holdes
+// konstante på skjermen.
+function drawMap(box, o) {
+  const [w0, s0, e0, n0] = o.extent;
+  const lat0 = (s0 + n0) / 2, kx = Math.cos(lat0 * Math.PI / 180);
+  const P = (lon, lat) => [(lon - w0) * kx * 100, (n0 - lat) * 100];
+  const W = (e0 - w0) * kx * 100, H = (n0 - s0) * 100;
+  const path = rings => rings.map(r => 'M' + r.map(([x, y]) => P(x, y).map(v => v.toFixed(1)).join(',')).join('L') + 'Z').join('');
+  const parts = [];
+  parts.push(`<rect x="-5000" y="-5000" width="20000" height="20000" fill="#eef3f8"/>`);
+  if (o.basins) Object.entries(OUT.basins).forEach(([n, rings]) => parts.push(`<path d="${path(rings)}" fill="none" stroke="#a9b4c1" stroke-dasharray="4 3" class="lic" style="pointer-events:stroke" data-tip="${esc(`<b>${n} Basin</b>`)}"/>`));
+  parts.push(`<path d="${path(COAST.rings)}" fill="#d9dee4" stroke="#b8c0ca" class="lic" style="pointer-events:none"/>`);
+  const order = ['Exploration', 'Significant Discovery', 'Production'];
+  D.licences.slice().sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type)).forEach(l => {
+    const rings = OUT.licences[l.id]; if (!rings) return;
+    const m = LIC_TYPES[l.type], hl = o.highlight && o.highlight.includes(l.id);
+    const f = l.type === 'Production' ? D.fields.find(x => x.licences.includes(l.id)) : null;
+    const tip = `<b>${esc(l.id)}</b> · ${esc(m.label)}${l.area ? `<br>${esc(l.area)}` : ''}${l.discWell ? `<br>Discovery well: ${esc(l.discWell)}` : ''}<br>${l.holders.map(([n, p]) => `${esc(n)}${p ? ` ${fmt(p, 2)} %` : ''}`).join('<br>')}${l.ha ? `<br><span style="color:#828282">${fmt(l.ha)} ha${l.effective ? ' · ' + esc(l.effective) : ''}</span>` : ''}`;
+    parts.push(`<path d="${path(rings)}" class="lic${hl ? ' hl' : ''}" fill="${hl ? 'rgba(206,15,105,0.55)' : m.fill}" stroke="${m.stroke}" data-tip="${esc(tip)}"${f && !o.noClick ? ` data-field="${f.id}" style="cursor:pointer"` : ''}/>`);
+  });
+  if (o.basins) Object.entries(OUT.basins).forEach(([n, rings]) => {
+    let sx = 0, sy = 0, k = 0; rings[0].forEach(([x, y]) => { sx += x; sy += y; k++; });
+    const [x, y] = P(sx / k, sy / k);
+    parts.push(`<text class="map-lbl basin" data-x="${x}" data-y="${y}" x="${x}" y="${y}" text-anchor="middle">${esc(n)}</text>`);
+  });
+  const wf = wellFilter(o.wells);
+  D.wells.filter(w => w.lat && w.lon && wf(w)).forEach(w => {
+    const [x, y] = P(w.lon, w.lat);
+    parts.push(`<circle class="pt" data-r="2.6" cx="${x}" cy="${y}" r="2.6" fill="${WELL_CLS[w.cls].color}" stroke="#fff" stroke-width="0.6" vector-effect="non-scaling-stroke"
+      data-tip="${esc(`<b>${esc(w.name)}</b><br>${WELL_CLS[w.cls].label} · ${esc(w.op || '')}<br>Spud ${esc(dateTxt(w.spud))} · ${esc(w.status || '')}`)}"${w.field && !o.noClick ? ` data-field="${w.field}" style="cursor:pointer"` : ''}/>`);
+  });
+  D.installations.forEach(i => {
+    if (!i.lat || !i.lon) return;
+    const [x, y] = P(i.lon, i.lat);
+    const f = D.fields.find(fd => fd.installation === i.name);
+    parts.push(`<rect class="pt sq" data-r="4" x="${x - 4}" y="${y - 4}" width="8" height="8" fill="#1a2332" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"
+      data-cx="${x}" data-cy="${y}" data-tip="${esc(`<b>${esc(i.name)}</b><br>${esc(i.operator || '')}<br>First oil ${esc(dateTxt(i.firstOil))}<br>${esc(i.licences.join(', '))}`)}"${f && !o.noClick ? ` data-field="${f.id}" style="cursor:pointer"` : ''}/>`);
+    parts.push(`<text class="map-lbl inst" data-x="${x}" data-y="${y}" data-dx="7" x="${x + 7}" y="${y + 3}">${esc(i.name.replace(/ (Platform|FPSO)$/, ''))}</text>`);
+  });
+  box.innerHTML = `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" preserveAspectRatio="xMidYMid meet" aria-label="Map">${parts.join('')}</svg>
+    <div class="map-ctl"><button title="Zoom in" data-z="0.6">+</button><button title="Zoom out" data-z="1.6">−</button><button title="Reset" data-z="0" style="font-size:0.8rem">⟲</button></div>
+    <div class="map-tip"></div>`;
+  const svg = box.querySelector('svg'), tip = box.querySelector('.map-tip');
+  let vb = [0, 0, W, H];
+  const apply = () => {
+    svg.setAttribute('viewBox', vb.map(v => v.toFixed(2)).join(' '));
+    // Skjermpiksler per kartenhet → konstant størrelse på prikker og tekst
+    const r = svg.getBoundingClientRect();
+    const scale = Math.min(r.width / vb[2], r.height / vb[3]) || 1;
+    svg.querySelectorAll('circle.pt').forEach(c => c.setAttribute('r', c.dataset.r / scale));
+    svg.querySelectorAll('rect.sq').forEach(q => { const s = q.dataset.r / scale; q.setAttribute('x', q.dataset.cx - s); q.setAttribute('y', q.dataset.cy - s); q.setAttribute('width', 2 * s); q.setAttribute('height', 2 * s); });
+    svg.querySelectorAll('text.map-lbl').forEach(t => {
+      t.style.fontSize = (10 / scale) + 'px'; t.style.strokeWidth = (3 / scale) + 'px';
+      if (t.dataset.dx) { t.setAttribute('x', +t.dataset.x + t.dataset.dx / scale); t.setAttribute('y', +t.dataset.y + 3 / scale); }
+    });
+  };
+  const zoom = (f, cx, cy) => {
+    if (!f) { vb = [0, 0, W, H]; return apply(); }
+    const nw = Math.min(W * 1.5, Math.max(W / 60, vb[2] * f)), k = nw / vb[2];
+    vb = [cx - (cx - vb[0]) * k, cy - (cy - vb[1]) * k, nw, vb[3] * k];
+    apply();
+  };
+  const toMap = (ex, ey) => {
+    const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb[2], r.height / vb[3]);
+    const ox = (r.width - vb[2] * s) / 2, oy = (r.height - vb[3] * s) / 2;
+    return [vb[0] + (ex - r.left - ox) / s, vb[1] + (ey - r.top - oy) / s, s];
+  };
+  box.querySelectorAll('.map-ctl button').forEach(b => b.onclick = () => zoom(+b.dataset.z, vb[0] + vb[2] / 2, vb[1] + vb[3] / 2));
+  svg.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = toMap(e.clientX, e.clientY); zoom(e.deltaY > 0 ? 1.25 : 0.8, x, y); }, {passive: false});
+  let drag = null, moved = false;
+  svg.addEventListener('pointerdown', e => { drag = {x: e.clientX, y: e.clientY, vb: [...vb]}; moved = false; });
+  window.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) { moved = true; svg.classList.add('drag'); tip.style.display = 'none'; }
+    if (!moved) return;
+    const s = toMap(0, 0)[2];
+    vb = [drag.vb[0] - dx / s, drag.vb[1] - dy / s, vb[2], vb[3]];
+    apply();
+  });
+  window.addEventListener('pointerup', () => { drag = null; svg.classList.remove('drag'); });
+  svg.addEventListener('click', e => {
+    if (moved) return;
+    const el = e.target.closest('[data-field]');
+    if (el) openSheet(el.dataset.field);
+  });
+  svg.addEventListener('mousemove', e => {
+    if (drag && moved) return;
+    const el = e.target.closest('[data-tip]');
+    if (!el) { tip.style.display = 'none'; return; }
+    tip.innerHTML = el.dataset.tip;
+    tip.style.display = 'block';
+    const r = box.getBoundingClientRect();
+    let x = e.clientX - r.left + 12, y = e.clientY - r.top + 12;
+    if (x + tip.offsetWidth > r.width) x = e.clientX - r.left - tip.offsetWidth - 12;
+    if (y + tip.offsetHeight > r.height) y = e.clientY - r.top - tip.offsetHeight - 12;
+    tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px';
+  });
+  svg.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  if (o.fit) {
+    const [a, b] = P(o.fit[0], o.fit[3]), [c, d] = P(o.fit[2], o.fit[1]);
+    const r = box.getBoundingClientRect(), asp = r.width / r.height || 2;
+    let w = c - a, h = d - b;
+    if (w / h < asp) w = h * asp; else h = w / asp;
+    vb = [(a + c) / 2 - w / 2, (b + d) / 2 - h / 2, w, h];
+  }
+  requestAnimationFrame(apply);
+  new ResizeObserver(apply).observe(box);
+}
+
+// ── FAKTAARK ─────────────────────────────────────────────────────────────────
+function openSheet(id, quiet) {
+  const f = field(id);
+  if (!f) return;
+  if (!quiet && S.fs !== id) { S.fs = id; writeUrl(true); }
+  const ov = document.getElementById('sheet');
+  ov.classList.add('open'); document.body.classList.add('sheet-open');
+  const s = fieldStats(f), r = f.reserves, bbl = S.u === 'bbl', cv = v => v == null ? null : bbl ? v * BBL_PER_M3 : v;
+  const tri = (x, k, gas) => x[k] ? [0, 1, 2].map(i => fmt(vol(x, k, i, gas), bbl ? 0 : 1)).join(' / ') : '–';
+  const vu = bbl ? 'million bbl' : 'million m³', ou = bbl ? 'bbl/day' : 'm³/day', d1 = bbl ? 0 : 1;
+  const devWells = D.wells.filter(w => w.field === f.id);
+  const statusGroup = st => !st ? 'Other' : /^Abandoned/i.test(st) ? 'Abandoned' : /Suspended/i.test(st) ? 'Suspended'
+    : /Oil Producer/i.test(st) ? 'Oil producer' : /Water Injector/i.test(st) ? 'Water injector' : /Gas Injector/i.test(st) ? 'Gas injector'
+    : /Drilling|Intervention|Workover/i.test(st) ? 'Drilling / workover' : 'Other';
+  const sg = {};
+  devWells.forEach(w => { const g = statusGroup(w.status); sg[g] = (sg[g] || 0) + 1; });
+  const eq = (f.equity || []).filter(e => e[1]).slice().sort((a, b) => b[1] - a[1]);
+  const facts = [
+    ['Operator', opShort(f.operator)], ['Installation', `${f.installation || '–'}${f.installationType ? ` (${f.installationType})` : ''}`],
+    ['Basin', f.basin || '–'], ['Discovered', f.discovered || '–'], ['Development plan approved', dateTxt(f.dpApproval)],
+    ['First oil', dateTxt(f.firstOil)], ['Production licences', f.licences.join(', ') || '–'], ['Reservoirs', f.reservoirs.join(', ')],
+    [`Oil, ${ymTxt(lastYM())}`, `${fmt(cv(s.last))} ${ou}`], ['Oil, last 12 months', `${fmt(cv(s.avg12))} ${ou}`],
+    ['Water cut, last 12 months', `${fmt(s.wcut * 100)} %`], ['Development wells', String(devWells.length)],
+  ];
+  // Reservetabellen: EUR, produsert, gjenværende og andel utvunnet per reservoar/pool
+  const rrows = r.rows.filter(x => x.eur || x.cum != null);
+  // «Total» sist: navnene samles på tvers av seksjonene, så Hebrons pooler
+  // (bare i ressursseksjonene) ville ellers havnet etter totalen
+  const contRows = r.rows.filter(x => x.coil || x.cgas || x.cngl).sort((a, b) => (a.name === 'Total') - (b.name === 'Total'));
+  const tot = r.total;
+  const resTable = `<div class="table-wrap"><table class="res-table"><thead><tr><th>Reservoir</th><th>EUR 1P</th><th>EUR 2P</th><th>EUR 3P</th><th>Produced</th><th>Remaining 2P</th><th>Recovered (2P)</th></tr></thead><tbody>
+    ${rrows.map(x => `<tr class="${x.name === 'Total' ? 'total-row' : x.sub ? 'sub-row' : ''}"><td>${esc(x.name)}</td>${[0, 1, 2].map(i => `<td>${fmt(vol(x, 'eur', i), d1)}</td>`).join('')}
+      <td>${fmt(vol(x, 'cum'), d1)}</td><td>${fmt(vol(x, 'rem', 1), d1)}</td><td>${pct2(x) != null ? fmt(pct2(x), 1) + ' %' : '–'}</td></tr>`).join('')}
+    ${rrows.some(x => x.name === 'Total') || rrows.filter(x => !x.sub).length < 2 ? '' : `<tr class="total-row"><td>Total</td>${[0, 1, 2].map(i => `<td>${fmt(vol(tot, 'eur', i), d1)}</td>`).join('')}<td>${fmt(vol(tot, 'cum'), d1)}</td><td>${fmt(vol(tot, 'rem', 1), d1)}</td><td>${fmt(pct2(tot), 1)} %</td></tr>`}
+    </tbody></table></div>`;
+  const gu = bbl ? 'bcf' : 'billion m³';
+  const contTable = contRows.length ? `<div class="tbl-sec" style="margin-top:10px">Contingent resources<small>Not in the development plan: oil in unapproved pools, and gas and NGL, which have no export route. 1C / 2C / 3C</small></div>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Reservoir / pool</th><th>Oil (${vu})</th><th>Gas (${gu})</th><th>NGL (${vu})</th></tr></thead><tbody>
+    ${contRows.map(x => `<tr class="${x.name === 'Total' ? 'total-row' : x.sub ? 'sub-row' : ''}"><td>${esc(x.name)}</td>
+      <td>${tri(x, 'coil')}</td><td>${tri(x, 'cgas', true)}</td><td>${tri(x, 'cngl')}</td></tr>`).join('')}
+    </tbody></table></div>` : '';
+  const prodShare = tot.eur ? tot.cum / tot.eur[1] : 0;
+  const pie = eq.length ? pieSvg(eq.map(([n, p], i) => ({v: p, color: PALETTE[i % PALETTE.length]}))) : '';
+  const opG = grp(f.operator || '');
+  document.getElementById('sheetPanel').innerHTML = `
+    <div class="wd-head"><div><h2>${esc(f.name)}</h2><div class="wd-sub">Oil field · Grand Banks, offshore Newfoundland · ${esc(opShort(f.operator))}</div></div>
+      <button class="wd-close" onclick="closeSheet()" aria-label="Close">✕</button></div>
+    <div class="pf-card"><div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div></div>
+    <div class="pf-card"><h3>Production by reservoir <small>· annual average, ${esc(unitOf(S.sp))}</small></h3>
+      <div class="pill-group" style="margin-bottom:8px">${[['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']].map(([v, t]) => `<button class="pill-btn${S.sp === v ? ' active' : ''}" onclick="S.sp='${v}';writeUrl();openSheet('${f.id}',true)">${t}</button>`).join('')}</div>
+      <div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div>
+      ${f.fromWells.length ? `<div class="pf-note">${yearSpan(f.fromWells)}: summed from C-NLOER's well-by-well production and split by reservoir in proportion to the annual reservoir totals.</div>` : ''}</div>
+    <div class="pf-card"><h3>Oil reserves <small>· ${vu}, per ${esc(dateTxt(r.asOf))}</small></h3>
+      <div class="bar-track" title="Produced ${fmt(prodShare * 100)} % of 2P EUR"><span style="width:${prodShare * 100}%;background:${PRODUCED_COLOR}"></span><span style="flex:1;background:${REMAINING_COLOR}"></span></div>
+      <div class="legend-row" style="border:0;margin:6px 0 8px;padding:0"><div class="legend-item"><div class="legend-dot" style="background:${PRODUCED_COLOR}"></div>Produced ${fmt(vol(tot, 'cum'), d1)}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:${REMAINING_COLOR}"></div>Remaining 2P ${fmt(vol(tot, 'rem', 1), d1)}</div></div>
+      ${resTable}${contTable}
+      <div class="pf-note">C-NLOER field resource estimate, updated ${esc(dateTxt(r.updated))}. 1P = proved, 2P = proved + probable, 3P = proved + probable + possible.</div></div>
+    ${eq.length ? `<div class="pf-card"><h3>Interest holders <small>· ${esc(f.equityLicence)}, today</small></h3><div class="pf-own">${pie}
+      <div class="pf-own-list">${eq.map(([n, p], i) => `<div class="pf-own-row"><span class="pf-own-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>
+        <span class="pf-own-name">${esc(n)}${grp(n) === opG ? '<span class="pf-op-tag">Operator</span>' : ''}</span><span class="pf-own-pct">${fmt(p, p % 1 ? 3 : 0)} %</span></div>`).join('')}</div></div>
+      <div class="pf-note">Interests in the field's main production licence. ${f.licences.length > 1 ? `Other licences on the field (${esc(f.licences.filter(l => l !== f.equityLicence).join(', '))}) may have different shares.` : ''} C-NLOER does not publish earlier interests.</div></div>` : ''}
+    <div class="pf-card"><h3>Map <small>· production licences, development wells and installation</small></h3>
+      <div class="map-box map-small" id="sheetMap"></div></div>
+    <div class="pf-card"><h3>Development wells <small>· ${devWells.length}, newest first</small></h3>
+      <div class="counts">${Object.entries(sg).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="tag">${esc(k)}: ${v}</span>`).join('')}</div>
+      <div class="table-wrap scroll" style="max-height:320px"><table class="res-table"><thead><tr><th>Well</th><th class="l">Spud</th><th class="l">Status</th><th class="l">Slot</th><th class="l">Rig</th><th>Depth MD (m)</th></tr></thead><tbody>
+      ${devWells.slice().reverse().map(w => `<tr><td>${esc(w.name)}</td><td class="l">${esc(dateTxt(w.spud))}</td><td class="l">${esc(w.status || '–')}</td><td class="l">${esc(w.slot || '–')}</td><td class="l">${esc(w.rig || '–')}</td><td>${fmt(w.md)}</td></tr>`).join('')}
+      </tbody></table></div></div>
+    <div class="source-note">Source: C-NLOER — production statistics, resource estimates, licence and well registers.</div>`;
+  // Graf
+  const ps = periods('a');
+  const ds = f.reservoirs.map(res => ({label: res, data: perDay(fieldMonthly(f, S.sp, res), ps, S.sp), backgroundColor: resColor(res), borderWidth: 1, borderColor: '#fff', stack: 's'}))
+    .filter(d => d.data.some(v => v));
+  const t = trimLead(ps.map(p => p.label), ds);
+  barChart('sheetChart', t.labels, t.datasets, unitOf(S.sp), {ticks: 30});
+  // Kart: feltets lisenser, utvidet litt
+  loadOutlines().then(() => {
+    const el = document.getElementById('sheetMap');
+    if (!el || S.fs !== f.id) return;
+    let b = [180, 90, -180, -90];
+    f.licences.forEach(l => (OUT.licences[l] || []).forEach(ring => ring.forEach(([x, y]) => {
+      b = [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)];
+    })));
+    const pad = 0.12;
+    drawMap(el, {extent: [b[0] - 1.5, b[1] - 1, b[2] + 1.5, b[3] + 1], fit: [b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad],
+      highlight: f.licences, wells: 'field:' + f.id, noClick: true});
+  });
+}
+function pieSvg(parts) {
+  const tot = parts.reduce((t, p) => t + p.v, 0);
+  let a = -Math.PI / 2;
+  const segs = parts.map(p => {
+    const a2 = a + p.v / tot * Math.PI * 2;
+    const large = a2 - a > Math.PI ? 1 : 0;
+    const d = `M50,50 L${50 + 48 * Math.cos(a)},${50 + 48 * Math.sin(a)} A48,48 0 ${large} 1 ${50 + 48 * Math.cos(a2)},${50 + 48 * Math.sin(a2)} Z`;
+    a = a2;
+    return `<path d="${d}" fill="${p.color}" stroke="#fff" stroke-width="1"/>`;
+  });
+  return `<svg class="pf-pie" viewBox="0 0 100 100">${segs.join('')}<circle cx="50" cy="50" r="26" fill="#fff"/></svg>`;
+}
+function hideSheet() {
+  document.getElementById('sheet').classList.remove('open');
+  document.body.classList.remove('sheet-open');
+  if (charts.sheetChart) { charts.sheetChart.destroy(); delete charts.sheetChart; }
+}
+function closeSheet() {
+  hideSheet();
+  if (S.fs) { S.fs = ''; writeUrl(true); }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.fs) closeSheet(); });
+
+// ── OPPSTART ─────────────────────────────────────────────────────────────────
+async function init() {
+  readUrl();
+  render();
+  try {
+    D = await fetch('data/canada_nl.json', {cache: 'no-cache'}).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  } catch (e) {
+    setView(`<div class="status">Could not load data/canada_nl.json (${esc(e.message)}).</div>`);
+    return;
+  }
+  buildAxis();
+  D.fields.forEach(f => f.reservoirs.forEach(r => { if (!RES_ORDER.includes(r)) RES_ORDER.push(r); }));
+  document.getElementById('sourceNote').innerHTML = `Source: <a href="https://www.cnloer.ca/information/statistics/" target="_blank" rel="noopener">Canada-Newfoundland and Labrador Offshore Energy Regulator (C-NLOER)</a> — statistics, resource information and the <a href="https://home-cnlopb.hub.arcgis.com/" target="_blank" rel="noopener">Data and Information Hub</a>. Production through ${esc(ymTxt(lastYM()))}; fetched ${esc(D.fetched.slice(0, 10))}.`;
+  render();
+}
+init();
+</script>
+</body>
+</html>
