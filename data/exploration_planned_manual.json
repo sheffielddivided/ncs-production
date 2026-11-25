@@ -93,6 +93,19 @@
       "source": "https://www.equinor.com/no/nyheter/20261125-bytter-eierandeler-ncs",
       "note": "Equinor press release",
       "added": "2026-11-25"
+    },
+    {
+      "id": "mww2sbu6",
+      "name": "31/4-13 S",
+      "operator": "Equinor Energy AS",
+      "licence": "1102 C",
+      "purpose": "WILDCAT",
+      "when": "jan 2027",
+      "rig": "COSLInnovator",
+      "well": "31/4-13 S",
+      "source": "https://factpages.sodir.no/nb-no/wellbore/PageView/Exploration/DrillPermit/10700",
+      "note": "Sodir",
+      "added": "2026-11-25"
     }
   ]
 }
