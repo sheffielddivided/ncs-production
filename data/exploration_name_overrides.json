@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-24",
+  "updated": "2026-11-25",
   "note": "Navn satt for hånd i appen (Exploration → brønn → Edit name). Nøkkel: brønnen, uten sidesteg. Går foran funnnavn og prospektnavn.",
   "names": {
     "1/3-13": "Ommadawn",
@@ -55,6 +55,7 @@
     "34/8-20": "Narvi nord",
     "34/9-1": "Cambozola",
     "35/10-14": "Kvernbit",
+    "35/10-17": "Purzel",
     "35/10-5": "Gabriel",
     "35/10-6": "Gabriel",
     "35/11-28": "Harden sør",
