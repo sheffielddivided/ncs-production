@@ -1,0 +1,54 @@
+name: Oppdater Canada (C-NLOER)
+
+# Newfoundland and Labrador til canada.html: produksjon, reserver, ressurser,
+# lisenser og brønner fra C-NLOER (fetch_cnloer.py). Produksjonstallene kommer
+# én gang i måneden, rundt den 20.–28., og reservene noen ganger i året, så to
+# kjøringer i uka holder. Skriptet kontrollerer tallene mot C-NLOERs egne
+# totaler og skriver ingenting hvis noe ikke stemmer; da feiler jobben.
+on:
+  schedule:
+    - cron: '41 5 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cnloer
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q poppler-utils
+          pip install requests
+
+      - name: Hent data fra C-NLOER
+        run: python fetch_cnloer.py
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/canada_nl.json data/canada_nl_outlines.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Oppdater Canada/C-NLOER ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1

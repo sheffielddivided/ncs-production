@@ -1,0 +1,134 @@
+{
+  "_about": "Håndført tillegg til data/canada_nl.json for canada.html. Endres for hånd; fetch_cnloer.py rører ikke filen. Hver oppføring har kilde. Datoer som YYYY-MM.",
+  "sources": {
+    "cer2026": {
+      "title": "CER Market Snapshot: Canada-Newfoundland and Labrador Offshore Oil Production: Mature Fields and New Frontiers",
+      "date": "2026-08-26",
+      "url": "https://www.cer-rec.gc.ca/en/data-analysis/energy-markets/market-snapshots/2026/market-snapshot-canada-newfoundland-labrador-offshore-oil-production-mature-fields-and-new-frontiers.html"
+    },
+    "nlfacts2023": {
+      "title": "Government of Newfoundland and Labrador: Newfoundland and Labrador Current and Future Production",
+      "date": "2023-02",
+      "url": "https://www.gov.nl.ca/em/files/OffshoreProduction.pdf"
+    },
+    "nlbdn2026": {
+      "title": "Government of Newfoundland and Labrador: Bay du Nord Project, technical briefing",
+      "date": "2026-03",
+      "url": "https://www.gov.nl.ca/em/files/FINAL-Tech-Briefing-Deck-March-2026-1.pdf"
+    },
+    "nlwells": {
+      "title": "Government of Newfoundland and Labrador: Offshore Well Data Inventory (land tenure regions)",
+      "url": "https://www.gov.nl.ca/em/energy/petroleum/offshore/offmaps/offshorewell/"
+    }
+  },
+  "events": [
+    {
+      "fields": ["terra-nova"],
+      "from": "2020-01",
+      "to": "2023-10",
+      "label": "Terra Nova FPSO refit",
+      "text": "The Terra Nova FPSO went offline in January 2020 for a life-extension refit and resumed production in November 2023. The refit extends production to 2033.",
+      "source": "cer2026"
+    },
+    {
+      "fields": ["white-rose", "north-amethyst"],
+      "from": "2024-01",
+      "to": "2025-02",
+      "label": "SeaRose FPSO refit",
+      "text": "The refit of the SeaRose FPSO took White Rose and North Amethyst offline in January 2024; production resumed in March 2025. Together with the West White Rose extension it supports production from White Rose until 2038.",
+      "source": "cer2026"
+    }
+  ],
+  "fieldLife": {
+    "terra-nova": {"until": 2033, "source": "cer2026"},
+    "white-rose": {"until": 2038, "source": "cer2026"}
+  },
+  "reservoirProps": {
+    "_note": "Fra provinsens faktaark (februar 2023), kontrollert mot bildet av arket. producing=false: «Reservoirs have not been placed on production» per 2023. For North Amethyst gjentar arket Terra Novas verdier for «Jeanne d'Arc, Beothuk Mbr.»; den kolonnen er utelatt.",
+    "source": "nlfacts2023",
+    "fields": {
+      "hibernia": {
+        "waterDepth": 80,
+        "formations": [
+          {"name": "Jeanne d'Arc", "producing": false, "depth": "4125", "netPay": "13", "porosity": "9", "perm": "8", "api": "33"},
+          {"name": "Hibernia", "depth": "3750", "netPay": "41", "porosity": "16", "perm": "640", "api": "30–40"},
+          {"name": "Catalina", "depth": "3235", "netPay": "15", "porosity": "15", "perm": "75", "api": "32.5"},
+          {"name": "Avalon/Ben Nevis", "depth": "2350", "netPay": "23", "porosity": "20", "perm": "148", "api": "29–33"}
+        ]
+      },
+      "terra-nova": {
+        "waterDepth": 93,
+        "formations": [
+          {"name": "Jeanne d'Arc, Terra Nova Mbr.", "depth": "3350", "netPay": "36", "porosity": "17", "perm": "950", "api": "34"},
+          {"name": "Jeanne d'Arc, Beothuk Mbr.", "depth": "3250", "netPay": "8", "porosity": "17", "perm": "1330", "api": "34"}
+        ]
+      },
+      "white-rose": {
+        "waterDepth": 119,
+        "formations": [
+          {"name": "Jeanne d'Arc", "producing": false, "depth": "3810", "netPay": "8", "porosity": "12", "perm": "3", "api": "33"},
+          {"name": "Hibernia", "producing": false, "depth": "3620", "netPay": "8", "porosity": "15", "perm": "7", "api": "33"},
+          {"name": "Avalon/Ben Nevis", "depth": "3010", "netPay": "23–87", "porosity": "15", "perm": "56", "api": "31"}
+        ]
+      },
+      "north-amethyst": {
+        "waterDepth": 119,
+        "formations": [
+          {"name": "Avalon/Ben Nevis", "depth": "2335", "netPay": "35", "porosity": "23", "perm": "340", "api": "30"}
+        ],
+        "note": "The provincial sheet also lists «Jeanne d'Arc, Beothuk Mbr.» for North Amethyst with exactly Terra Nova's values; it is left out here as an apparent copy error. North Amethyst also produces from the Hibernia Formation (since 2016)."
+      },
+      "hebron": {
+        "waterDepth": 93,
+        "formations": [
+          {"name": "Jeanne d'Arc", "pools": true, "depth": "3813", "netPay": "50", "porosity": "9–14", "perm": "20–100", "api": "24–37"},
+          {"name": "Hibernia", "pools": true, "depth": "3200", "netPay": "70", "porosity": "13–18", "perm": "260–2800", "api": "25–36"},
+          {"name": "Avalon/Ben Nevis", "pools": true, "depth": "1850", "netPay": "50", "porosity": "10–28", "perm": "50–400", "api": "17–31"}
+        ],
+        "note": "Hebron is the province's first heavy-oil field (CER). The sheet marks all three formations as «multiple pools in distinct fields» and as not yet on production, which in 2023 was only true of parts of them: Ben Nevis has produced since 2017, and Jeanne d'Arc and Hibernia since 2021–2022 (C-NLOER production data)."
+      }
+    }
+  },
+  "projects": [
+    {
+      "id": "bay-du-nord",
+      "name": "Bay du Nord",
+      "operator": "Equinor",
+      "partners": ["Equinor", "bp"],
+      "status": "Development plan under review",
+      "basin": "Flemish Pass",
+      "discovered": 2013,
+      "waterDepth": "about 1,200 m",
+      "distance": "about 500 km offshore",
+      "concept": "FPSO with subsea wells; Canada's first deepwater development",
+      "phase1": "Bay du Nord and Cambriol, about 430 million bbl recoverable",
+      "accumulations": ["Bay du Nord", "Cambriol"],
+      "licences": ["SDL 1055", "SDL 1060"],
+      "spend": "CAD 26.9 billion over the life of the field (11.9 pre-development and development, 15.0 operations)",
+      "milestones": [
+        {"date": "2013", "text": "Discovered (Bay du Nord C-78)", "source": "cer2026"},
+        {"date": "2022-04", "text": "Positive federal impact assessment decision", "source": "cer2026"},
+        {"date": "2026-03", "text": "Benefits, royalty and provincial equity-option agreements with Equinor and bp", "source": "nlbdn2026"},
+        {"date": "2026-05-05", "text": "Development plan application submitted to C-NLOER", "source": "cer2026"},
+        {"date": "2027", "text": "Sanction / final investment decision expected (province: Q1 2027)", "planned": true, "source": "nlbdn2026"},
+        {"date": "2031", "text": "First oil expected", "planned": true, "source": "nlbdn2026"}
+      ],
+      "sources": ["cer2026", "nlbdn2026"]
+    }
+  ],
+  "regions": {
+    "_note": "C-NLOERs koder for landområdene (LTR i brønn- og lisenslagene); navn fra provinsens Offshore Well Data Inventory.",
+    "source": "nlwells",
+    "names": {
+      "LN": "Labrador North",
+      "LS": "Labrador South",
+      "NEN": "North Eastern Newfoundland",
+      "EN": "Eastern Newfoundland",
+      "JDA": "Jeanne d'Arc",
+      "SEN": "South Eastern Newfoundland",
+      "SN": "Southern Newfoundland",
+      "WNL": "Western Newfoundland and Labrador"
+    },
+    "order": ["JDA", "EN", "SEN", "SN", "WNL", "NEN", "LS", "LN"]
+  }
+}
