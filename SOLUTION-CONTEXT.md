@@ -1061,6 +1061,28 @@ Bygges av `fetch_cnloer.py` (workflow `update-cnloer.yml`, mandag og torsdag
 - **Uendret innhold** gir ingen commit: skriptet beholder forrige `fetched`
   når alt annet er likt.
 
+**Håndført tillegg (`data/canada_nl_manual.json`)**, lastet ved oppstart; siden
+virker uten filen. Hver oppføring peker til en kilde i `sources`:
+- `events`: stans for ombygging av produksjonsskip (Terra Nova 2020-01–2023-10,
+  SeaRose/White Rose og North Amethyst 2024-01–2025-02, fra CERs Market
+  Snapshot 26.08.2026 og kontrollert mot månedstallene). Tegnes som grå bånd
+  bak søylene i Production og i faktaarket (`eventBands`, `bandPlugin`),
+  med forklaring i infoboksen.
+- `fieldLife`: forventet produksjon til 2033 (Terra Nova) og 2038 (White Rose).
+- `reservoirProps`: dyp, netto pay, porøsitet, permeabilitet og API per
+  formasjon, og vanndyp, fra provinsens faktaark (feb. 2023), lest av mot
+  bildet av arket. Arket gir North Amethyst «Jeanne d'Arc, Beothuk Mbr.» med
+  Terra Novas tall; kolonnen er utelatt. Hebrons formasjoner er merket «ikke i
+  produksjon» i arket, men produserte; merket er ikke tatt med, det står i
+  merknaden.
+- `projects`: Bay du Nord (CER og provinsens orientering mars 2026), vist
+  øverst i Resources med milepæler (hul prikk = forventet), C-NLOERs 2C for
+  Bay du Nord + Cambriol og lisensene fra registeret. Registeret viser Equinor
+  100 % i SDL 1055 og 1060, selv om bp er partner; kortet sier det.
+- `regions`: navn på landområdene (LTR-kodene), fra provinsens Offshore Well
+  Data Inventory. Brukes i Drilling (filter `rg` og kolonne) og i kartets
+  brønn-tooltip. Lenkene til brønnregnearkene på den siden er døde (404).
+
 Frontend (`canada.html`): fanene Production (felt eller reservoar, olje/gass/
 vann, måned/år, fat/m³, nøkkeltall og felttabell), Fields (rangering og
 tabell), Resources (produsert/gjenværende per felt, 2C per funn), Company
@@ -1071,7 +1093,7 @@ har fakta, produksjon per reservoar, reserver og betingede ressurser, eierkake,
 kart og utviklingsbrønner. Feltfargene er faste (`FIELD_COLORS`; Hebron og
 Hibernia, som ofte står stablet sammen, får størst kontrast), reservoarfargene
 faste per formasjon (`RES_COLORS`). Lenkeparametre: `v` (fane), `g`, `f`, `p`,
-`per`, `u`, `rk`, `rp`, `c`, `wc`, `dy`, `mw`, `mx`, `fs` (felt i faktaarket),
+`per`, `u`, `rk`, `rp`, `c`, `wc`, `rg`, `dy`, `mw`, `mx`, `fs` (felt i faktaarket),
 `sp`.
 
 ### `data/meta.json`

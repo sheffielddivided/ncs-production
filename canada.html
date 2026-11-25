@@ -151,6 +151,17 @@
     .bar-track span{display:block;height:100%;}
     .counts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
 
+    /* Prosjekter og milepæler */
+    .ms-list{list-style:none;margin:4px 0 0;padding:0;position:relative;}
+    .ms-list::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:var(--border);}
+    .ms-list li{position:relative;padding:0 0 9px 22px;font-size:0.74rem;line-height:1.4;display:grid;grid-template-columns:86px 1fr;gap:0 6px;}
+    .ms-list li::before{content:"";position:absolute;left:0;top:3px;width:12px;height:12px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 2px #fff;}
+    .ms-list li.plan::before{background:#fff;border:2px solid var(--blue);box-sizing:border-box;}
+    .ms-list li b{color:var(--navy);font-variant-numeric:tabular-nums;}
+    .ms-list li.plan{color:#4a5568;}
+    .proj-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;}
+    @media (max-width: 820px){ .proj-grid{grid-template-columns:minmax(0,1fr);} }
+
     /* Kart */
     .map-box{position:relative;background:#eef3f8;border-radius:8px;overflow:hidden;}
     .map-box svg{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
@@ -223,9 +234,12 @@ const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep
 // ── TILSTAND ─────────────────────────────────────────────────────────────────
 // Kort navn i adressen. fs = felt i faktaarket.
 const DEFAULTS = {v: 'production', g: 'field', f: '', p: 'oil', per: 'm', u: 'bbl', rk: '12m', rp: 'oil',
-                  c: '', wc: '', dy: '', mw: '', mx: 'gb', fs: '', sp: 'oil'};
+                  c: '', wc: '', rg: '', dy: '', mw: '', mx: 'gb', fs: '', sp: 'oil'};
 let S = {...DEFAULTS};
 let D = null, OUT = null, COAST = null;
+// Håndførte tillegg (data/canada_nl_manual.json): hendelser, reservoaregenskaper,
+// prosjekter og regionnavn. Siden virker uten filen.
+let M = {sources: {}, events: [], fieldLife: {}, reservoirProps: {fields: {}}, projects: [], regions: {names: {}, order: []}};
 const charts = {};
 
 function readUrl() {
@@ -285,6 +299,46 @@ function chartCard(id, title, sub, opts = {}) {
     <div class="chart-container ${opts.cls || ''}"${opts.h ? ` style="height:${opts.h}px"` : ''}><canvas id="${id}"></canvas></div><div id="${id}Leg"></div></div>`;
 }
 
+// Lenke til en kilde i manual-filen, med dato
+function srcLink(key) {
+  const s = M.sources[key];
+  if (!s) return '';
+  return `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title.replace(/^Government of Newfoundland and Labrador: /, 'Gov. NL: ').replace(/^CER Market Snapshot: .*/, 'CER Market Snapshot'))}</a>${s.date ? ` (${esc(dateTxt(s.date))})` : ''}`;
+}
+const regionName = c => (M.regions.names || {})[c] || c || '–';
+// Hendelser (stans for ombygging) som skraverte bånd på tidsaksen.
+// labels: 'YYYY-MM' (månedlig) eller 'YYYY'/'YYYY*' (årlig).
+function eventBands(labels, fieldIds) {
+  const annual = labels.length && !String(labels[0]).includes('-');
+  const key = l => annual ? String(l).slice(0, 4) : l;
+  return M.events.filter(e => e.fields.some(id => fieldIds.includes(id))).map(e => {
+    const a = annual ? e.from.slice(0, 4) : e.from, b = annual ? e.to.slice(0, 4) : e.to;
+    const from = labels.findIndex(l => key(l) >= a);
+    let to = -1; labels.forEach((l, i) => { if (key(l) <= b) to = i; });
+    return from >= 0 && to >= from ? {from, to, label: e.label} : null;
+  }).filter(Boolean);
+}
+// Chart.js-tillegg som tegner båndene bak søylene, med etikett øverst.
+function bandPlugin(bands) {
+  return {id: 'bands', beforeDatasetsDraw(chart) {
+    const {ctx, chartArea: ca, scales: {x}} = chart;
+    const n = chart.data.labels.length; if (!n) return;
+    const w = n > 1 ? Math.abs(x.getPixelForValue(1) - x.getPixelForValue(0)) : ca.right - ca.left;
+    ctx.save();
+    bands.forEach((b, k) => {
+      const x0 = Math.max(ca.left, x.getPixelForValue(b.from) - w / 2), x1 = Math.min(ca.right, x.getPixelForValue(b.to) + w / 2);
+      ctx.fillStyle = 'rgba(130,140,155,0.13)';
+      ctx.fillRect(x0, ca.top, x1 - x0, ca.bottom - ca.top);
+      ctx.fillStyle = '#5f6b7a'; ctx.font = '600 9px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+      ctx.textBaseline = 'top';
+      const tw = ctx.measureText(b.label).width;
+      const tx = x1 - x0 > tw + 6 ? x0 + 4 : Math.min(x0 + 2, ca.right - tw - 2);
+      ctx.fillText(b.label, tx, ca.top + 3 + (k % 2) * 12);
+    });
+    ctx.restore();
+  }};
+}
+
 // Stablede søyler med samme stil som renderChart i index.html.
 function barChart(id, labels, datasets, unit, opts = {}) {
   const el = document.getElementById(id);
@@ -296,7 +350,7 @@ function barChart(id, labels, datasets, unit, opts = {}) {
     title: {display: !!unit, text: unit, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}};
   const catAxis = {stacked: opts.stacked !== false, ticks: {font: {size: horiz ? 10 : 9}, autoSkip: !horiz, maxTicksLimit: opts.ticks || 14, maxRotation: 45}, grid: {color: 'rgba(0,0,0,0.04)'}};
   charts[id] = new Chart(el.getContext('2d'), {
-    type: 'bar', data: {labels, datasets},
+    type: 'bar', data: {labels, datasets}, plugins: opts.bands && opts.bands.length ? [bandPlugin(opts.bands)] : [],
     options: {
       responsive: true, maintainAspectRatio: false, indexAxis: horiz ? 'y' : 'x',
       interaction: {mode: 'index', intersect: false, axis: horiz ? 'y' : 'x'},
@@ -499,6 +553,8 @@ function viewProduction() {
     </tbody></table></div>`;
 
   const wells = flds.filter(x => x.fromWells.length).map(x => `${x.name} ${yearSpan(x.fromWells)}`);
+  const bands = eventBands(t.labels, flds.map(x => x.id));
+  const evs = M.events.filter(e => e.fields.some(id => flds.some(x => x.id === id)));
   setView(kpis +
     chartCard('prodChart', `${esc(scope)} · ${prodName} production`,
       `${byRes ? 'By reservoir' : f ? 'Field total' : 'By field'} · ${unit}, ${S.per === 'm' ? 'monthly' : 'annual average'}`, {cls: 'tall'}) +
@@ -506,9 +562,10 @@ function viewProduction() {
     `<div class="info-box"><strong>Source:</strong> C-NLOER monthly production by field and reservoir, ${esc(ymTxt(G.labels[0]))} to ${esc(ymTxt(lastYM()))} (published about a month after the fact; operators' amendments are included as C-NLOER republishes).
       ${S.p === 'gas' ? ' <strong>Gas</strong> is produced (associated) gas: there is no gas export from the area, so it is mostly reinjected or used as fuel.' : ''}
       ${wells.length ? ` <strong>From well data:</strong> ${esc(wells.join(', '))} — C-NLOER has no field file for these years, so the months are summed from its well-by-well production and split by reservoir in proportion to that year's reservoir totals.` : ''}
-      ${S.per === 'a' && ps.some(p => p.ytd) ? ` <strong>${lastYM().slice(0, 4)}*</strong> is the year to date.` : ''}</div>` +
+      ${S.per === 'a' && ps.some(p => p.ytd) ? ` <strong>${lastYM().slice(0, 4)}*</strong> is the year to date.` : ''}
+      ${evs.length ? `<br><strong>Shaded periods:</strong> ${evs.map(e => `${esc(e.text)}`).join(' ')} <span style="color:var(--muted)">Source: ${srcLink(evs[0].source)}.</span>` : ''}</div>` +
     table);
-  barChart('prodChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30,
+  barChart('prodChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, bands,
     titleFn: S.per === 'm' ? i => ymTxt(t.labels[i]) : undefined});
 }
 
@@ -551,7 +608,7 @@ function viewResources() {
   const sum = (k, area) => { const rs = R.contingent2C.filter(r => (!area || r.area === area) && r[k] != null);
     return rs.length ? rs.reduce((t, r) => t + vol(r, k, null, k === 'gas'), 0) : null; };
   const cell = (r, k) => fmt(vol(r, k, null, k === 'gas'), bbl ? 0 : 1);
-  setView(`<div class="grid2">` +
+  setView(M.projects.map(projectCard).join('') + `<div class="grid2">` +
     chartCard('eurChart', 'Producing fields: oil produced and remaining', `Proved + probable (2P) · ${ou} · per ${esc(dateTxt(fl[0].reserves.asOf))}`, {cls: 'short'}) +
     chartCard('contChart', `Contingent ${S.rp} resources (2C)`, `Discovered, not yet approved for development · ${S.rp === 'oil' ? ou : gu}`, {h: Math.max(220, cont.length * 19 + 50)}) +
     `</div>
@@ -575,6 +632,32 @@ function viewResources() {
     backgroundColor: cont.map(r => isField(r.name) ? PRODUCED_COLOR : areaColor(r.area)), borderWidth: 0}],
     S.rp === 'oil' ? ou : gu, {horizontal: true, noFooter: true, dec: bbl ? 0 : 1,
       legend: [{label: 'Grand Banks discoveries', color: '#f68d2e'}].concat(S.rp === 'gas' ? [{label: 'Labrador Shelf discoveries', color: '#4993b4'}] : [], [{label: 'Producing fields', color: PRODUCED_COLOR}])});
+}
+
+// Prosjekt under utvikling (håndført, med kilder), med C-NLOERs 2C for
+// funnene i prosjektet og lisensene fra registeret.
+function projectCard(pr) {
+  const bbl = S.u === 'bbl', ou = bbl ? 'million bbl' : 'million m³';
+  const acc = D.resources.contingent2C.filter(r => pr.accumulations.some(a => a.toLowerCase() === r.name.toLowerCase()));
+  const c2 = acc.reduce((t, r) => t + (vol(r, 'oil') || 0), 0);
+  const lics = pr.licences.map(id => D.licences.find(l => l.id === id)).filter(Boolean);
+  const holders = l => l.holders.map(([n, p]) => `${esc(grp(n))}${p != null ? ' ' + fmt(p, p % 1 ? 2 : 0) + ' %' : ''}`).join(', ');
+  const registerSolo = lics.length && lics.every(l => l.holders.length === 1);
+  const facts = [
+    ['Operator', pr.operator], ['Partners', pr.partners.join(', ')], ['Basin', pr.basin], ['Discovered', pr.discovered],
+    ['Water depth', pr.waterDepth], ['Location', pr.distance], ['Concept', pr.concept], ['Phase 1', pr.phase1],
+    ['Life-of-field spend', pr.spend],
+    [`C-NLOER 2C oil (${pr.accumulations.join(' + ')})`, acc.length ? `${fmt(c2, bbl ? 0 : 1)} ${ou}` : '–'],
+  ];
+  const today = new Date().toISOString().slice(0, 10);
+  return `<div class="card" style="padding:12px 12px 6px"><div class="chart-title">${esc(pr.name)} <span class="tag" style="vertical-align:middle;margin-left:4px">${esc(pr.status)}</span>
+      <span class="ct-sub">Project under development · the province's first new standalone offshore development since Hebron</span></div>
+    <div class="proj-grid"><div><div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div>
+      ${lics.length ? `<div class="pf-note"><strong>Licences:</strong> ${lics.map(l => `${esc(l.id)} (${esc(l.discWell || l.area || '')}: ${holders(l)})`).join('; ')}.${registerSolo && pr.partners.length > 1 ? ` C-NLOER's licence register still lists ${esc(grp(lics[0].holders[0][0]))} alone, while ${esc(pr.partners.filter(x => x !== grp(lics[0].holders[0][0])).join(', '))} is named as partner in the 2026 agreements.` : ''}</div>` : ''}
+      <div class="pf-note">The phase 1 volume (${esc(pr.phase1.replace(/^.*?about /, 'about '))}) is the partners' recoverable estimate; C-NLOER's 2C is its own best estimate for the whole of each discovery.</div></div>
+    <div><div class="ctrl-label" style="margin-bottom:6px">Milestones</div><ul class="ms-list">
+      ${pr.milestones.map(m => `<li class="${m.planned || m.date > today ? 'plan' : ''}"><b>${esc(m.date.length > 4 ? dateTxt(m.date) : m.date)}</b><span>${esc(m.text)}</span></li>`).join('')}</ul>
+      <div class="pf-note" style="margin-top:0">Hollow = expected. Sources: ${pr.sources.map(srcLink).join('; ')}.</div></div></div></div>`;
 }
 
 // ── COMPANY ──
@@ -671,8 +754,11 @@ const licNum = id => parseInt(id.replace(/\D/g, ''), 10) || 0;
 
 // ── DRILLING ──
 function viewDrilling() {
-  setControls(pills('wc', [['', 'All wells'], ['exploration', 'Exploration'], ['delineation', 'Delineation'], ['development', 'Development']], 'Type'));
-  const ws = D.wells.filter(w => w.spud && (!S.wc || w.cls === S.wc));
+  const regs = (M.regions.order || []).filter(c => D.wells.some(w => w.area === c))
+    .concat([...new Set(D.wells.map(w => w.area).filter(Boolean))].filter(c => !(M.regions.order || []).includes(c)));
+  setControls(pills('wc', [['', 'All wells'], ['exploration', 'Exploration'], ['delineation', 'Delineation'], ['development', 'Development']], 'Type') +
+    select('rg', [['', 'All regions']].concat(regs.map(c => [c, `${regionName(c)} (${D.wells.filter(w => w.area === c).length})`])), 'Region'));
+  const ws = D.wells.filter(w => w.spud && (!S.wc || w.cls === S.wc) && (!S.rg || w.area === S.rg));
   const y0 = Math.min(...D.wells.filter(w => w.spud).map(w => +w.spud.slice(0, 4))), y1 = new Date().getFullYear();
   const years = []; for (let y = y0; y <= y1; y++) years.push(String(y));
   const classes = Object.keys(WELL_CLS).filter(c => !S.wc || c === S.wc);
@@ -681,16 +767,16 @@ function viewDrilling() {
   let dy = S.dy && years.includes(S.dy) ? S.dy : [...years].reverse().find(y => ws.some(w => w.spud.startsWith(y))) || years[years.length - 1];
   const list = ws.filter(w => w.spud.startsWith(dy));
   const cnt = c => D.wells.filter(w => w.cls === c).length;
-  setView(chartCard('drillChart', 'Wells spudded per year', `${S.wc ? WELL_CLS[S.wc].label + ' wells' : 'All offshore wells'} · click a year to list its wells`) +
+  setView(chartCard('drillChart', `Wells spudded per year${S.rg ? ' · ' + esc(regionName(S.rg)) : ''}`, `${S.wc ? WELL_CLS[S.wc].label + ' wells' : 'All offshore wells'} · click a year to list its wells`) +
     `<div class="tbl-sec">${dy}: ${list.length} well${list.length === 1 ? '' : 's'} spudded<small>Re-entries are counted under the original spud year</small></div>
-    <div class="table-wrap scroll"><table class="res-table nw"><thead><tr><th>Well</th><th class="l">Type</th><th class="l">Operator</th><th class="l">Spud</th><th class="l">Finished</th><th class="l">Status</th><th class="l">Licence</th><th class="l">Rig</th><th>Water depth (m)</th><th>Depth MD (m)</th></tr></thead><tbody>
+    <div class="table-wrap scroll"><table class="res-table nw"><thead><tr><th>Well</th><th class="l">Type</th><th class="l">Operator</th><th class="l">Spud</th><th class="l">Finished</th><th class="l">Status</th><th class="l">Region</th><th class="l">Licence</th><th class="l">Rig</th><th>Water depth (m)</th><th>Depth MD (m)</th></tr></thead><tbody>
     ${list.length ? list.map(w => `<tr${w.field ? ` class="click" onclick="openSheet('${w.field}')"` : ''}><td>${w.field ? `<button class="row-link">${esc(w.name)}</button>` : esc(w.name)}</td>
       <td class="l"><span class="dot" style="background:${WELL_CLS[w.cls].color}"></span>${WELL_CLS[w.cls].label}</td><td class="l">${esc(w.op || '–')}</td>
       <td class="l">${esc(dateTxt(w.spud))}</td><td class="l">${esc(dateTxt(w.reTerm || w.term))}${w.re ? ` <span class="tag">${w.re} re-entr${w.re > 1 ? 'ies' : 'y'}</span>` : ''}</td>
-      <td class="l">${esc(w.status || '–')}</td><td class="l">${esc(w.lic || '–')}</td><td class="l">${esc(w.rig || '–')}</td><td>${fmt(w.wd)}</td><td>${fmt(w.md)}</td></tr>`).join('')
-      : '<tr><td colspan="10" style="color:var(--muted)">No wells</td></tr>'}
+      <td class="l">${esc(w.status || '–')}</td><td class="l">${esc(regionName(w.area))}</td><td class="l">${esc(w.lic || '–')}</td><td class="l">${esc(w.rig || '–')}</td><td>${fmt(w.wd)}</td><td>${fmt(w.md)}</td></tr>`).join('')
+      : '<tr><td colspan="11" style="color:var(--muted)">No wells</td></tr>'}
     </tbody></table></div>
-    <div class="info-box"><strong>Source:</strong> C-NLOER's well layers (${cnt('exploration')} exploration, ${cnt('delineation')} delineation, ${cnt('development')} development and ${cnt('dual')} dual-classified wells offshore Newfoundland and Labrador since ${y0}). Development wells link to their field's factsheet.</div>`);
+    <div class="info-box"><strong>Source:</strong> C-NLOER's well layers (${cnt('exploration')} exploration, ${cnt('delineation')} delineation, ${cnt('development')} development and ${cnt('dual')} dual-classified wells offshore Newfoundland and Labrador since ${y0}). Development wells link to their field's factsheet. Regions are C-NLOER's land tenure regions${M.regions.source ? `, named as in ${srcLink(M.regions.source)}` : ''}.</div>`);
   barChart('drillChart', years, datasets, 'wells', {ticks: 20, onClick: i => set({dy: years[i]}, false)});
 }
 
@@ -752,7 +838,7 @@ function drawMap(box, o) {
   D.wells.filter(w => w.lat && w.lon && wf(w)).forEach(w => {
     const [x, y] = P(w.lon, w.lat);
     parts.push(`<circle class="pt" data-r="2.6" cx="${x}" cy="${y}" r="2.6" fill="${WELL_CLS[w.cls].color}" stroke="#fff" stroke-width="0.6" vector-effect="non-scaling-stroke"
-      data-tip="${esc(`<b>${esc(w.name)}</b><br>${WELL_CLS[w.cls].label} · ${esc(w.op || '')}<br>Spud ${esc(dateTxt(w.spud))} · ${esc(w.status || '')}`)}"${w.field && !o.noClick ? ` data-field="${w.field}" style="cursor:pointer"` : ''}/>`);
+      data-tip="${esc(`<b>${esc(w.name)}</b><br>${WELL_CLS[w.cls].label} · ${esc(w.op || '')}<br>Spud ${esc(dateTxt(w.spud))} · ${esc(w.status || '')}<br>${esc(regionName(w.area))}`)}"${w.field && !o.noClick ? ` data-field="${w.field}" style="cursor:pointer"` : ''}/>`);
   });
   D.installations.forEach(i => {
     if (!i.lat || !i.lon) return;
@@ -850,12 +936,16 @@ function openSheet(id, quiet) {
   const sg = {};
   devWells.forEach(w => { const g = statusGroup(w.status); sg[g] = (sg[g] || 0) + 1; });
   const eq = (f.equity || []).filter(e => e[1]).slice().sort((a, b) => b[1] - a[1]);
+  const rp = (M.reservoirProps.fields || {})[f.id], life = M.fieldLife[f.id];
+  const evs = M.events.filter(e => e.fields.includes(f.id));
   const facts = [
     ['Operator', opShort(f.operator)], ['Installation', `${f.installation || '–'}${f.installationType ? ` (${f.installationType})` : ''}`],
     ['Basin', f.basin || '–'], ['Discovered', f.discovered || '–'], ['Development plan approved', dateTxt(f.dpApproval)],
     ['First oil', dateTxt(f.firstOil)], ['Production licences', f.licences.join(', ') || '–'], ['Reservoirs', f.reservoirs.join(', ')],
     [`Oil, ${ymTxt(lastYM())}`, `${fmt(cv(s.last))} ${ou}`], ['Oil, last 12 months', `${fmt(cv(s.avg12))} ${ou}`],
     ['Water cut, last 12 months', `${fmt(s.wcut * 100)} %`], ['Development wells', String(devWells.length)],
+    ...(rp && rp.waterDepth ? [['Water depth', `${rp.waterDepth} m`]] : []),
+    ...(life ? [['Expected production until', `${life.until}`]] : []),
   ];
   // Reservetabellen: EUR, produsert, gjenværende og andel utvunnet per reservoar/pool
   const rrows = r.rows.filter(x => x.eur || x.cum != null);
@@ -884,7 +974,15 @@ function openSheet(id, quiet) {
     <div class="pf-card"><h3>Production by reservoir <small>· annual average, ${esc(unitOf(S.sp))}</small></h3>
       <div class="pill-group" style="margin-bottom:8px">${[['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']].map(([v, t]) => `<button class="pill-btn${S.sp === v ? ' active' : ''}" onclick="S.sp='${v}';writeUrl();openSheet('${f.id}',true)">${t}</button>`).join('')}</div>
       <div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div>
-      ${f.fromWells.length ? `<div class="pf-note">${yearSpan(f.fromWells)}: summed from C-NLOER's well-by-well production and split by reservoir in proportion to the annual reservoir totals.</div>` : ''}</div>
+      ${f.fromWells.length ? `<div class="pf-note">${yearSpan(f.fromWells)}: summed from C-NLOER's well-by-well production and split by reservoir in proportion to the annual reservoir totals.</div>` : ''}
+      ${evs.length ? `<div class="pf-note"><strong>Shaded:</strong> ${evs.map(e => esc(e.text)).join(' ')} Source: ${srcLink(evs[0].source)}.</div>` : ''}
+      ${life && !evs.length ? `<div class="pf-note">Expected to produce until ${life.until} (${srcLink(life.source)}).</div>` : ''}</div>
+    ${rp && rp.formations ? `<div class="pf-card"><h3>Reservoir properties <small>· by formation</small></h3>
+      <div class="table-wrap"><table class="res-table"><thead><tr><th>Formation</th><th>Depth to reservoir (m)</th><th>Net pay (m)</th><th>Porosity (%)</th><th>Permeability (mD)</th><th>Oil gravity (°API)</th></tr></thead><tbody>
+      ${rp.formations.map(x => `<tr><td>${esc(x.name)}${x.producing === false ? ' <span class="tag">not producing (2023)</span>' : ''}${x.pools ? ' <span class="tag">several pools</span>' : ''}</td>
+        <td>${esc(x.depth)}</td><td>${esc(x.netPay)}</td><td>${esc(x.porosity)}</td><td>${esc(x.perm)}</td><td>${esc(x.api)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="pf-note">${rp.note ? esc(rp.note) + ' ' : ''}Source: ${srcLink(M.reservoirProps.source)}. Fixed geological properties; the sheet's production and reserve figures are not used (C-NLOER's are newer).</div></div>` : ''}
     <div class="pf-card"><h3>Oil reserves <small>· ${vu}, per ${esc(dateTxt(r.asOf))}</small></h3>
       <div class="bar-track" title="Produced ${fmt(prodShare * 100)} % of 2P EUR"><span style="width:${prodShare * 100}%;background:${PRODUCED_COLOR}"></span><span style="flex:1;background:${REMAINING_COLOR}"></span></div>
       <div class="legend-row" style="border:0;margin:6px 0 8px;padding:0"><div class="legend-item"><div class="legend-dot" style="background:${PRODUCED_COLOR}"></div>Produced ${fmt(vol(tot, 'cum'), d1)}</div>
@@ -908,7 +1006,7 @@ function openSheet(id, quiet) {
   const ds = f.reservoirs.map(res => ({label: res, data: perDay(fieldMonthly(f, S.sp, res), ps, S.sp), backgroundColor: resColor(res), borderWidth: 1, borderColor: '#fff', stack: 's'}))
     .filter(d => d.data.some(v => v));
   const t = trimLead(ps.map(p => p.label), ds);
-  barChart('sheetChart', t.labels, t.datasets, unitOf(S.sp), {ticks: 30});
+  barChart('sheetChart', t.labels, t.datasets, unitOf(S.sp), {ticks: 30, bands: eventBands(t.labels, [f.id])});
   // Kart: feltets lisenser, utvidet litt
   loadOutlines().then(() => {
     const el = document.getElementById('sheetMap');
@@ -955,6 +1053,10 @@ async function init() {
     setView(`<div class="status">Could not load data/canada_nl.json (${esc(e.message)}).</div>`);
     return;
   }
+  try {
+    const m = await fetch('data/canada_nl_manual.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : null);
+    if (m) M = {...M, ...m};
+  } catch (e) { /* siden virker uten tilleggene */ }
   buildAxis();
   D.fields.forEach(f => f.reservoirs.forEach(r => { if (!RES_ORDER.includes(r)) RES_ORDER.push(r); }));
   document.getElementById('sourceNote').innerHTML = `Source: <a href="https://www.cnloer.ca/information/statistics/" target="_blank" rel="noopener">Canada-Newfoundland and Labrador Offshore Energy Regulator (C-NLOER)</a> — statistics, resource information and the <a href="https://home-cnlopb.hub.arcgis.com/" target="_blank" rel="noopener">Data and Information Hub</a>. Production through ${esc(ymTxt(lastYM()))}; fetched ${esc(D.fetched.slice(0, 10))}.`;
