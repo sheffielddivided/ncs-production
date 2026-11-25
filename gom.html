@@ -228,7 +228,7 @@ const TOP_FIELDS = 8, TOP_OPS = 8;     // som paletten: flere ville fått samme 
 // ── TILSTAND ─────────────────────────────────────────────────────────────────
 // Lenkeparametre. fs = felt i faktaarket.
 const DEFAULTS = {v: 'production', g: 'depth', p: 'oil', per: 'a', u: 'bbl', from: '1990', rk: 'l12', dc: '', q: '',
-                  c: '', rp: 'boe', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
+                  c: '', b: 'eq', rp: 'boe', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
 let S = {...DEFAULTS};
 let D = null, P = null, W = null, COAST = null;
 let F = [];                    // feltene som objekter
@@ -395,9 +395,10 @@ const live = f => f.l12[0] + f.l12[1] > 0;
 const cumBoe = f => boe(f.cum[0], f.cum[1]);
 const l12boe = f => boe(f.l12[0], f.l12[1]);
 
-// Konsernfarger: de største produsentene siste 12 måneder får hver sin farge
-let OPS_ORDER = [];
-const opColor = g => { const i = OPS_ORDER.indexOf(g); return i >= 0 && i < PALETTE.length ? PALETTE[i] : OTHER_COLOR; };
+// Konsernfarger følger konsernet: de største etter egenandel siste 12 måneder
+// får hver sin farge, i både egenandels- og operatørvisningen
+let OPS_ORDER = [], EQ_ORDER = [];
+const opColor = g => { const i = EQ_ORDER.indexOf(g); return i >= 0 && i < PALETTE.length ? PALETTE[i] : OTHER_COLOR; };
 // Feltfarger følger feltet: rekkefølge etter produksjon siste 12 måneder
 let FIELD_ORDER = [];
 const fieldColor = code => { const i = FIELD_ORDER.indexOf(code); return i >= 0 && i < PALETTE.length ? PALETTE[i] : OTHER_COLOR; };
@@ -538,12 +539,12 @@ function viewReserves() {
       <div class="kpi"><span>Produced</span><strong>${fmt(last[7], 1)}</strong><small>billion boe to 31 Dec ${last[0]}</small></div>
       <div class="kpi"><span>Remaining reserves</span><strong>${fmt(last[10], 2)}</strong><small>billion boe (${fmt(last[8], 2)} bn bbl oil, ${fmt(last[9], 1)} Tcf gas)</small></div>
       <div class="kpi"><span>Remaining in deep water</span><strong>${fmt(((byDc.deep || 0) + (byDc.ultra || 0)) / Object.values(byDc).reduce((a, b) => a + b, 0) * 100)} %</strong><small>of remaining boe, mean estimate</small></div></div>` +
-    chartCard('areaRes', 'Reserves over time', `${{boe: 'Oil + gas', oil: 'Oil', gas: 'Gas'}[S.rp]} · ${unit} · produced and remaining as estimated each 31 December (BOEM)`) +
+    chartCard('areaRes', 'Reserves over time', `${{boe: 'Oil + gas', oil: 'Oil', gas: 'Gas'}[S.rp]} · ${unit} · remaining reserves (bottom) and produced (top) as estimated each 31 December (BOEM)`) +
     `<div class="grid2">${chartCard('remTop', 'Largest remaining reserves', 'Mean estimate · MMboe · click a field', {h: 470})}${chartCard('remDepth', 'Remaining reserves by water depth', 'Mean estimate · MMboe', {cls: 'short'})}</div>
     <div class="info-box"><strong>Source:</strong> BOEM, «Estimated Oil and Gas Reserves, Gulf of America OCS Region, December 31, ${D.reserves.year}» (tables 4 and 9). BOEM estimates reserves for each field from reservoir data; P10/P50/P90 are shown in the factsheets, the mean here. Before 2015 the series is every five years, and BOEM published no estimates for 2020–2022.</div>`);
   barChart('areaRes', A.map(r => r[0]), [
-    {label: 'Produced', data: A.map(r => r[5 + k]), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'},
     {label: 'Remaining reserves', data: A.map(r => r[8 + k]), backgroundColor: REMAINING_COLOR, borderWidth: 1, borderColor: '#fff'},
+    {label: 'Produced', data: A.map(r => r[5 + k]), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'},
   ], unit, {dec: 1, ticks: 30});
   barChart('remTop', topRem.map(fname), [{label: 'Remaining (mean)', data: topRem.map(f => f.rem[3]), backgroundColor: topRem.map(f => DEPTH[f.dc || 'unknown'].color), borderWidth: 0}],
     'MMboe', {horizontal: true, noFooter: true, legend: false, onClick: i => openSheet(topRem[i].code)});
@@ -554,47 +555,71 @@ function viewReserves() {
 
 // ── COMPANY ──
 function viewCompany() {
-  const G = D.operators.groups, start = D.operators.start, off = MONTHS.indexOf(start);
-  const groups = Object.keys(G);
-  setControls(select('c', [['', 'All companies']].concat(OPS_ORDER.filter(g => G[g]).concat(groups.filter(g => !OPS_ORDER.includes(g)).sort()).map(g => [g, g])), 'Company') +
+  // Grunnlag: egenandel (equity, standard) eller opererte volumer
+  const eqMode = S.b !== 'op';
+  const SRC = eqMode ? D.equity : D.operators, G = SRC.groups, off = MONTHS.indexOf(SRC.start);
+  const OG = D.operators.groups, ooff = MONTHS.indexOf(D.operators.start);
+  const EG = D.equity.groups, eoff = MONTHS.indexOf(D.equity.start);
+  const order = eqMode ? EQ_ORDER : OPS_ORDER;
+  const names = [...new Set(EQ_ORDER.concat(OPS_ORDER).concat(D.net12.groups.map(x => x[0])))];
+  setControls(pills('b', [['eq', 'Equity (net)'], ['op', 'Operated']], 'Basis') +
+    select('c', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company') +
     pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['boe', 'Oil + gas (boe)']], 'Product') +
     pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') + pills('u', [['bbl', 'Barrels / cf'], ['m3', 'Cubic metres']], 'Unit'));
   if (S.p === 'water') S.p = 'oil';
-  const ps = periods(S.per, start.slice(0, 4) > S.from ? start.slice(0, 4) : S.from), unit = unitOf(S.p);
-  const get = g => i => { const j = i - off; return j < 0 ? 0 : pick(G[g], j, S.p); };
+  const ps = periods(S.per, SRC.start.slice(0, 4) > S.from ? SRC.start.slice(0, 4) : S.from), unit = unitOf(S.p);
+  const getIn = (GG, o) => g => i => { const j = i - o; return j < 0 || !GG[g] ? 0 : pick(GG[g], j, S.p); };
+  const get = getIn(G, off), getOp = getIn(OG, ooff), getEq = getIn(EG, eoff);
+  const word = eqMode ? 'equity' : 'operated';
   let datasets;
   if (!S.c) {
-    const shown = OPS_ORDER.filter(g => G[g]).slice(0, TOP_OPS);
+    const shown = order.filter(g => G[g]).slice(0, TOP_OPS);
     datasets = shown.map(g => ({label: g, backgroundColor: opColor(g), data: perDay(get(g), ps, S.p)}));
-    datasets.push({label: 'Other operators', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - shown.reduce((t, g) => t + get(g)(i), 0)), ps, S.p)});
+    datasets.push({label: 'Other companies', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - shown.reduce((t, g) => t + get(g)(i), 0)), ps, S.p)});
   } else {
-    datasets = [{label: S.c, backgroundColor: opColor(S.c) === OTHER_COLOR ? '#7d2248' : opColor(S.c), data: perDay(get(S.c), ps, S.p)}];
+    datasets = [{label: `${S.c} (${word})`, backgroundColor: opColor(S.c) === OTHER_COLOR ? '#7d2248' : opColor(S.c), data: perDay(get(S.c), ps, S.p)}];
   }
   datasets = datasets.filter(d => d.data.some(v => v)).map(d => ({...d, borderWidth: S.per === 'a' ? 1 : 0, borderColor: '#fff', stack: 's'}));
   const t = trimLead(ps.map(p => p.label), datasets);
-  const net = D.net12.groups, netOf = Object.fromEntries(net);
+  const n = MONTHS.length;
+  const avg12 = fn => { let s = 0, d = 0; for (let i = n - 12; i < n; i++) { s += fn(i); d += daysIn(+MONTHS[i].slice(0, 4), +MONTHS[i].slice(4)); } return s * 1000 / d; };
+  const boeOf = (GG, o) => g => i => { const j = i - o; return j < 0 || !GG[g] ? 0 : pick(GG[g], j, 'boe'); };
+  // Konsern uten egen tidsserie (utenfor de største) har likevel tallet for siste 12 måneder
+  const net12 = Object.fromEntries(D.net12.groups);
+  const eq12 = g => EG[g] ? avg12(boeOf(EG, eoff)(g)) : (net12[g] || 0), op12 = g => avg12(boeOf(OG, ooff)(g));
   const opFields = S.c ? F.filter(f => f.op === S.c && live(f)).sort((a, b) => l12boe(b) - l12boe(a)) : [];
-  const op12 = g => { const n = MONTHS.length; let s = 0, d = 0; for (let i = n - 12; i < n; i++) { s += get(g)(i); d += daysIn(+MONTHS[i].slice(0, 4), +MONTHS[i].slice(4)); } return s * 1000 / d; };
+  const cov = Object.values(D.equity.coverage);
   let table;
   if (!S.c) {
-    const all = [...new Set(net.map(x => x[0]).concat(OPS_ORDER))];
-    const rows = all.map(g => ({g, op: G[g] ? op12(g) : 0, net: netOf[g] || 0})).filter(r => r.op || r.net).sort((a, b) => (b.net || b.op) - (a.net || a.op)).slice(0, 40);
-    table = `<div class="tbl-sec">Companies<small>Average over ${ymTxt(D.net12.window[0])}–${ymTxt(D.net12.window[1])}, boe/day. <b>Operated</b> = all production from fields the company operates; <b>net</b> = the company's share by today's lease ownership</small></div>
-      <div class="table-wrap"><table class="res-table"><thead><tr><th>Company</th><th>Operated (boe/d)</th><th>Net share (boe/d)</th><th>Operated fields</th></tr></thead><tbody>
+    const rows = names.map(g => ({g, eq: eq12(g), op: op12(g)})).filter(r => r.eq >= 50 || r.op >= 50)
+      .sort((a, b) => (eqMode ? b.eq - a.eq || b.op - a.op : b.op - a.op || b.eq - a.eq)).slice(0, 40);
+    table = `<div class="tbl-sec">Companies<small>Average over ${ymTxt(D.net12.window[0])}–${ymTxt(D.net12.window[1])}, oil + gas in boe/day. <b>Equity</b> = the company's share by lease ownership; <b>operated</b> = all production from completions it operates</small></div>
+      <div class="table-wrap"><table class="res-table"><thead><tr><th>Company</th><th>Equity (boe/d)</th><th>Operated (boe/d)</th><th>Equity in fields</th><th>Operated fields</th></tr></thead><tbody>
       ${rows.map(r => `<tr class="click" onclick="set({c:${jsq(r.g)}})"><td><span class="dot" style="background:${opColor(r.g)}"></span><button class="row-link">${esc(r.g)}</button></td>
-        <td>${r.op ? fmt(r.op) : '–'}</td><td>${r.net ? fmt(r.net) : '–'}</td><td>${F.filter(f => f.op === r.g && live(f)).length || '–'}</td></tr>`).join('')}
+        <td>${r.eq >= 1 ? fmt(r.eq) : '–'}</td><td>${r.op >= 1 ? fmt(r.op) : '–'}</td><td>${(D.equityFields[r.g] || []).length || '–'}</td><td>${F.filter(f => f.op === r.g && live(f)).length || '–'}</td></tr>`).join('')}
       </tbody></table></div>`;
   } else {
-    table = `<div class="kpis"><div class="kpi"><span>Operated · last 12 months</span><strong>${G[S.c] ? fmt(op12(S.c)) : '–'}</strong><small>boe/day</small></div>
-      <div class="kpi"><span>Net share · last 12 months</span><strong>${fmt(netOf[S.c])}</strong><small>boe/day, today's lease ownership</small></div>
+    const ef = (D.equityFields[S.c] || []).map(([code, v]) => ({f: fieldBy(code), code, v, share: ((D.fieldEquity[code] || []).find(x => x[0] === S.c) || [])[1]}));
+    table = `<div class="kpis"><div class="kpi"><span>Equity · last 12 months</span><strong>${fmt(eq12(S.c))}</strong><small>boe/day</small></div>
+      <div class="kpi"><span>Operated · last 12 months</span><strong>${op12(S.c) >= 1 ? fmt(op12(S.c)) : '–'}</strong><small>boe/day</small></div>
+      <div class="kpi"><span>Fields with equity</span><strong>${ef.length}</strong><small>producing, last 12 months</small></div>
       <div class="kpi"><span>Producing fields operated</span><strong>${opFields.length}</strong><small>largest operator in the field, last 24 months</small></div></div>
+      ${ef.length ? `<div class="tbl-sec">Equity by field<small>Share of each field's production over the last 12 months that falls to ${esc(S.c)} by lease ownership</small></div>
+      <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Operator</th><th class="l">Water depth</th><th>Share</th><th>Net (boe/d)</th><th>Field total (boe/d)</th></tr></thead><tbody>
+      ${ef.map(({f, code, v, share}) => `<tr${f ? ` class="click" onclick="openSheet('${code}')"` : ''}><td>${f ? `<button class="row-link">${esc(fname(f))}</button>${f.name ? ` <span class="tag">${esc(code)}</span>` : ''}` : esc(code)}</td>
+        <td class="l">${esc(f && f.op || '–')}</td><td class="l">${f ? `<span class="dot" style="background:${DEPTH[f.dc || 'unknown'].color}"></span>${f.wd ? fmt(f.wd) + ' ft' : '–'}` : '–'}</td>
+        <td>${share != null ? fmt(share, 1) + ' %' : '–'}</td><td>${fmt(v)}</td><td>${f ? fmt(l12boe(f)) : '–'}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${opFields.length ? `<div class="tbl-sec">Operated fields</div><div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Water depth</th><th>Oil (bbl/d)</th><th>Gas (MMcf/d)</th><th>Remaining (MMboe)</th></tr></thead><tbody>
-      ${opFields.map(f => `<tr class="click" onclick="openSheet('${f.code}')"><td><button class="row-link">${esc(fname(f))}</button> <span class="tag">${esc(f.code)}</span></td>
+      ${opFields.map(f => `<tr class="click" onclick="openSheet('${f.code}')"><td><button class="row-link">${esc(fname(f))}</button>${f.name ? ` <span class="tag">${esc(f.code)}</span>` : ''}</td>
         <td class="l"><span class="dot" style="background:${DEPTH[f.dc || 'unknown'].color}"></span>${f.wd ? fmt(f.wd) + ' ft' : '–'}</td><td>${fmt(f.l12[0])}</td><td>${fmt(f.l12[1] / 1000, 1)}</td><td>${f.rem ? fmt(f.rem[3]) : '–'}</td></tr>`).join('')}</tbody></table></div>` : ''}
-      ${D.operatorsLegal[S.c] ? `<div class="pf-note">Reporting entities: ${esc(D.operatorsLegal[S.c].join('; '))}.</div>` : ''}`;
+      ${D.operatorsLegal[S.c] ? `<div class="pf-note">Reporting entities as operator: ${esc(D.operatorsLegal[S.c].join('; '))}.</div>` : ''}`;
   }
-  setView(chartCard('cmpChart', S.c ? `${esc(S.c)} · operated production` : 'Operated production by company', `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit} · production from the completions each company operated at the time`, {cls: 'tall'}) +
-    `<div class="info-box"><strong>Operated volumes are historical:</strong> each month's production is credited to the operator that reported it, so past operators keep their history. Companies are grouped by today's parent where the lineage is clear (e.g. Texaco, Unocal, Noble and Hess under Chevron; Amoco under bp; Anadarko under Oxy; Stone, EnVen and QuarterNorth under Talos). <strong>Net share</strong> uses BOEM's current lease ownership for every lease that produced in the last 12 months (${fmt(D.net12.coverage * 100)} % of production covered); leases with depth- or area-split ownership are averaged across the owner groups, so the net figures are approximate.</div>` + table);
+  const info = eqMode
+    ? `<strong>Equity production</strong> is each lease's monthly production multiplied by the ownership shares in force that month, from BOEM's lease ownership records (assignments with their effective dates). It covers ${fmt(Math.min(...cov) * 100, 1)}–${fmt(Math.max(...cov) * 100, 1)} % of production each year since ${D.equity.start.slice(0, 4)}. Leases split by depth or area into several owner groups are averaged across the groups, and unitised production is credited to the lease it is reported on, so field shares can differ somewhat from unit agreements.`
+    : `<strong>Operated volumes</strong> are historical: each month's production is credited to the operator that reported it, so past operators keep their history.`;
+  setView(chartCard('cmpChart', S.c ? `${esc(S.c)} · ${word} production` : `${eqMode ? 'Equity' : 'Operated'} production by company`,
+      `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit} · ${eqMode ? 'share by lease ownership at the time' : 'production from the completions each company operated at the time'}`, {cls: 'tall'}) +
+    `<div class="info-box">${info} Companies are grouped by today's parent where the lineage is clear (e.g. Texaco, Unocal, Noble and Hess under Chevron; Amoco under bp; Anadarko under Oxy; Stone, EnVen and QuarterNorth under Talos); other owners keep their registered name.</div>` + table);
   barChart('cmpChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: S.p === 'gas' ? 1 : 0, noAnim: t.labels.length > 300});
 }
 
@@ -770,14 +795,15 @@ async function openSheet(code, quiet) {
       <div class="pill-group" style="margin-bottom:8px">${[['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']].map(([v, t]) => `<button class="pill-btn${S.sp === v ? ' active' : ''}" onclick="S.sp='${v}';writeUrl();openSheet('${code}',true)">${t}</button>`).join('')}</div>
       ${P.fields[code] ? `<div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div>` : '<div class="pf-note">No production since 1990 in the field series.</div>'}</div>
     <div class="pf-card"><h3>Reserves <small>· BOEM estimate per 31 Dec ${D.reserves.year}</small></h3>
-      ${f.orig ? `<div class="bar-track"><span style="width:${Math.min(100, share * 100)}%;background:${PRODUCED_COLOR}"></span><span style="flex:1;background:${REMAINING_COLOR}"></span></div>
-      <div class="legend-row" style="border:0;margin:6px 0 8px;padding:0"><div class="legend-item"><div class="legend-dot" style="background:${PRODUCED_COLOR}"></div>Produced ${fmt(f.cumR, 1)} MMboe (${fmt(share * 100)} %)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:${REMAINING_COLOR}"></div>Remaining ${fmt(remArr[3], 1)} MMboe</div></div>` : ''}
+      ${f.orig ? `<div class="bar-track"><span style="width:${Math.max(0, 100 - share * 100)}%;background:${REMAINING_COLOR}"></span><span style="flex:1;background:${PRODUCED_COLOR}"></span></div>
+      <div class="legend-row" style="border:0;margin:6px 0 8px;padding:0"><div class="legend-item"><div class="legend-dot" style="background:${REMAINING_COLOR}"></div>Remaining ${fmt(remArr[3], 1)} MMboe</div>
+      <div class="legend-item"><div class="legend-dot" style="background:${PRODUCED_COLOR}"></div>Produced ${fmt(f.cumR, 1)} MMboe (${fmt(share * 100)} %)</div></div>` : ''}
       ${resRows}
-      ${P.resHist[code] ? `<div class="tbl-sec" style="margin-top:12px">Estimate over time<small>Produced and remaining reserves as BOEM estimated them each year; the total is that year's estimate of ultimate recovery</small></div>
+      ${P.resHist[code] ? `<div class="tbl-sec" style="margin-top:12px">Estimate over time<small>Remaining reserves (bottom) and produced (top) as BOEM estimated them each year; the total is that year's estimate of ultimate recovery</small></div>
         <div class="chart-container short"><canvas id="sheetRes"></canvas></div><div id="sheetResLeg"></div>
         ${P.resHist[code][1].some(v => v == null) ? `<div class="pf-note">Empty years: BOEM published no field-by-field estimates for them (the 2020–2023 report covers the period as one).</div>` : ''}` : ''}
       <div class="pf-note">BOEM's table labels the columns P10, P50 and P90; P10 is the lowest. Mean is used elsewhere on this page.</div></div>
+    ${eqHtml(code)}
     <div class="pf-card"><h3>Map <small>· the field, platforms and wells drilled since 2015</small></h3><div class="map-box map-small" id="sheetMap"></div></div>
     ${plats.length ? `<div class="pf-card"><h3>Standing platforms <small>· ${plats.length}</small></h3><div class="table-wrap"><table class="res-table"><thead><tr><th>Name</th><th class="l">Block</th><th class="l">Type</th><th>Installed</th><th>Water depth (ft)</th><th class="l">Operator</th></tr></thead><tbody>
       ${plats.map(p => `<tr><td>${esc(p[1])}</td><td class="l">${esc(p[2])}</td><td class="l">${esc(p[5] || '–')}</td><td>${p[4] || '–'}</td><td>${fmt(p[3])}</td><td class="l">${esc(p[7] || '–')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
@@ -796,8 +822,8 @@ async function openSheet(code, quiet) {
   if (h) {
     const ys = h[1].map((_, i) => h[0] + i);
     barChart('sheetRes', ys, [
-      {label: 'Produced', data: h[2], backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'},
       {label: 'Remaining reserves', data: h[3], backgroundColor: REMAINING_COLOR, borderWidth: 1, borderColor: '#fff'},
+      {label: 'Produced', data: h[2], backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'},
     ], 'MMboe', {ticks: 20, dec: 1});
   }
   const el = document.getElementById('sheetMap');
@@ -807,6 +833,29 @@ async function openSheet(code, quiet) {
     drawMap(el, {extent: EXTENT, fit: [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad],
       wells: 'field:' + code, noClick: true, labels: 0, only: code});
   } else if (el) el.innerHTML = '<div class="status">No location</div>';
+}
+// Egenandeler i feltet: konsernenes del av feltets produksjon siste 12 måneder
+// etter lease-eierskapet (D.fieldEquity)
+function eqHtml(code) {
+  const eq = D.fieldEquity[code];
+  if (!eq || !eq.length) return '';
+  const col = (g, i) => opColor(g) !== OTHER_COLOR ? opColor(g) : ['#7d2248', '#6b7a8f', '#b9c0c9', '#8a96a6'][i % 4];
+  return `<div class="pf-card"><h3>Equity holders <small>· share of the field's production, last 12 months</small></h3><div class="pf-own">${pieSvg(eq.map(([g, p], i) => ({v: p, color: col(g, i)})))}
+    <div class="pf-own-list">${eq.map(([g, p], i) => `<div class="pf-own-row"><span class="pf-own-dot" style="background:${col(g, i)}"></span>
+      <span class="pf-own-name"><button class="row-link" onclick="closeSheet();set({v:'company',c:${jsq(g)}})">${esc(g)}</button>${g === fieldBy(code).op ? '<span class="pf-op-tag">Operator</span>' : ''}</span><span class="pf-own-pct">${fmt(p, 1)} %</span></div>`).join('')}</div></div>
+    <div class="pf-note">From BOEM's lease ownership records, weighted by each lease's production in the field. Where leases are unitised, the unit agreement's tract shares may differ.</div></div>`;
+}
+function pieSvg(parts) {
+  const tot = parts.reduce((t, p) => t + p.v, 0);
+  let a = -Math.PI / 2;
+  if (parts.length === 1) return `<svg class="pf-pie" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="${parts[0].color}"/><circle cx="50" cy="50" r="26" fill="#fff"/></svg>`;
+  const segs = parts.map(p => {
+    const a2 = a + p.v / tot * Math.PI * 2, large = a2 - a > Math.PI ? 1 : 0;
+    const d = `M50,50 L${50 + 48 * Math.cos(a)},${50 + 48 * Math.sin(a)} A48,48 0 ${large} 1 ${50 + 48 * Math.cos(a2)},${50 + 48 * Math.sin(a2)} Z`;
+    a = a2;
+    return `<path d="${d}" fill="${p.color}" stroke="#fff" stroke-width="1"/>`;
+  });
+  return `<svg class="pf-pie" viewBox="0 0 100 100">${segs.join('')}<circle cx="50" cy="50" r="26" fill="#fff"/></svg>`;
 }
 // Plattformene i feltet: samme feltkode, eller (dypvann) plattformnavnet er en
 // del av feltets kallenavn — Atlantis-plattformen står på en annen feltkode
@@ -835,6 +884,9 @@ async function init() {
   // Konsernene i fast rekkefølge etter opererte volumer siste 12 måneder
   const G = D.operators.groups, off = MONTHS.indexOf(D.operators.start), n = MONTHS.length;
   OPS_ORDER = Object.keys(G).map(g => [g, [...Array(12)].reduce((t, _, k) => t + pick(G[g], n - 12 + k - off, 'boe'), 0)])
+    .sort((a, b) => b[1] - a[1]).map(x => x[0]);
+  const EG = D.equity.groups, eoff = MONTHS.indexOf(D.equity.start);
+  EQ_ORDER = Object.keys(EG).map(g => [g, [...Array(12)].reduce((t, _, k) => t + pick(EG[g], n - 12 + k - eoff, 'boe'), 0)])
     .sort((a, b) => b[1] - a[1]).map(x => x[0]);
   document.getElementById('sourceNote').innerHTML = `Source: <a href="https://www.data.boem.gov/" target="_blank" rel="noopener">Bureau of Ocean Energy Management (BOEM) Data Center</a> — OGOR-A production, reserve estimates (31 Dec ${D.reserves.year}), boreholes, platforms and lease ownership, Gulf of America OCS Region. Production through ${ymTxt(lastYM())}; fetched ${esc(D.fetched.slice(0, 10))}.`;
   render();

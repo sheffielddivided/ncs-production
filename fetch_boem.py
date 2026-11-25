@@ -209,7 +209,10 @@ def group_of(name):
                ' ', n, flags=re.I)
     n = re.sub(r'[,.]', ' ', n)
     n = re.sub(r'\s+', ' ', n).strip()
-    return n.title() if n else (name or '').strip().title()
+    n = n.title() if n else (name or '').strip().title()
+    # Romertall og forkortelser som .title() ødelegger
+    n = re.sub(r'\b(Ii|Iii|Iv|Vi|Vii)\b', lambda m: m.group(1).upper(), n)
+    return re.sub(r'\b(Gom|Ecp|Heq|Tep|Ogog|Me)\b', lambda m: {'Gom': 'GoM'}.get(m.group(1), m.group(1).upper()), n)
 
 
 # ---------------------------------------------------------------- produksjon
@@ -251,6 +254,7 @@ def read_ogor(store):
             keys = [('F', f), ('O', op), ('L', lease)]
             if int(y) >= RECENT_FROM:
                 keys.append(('X', f + '\t' + op))     # felt × operatør, til feltoperatøren
+                keys.append(('Y', lease + '\t' + f))  # lease × felt, til egenandel per felt
             for key in keys:
                 a = agg[y][(key[0], key[1], ym)]
                 a[0] += o
@@ -267,13 +271,14 @@ def read_ogor(store):
     opr = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     lease = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     fxo = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
+    ylf = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     tot = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     rows = 0
     for y, rel in sorted(best.items()):
         cnt, agg = per_file[rel]
         rows += cnt[y]
         for (kind, key, ym), v in agg[y].items():
-            tgt = {'F': fld, 'O': opr, 'L': lease, 'X': fxo}[kind]
+            tgt = {'F': fld, 'O': opr, 'L': lease, 'X': fxo, 'Y': ylf}[kind]
             a = tgt[(key, ym)]
             for k in range(3):
                 a[k] += v[k]
@@ -288,7 +293,7 @@ def read_ogor(store):
     if missing:
         raise DataError(f'production years missing: {missing}')
     print(f'  {rows:,} rows, {years[0]}–{years[-1]}')
-    return fld, opr, lease, fxo, tot, opname
+    return fld, opr, lease, fxo, ylf, tot, opname
 
 
 def ym_add(ym, n):
@@ -462,6 +467,79 @@ def read_wells(store, names):
 
 # ---------------------------------------------------------------- innretninger
 
+def read_owners(store):
+    """Eierhistorikk per lease: {lease: {eiergruppe: [(fra YYYYMM, {selskap: andel 0–1}), …]}}.
+
+    Sluttdatoen er tom i filen, så en eierfordeling gjelder fra virknings-
+    datoen til neste. En overdragelse består av rader med fortløpende
+    løpenummer som til sammen gir 100 %; flere overdragelser kan ha samme
+    virkningsdato, og da gjelder den siste. Eiergruppen skiller dybde- eller
+    arealdelte rettigheter i samme lease."""
+    rows = collections.defaultdict(list)
+    current = collections.defaultdict(dict)
+    for r in zip_csv(store.path('Leasing/Files/lseowndelimit.zip')):
+        if len(r) < 11:
+            continue
+        try:
+            rid, pct = int(r[1]), float(r[9] or 0)
+        except ValueError:
+            continue
+        eff = (r[10].strip() or r[2].strip())[:6]
+        if len(eff) != 6:
+            continue
+        key = (r[5].strip(), r[8].strip())
+        rows[key].append((rid, eff, r[4].strip(), pct))
+        if r[6].strip() == 'C':
+            current[key][r[4].strip()] = current[key].get(r[4].strip(), 0) + pct
+    out = collections.defaultdict(dict)
+    agree = 0
+    for key, rs in rows.items():
+        rs.sort()
+        snaps, cur, cum, eff = [], {}, 0.0, ''
+        for rid, e, comp, pct in rs:
+            cur[comp] = cur.get(comp, 0) + pct
+            cum += pct
+            eff = max(eff, e)
+            if cum >= 99.5:
+                snaps.append((eff, cur))
+                cur, cum, eff = {}, 0.0, ''
+        if cur:
+            snaps.append((eff, cur))
+        tl = {}
+        for e, sh in snaps:
+            tot = sum(sh.values()) or 1
+            tl[e] = {c: v / tot for c, v in sh.items()}        # siste med samme dato vinner
+        tl = sorted(tl.items())
+        out[key[0]][key[1]] = tl
+        if key in current:
+            c = current[key]
+            t = sum(c.values()) or 1
+            last = tl[-1][1]
+            if all(abs(last.get(k, 0) - v / t) < 0.01 for k, v in c.items()):
+                agree += 1
+    print(f'  {len(out)} leases; latest ownership matches BOEM\'s current owners for {agree}/{len(current)} lease groups')
+    if current and agree < 0.9 * len(current):
+        raise DataError('ownership history does not reproduce the current owners')
+    return out
+
+
+def shares_at(timeline, ym):
+    """Andeler per selskap for en lease i måneden ym: snitt over eiergruppene
+    som har en eierfordeling da. None hvis ingen."""
+    import bisect
+    res, n = collections.defaultdict(float), 0
+    for gc, tl in timeline.items():
+        i = bisect.bisect_right([e for e, _ in tl], ym) - 1
+        if i < 0:
+            continue
+        n += 1
+        for c, v in tl[i][1].items():
+            res[c] += v
+    if not n:
+        return None
+    return {c: v / n for c, v in res.items()}
+
+
 def fixed(line, start, length):
     return line[start - 1:start - 1 + length].strip()
 
@@ -539,7 +617,7 @@ def main():
         print(f'  {len(names)} companies')
 
         print('Production (OGOR-A)')
-        fld, opr, lease, fxo, tot, opname = read_ogor(store)
+        fld, opr, lease, fxo, ylf, tot, opname = read_ogor(store)
         names.update({k: v for k, v in opname.items() if k not in names})
         first, last = last_complete(tot)
         months = ym_range(first, last)
@@ -558,13 +636,7 @@ def main():
         print(f'  {len(plats)} standing complexes')
 
         print('Lease owners')
-        owners = collections.defaultdict(lambda: collections.defaultdict(float))
-        for r in zip_csv(store.path('Leasing/Files/lseowndelimit.zip')):
-            if len(r) >= 10 and r[6].strip() in ('C', ''):
-                try:
-                    owners[r[5].strip()][(r[8].strip(), r[4].strip())] += float(r[9] or 0)
-                except ValueError:
-                    pass
+        owners = read_owners(store)
     except DataError as e:
         print(f'ERROR: {e}', file=sys.stderr)
         return 1
@@ -693,29 +765,67 @@ def main():
         fo['op'] = group_of(op) if op else None
         fo['opLegal'] = op
 
-    # ---- netto produksjon siste 12 måneder etter dagens eiere per lease
-    net = collections.Counter()
-    covered = 0.0
-    total12 = 0.0
+    # ---- egenandel (equity): produksjon per lease og måned × eierandelene
+    # som gjaldt den måneden, summert per konsern
+    eq = collections.defaultdict(lambda: [[0.0] * len(months), [0.0] * len(months)])
+    cov_y = collections.defaultdict(lambda: [0.0, 0.0])
+    gname = {}
     for (ls, ym), v in lease.items():
-        if ym not in win12:
+        i = idx.get(ym)
+        if i is None:
             continue
-        boe = v[0] + v[1] / MCF_PER_BOE
-        total12 += boe
-        own = owners.get(ls)
-        if not own:
+        b = v[0] + v[1] / MCF_PER_BOE
+        cov_y[ym[:4]][1] += b
+        tl = owners.get(ls)
+        sh = shares_at(tl, ym) if tl else None
+        if not sh:
             continue
-        groups = collections.defaultdict(dict)
-        for (gc, comp), pct in own.items():
-            groups[gc][comp] = pct
-        # Flere eiergrupper (dybde- eller arealdelte rettigheter): snitt av gruppene
-        ng = len(groups)
-        for gc, comps in groups.items():
-            s = sum(comps.values()) or 1
-            for comp, pct in comps.items():
-                net[group_of(names.get(comp, comp))] += boe * pct / s / ng
-        covered += boe
-    net_out = [[g, round(v / days12)] for g, v in net.most_common() if v / days12 >= 50]
+        cov_y[ym[:4]][0] += b
+        for comp, frac in sh.items():
+            g = gname.get(comp) or gname.setdefault(comp, group_of(names.get(comp, comp)))
+            a = eq[g]
+            a[0][i] += v[0] * frac
+            a[1][i] += v[1] * frac
+    eq12 = collections.Counter()
+    eqpeak = collections.Counter()
+    for g, (o, ga) in eq.items():
+        eq12[g] = sum(o[idx[m]] + ga[idx[m]] / MCF_PER_BOE for m in win12)
+        for y in range(OPS_FROM, int(last[:4]) + 1):
+            eqpeak[g] = max(eqpeak[g], sum(o[i] + ga[i] / MCF_PER_BOE for m, i in idx.items() if m.startswith(str(y))))
+    eq_keep = {g for g, _ in eq12.most_common(20)} | {g for g, _ in eqpeak.most_common(25)}
+    equity = {'start': months[o0], 'groups': {g: [[r1(x) for x in s[o0:]] for s in eq[g]] for g in eq_keep},
+              'coverage': {y: round(c / t, 3) for y, (c, t) in sorted(cov_y.items()) if t and int(y) >= OPS_FROM}}
+    net_out = [[g, round(v / days12)] for g, v in eq12.most_common() if v / days12 >= 50]
+    cov12 = sum(cov_y[y][0] for y in {m[:4] for m in win12}) / max(1, sum(cov_y[y][1] for y in {m[:4] for m in win12}))
+    print(f'  equity: ownership covers {cov12:.1%} of production in the last 12 months')
+    if cov12 < 0.9:
+        print('ERROR: lease ownership covers too little of recent production', file=sys.stderr)
+        return 1
+    # Egenandel per felt for hvert konsern, siste 12 måneder
+    eqf = collections.defaultdict(collections.Counter)
+    w12 = set(win12)
+    for (key, ym), v in ylf.items():
+        if ym not in w12:
+            continue
+        ls, f = key.split('\t')
+        tl = owners.get(ls)
+        sh = shares_at(tl, ym) if tl else None
+        if not sh or not f or f == 'WILD':
+            continue
+        b = v[0] + v[1] / MCF_PER_BOE
+        for comp, frac in sh.items():
+            eqf[gname.get(comp) or group_of(names.get(comp, comp))][f] += b * frac
+    equity_fields = {g: [[f, round(v / days12)] for f, v in c.most_common(40) if v / days12 >= 10]
+                     for g, c in eqf.items() if sum(c.values()) / days12 >= 50}
+    # Egenandeler per felt i dag (snitt over feltets leaser vektet med produksjon siste 12 mnd)
+    fshare = collections.defaultdict(collections.Counter)
+    ftot = collections.Counter()
+    for g, c in eqf.items():
+        for f, v in c.items():
+            fshare[f][g] += v
+            ftot[f] += v
+    field_eq = {f: [[g, round(v / ftot[f] * 100, 1)] for g, v in c.most_common() if v / ftot[f] >= 0.005]
+                for f, c in fshare.items() if ftot[f] > 0}
 
     fetched = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
     # Feltene som rader (kolonnene i FIELD_COLS) for å holde filen liten
@@ -731,7 +841,10 @@ def main():
         'byDepth': by_depth,
         'operators': ops,
         'operatorsLegal': {g: [n for n, _ in legal[g].most_common(4)] for g in keep},
-        'net12': {'window': [win12[0], win12[-1]], 'coverage': round(covered / max(total12, 1), 3), 'groups': net_out},
+        'net12': {'window': [win12[0], win12[-1]], 'coverage': round(cov12, 3), 'groups': net_out},
+        'equity': equity,
+        'equityFields': equity_fields,
+        'fieldEquity': field_eq,
         'fieldCols': FIELD_COLS,
         'fields': fields_rows,
         'reserves': {'year': res['year'], 'area': res['area']},
