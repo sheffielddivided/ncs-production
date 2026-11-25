@@ -8,6 +8,42 @@
  "items": [
   {
    "k": "result",
+   "t": "Dry well in the North Sea (36/7-6 S)",
+   "u": "https://www.sodir.no/en/whats-new/news/exploration-drilling-results/2026/dry-well-in-the-north-sea-367-6-s/",
+   "d": "2026-11-25",
+   "s": "Vår Energi and its partners have drilled a dry well on the \"Sava\" prospect.",
+   "wells": [
+    "36/7-6 S"
+   ],
+   "cmp": [
+    "Vår Energi ASA"
+   ]
+  },
+  {
+   "k": "permit",
+   "t": "Drilling permit for wellbore 35/10-17 S",
+   "u": "https://www.sodir.no/en/whats-new/news/drilling-permits/2026/drilling-permit-for-wellbore-3510-17-s/",
+   "d": "2026-11-25",
+   "s": "The Norwegian Offshore Directorate has granted Energi ASA drilling permit for wellbore 35/10-17 S in production licence 1105 S.",
+   "wells": [
+    "35/10-17 S"
+   ]
+  },
+  {
+   "k": "permit",
+   "t": "Drilling permit for wellbore 31/4-13 S",
+   "u": "https://www.sodir.no/en/whats-new/news/drilling-permits/2026/drilling-permit-for-wellbore-314-13-s/",
+   "d": "2026-11-25",
+   "s": "The Norwegian Offshore Directorate has granted Equinor Energy AS drilling permit for wellbore 31/4-13 S in production licence 1102 C.",
+   "wells": [
+    "31/4-13 S"
+   ],
+   "cmp": [
+    "Equinor Energy AS"
+   ]
+  },
+  {
+   "k": "result",
    "t": "Dry well in the North Sea (25/8-24 S)",
    "u": "https://www.sodir.no/en/whats-new/news/exploration-drilling-results/2026/dry-well-in-the-north-sea-258-24-s/",
    "d": "2026-11-03",
