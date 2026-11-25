@@ -609,7 +609,7 @@ function viewResources() {
     return rs.length ? rs.reduce((t, r) => t + vol(r, k, null, k === 'gas'), 0) : null; };
   const cell = (r, k) => fmt(vol(r, k, null, k === 'gas'), bbl ? 0 : 1);
   setView(M.projects.map(projectCard).join('') + `<div class="grid2">` +
-    chartCard('eurChart', 'Producing fields: oil produced and remaining', `Proved + probable (2P) · ${ou} · per ${esc(dateTxt(fl[0].reserves.asOf))}`, {cls: 'short'}) +
+    chartCard('eurChart', 'Producing fields: remaining and produced oil', `Proved + probable (2P) · ${ou} · per ${esc(dateTxt(fl[0].reserves.asOf))}`, {cls: 'short'}) +
     chartCard('contChart', `Contingent ${S.rp} resources (2C)`, `Discovered, not yet approved for development · ${S.rp === 'oil' ? ou : gu}`, {h: Math.max(220, cont.length * 19 + 50)}) +
     `</div>
     <div class="tbl-sec">Contingent resources (2C)<small>Best estimate (50 % probability) of technically recoverable volumes in discoveries and in undeveloped parts of the producing fields. C-NLOER, updated ${esc(dateTxt(R.updated))}</small></div>
@@ -624,8 +624,8 @@ function viewResources() {
     </tbody></table></div>
     <div class="info-box">EUR (estimated ultimate recovery) = produced + remaining reserves. Fields are oil fields; their gas is reinjected and counted as a contingent resource, since there is no export solution. A dash means no volume is given. Bay du Nord (Equinor) in the Flemish Pass is the largest undeveloped oil discovery; Labrador Shelf holds only gas discoveries, all from the 1970s and 1980s.</div>`);
   barChart('eurChart', fl.map(f => f.name), [
-    {label: 'Produced', data: fl.map(f => vol(f.reserves.total, 'cum')), backgroundColor: PRODUCED_COLOR, borderWidth: 0},
     {label: 'Remaining (2P)', data: fl.map(f => vol(f.reserves.total, 'rem', 1)), backgroundColor: REMAINING_COLOR, borderWidth: 0},
+    {label: 'Produced', data: fl.map(f => vol(f.reserves.total, 'cum')), backgroundColor: PRODUCED_COLOR, borderWidth: 0},
   ], ou, {horizontal: true, onClick: i => openSheet(fl[i].id)});
   barChart('contChart', cont.map(r => r.name), [{label: `2C ${S.rp}`,
     data: cont.map(r => vol(r, S.rp, null, S.rp === 'gas')),
@@ -984,9 +984,9 @@ function openSheet(id, quiet) {
       </tbody></table></div>
       <div class="pf-note">${rp.note ? esc(rp.note) + ' ' : ''}Source: ${srcLink(M.reservoirProps.source)}. Fixed geological properties; the sheet's production and reserve figures are not used (C-NLOER's are newer).</div></div>` : ''}
     <div class="pf-card"><h3>Oil reserves <small>· ${vu}, per ${esc(dateTxt(r.asOf))}</small></h3>
-      <div class="bar-track" title="Produced ${fmt(prodShare * 100)} % of 2P EUR"><span style="width:${prodShare * 100}%;background:${PRODUCED_COLOR}"></span><span style="flex:1;background:${REMAINING_COLOR}"></span></div>
-      <div class="legend-row" style="border:0;margin:6px 0 8px;padding:0"><div class="legend-item"><div class="legend-dot" style="background:${PRODUCED_COLOR}"></div>Produced ${fmt(vol(tot, 'cum'), d1)}</div>
-        <div class="legend-item"><div class="legend-dot" style="background:${REMAINING_COLOR}"></div>Remaining 2P ${fmt(vol(tot, 'rem', 1), d1)}</div></div>
+      <div class="bar-track" title="Produced ${fmt(prodShare * 100)} % of 2P EUR"><span style="width:${Math.max(0, 100 - prodShare * 100)}%;background:${REMAINING_COLOR}"></span><span style="flex:1;background:${PRODUCED_COLOR}"></span></div>
+      <div class="legend-row" style="border:0;margin:6px 0 8px;padding:0"><div class="legend-item"><div class="legend-dot" style="background:${REMAINING_COLOR}"></div>Remaining 2P ${fmt(vol(tot, 'rem', 1), d1)}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:${PRODUCED_COLOR}"></div>Produced ${fmt(vol(tot, 'cum'), d1)}</div></div>
       ${resTable}${contTable}
       <div class="pf-note">C-NLOER field resource estimate, updated ${esc(dateTxt(r.updated))}. 1P = proved, 2P = proved + probable, 3P = proved + probable + possible.</div></div>
     ${eq.length ? `<div class="pf-card"><h3>Interest holders <small>· ${esc(f.equityLicence)}, today</small></h3><div class="pf-own">${pie}

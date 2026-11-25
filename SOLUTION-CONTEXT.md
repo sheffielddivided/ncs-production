@@ -1124,10 +1124,21 @@ Bygges av `fetch_boem.py` (workflow `update-boem.yml`, lørdag 06:17 UTC, med
   Arco og Stanolind → bp; Anadarko og Kerr-McGee → Oxy; Stone, EnVen, ILX og
   QuarterNorth → Talos; BOE Exploration → Beacon; MP Gulf of Mexico og Odeco
   → Murphy). Resten får navnet uten selskapsform.
+- **Egenandel (equity), standard i Company:** produksjon per lease og måned ×
+  eierandelene som gjaldt den måneden (`read_owners`, `shares_at`). Lease
+  Owner-filen har ingen sluttdato; en eierfordeling gjelder fra virknings-
+  datoen til neste. Rader med fortløpende løpenummer som summerer til 100 %
+  er én overdragelse; ved flere med samme dato vinner den siste. Kontroll:
+  siste eierfordeling skal gjenskape BOEMs gjeldende eiere (status C) for
+  minst 90 % av lease-gruppene (i dag 1 816 av 1 853), og eierskapet skal
+  dekke minst 90 % av produksjonen siste 12 måneder (99,8 %; 98–99,9 % hvert
+  år fra 1985). Leaser med flere eiergrupper (dybde- eller arealdelt) får
+  snitt av gruppene; unitisert produksjon krediteres leasen den rapporteres
+  på. `equity` (serier per konsern fra 1985), `equityFields` (egenandel per
+  felt per konsern siste 12 mnd, fra lease×felt-aggregatet) og `fieldEquity`
+  (konsernenes andel av hvert felt, til eierkaken i faktaarket).
 - **Opererte volumer** er historiske: hver måned krediteres operatøren som
-  rapporterte den. **Netto** gjelder bare siste 12 måneder: produksjon per
-  lease × dagens eierandeler; leaser med flere eiergrupper (dybde- eller
-  arealdelt) får snitt av gruppene.
+  rapporterte den. Valgfritt grunnlag i Company («Operated»).
 - **Operatør per felt:** konsernet med mest opererte volumer i feltet de
   siste 24 månedene.
 - **Kontroller** (exit 1): minst 1 mill. produksjonsrader, ingen manglende år,
@@ -1145,13 +1156,13 @@ Bygges av `fetch_boem.py` (workflow `update-boem.yml`, lørdag 06:17 UTC, med
 Frontend (`gom.html`): Production (vanndyp/felt/total; olje, gass, boe,
 vann; måned/år; fra 1947/1990/2010/5 år; fat eller m³), Fields (rangering og
 søkbar tabell), Reserves (område per år, største gjenværende, per vanndyp),
-Company (opererte volumer per konsern, netto, opererte felt), Drilling
+Company (egenandel eller opererte volumer per konsern over tid, egenandel per felt og opererte felt for ett konsern), Drilling
 (brønner per år etter type og vanndyp, liste fra 2015) og Map (felt som
 sirkler etter produksjon, navngitte dypvannsinnretninger, brønner). Faktaark
 med fakta, produksjon, reserver P10–snitt, reservehistorikk, kart,
 innretninger (feltkode eller navn: Atlantis-plattformen står på en annen
 feltkode) og brønner. Lenkeparametre: `v`, `g`, `p`, `per`, `u`, `from`, `rk`,
-`dc`, `q`, `c`, `rp`, `wt`, `wd`, `dy`, `mw`, `fs`, `sp`.
+`dc`, `q`, `c`, `b` (eq/op), `rp`, `wt`, `wd`, `dy`, `mw`, `fs`, `sp`.
 
 ### `data/meta.json`
 
