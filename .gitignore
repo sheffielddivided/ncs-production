@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 .venv/
 counter/public/_lib/config.php
+.boem-cache/

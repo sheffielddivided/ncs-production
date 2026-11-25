@@ -1096,6 +1096,63 @@ faste per formasjon (`RES_COLORS`). Lenkeparametre: `v` (fane), `g`, `f`, `p`,
 `per`, `u`, `rk`, `rp`, `c`, `wc`, `rg`, `dy`, `mw`, `mx`, `fs` (felt i faktaarket),
 `sp`.
 
+### `data/gom.json`, `data/gom_prod.json`, `data/gom_wells.json`, `data/gom_coast.json` — US Gulf of Mexico (`gom.html`)
+
+Egen side som `canada.html`, med samme stil og hjelpefunksjoner (skjult lenke
+`modeBtnGom` i menyen, `noindex`). Bare føderalt område (BOEM «Gulf of
+America OCS Region»); delstatsfarvann nær land er ikke med.
+
+Bygges av `fetch_boem.py` (workflow `update-boem.yml`, lørdag 06:17 UTC, med
+`actions/cache` for nedlastingene):
+
+| Kilde (data.boem.gov) | Brukes til |
+|---|---|
+| OGOR-A (`/Main/OGOR-A.aspx`, én zip per år, eldre år samlet; inneværende år i `ogoradelimit.zip`) | Produksjon per komplettering summert per felt, operatør, lease, felt×operatør (siste år) og totalt |
+| Field & Reserves → «Estimated Oil and Gas Reserves, December 31, YYYY» (siste utgave finnes fra lenkene) | Table 4 (felt: kallenavn, funnår, vanndyp, type, opprinnelige og gjenværende reserver P10/P50/P90/snitt, akkumulert), Table 9 (hele området per år), reservehistorikk per felt og år |
+| Borehole (`5010delimit.zip`) | Brønntall per år/type/vanndyp, brønnliste fra 2015, feltposisjon (median bunnposisjon) |
+| Platform masters/structures/locations (fixed width) | Stående innretninger med navn, type, vanndyp, installasjonsår, felt og posisjon |
+| Company (All), Lease Owner (`lseowndelimit.zip`) | Selskapsnavn; dagens eierandeler per lease (status C) |
+
+- **Siste måned:** operatørene rapporterer sent. Måneder på slutten med under
+  85 % av medianen for de seks foregående kuttes (`last_complete`).
+- **Et år i flere filer** telles bare fra filen med flest rader for året.
+- **Vanndyp:** BOEMs klasser — sokkel < 1 000 fot, dypvann 1 000–4 999,
+  ultradypvann ≥ 5 000 — fra feltets vanndyp i Table 4. Felt uten reservepost
+  havner i «Depth not given».
+- **Konsern** (`GROUPS`): juridiske navn samles under dagens morselskap der
+  linjen er klar (Texaco, Unocal, Noble/Samedan og Hess → Chevron; Amoco,
+  Arco og Stanolind → bp; Anadarko og Kerr-McGee → Oxy; Stone, EnVen, ILX og
+  QuarterNorth → Talos; BOE Exploration → Beacon; MP Gulf of Mexico og Odeco
+  → Murphy). Resten får navnet uten selskapsform.
+- **Opererte volumer** er historiske: hver måned krediteres operatøren som
+  rapporterte den. **Netto** gjelder bare siste 12 måneder: produksjon per
+  lease × dagens eierandeler; leaser med flere eiergrupper (dybde- eller
+  arealdelt) får snitt av gruppene.
+- **Operatør per felt:** konsernet med mest opererte volumer i feltet de
+  siste 24 månedene.
+- **Kontroller** (exit 1): minst 1 mill. produksjonsrader, ingen manglende år,
+  rimelig oljeproduksjon siste hele år, og akkumulert produksjon per felt
+  fra OGOR-A til og med reserveåret innenfor 3 % av BOEMs tall for minst 90 %
+  av feltene over 50 MMboe (i dag 290 av 293). Felt-koden `WILD` (wildcat)
+  er ikke et felt og utelates.
+- **Filstørrelse:** feltseriene starter i 1990 (totalen i 1947), avsluttede
+  felt lagres årlig, tall over 100 som heltall (`cn`). `gom_prod.json` og
+  `gom_wells.json` lastes først ved behov.
+- **Reservetabellen** kaller kolonnene P10/P50/P90 der P10 er lavest; siden sier
+  det og bruker snitt (mean) ellers. BOEM publiserte ingen feltestimater for
+  2020–2022.
+
+Frontend (`gom.html`): Production (vanndyp/felt/total; olje, gass, boe,
+vann; måned/år; fra 1947/1990/2010/5 år; fat eller m³), Fields (rangering og
+søkbar tabell), Reserves (område per år, største gjenværende, per vanndyp),
+Company (opererte volumer per konsern, netto, opererte felt), Drilling
+(brønner per år etter type og vanndyp, liste fra 2015) og Map (felt som
+sirkler etter produksjon, navngitte dypvannsinnretninger, brønner). Faktaark
+med fakta, produksjon, reserver P10–snitt, reservehistorikk, kart,
+innretninger (feltkode eller navn: Atlantis-plattformen står på en annen
+feltkode) og brønner. Lenkeparametre: `v`, `g`, `p`, `per`, `u`, `from`, `rk`,
+`dc`, `q`, `c`, `rp`, `wt`, `wd`, `dy`, `mw`, `fs`, `sp`.
+
 ### `data/meta.json`
 
 ```json
