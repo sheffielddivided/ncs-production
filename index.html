@@ -135,6 +135,10 @@
     .hm-ttrack{flex:1;height:8px;background:#f3f3f3;border-radius:4px;overflow:hidden;}
     .hm-ttrack span{display:block;height:100%;background:var(--blue);border-radius:4px;}
     .hm-tval{flex:0 0 74px;text-align:right;font-variant-numeric:tabular-nums;color:#4a5568;font-size:0.72rem;}
+    /* Lenke til oppdateringsloggen (updates.html) nederst på forsiden */
+    .hm-foot{text-align:center;margin:18px 0 6px;font-size:0.76rem;}
+    .hm-foot a{color:var(--muted);text-decoration:underline;text-decoration-color:var(--blue);text-underline-offset:2px;}
+    .hm-foot a:hover{color:var(--blue);}
     .hm-sec-h{font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin:18px 2px 8px;}
     .hm-secs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
     .hm-sec{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:14px 14px 12px;
@@ -2966,7 +2970,8 @@ function renderHome() {
         <h4>${label}</h4><p>${text}</p></button>`).join('')}</div>
     ${news.length ? `<div class="hm-sec-h">Latest from Sodir</div>
       <div class="pf-card">${news.map(n => `<a class="hm-news" href="${esc(n.link)}" target="_blank" rel="noopener">
-        <strong>${esc(n.title)}</strong><span>${esc(n.date || '')}${n.description ? ' · ' + esc(n.description) : ''}</span></a>`).join('')}</div>` : ''}`;
+        <strong>${esc(n.title)}</strong><span>${esc(n.date || '')}${n.description ? ' · ' + esc(n.description) : ''}</span></a>`).join('')}</div>` : ''}
+    <div class="hm-foot"><a href="updates.html">Data update log — what changed, day by day →</a></div>`;
 }
 
 

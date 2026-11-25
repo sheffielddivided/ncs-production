@@ -1164,6 +1164,42 @@ innretninger (feltkode eller navn: Atlantis-plattformen står på en annen
 feltkode) og brønner. Lenkeparametre: `v`, `g`, `p`, `per`, `u`, `from`, `rk`,
 `dc`, `q`, `c`, `b` (eq/op), `rp`, `wt`, `wd`, `dy`, `mw`, `fs`, `sp`.
 
+### `data/update_log.json` — oppdateringsloggen (`updates.html`)
+
+Hva som er endret i dataene, dag for dag, til `updates.html` (lenke nederst
+på forsiden, `.hm-foot` i `renderHome`). Ikke det samme som `changes.json`,
+som er hendelsene i News (brønner, rigger, Havtil); loggen sier hvilke
+kilder som ble oppdatert og hva som var nytt i dem.
+
+`build_update_log.py` bygger loggen fra git-historikken. En dag er
+forskjellen mellom siste commit før dagen (UTC) og siste commit i dagen, så
+flere kjøringer samme dag gir nettoendringen. Tidspunktene er committene som
+endret filen. Én linje per fil (`FILES`: seksjon og etikett); filer med
+etikett `None` (avledede filer som `home`, `field_wells`, loggfiler) vises
+ikke. `SUMMARY` har egne oppsummeringer for de viktigste filene:
+
+- `production`: ny måned publisert, og felt med reviderte tall for måneder som
+  fantes fra før (olje/gass/o.e.; produsert vann for seg, fordi vannet en gang
+  ble nullstilt og gjenopprettet uten at produksjonen endret seg). Årssummene
+  (måned 0) teller ikke.
+- `exploration_wells`, `rig_wells`, `discoveries`, `licences`, `facilities`,
+  `fields`: nye rader med navn, og endrede rader.
+- `changes`: nye hendelser per type; `havtil`: nye saker per type; `gassco_events`:
+  nye og reviderte hendelser; `shipping`: nye anløp; nyhetsfilene: nye saker.
+- Prisfilene: siste dato («through …»); andre sokler: siste produksjonsmåned.
+
+Filer uten egen oppsummering får «updated». En oppsummering som ikke finner
+noen reell endring (bare tidsstempel eller rekkefølge) gir ingen linje,
+unntatt rutinekildene i `ROUTINE`. Siden viser «Highlights» (uten
+«updated»-linjene) som standard.
+
+Workflow `update-log.yml` kjøres når en av oppdateringsworkflowene er ferdig
+(`workflow_run`) og 23:52 UTC, regner de siste tre dagene på nytt og committer
+bare `data/update_log.json`, og bare når loggen er endret. Egen jobb, så
+datajobbene aldri skriver samme fil samtidig. Den trenger git-historikk til
+starten av dagen før (`fetch-depth: 300`; skriptet utdyper en grunn klone
+selv). Loggen ble bygd bakover til starten av repoet med `--backfill`.
+
 ### `data/meta.json`
 
 ```json
