@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-24",
+  "updated": "2026-11-25",
   "note": "Planlagte letebrønner lagt inn for hånd fra selskapenes egne planer (Exploration → Wells → Company plans). Vises i brønnlisten til Sodir har brønnen. when: år, halvår, kvartal, måned eller dato, slik selskapet oppgir det.",
   "wells": [
     {
@@ -80,6 +80,16 @@
       "rig": "DEEPSEA BERGEN",
       "well": "30/4-5",
       "added": "2026-11-24"
+    },
+    {
+      "id": "mwvvbh88",
+      "name": "Rhadamanthys",
+      "licence": "1226",
+      "purpose": "WILDCAT",
+      "when": "2027",
+      "source": "https://www.equinor.com/no/nyheter/20261125-bytter-eierandeler-ncs",
+      "note": "Equinor press release",
+      "added": "2026-11-25"
     }
   ]
 }
