@@ -501,8 +501,7 @@ def rev_before(when_iso):
         if git('rev-parse', '--is-shallow-repository').strip() == 'true' and attempt == 0:
             day = when_iso[:10]
             since = (dt.date.fromisoformat(day) - dt.timedelta(days=3)).isoformat()
-            subprocess.run(['git', 'fetch', '--quiet', f'--shallow-since={since}', 'origin',
-                            git('rev-parse', '--abbrev-ref', 'HEAD').strip()], check=False)
+            subprocess.run(['git', 'fetch', '--quiet', f'--shallow-since={since}', 'origin'], check=False)
     return None
 
 
