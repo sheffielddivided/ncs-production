@@ -1,0 +1,60 @@
+name: Oppdater oppdateringsloggen
+
+# data/update_log.json til updates.html: hva som er endret i dataene, dag
+# for dag. Bygges fra git-historikken (build_update_log.py regner de siste
+# tre dagene på nytt) når en av oppdateringsworkflowene er ferdig, og én gang
+# før midnatt UTC, så endringer gjort i appen også kommer med. Egen jobb, så
+# datajobbene aldri skriver samme fil og kommer i konflikt.
+on:
+  workflow_run:
+    workflows:
+      - Oppdater SODIR-data
+      - Oppdater tankskip (dypgang)
+      - Oppdater selskapsnyheter
+      - Oppdater normpris-data
+      - Oppdater Canada (C-NLOER)
+      - Oppdater US Gulf of Mexico (BOEM)
+    types: [completed]
+  schedule:
+    - cron: '52 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-log
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 300
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Bygg loggen
+        run: python build_update_log.py
+
+      - name: Commit hvis loggen er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/update_log.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Oppdater oppdateringsloggen ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1

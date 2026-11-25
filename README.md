@@ -87,6 +87,9 @@ som statiske JSON-filer i dette repoet.
 | `data/gom_prod.json` | Serier per felt fra 1990 (månedlig for felt i produksjon, årlig for avsluttede) og reservehistorikk per felt. Lastes først når gom.html trenger den |
 | `data/gom_wells.json` | Brønner spuddet fra 2015 med detaljer, til Drilling, kart og faktaark. Lastes ved behov |
 | `data/gom_coast.json` | Kystlinje for Mexicogolfen (Natural Earth 10m, `make_coastline.py --box`) |
+| `updates.html` | Oppdateringsloggen: hva som er endret i dataene, dag for dag, gruppert per seksjon (NCS, aktivitet, nyheter, markeder, andre sokler, endringer gjort i appen), med høydepunkter eller alt. Lenket nederst på forsiden |
+| `build_update_log.py` | Bygger `data/update_log.json` fra git-historikken: for hver dag sammenlignes hver datafil med hvordan den sto ved slutten av dagen før, og det skrives én linje per kilde («Production: September 2026 published; 9 fields revised», «2 new wells: …», «3 new Havtil cases»). Kjøres av `update-log.yml` etter hver oppdateringsworkflow og regner de siste tre dagene på nytt; `--backfill N` bygger hele loggen |
+| `data/update_log.json` | Oppdateringsloggen for de siste 180 dagene: per dag linjer med kilde, seksjon, tekst og tidspunktene (UTC) for committene |
 | `changes.py` | Endringslogg: hva som er nytt siden forrige datakjøring (brukes av `fetch_sodir.py` og `fetch_rigs.py`) |
 | `data/changes.json` | Siste 180 dagers hendelser: nye planlagte brønner, starter, avslutninger, funn, utsettelser og rigger som har flyttet seg. Vises i fanen News |
 | `data/rig_health.json` | Driftsrapport fra AIS-steget: rigger uten kobling, rigger som bores uten signal, mistenkelige MMSI og om kilden feiler |

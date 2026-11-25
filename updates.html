@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Data update log – NCS Insight</title>
+  <meta name="description" content="What changed in the NCS Insight data, day by day: production, reserves, wells, licences, news, markets and other shelves."/>
+  <meta name="theme-color" content="#7d2248"/>
+  <!--
+    Oppdateringslogg: hva som er endret i dataene, dag for dag. Lenket nederst
+    på forsiden i index.html. Leser data/update_log.json, som
+    build_update_log.py bygger fra git-historikken (workflow update-log.yml).
+    Valgene (seksjon, høydepunkter) står i adressen.
+  -->
+  <style>
+    :root{--bg:#f1f1f1;--card:#fff;--navy:#7d2248;--blue:#ce0f69;--border:#d5d5d5;--muted:#828282;--light:#f5cfe1;--topbar-h:46px;--cw:860px;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1a2332;}
+    .topbar{background:var(--navy);color:#fff;height:var(--topbar-h);padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;}
+    .topbar a{color:#fff;text-decoration:none;}
+    .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;white-space:nowrap;}
+    .topbar-sub{font-size:0.78rem;opacity:0.8;white-space:nowrap;}
+    .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;position:sticky;top:var(--topbar-h);z-index:40;}
+    .ctrl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+    .ctrl-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+    .pill-group{display:flex;flex-wrap:wrap;gap:1.5px;background:var(--border);border:1.5px solid var(--border);border-radius:7px;overflow:hidden;width:fit-content;max-width:100%;}
+    .pill-btn{flex:1 1 auto;padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;}
+    .pill-btn.active{background:var(--blue);color:#fff;}
+    main{padding:12px 12px 40px;max-width:calc(var(--cw) + 24px);margin:0 auto;}
+    @media (min-width: 884px){ .controls-bar{padding-left:calc((100% - var(--cw)) / 2);padding-right:calc((100% - var(--cw)) / 2);} }
+    .intro{font-size:0.8rem;color:#4a5568;line-height:1.5;margin:4px 2px 12px;}
+    .day{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 14px 6px;margin-bottom:10px;}
+    .day h2{font-size:0.95rem;color:var(--navy);display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;}
+    .day h2 small{font-size:0.7rem;font-weight:500;color:var(--muted);}
+    .sec{font-size:0.64rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px;}
+    .item{display:grid;grid-template-columns:minmax(120px,190px) 1fr auto;gap:2px 12px;padding:5px 0;border-top:1px solid #f0f0f0;font-size:0.78rem;line-height:1.45;}
+    .sec + .item{border-top:0;}
+    .item b{font-weight:600;color:#1a2332;}
+    .item .t{color:#2f2f2f;}
+    .item .t.routine{color:var(--muted);}
+    .item .at{font-size:0.66rem;color:#a0aab8;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;}
+    @media (max-width: 560px){ .item{grid-template-columns:1fr auto;} .item .at{grid-row:1;grid-column:2;} .item .t{grid-column:1 / -1;} }
+    .empty,.status{color:var(--muted);font-size:0.85rem;text-align:center;padding:40px 10px;}
+    .more{display:block;margin:6px auto 0;padding:7px 16px;border:1.5px solid var(--border);border-radius:20px;background:#fff;font:inherit;font-size:0.78rem;color:var(--navy);cursor:pointer;}
+    .more:hover{border-color:var(--blue);color:var(--blue);}
+    .source-note{padding:6px 2px 30px;font-size:0.68rem;color:#a0aab8;text-align:right;line-height:1.5;}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <a class="topbar-title" href="index.html" title="NCS Insight">NCS Insight</a>
+  <span class="topbar-sub">Data update log</span>
+</div>
+<div class="controls-bar" id="controls"></div>
+<main>
+  <p class="intro">What changed in the data behind NCS Insight, day by day. Each line compares a source with how it stood at the end of the previous day. Times are when the update was saved (UTC).</p>
+  <div id="log"><div class="status">Loading…</div></div>
+  <div class="source-note" id="note"></div>
+</main>
+<script>
+'use strict';
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const SHORT = {ncs: 'NCS', activity: 'Activity', news: 'News', markets: 'Markets', shelves: 'Other shelves', edits: 'Edits', other: 'Other'};
+let L = null, shown = 30;
+const S = {s: '', h: '1'};
+function readUrl() { const q = new URLSearchParams(location.search); S.s = q.get('s') || ''; S.h = q.get('h') ?? '1'; }
+function set(p) {
+  Object.assign(S, p); shown = 30;
+  const q = new URLSearchParams(); if (S.s) q.set('s', S.s); if (S.h !== '1') q.set('h', S.h);
+  history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
+  render();
+}
+function dayTxt(d) {
+  const t = new Date(d + 'T12:00:00Z'), today = new Date().toISOString().slice(0, 10);
+  const yest = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const rel = d === today ? 'Today · ' : d === yest ? 'Yesterday · ' : '';
+  return `${rel}${DAYS[t.getUTCDay()]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`;
+}
+// «Høydepunkter»: linjer med innhold, ikke bare «updated»
+const isRoutine = i => i.t === 'updated';
+// «through 2026-11-24» → «through 24 Nov 2026»
+const niceDates = t => t.replace(/(\d{4})-(\d{2})-(\d{2})/g, (m, y, mo, d) => `${+d} ${MONTHS[+mo - 1].slice(0, 3)} ${y}`)
+  .replace(/\b(\d{4})-(\d{2})\b/g, (m, y, mo) => `${MONTHS[+mo - 1]} ${y}`);
+function render() {
+  const secs = L.sections || [];
+  const pill = (k, opts, label) => `<div class="ctrl"><span class="ctrl-label">${label}</span><div class="pill-group">${opts.map(([v, t]) =>
+    `<button class="pill-btn${S[k] === v ? ' active' : ''}" onclick="set({${k}:'${v}'})">${t}</button>`).join('')}</div></div>`;
+  document.getElementById('controls').innerHTML =
+    pill('s', [['', 'All']].concat(secs.filter(([k]) => L.days.some(d => d.items.some(i => i.s === k))).map(([k]) => [k, SHORT[k] || k])), 'Show') +
+    pill('h', [['1', 'Highlights'], ['0', 'Everything']], 'Detail');
+  const days = L.days.map(d => ({...d, items: d.items.filter(i => (!S.s || i.s === S.s) && (S.h === '0' || !isRoutine(i)))})).filter(d => d.items.length);
+  const el = document.getElementById('log');
+  if (!days.length) { el.innerHTML = '<div class="empty">Nothing logged for this selection.</div>'; return; }
+  el.innerHTML = days.slice(0, shown).map(d => {
+    const routine = L.days.find(x => x.d === d.d).items.filter(i => isRoutine(i) && (!S.s || i.s === S.s)).length;
+    const groups = secs.map(([k, label]) => [label, d.items.filter(i => i.s === k)]).filter(g => g[1].length);
+    return `<div class="day"><h2>${esc(dayTxt(d.d))}<small>${d.items.length} source${d.items.length === 1 ? '' : 's'}${S.h === '1' && routine ? ` · ${routine} routine update${routine === 1 ? '' : 's'} hidden` : ''}</small></h2>
+      ${groups.map(([label, items]) => `<div class="sec">${esc(label)}</div>${items.map(i => `<div class="item"><b>${esc(i.l)}</b>
+        <span class="t${isRoutine(i) ? ' routine' : ''}">${esc(niceDates(i.t.charAt(0).toUpperCase() + i.t.slice(1)))}</span>
+        <span class="at" title="${esc((i.at || []).join(', '))} UTC">${(i.at || []).length > 2 ? `${i.at.length}× · ${esc(i.at[0])}–${esc(i.at[i.at.length - 1])}` : esc((i.at || []).join(', '))}</span></div>`).join('')}`).join('')}</div>`;
+  }).join('') + (days.length > shown ? `<button class="more" onclick="shown+=30;render()">Show earlier days (${days.length - shown})</button>` : '');
+}
+fetch('data/update_log.json', {cache: 'no-cache'}).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+  L = d; readUrl(); render();
+  document.getElementById('note').textContent = `Log updated ${d.updated.replace('T', ' ').replace('Z', ' UTC')} · ${d.days.length} days`;
+}).catch(e => { document.getElementById('log').innerHTML = `<div class="empty">Could not load the update log (${esc(e.message)}).</div>`; });
+</script>
+</body>
+</html>
