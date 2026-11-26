@@ -1,0 +1,65 @@
+name: Oppdater Brasil (ANP)
+
+# brazil.html: produksjon, felt, innretninger, eierskap, reserver, leting,
+# lisensrunder, overdragelser og hendelser fra ANPs åpne data (fetch_anp.py).
+# ANP legger ut nye produksjonstall til havs om lag månedlig og på land
+# kvartalsvis; letepanelet og listen over rettighetshavere månedlig. To
+# kjøringer i uka holder. Nedlastingene (om lag 600 MB, mest produksjon per
+# brønn for eldre år og arkivet per brønn 2005–2023, som ikke endres)
+# mellomlagres med actions/cache; skriptet laster bare ned eldre filer på
+# nytt når de mangler i mellomlageret. Kontrollene i skriptet stopper jobben
+# uten å skrive noe ved avvik.
+on:
+  schedule:
+    - cron: '23 7 * * 2,5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: anp
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Mellomlager for ANP-filene
+        uses: actions/cache@v4
+        with:
+          path: .anp-cache
+          key: anp-${{ github.run_id }}
+          restore-keys: anp-
+
+      - name: Installer avhengigheter
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q poppler-utils
+          pip install requests openpyxl pyshp
+
+      - name: Hent data fra ANP
+        run: python fetch_anp.py --cache .anp-cache
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/brazil.json data/brazil_prod.json data/brazil_expl.json data/brazil_wells.json data/brazil_incidents.json data/brazil_outlines.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Oppdater Brasil/ANP ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1

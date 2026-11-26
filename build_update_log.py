@@ -121,6 +121,12 @@ FILES = {
     'gom': ('shelves', 'US Gulf of Mexico (BOEM)'),
     'gom_prod': ('shelves', None),
     'gom_wells': ('shelves', None),
+    'brazil': ('shelves', 'Brazil (ANP)'),
+    'brazil_prod': ('shelves', None),
+    'brazil_expl': ('shelves', None),
+    'brazil_wells': ('shelves', None),
+    'brazil_incidents': ('shelves', None),
+    'brazil_outlines': ('shelves', None),
     'hubs': ('edits', 'Hub settings'),
     'hub_connections': ('edits', 'Hub connections'),
     'exploration_name_overrides': ('edits', 'Well names'),
@@ -136,6 +142,8 @@ FILES = {
     'coastline': (None, None),
     'canada_nl_coast': (None, None),
     'gom_coast': (None, None),
+    'brazil_coast': (None, None),
+    'brazil_aliases': ('edits', 'Brazil field links'),
     'update_log': (None, None),
 }
 # Rutinekilder: telles som antall kjøringer i stedet for egne linjer
@@ -335,6 +343,20 @@ def s_gom(o, n, names):
     return None
 
 
+def s_brazil(o, n, names):
+    a, b = (o.get('months') or [None, None])[1], (n.get('months') or [None, None])[1]
+    out = []
+    if b and b != a:
+        out.append(f'production through {ym_txt(int(b[:4]), int(b[4:]))}')
+    ea, eb = (o.get('expl') or {}).get('wellsAsOf'), (n.get('expl') or {}).get('wellsAsOf')
+    if eb and eb != ea:
+        out.append(f'exploration panel {eb}')
+    ra, rb = (o.get('reserves') or {}).get('pdfYear'), (n.get('reserves') or {}).get('pdfYear')
+    if rb and rb != ra:
+        out.append(f'reserves bulletin {rb}')
+    return '; '.join(out) or None
+
+
 def s_canada(o, n, names):
     def last(d):
         best = None
@@ -388,6 +410,7 @@ SUMMARY = {
     'ukcs': s_period('lastPeriod', 'production through'),
     'dcs': s_dcs,
     'gom': s_gom,
+    'brazil': s_brazil,
     'canada_nl': s_canada,
     'steo': s_steo,
 }

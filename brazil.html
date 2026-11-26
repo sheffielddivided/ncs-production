@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Brazil – NCS Insight</title>
+  <meta name="description" content="Production, fields, platforms, reserves, companies, exploration, licensing and safety in Brazil, offshore and onshore, built on open data from the Brazilian regulator ANP."/>
+  <!-- Ikke lenket fra menyen ennå: holdes utenfor søkemotorene til siden er klar -->
+  <meta name="robots" content="noindex"/>
+  <meta name="theme-color" content="#7d2248"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <!--
+    Brasil (hav og land). Egen side med samme designsystem og oppsett som
+    gom.html og canada.html: faner øverst, valg over grafen, tabell under,
+    faktaark for felt og innretninger i et panel over siden.
+
+    Data fra fetch_anp.py (ANP, åpne data):
+      data/brazil.json            totaler, felt, innretninger, selskaper, reserver …
+      data/brazil_prod.json       serier per felt og innretning (ved behov)
+      data/brazil_expl.json       blokker, letebrønner, PAD-er, runder, overdragelser (ved behov)
+      data/brazil_wells.json      brønner med posisjon til kartet (ved behov)
+      data/brazil_incidents.json  hendelser siste to år (ved behov)
+      data/brazil_outlines.json   omriss av felt og blokker (ved behov)
+      data/brazil_coast.json      kystlinje (make_coastline.py)
+    Valgene står i adressen, så tilbake-knappen virker og lenker kan deles.
+  -->
+  <style>
+    :root {
+      --bg:#f1f1f1; --card:#fff;
+      --navy:#7d2248;
+      --blue:#ce0f69;
+      --border:#d5d5d5;
+      --muted:#828282;
+      --light:#f5cfe1;
+      --green:#00b373;
+      --topbar-h:46px; --cw:1100px;
+    }
+    @media (min-width: 1400px){ :root{ --cw:1320px; } }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{min-height:100%;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1a2332;}
+    body.sheet-open{overflow:hidden;}
+
+    .topbar{background:var(--navy);color:#fff;height:var(--topbar-h);padding:0 16px;display:flex;align-items:center;
+      justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;}
+    .topbar a{color:#fff;text-decoration:none;}
+    .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;white-space:nowrap;}
+    .topbar-sub{font-size:0.78rem;opacity:0.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    .mode-bar{position:sticky;top:var(--topbar-h);z-index:49;background:var(--card);border-bottom:1px solid var(--border);padding:8px 12px;}
+    .mode-switcher{display:flex;flex-wrap:nowrap;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none;
+      background:var(--light);border-radius:8px;padding:3px;gap:2px;}
+    .mode-switcher::-webkit-scrollbar{display:none;}
+    .mode-btn{flex:0 0 auto;white-space:nowrap;padding:6px 14px;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;
+      cursor:pointer;background:none;color:var(--muted);letter-spacing:0.01em;font-family:inherit;}
+    .mode-btn.active{background:var(--blue);color:#fff;}
+    a.mode-btn{text-decoration:none;display:inline-flex;align-items:center;}
+    .mode-sep{position:relative;margin-left:7px;}
+    .mode-sep::before{content:"";position:absolute;left:-5px;top:3px;bottom:3px;width:1px;background:rgba(125,34,72,0.18);}
+
+    .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;}
+    .controls-bar:empty{display:none;}
+    .ctrl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+    .ctrl-label{font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+    .pill-group{display:flex;flex-wrap:wrap;gap:1.5px;background:var(--border);border:1.5px solid var(--border);border-radius:7px;overflow:hidden;width:fit-content;max-width:100%;}
+    .pill-btn{flex:1 1 auto;padding:6px 11px;border:none;background:#fff;font-size:0.75rem;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;}
+    .pill-btn.active{background:var(--blue);color:#fff;}
+    .pill-btn:disabled{color:#c3c9d1;cursor:default;}
+    .year-select{padding:6px 24px 6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;color:#1a2332;font-family:inherit;
+      background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%234a5568' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 6px center;
+      appearance:none;-webkit-appearance:none;cursor:pointer;max-width:100%;}
+    input.year-select{background-image:none;padding-right:8px;width:170px;cursor:text;}
+
+    main{padding:12px 12px 0;}
+    @media (min-width: 1148px){
+      .mode-bar,.controls-bar{padding-left:calc((100% - var(--cw)) / 2);padding-right:calc((100% - var(--cw)) / 2);}
+      main{max-width:calc(var(--cw) + 24px);margin:0 auto;}
+    }
+    .card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 10px 10px;margin-bottom:10px;min-width:0;}
+    .chart-title{font-size:0.85rem;font-weight:700;color:var(--navy);padding:2px 2px 8px;line-height:1.3;}
+    .chart-title .ct-sub{font-weight:400;color:var(--muted);font-size:0.78rem;display:block;margin-top:2px;}
+    .chart-container{position:relative;height:320px;}
+    .chart-container.tall{height:380px;}
+    .chart-container.short{height:220px;}
+    .legend-row{display:flex;gap:8px 14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--muted);}
+    .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+    .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start;}
+    .grid2 > .card{margin-bottom:10px;}
+    @media (max-width: 820px){ .grid2{grid-template-columns:minmax(0,1fr);} }
+
+    .info-box{margin:0 0 10px;background:var(--light);border:1px solid #eeabcb;border-radius:8px;padding:10px 12px;font-size:0.72rem;color:#2f2f2f;line-height:1.5;}
+    .info-box a,.row-link{color:inherit;font:inherit;text-decoration:underline;text-decoration-color:var(--blue);text-underline-offset:2px;cursor:pointer;background:none;border:0;padding:0;text-align:left;}
+    .row-link:hover,.info-box a:hover{color:var(--blue);}
+    .source-note{padding:6px 2px 40px;font-size:0.68rem;color:#a0aab8;text-align:right;line-height:1.5;}
+    .source-note a{color:inherit;}
+    .status{text-align:center;padding:60px 20px;color:var(--muted);font-size:0.9rem;}
+    .spinner{display:inline-block;width:30px;height:30px;border:3px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px;}
+    .kpi{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:10px 12px;}
+    .kpi span{display:block;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);}
+    .kpi strong{display:block;font-size:1.2rem;font-weight:700;margin-top:3px;color:var(--navy);font-variant-numeric:tabular-nums;}
+    .kpi small{display:block;font-size:0.68rem;color:var(--muted);margin-top:1px;}
+
+    .tbl-sec{font-size:0.86rem;font-weight:700;color:var(--navy);margin:16px 2px 8px;}
+    .tbl-sec small{display:block;font-size:0.7rem;font-weight:400;color:var(--muted);margin-top:2px;}
+    .table-wrap{overflow-x:auto;margin-bottom:10px;border-radius:10px;}
+    .table-wrap.scroll{max-height:420px;overflow-y:auto;}
+    .res-table{width:100%;border-collapse:collapse;font-size:0.72rem;background:var(--card);border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,0.06);}
+    .res-table th,.res-table td{padding:5px 8px;text-align:right;white-space:nowrap;}
+    .res-table th:first-child,.res-table td:first-child{text-align:left;white-space:normal;}
+    .res-table td.l,.res-table th.l{text-align:left;}
+    .res-table td.wrap{white-space:normal;min-width:220px;}
+    .res-table td:first-child{white-space:nowrap;}
+    .res-table thead th{background:#e8eef5;color:var(--navy);font-weight:700;font-size:0.68rem;position:sticky;top:0;z-index:1;}
+    .res-table tbody tr:nth-child(even){background:#fafafa;}
+    .res-table tr.total-row{background:#e8eef5 !important;font-weight:700;color:var(--navy);}
+    .res-table tr.total-row td{border-top:2px solid var(--border);}
+    .res-table tr.sub-row td:first-child{padding-left:22px;color:var(--muted);}
+    .res-table tr.sel{background:var(--light) !important;}
+    .res-table tbody tr.click{cursor:pointer;}
+    .res-table tbody tr.click:hover{background:#f0c3d8;}
+    .tag{display:inline-block;padding:1px 6px;border-radius:9px;font-size:0.62rem;font-weight:600;background:#eef1f4;color:#4a5568;}
+    .tag.pre{background:#fbe0ec;color:#ce0f69;}
+    .tag.disc{background:#d8f5ea;color:#007a4f;}
+    .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:baseline;}
+
+    .wd-overlay{position:fixed;inset:0;background:rgba(26,16,24,0.5);z-index:300;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    .wd-overlay.open{display:block;}
+    .wd-panel{max-width:860px;margin:14px auto;background:var(--bg);border-radius:14px;padding:12px 12px 2px;}
+    @media (max-width: 880px){ .wd-panel{margin:0;border-radius:0;min-height:100%;} }
+    .wd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+    .wd-head h2{font-size:1.15rem;color:var(--navy);line-height:1.2;}
+    .wd-sub{font-size:0.74rem;color:var(--muted);margin-top:3px;}
+    .wd-close{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:#fff;font-size:1rem;cursor:pointer;color:#4a5568;}
+    .wd-close:hover{border-color:var(--blue);color:var(--blue);}
+    .pf-card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 12px 14px;margin-bottom:10px;min-width:0;}
+    .pf-card h3{margin:0 0 9px;font-size:0.78rem;font-weight:700;color:var(--navy);letter-spacing:0.01em;}
+    .pf-card h3 small{font-weight:400;color:var(--muted);}
+    .pf-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px 14px;}
+    .pf-fact span{display:block;font-size:0.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px;}
+    .pf-fact strong{font-size:0.82rem;color:#1a2332;font-weight:600;}
+    .pf-note{font-size:0.66rem;color:var(--muted);margin-top:8px;line-height:1.45;}
+    .pf-own{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+    .pf-pie{width:150px;height:150px;flex:0 0 150px;}
+    .pf-own-list{flex:1 1 220px;display:flex;flex-direction:column;gap:7px;min-width:0;}
+    .pf-own-row{display:grid;grid-template-columns:auto 1fr auto;gap:0 8px;align-items:baseline;}
+    .pf-own-dot{width:9px;height:9px;border-radius:2px;align-self:center;}
+    .pf-own-name{font-size:0.74rem;min-width:0;}
+    .pf-own-pct{font-size:0.74rem;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;}
+    .pf-op-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:9px;background:var(--light);color:var(--navy);font-size:0.6rem;font-weight:700;text-transform:uppercase;}
+    .bar-track{display:flex;height:14px;border-radius:4px;overflow:hidden;background:#f3f3f3;gap:2px;}
+    .bar-track span{display:block;height:100%;}
+
+    .map-box{position:relative;background:#eef3f8;border-radius:8px;overflow:hidden;}
+    .map-box svg{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
+    .map-box svg.drag{cursor:grabbing;}
+    .map-main{height:min(74vh,680px);min-height:380px;}
+    .map-small{height:300px;}
+    .map-ctl{position:absolute;left:8px;bottom:8px;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,0.12);}
+    .map-ctl button{width:30px;height:30px;border:none;background:#fff;color:#1a2332;font-size:1.05rem;cursor:pointer;}
+    .map-ctl button + button{border-top:1px solid var(--border);}
+    .map-ctl button:hover{background:var(--light);}
+    .map-tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:0.7rem;
+      box-shadow:0 2px 10px rgba(0,0,0,0.15);max-width:260px;line-height:1.45;display:none;z-index:3;}
+    .map-tip b{color:var(--navy);}
+    .lic{vector-effect:non-scaling-stroke;stroke-width:1;}
+    .lic:hover{stroke-width:2.2;}
+    .map-lbl{font-size:10px;fill:#1a2332;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none;}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="topbar-title" href="index.html" title="NCS Insight">NCS Insight</a>
+  <span class="topbar-sub">Brazil · offshore and onshore</span>
+</div>
+
+<nav class="mode-bar" aria-label="Sections">
+  <div class="mode-switcher" id="tabs"></div>
+</nav>
+<div class="controls-bar" id="controls"></div>
+
+<main>
+  <div id="view"><div class="status"><div class="spinner"></div><div>Loading data…</div></div></div>
+  <div class="source-note" id="sourceNote"></div>
+</main>
+
+<div class="wd-overlay" id="sheet" onclick="if(event.target===this)closeSheet()">
+  <div class="wd-panel" id="sheetPanel"></div>
+</div>
+
+<script>
+'use strict';
+// ── KONSTANTER ───────────────────────────────────────────────────────────────
+const BBL_PER_M3 = 6.2898;              // ANP; 1 000 m³ gass = 1 m³ olje ekvivalent
+const PALETTE = ['#ce0f69', '#f68d2e', '#00b373', '#4993b4', '#d14f4e', '#e8c942', '#7d2248', '#6b7a8f'];
+const OTHER_COLOR = '#b9c0c9';
+const SALT = {pre: {label: 'Pre-salt', color: '#ce0f69'}, post: {label: 'Post-salt (offshore)', color: '#4993b4'}, onshore: {label: 'Onshore', color: '#e8c942'}};
+const ENV = {off: {label: 'Offshore', color: '#4993b4'}, on: {label: 'Onshore', color: '#e8c942'}};
+const TABS = [['production', 'Production'], ['fields', 'Fields'], ['installations', 'Platforms'], ['reserves', 'Reserves'], ['company', 'Company'],
+              ['exploration', 'Exploration'], ['licensing', 'Licensing'], ['safety', 'Safety'], ['map', 'Map']];
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const TOP = 8;
+
+// ── TILSTAND ─────────────────────────────────────────────────────────────────
+// fs = felt i faktaarket, is = innretning i faktaarket
+const DEFAULTS = {v: 'production', g: 'salt', p: 'oil', per: 'a', u: 'bbl', from: '2000', rk: 'l12', env: '', bs: '', q: '', cx: '1',
+                  c: '', b: 'eq', rp: 'oil', ey: '', lt: 'blocks', mw: '', ml: 'fields', fs: '', is: '', sp: 'oil', ip: 'boe'};
+let S = {...DEFAULTS};
+let D = null, P = null, E = null, WL = null, INC = null, OUTL = null, COAST = null;
+let F = [], I = [];
+const charts = {};
+
+function readUrl() {
+  const q = new URLSearchParams(location.search);
+  S = {...DEFAULTS};
+  for (const k of Object.keys(DEFAULTS)) if (q.has(k)) S[k] = q.get(k);
+  if (!TABS.some(t => t[0] === S.v)) S.v = 'production';
+}
+function writeUrl(push) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(S)) if (v !== DEFAULTS[k]) q.set(k, v);
+  const url = location.pathname + (q.toString() ? '?' + q : '');
+  if (url !== location.pathname + location.search) history[push ? 'pushState' : 'replaceState'](null, '', url);
+}
+function set(patch, push = true) { Object.assign(S, patch); writeUrl(push); render(); }
+window.addEventListener('popstate', () => { readUrl(); render(); });
+
+// ── HJELPERE ─────────────────────────────────────────────────────────────────
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const jsq = s => esc(JSON.stringify(String(s)));
+const fmt = (v, d = 0) => v == null || isNaN(v) ? '–' : Number(v).toLocaleString('en', {minimumFractionDigits: d, maximumFractionDigits: d});
+const pct = (v, d = 0) => v == null || isNaN(v) ? '–' : fmt(v * 100, d) + ' %';
+const daysIn = (y, m) => new Date(y, m, 0).getDate();
+const ymTxt = ym => ym ? `${MONTH_ABBR[+ym.slice(-2) - 1]} ${ym.slice(0, 4)}` : '–';
+const dateTxt = d => { if (!d) return '–'; d = d.replace(/-/g, ''); return d.length >= 8 ? `${+d.slice(6, 8)} ${MONTH_ABBR[+d.slice(4, 6) - 1]} ${d.slice(0, 4)}` : d.length >= 6 ? ymTxt(d) : d; };
+const title = s => String(s || '').toLowerCase().replace(/(^|[\s\-/(.])([\p{L}])/gu, (m, a, b) => a + b.toUpperCase())
+  .replace(/\b(De|Do|Da|Dos|Das|E)\b/g, w => w.toLowerCase()).replace(/\b(Fpso|Uep|Ii|Iii|Iv|Sa)\b/g, w => w.toUpperCase());
+const fieldBy = code => F.find(f => f.code === code);
+const instBy = name => I.find(i => i.name === name);
+const boeD = l12 => l12 ? ((l12[0] || 0) + (l12[1] || 0)) * BBL_PER_M3 : 0;          // [m³/d, 1000 m³/d] → boe/d
+const live = f => f.l12[0] + f.l12[1] > 0;
+const cumBoe = f => ((f.cum[0] || 0) + (f.cum[1] || 0)) * BBL_PER_M3;                // mill. boe
+const isAnc = code => /^anc_/i.test(code);
+
+function pills(key, opts, label) {
+  return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<div class="pill-group">${opts.map(([v, t, dis]) =>
+    `<button class="pill-btn${S[key] === v ? ' active' : ''}" ${dis ? 'disabled' : ''} onclick="set({${key}:${jsq(v)}})">${t}</button>`).join('')}</div></div>`;
+}
+function select(key, opts, label) {
+  return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<select class="year-select" onchange="set({${key}:this.value})">${opts.map(([v, t]) =>
+    `<option value="${esc(v)}"${S[key] === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
+}
+function search(ph, redraw) {
+  return `<div class="ctrl"><span class="ctrl-label">Search</span><input class="year-select" placeholder="${esc(ph)}" value="${esc(S.q)}" oninput="S.q=this.value;writeUrl();${redraw}()"></div>`;
+}
+function legend(items) {
+  return `<div class="legend-row">${items.map(l => `<div class="legend-item"><div class="legend-dot" style="background:${l.color}"></div>${esc(l.label)}</div>`).join('')}</div>`;
+}
+function chartCard(id, ttl, sub, opts = {}) {
+  return `<div class="card"><div class="chart-title">${ttl}${sub ? `<span class="ct-sub">${sub}</span>` : ''}</div>
+    <div class="chart-container ${opts.cls || ''}"${opts.h ? ` style="height:${opts.h}px"` : ''}><canvas id="${id}"></canvas></div><div id="${id}Leg"></div></div>`;
+}
+function barChart(id, labels, datasets, unit, opts = {}) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (charts[id]) charts[id].destroy();
+  const horiz = !!opts.horizontal, dec = opts.dec || 0, ax = horiz ? 'x' : 'y';
+  const valAxis = {stacked: opts.stacked !== false, beginAtZero: true,
+    title: {display: !!unit, text: unit, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}};
+  const catAxis = {stacked: opts.stacked !== false, ticks: {font: {size: horiz ? 10 : 9}, autoSkip: !horiz, maxTicksLimit: opts.ticks || 14, maxRotation: 45}, grid: {color: 'rgba(0,0,0,0.04)'}};
+  const scales = horiz ? {x: valAxis, y: catAxis} : {x: catAxis, y: valAxis};
+  if (opts.y2) scales.y2 = {position: 'right', beginAtZero: true, grid: {display: false}, ticks: {font: {size: 9}}, title: {display: true, text: opts.y2, color: '#4a5568', font: {size: 10}}};
+  charts[id] = new Chart(el.getContext('2d'), {
+    type: 'bar', data: {labels, datasets},
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: horiz ? 'y' : 'x', animation: opts.noAnim ? false : undefined,
+      interaction: {mode: 'index', intersect: false, axis: horiz ? 'y' : 'x'},
+      onClick: opts.onClick ? (e, els) => { if (els.length) opts.onClick(els[0].index, els[0].datasetIndex); } : undefined,
+      onHover: opts.onClick ? (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; } : undefined,
+      plugins: {legend: {display: false}, tooltip: {
+        filter: (c, i, items) => (c.parsed[ax] || 0) !== 0 || items.every(x => !x.parsed[ax]),
+        callbacks: {
+          title: items => opts.titleFn ? opts.titleFn(items[0].dataIndex) : items[0].label,
+          label: c => ` ${c.dataset.label}: ${fmt(c.parsed[ax], c.dataset.dec ?? dec)} ${c.dataset.unit || unit}`,
+          footer: items => opts.noFooter || items.filter(i => !i.dataset.noSum).length < 2 ? '' : `Total: ${fmt(items.filter(i => !i.dataset.noSum).reduce((t, i) => t + (i.parsed[ax] || 0), 0), dec)} ${unit}`,
+        }}},
+      scales,
+    },
+  });
+  const leg = document.getElementById(id + 'Leg');
+  if (leg) leg.innerHTML = opts.legend === false ? '' : legend(opts.legend || datasets.map(d => ({label: d.label, color: d.borderColor && d.type === 'line' ? d.borderColor : d.backgroundColor})));
+}
+
+// ── PRODUKSJON: AKSE OG ENHETER ──────────────────────────────────────────────
+// Serier: [olje, gass, vann] per måned fra D.months[0]; olje og vann i 1000 m³,
+// gass i mill. m³. Oljeekvivalent (boe) i 1000 m³ o.e. = olje + gass (mill. m³).
+let MONTHS = [];
+function buildMonths() {
+  MONTHS = [];
+  let [y, m] = [+D.months[0].slice(0, 4), +D.months[0].slice(4)];
+  while (`${y}${String(m).padStart(2, '0')}` <= D.months[1]) { MONTHS.push(`${y}${String(m).padStart(2, '0')}`); if (++m > 12) { m = 1; y++; } }
+}
+const PIDX = {oil: 0, gas: 1, water: 2};
+function pick(arrs, i, p) {
+  if (!arrs) return 0;
+  if (p === 'boe') return (arrs[0][i] || 0) + (arrs[1][i] || 0);
+  return arrs[PIDX[p]] ? arrs[PIDX[p]][i] || 0 : 0;
+}
+function unitOf(p) {
+  if (p === 'gas') return 'million m³/day';
+  if (S.u === 'm3') return p === 'boe' ? 'm³ o.e./day' : 'm³/day';
+  return p === 'boe' ? 'boe/day' : 'bbl/day';
+}
+const factor = p => p === 'gas' ? 1 : S.u === 'm3' ? 1000 : 1000 * BBL_PER_M3;
+// Per dag fra l12 i feltene: [m³/d, 1000 m³/d, m³/d]
+const l12In = (l12, p) => p === 'gas' ? l12[1] / 1000 : p === 'boe' ? (l12[0] + l12[1]) * (S.u === 'm3' ? 1 : BBL_PER_M3) : (p === 'water' ? l12[2] : l12[0]) * (S.u === 'm3' ? 1 : BBL_PER_M3);
+const lastYM = () => D.months[1];
+function periods(per, from) {
+  const ms = MONTHS.map((ym, i) => ({ym, i})).filter(x => x.ym.slice(0, 4) >= from);
+  if (per === 'm') return ms.map(({ym, i}) => ({key: ym, label: `${ym.slice(0, 4)}-${ym.slice(4)}`, idx: [i], days: daysIn(+ym.slice(0, 4), +ym.slice(4))}));
+  const by = {};
+  ms.forEach(({ym, i}) => {
+    const y = ym.slice(0, 4);
+    (by[y] = by[y] || {key: y, idx: [], days: 0, months: 0}).idx.push(i);
+    by[y].days += daysIn(+y, +ym.slice(4)); by[y].months++;
+  });
+  return Object.values(by).map(p => { p.ytd = p.months < 12; p.label = p.ytd ? p.key + '*' : p.key; return p; });
+}
+function perDay(getter, ps, p) { const f = factor(p); return ps.map(x => x.idx.reduce((t, i) => t + getter(i), 0) * f / x.days); }
+function trimLead(labels, datasets) {
+  let first = labels.length;
+  datasets.forEach(d => { const i = d.data.findIndex(v => v); if (i >= 0 && i < first) first = i; });
+  if (first === labels.length) first = 0;
+  return {labels: labels.slice(first), datasets: datasets.map(d => ({...d, data: d.data.slice(first)}))};
+}
+const sum12 = (arrs, p, off = 0) => { const n = MONTHS.length; let s = 0; for (let i = n - 12; i < n; i++) s += pick(arrs, i - off, p); return s; };
+const days12 = () => { const n = MONTHS.length; let d = 0; for (let i = n - 12; i < n; i++) d += daysIn(+MONTHS[i].slice(0, 4), +MONTHS[i].slice(4)); return d; };
+
+// Serier fra brazil_prod.json på MONTHS-aksen: 'a' årlig (fordeles likt på månedene), 'm' månedlig
+const seriesCache = {};
+function fieldSeries(code) {
+  if (seriesCache[code]) return seriesCache[code];
+  const s = P && P.fields[code];
+  const out = [new Float64Array(MONTHS.length), new Float64Array(MONTHS.length), new Float64Array(MONTHS.length)];
+  if (s) {
+    if (s.a) {
+      const y0 = s.a[0];
+      for (let k = 0; k < 3; k++) s.a[k + 1].forEach((v, j) => {
+        const y = String(y0 + j), i0 = MONTHS.indexOf(y + '01');
+        if (i0 < 0) return;
+        for (let m = 0; m < 12; m++) out[k][i0 + m] = v / 12;
+      });
+    }
+    if (s.m) {
+      const off = MONTHS.indexOf(s.m[0]);
+      for (let k = 0; k < 3; k++) s.m[k + 1].forEach((v, j) => { const i = off + j; if (i >= 0 && i < MONTHS.length) out[k][i] = v; });
+    }
+  }
+  return (seriesCache[code] = out);
+}
+function complexSeries(cx) {
+  const key = 'cx:' + cx;
+  if (seriesCache[key]) return seriesCache[key];
+  const out = [new Float64Array(MONTHS.length), new Float64Array(MONTHS.length), new Float64Array(MONTHS.length)];
+  F.filter(f => f.cx === cx).forEach(f => { const s = fieldSeries(f.code); for (let k = 0; k < 3; k++) for (let i = 0; i < MONTHS.length; i++) out[k][i] += s[k][i]; });
+  return (seriesCache[key] = out);
+}
+function instSeries(name) {
+  const key = 'in:' + name;
+  if (seriesCache[key]) return seriesCache[key];
+  const s = P && P.installations[name];
+  const out = [new Float64Array(MONTHS.length), new Float64Array(MONTHS.length), new Float64Array(MONTHS.length)];
+  if (s) { const off = MONTHS.indexOf(s[0]); for (let k = 0; k < 3; k++) s[k + 1].forEach((v, j) => { const i = off + j; if (i >= 0 && i < MONTHS.length) out[k][i] = v; }); }
+  return (seriesCache[key] = out);
+}
+const loadJson = (path) => fetch(path, {cache: 'no-cache'}).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+async function loadProd() { if (!P) P = await loadJson('data/brazil_prod.json'); }
+async function loadExpl() { if (!E) E = await loadJson('data/brazil_expl.json'); }
+async function loadWells() { if (!WL) { WL = await loadJson('data/brazil_wells.json'); const c = WL.cols; WL.list = WL.wells.map(r => Object.fromEntries(c.map((k, i) => [k, r[i]]))); } }
+async function loadInc() { if (!INC) { INC = await loadJson('data/brazil_incidents.json'); const c = INC.cols; INC.items = INC.list.map(r => Object.fromEntries(c.map((k, i) => [k, r[i]]))); } }
+async function loadOutl() { if (!OUTL) OUTL = await loadJson('data/brazil_outlines.json').catch(() => ({fields: {}, blocks: {}})); }
+async function loadCoast() { if (!COAST) COAST = await loadJson('data/brazil_coast.json').catch(() => ({rings: []})); }
+
+// Feltkomplekser: ANP fører samme felt under flere navn (BÚZIOS, BÚZIOS_ECO, AnC_…). cx samler dem.
+let CX = [];
+function buildComplexes() {
+  const by = {};
+  F.forEach(f => {
+    const c = by[f.cx] || (by[f.cx] = {cx: f.cx, parts: [], l12: [0, 0, 0], cum: [0, 0, 0], main: null});
+    c.parts.push(f);
+    for (let k = 0; k < 3; k++) { c.l12[k] += f.l12[k] || 0; c.cum[k] += f.cum[k] || 0; }
+    if (f.code.toUpperCase() === f.cx) c.main = f;
+  });
+  CX = Object.values(by).map(c => {
+    const m = c.main || c.parts.slice().sort((a, b) => boeD(b.l12) - boeD(a.l12))[0];
+    return {...c, main: m, code: m.code, name: c.main ? m.name : title(c.cx)};
+  });
+}
+const cxOf = f => CX.find(c => c.cx === f.cx);
+let COLOR_ORDER = {};
+function colorFor(kind, k) { const i = (COLOR_ORDER[kind] || []).indexOf(k); return i >= 0 && i < PALETTE.length ? PALETTE[i] : OTHER_COLOR; }
+
+// ── VISNINGER ────────────────────────────────────────────────────────────────
+function render() {
+  document.getElementById('tabs').innerHTML = TABS.map(([id, t]) =>
+    `<button class="mode-btn${S.v === id ? ' active' : ''}" onclick="set({v:'${id}',q:'',c:S.c})">${t}</button>`).join('') +
+    `<a class="mode-btn mode-sep" href="index.html" title="Back to the Norwegian Continental Shelf">NCS ↗</a>`;
+  if (!D) return;
+  Object.entries(charts).forEach(([k, c]) => { if (!k.startsWith('sheet')) { c.destroy(); delete charts[k]; } });
+  ({production: viewProduction, fields: viewFields, installations: viewInstallations, reserves: viewReserves, company: viewCompany,
+    exploration: viewExploration, licensing: viewLicensing, safety: viewSafety, map: viewMap})[S.v]();
+  if (S.fs && fieldBy(S.fs)) openSheet(S.fs, true);
+  else if (S.is && instBy(S.is)) openInst(S.is, true);
+  else hideSheet();
+}
+const setControls = html => { document.getElementById('controls').innerHTML = html; };
+const setView = html => { document.getElementById('view').innerHTML = html; };
+const loading = () => `<div class="status"><div class="spinner"></div><div>Loading…</div></div>`;
+const fromOpts = () => [['1941', 'Since 1941'], ['1980', 'Since 1980'], ['2000', 'Since 2000'], ['2010', 'Since 2010'], [String(+lastYM().slice(0, 4) - 4), 'Last 5 years']];
+const unitPills = () => pills('u', [['bbl', 'Barrels'], ['m3', 'Cubic metres']], 'Unit');
+const prodLabel = p => ({oil: 'Oil (incl. condensate)', gas: 'Natural gas', boe: 'Oil + gas (o.e.)', water: 'Produced water'}[p]);
+function dsStyle(ds) { return ds.filter(d => d.data.some(v => v)).map(d => ({...d, borderWidth: S.per === 'a' ? 1 : 0, borderColor: '#fff', stack: 's'})); }
+
+// ── PRODUCTION ──
+function viewProduction() {
+  setControls(
+    pills('g', [['salt', 'Pre-salt / post-salt'], ['basin', 'By basin'], ['state', 'By state'], ['field', 'By field'], ['inst', 'By platform'], ['total', 'Total']], 'Show') +
+    pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['boe', 'Oil + gas'], ['water', 'Water']], 'Product') +
+    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') + select('from', fromOpts(), 'From') + unitPills());
+  if ((S.g === 'field' || S.g === 'inst') && !P) { setView(loading()); loadProd().then(() => S.v === 'production' && render()); return; }
+  let from = S.from;
+  if (S.g === 'inst' && from < '2010') from = '2010';
+  const ps = periods(S.per, from), unit = unitOf(S.p);
+  let datasets = [], note = '', clickKind = null;
+  const topOf = (keys, getS) => {
+    const idxAll = ps.flatMap(p => p.idx);
+    return keys.map(k => [k, idxAll.reduce((t, i) => t + pick(getS(k), i, S.p), 0)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, TOP).map(x => x[0]);
+  };
+  const rest = (top, getS) => ({label: 'Other', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - top.reduce((t, k) => t + pick(getS(k), i, S.p), 0)), ps, S.p)});
+  if (S.g === 'total') {
+    datasets = [{label: {oil: 'Oil', gas: 'Gas', boe: 'Oil + gas', water: 'Water'}[S.p], data: perDay(i => pick(D.total, i, S.p), ps, S.p), backgroundColor: {oil: '#ce0f69', gas: '#f68d2e', boe: '#7d2248', water: '#4993b4'}[S.p]}];
+  } else if (S.g === 'salt') {
+    datasets = Object.keys(SALT).filter(k => D.bySalt[k]).map(k => ({label: SALT[k].label, backgroundColor: SALT[k].color, data: perDay(i => pick(D.bySalt[k], i, S.p), ps, S.p)}));
+    note = ` <b>Pre-salt</b> is production from wells ANP lists as pre-salt in its well archive (2005–${D.presalArchive.slice(0, 4)}); wells drilled since then follow their field's split in ${D.presalArchive.slice(0, 4)}, and new fields in the Santos basin count as pre-salt.`;
+  } else if (S.g === 'basin' || S.g === 'state') {
+    const src = S.g === 'basin' ? D.byBasin : D.byState;
+    const top = topOf(Object.keys(src), k => src[k]);
+    datasets = top.map(k => ({label: k, backgroundColor: colorFor(S.g, k), data: perDay(i => pick(src[k], i, S.p), ps, S.p)}));
+    datasets.push(rest(top, k => src[k]));
+    note = S.g === 'state' ? ' Offshore production is assigned to the state facing the field (ANP\'s convention, also used for royalties).' : '';
+  } else if (S.g === 'field') {
+    const top = topOf(CX.map(c => c.cx), complexSeries);
+    datasets = top.map(cx => { const c = CX.find(x => x.cx === cx); return {label: c.name, backgroundColor: colorFor('cx', cx), data: perDay(i => pick(complexSeries(cx), i, S.p), ps, S.p), code: c.code}; });
+    datasets.push(rest(top, complexSeries));
+    note = ` The ${TOP} largest fields in the period shown. Fields that ANP reports under several names (e.g. Búzios and Búzios ECO, the transfer-of-rights surplus, or a non-contracted area «AnC») are combined.`;
+    clickKind = 'field';
+  } else {
+    const top = topOf(I.map(i => i.name), instSeries);
+    datasets = top.map(n => ({label: title(n), backgroundColor: colorFor('inst', n), data: perDay(i => pick(instSeries(n), i, S.p), ps, S.p), inst: n}));
+    datasets.push(rest(top, instSeries));
+    note = ' The largest production units (FPSOs, platforms and onshore stations) in the period, from 2010; earlier records often lack the installation.';
+    clickKind = 'inst';
+  }
+  datasets = dsStyle(datasets);
+  const t = trimLead(ps.map(p => p.label), datasets);
+  const n = MONTHS.length, d12 = days12(), last = [n - 1], lastDays = daysIn(+lastYM().slice(0, 4), +lastYM().slice(4));
+  const avg = (arrs, p, idx, days) => idx.reduce((s, i) => s + pick(arrs, i, p), 0) * factor(p) / days;
+  const l12idx = [...Array(12)].map((_, k) => n - 12 + k);
+  const pre12 = sum12(D.bySalt.pre, 'boe'), all12 = sum12(D.total, 'boe'), off12 = sum12(D.byEnv.off, 'boe');
+  const lw = D.liveWells[D.liveWells.length - 1];
+  const kpis = `<div class="kpis">
+    <div class="kpi"><span>Oil · ${ymTxt(lastYM())}</span><strong>${fmt(avg(D.total, 'oil', last, lastDays))}</strong><small>${unitOf('oil')}</small></div>
+    <div class="kpi"><span>Oil · last 12 months</span><strong>${fmt(avg(D.total, 'oil', l12idx, d12))}</strong><small>${unitOf('oil')}, average</small></div>
+    <div class="kpi"><span>Gas · last 12 months</span><strong>${fmt(avg(D.total, 'gas', l12idx, d12), 1)}</strong><small>${unitOf('gas')}, average</small></div>
+    <div class="kpi"><span>From pre-salt</span><strong>${pct(pre12 / all12)}</strong><small>of oil + gas, last 12 months</small></div>
+    <div class="kpi"><span>Offshore</span><strong>${pct(off12 / all12, 1)}</strong><small>of oil + gas, last 12 months</small></div>
+    <div class="kpi"><span>Producing wells</span><strong>${fmt(lw[1] + lw[2])}</strong><small>${fmt(lw[1])} offshore, ${fmt(lw[2])} onshore · ${ymTxt(lw[0])}</small></div>
+  </div>`;
+  const ttl = {total: 'Production', salt: 'Production by geological layer', basin: 'Production by basin', state: 'Production by state', field: 'Production by field', inst: 'Production by platform'}[S.g];
+  setView(kpis + chartCard('prodChart', `Brazil · ${ttl}`, `${prodLabel(S.p)} · ${unit}, ${S.per === 'm' ? 'monthly' : 'annual average'}${clickKind ? ' · click a bar for the factsheet' : ''}`, {cls: 'tall'}) +
+    `<div class="info-box"><strong>Source:</strong> ANP, production by well (<i>produção por poço</i>), offshore from ${ymTxt(D.months[0]).slice(-4)} and onshore from 1941, to ${ymTxt(lastYM())}. The well sums match ANP's official totals by state within 1 % every year. Oil includes condensate; gas is associated plus non-associated gas as produced (before flaring, reinjection and own use); oil equivalent uses ANP's 1,000 m³ of gas = 1 m³ of oil (${BBL_PER_M3} bbl).${note}${D.onshoreGaps && D.onshoreGaps.length ? ` ANP's onshore well files are incomplete for ${D.onshoreGaps.map(g => ymTxt(g[0])).join(', ')}; for those months the national, onshore and state totals use ANP's official state totals, while fields and basins show only what the well files contain.` : ''} Shale oil from Paraná (from 2024) is not well production and is not included.${S.per === 'a' && ps.some(p => p.ytd) ? ` <strong>${lastYM().slice(0, 4)}*</strong> is the year to date.` : ''}</div>` +
+    `<div class="grid2">${chartCard('wellsChart', 'Producing wells', 'Wells with oil or gas production each month, offshore and onshore')}${chartCard('injChart', 'Gas produced and reinjected', 'Million m³/day, annual average · reinjection incl. CO₂, a large share in the pre-salt')}</div>` +
+    (D.forecast ? chartCard('fcChart', 'Operators\' production forecast by basin', `Oil · ${unitOf('oil')} · actual (solid) and the operators' five-year forecast filed with ANP (light)`) : '') +
+    fieldTable(S.p === 'water' ? 'oil' : S.p) + topWellTable());
+  barChart('prodChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: S.p === 'gas' ? 1 : 0, noAnim: S.per === 'm' && t.labels.length > 400,
+    titleFn: S.per === 'm' ? i => ymTxt(t.labels[i].replace('-', '')) : undefined});
+  if (clickKind) charts.prodChart.options.onClick = (e) => {
+    const el = charts.prodChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0];
+    const ds = el && t.datasets[el.datasetIndex];
+    if (ds && ds.code) openSheet(ds.code); else if (ds && ds.inst) openInst(ds.inst);
+  };
+  // Produserende brønner
+  const lwY = {};
+  D.liveWells.forEach(([ym, o, on]) => { const y = ym.slice(0, 4); (lwY[y] = lwY[y] || []).push([o, on]); });
+  const ly = Object.keys(lwY).filter(y => y >= Math.max(1990, +S.from));
+  barChart('wellsChart', ly.map(y => lwY[y].length < 12 ? y + '*' : y), [
+    {label: 'Offshore', backgroundColor: ENV.off.color, data: ly.map(y => Math.round(lwY[y].reduce((s, v) => s + v[0], 0) / lwY[y].length)), stack: 's', borderWidth: 1, borderColor: '#fff'},
+    {label: 'Onshore', backgroundColor: ENV.on.color, data: ly.map(y => Math.round(lwY[y].reduce((s, v) => s + v[1], 0) / lwY[y].length)), stack: 's', borderWidth: 1, borderColor: '#fff'},
+  ], 'wells (monthly average)', {ticks: 20});
+  // Gass og reinjeksjon
+  const pa = periods('a', String(Math.max(2000, +S.from)));
+  barChart('injChart', pa.map(p => p.label), [
+    {label: 'Gas produced', backgroundColor: '#f68d2e', data: pa.map(p => p.idx.reduce((s, i) => s + D.total[1][i], 0) / p.days), stacked: false, borderWidth: 0},
+    {label: 'Reinjected', backgroundColor: '#7d2248', data: pa.map(p => p.idx.reduce((s, i) => s + (D.gasInjection[i] || 0), 0) / p.days), borderWidth: 0},
+  ], 'million m³/day', {stacked: false, dec: 1, noFooter: true, ticks: 20});
+  if (D.forecast) drawForecast();
+}
+function drawForecast() {
+  const fc = D.forecast.series, fy = [...new Set(Object.values(fc).flatMap(o => Object.keys(o)))].sort();
+  const firstF = fy[0], lastActual = +lastYM().slice(0, 4);
+  const basins = ['Santos', 'Campos'];
+  const years = []; for (let y = +firstF - 8; y <= +fy[fy.length - 1]; y++) years.push(String(y));
+  const ps = periods('a', years[0]);
+  const actual = (b) => years.map(y => { const p = ps.find(x => x.key === y); if (!p || p.ytd || +y > lastActual) return 0;
+    const src = b === 'other' ? null : D.byBasin[b]; const v = p.idx.reduce((s, i) => s + (src ? pick(src, i, 'oil') : pick(D.total, i, 'oil') - basins.reduce((t, bb) => t + pick(D.byBasin[bb], i, 'oil'), 0)), 0);
+    return v * factor('oil') / p.days; });
+  const fcast = (b) => years.map(y => { if (!fy.includes(y)) return 0; const p = ps.find(x => x.key === y);
+    if (p && !p.ytd) return 0;
+    const ks = Object.keys(fc).filter(k => b === 'other' ? !basins.includes(k.split('|')[0]) : k.split('|')[0] === b);
+    const v = ks.reduce((s, k) => s + ((fc[k][y] || [0])[0] || 0), 0);
+    return v * 12 * factor('oil') / (+y % 4 === 0 ? 366 : 365); });
+  const cols = {Santos: '#ce0f69', Campos: '#4993b4', other: '#00b373'};
+  const ds = [];
+  ['Santos', 'Campos', 'other'].forEach(b => {
+    ds.push({label: b === 'other' ? 'Other basins' : b, backgroundColor: cols[b], data: actual(b), stack: 's', borderWidth: 1, borderColor: '#fff'});
+    ds.push({label: (b === 'other' ? 'Other basins' : b) + ' (forecast)', backgroundColor: cols[b] + '66', data: fcast(b), stack: 's', borderWidth: 1, borderColor: '#fff'});
+  });
+  barChart('fcChart', years, ds, unitOf('oil'), {ticks: 20, legend: [{label: 'Santos', color: cols.Santos}, {label: 'Campos', color: cols.Campos}, {label: 'Other basins', color: cols.other}, {label: 'Forecast (light)', color: '#ce0f6966'}]});
+}
+function fieldTable(p) {
+  const rows = (S.cx === '1' ? CX.map(c => ({...c.main, l12: c.l12, cum: c.cum, parts: c.parts, name: c.name})) : F).filter(live).sort((a, b) => boeD(b.l12) - boeD(a.l12)).slice(0, 25);
+  return `<div class="tbl-sec">Largest producing fields<small>Average over the last 12 months; field complexes combined</small></div>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Basin</th><th class="l">Operator</th><th class="l">Regime</th><th>Pre-salt</th><th>Oil (${unitOf('oil')})</th><th>Gas (${unitOf('gas')})</th><th>Wells</th><th>Water depth (m)</th></tr></thead><tbody>
+    ${rows.map(f => `<tr class="click" onclick="openSheet(${jsq(f.code)})"><td><button class="row-link">${esc(f.name)}</button>${f.parts && f.parts.length > 1 ? ` <span class="tag">${f.parts.length} areas</span>` : ''}</td>
+      <td class="l">${esc(f.basin)}</td><td class="l">${esc(f.op || '–')}</td><td class="l">${esc(f.regime || '–')}</td><td>${f.presal != null && f.env === 'off' ? pct(f.presal) : '–'}</td>
+      <td>${fmt(l12In(f.l12, 'oil'))}</td><td>${fmt(l12In(f.l12, 'gas'), 2)}</td><td>${fmt(f.parts ? f.parts.reduce((s, x) => s + (x.wells || 0), 0) : f.wells)}</td><td>${fmt(f.wd)}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+function topWellTable() {
+  const n = daysIn(+lastYM().slice(0, 4), +lastYM().slice(4));
+  return `<div class="tbl-sec">Most productive wells · ${ymTxt(lastYM())}<small>Oil and gas per day in the month. Pre-salt wells routinely produce 20,000–60,000 bbl/day</small></div>
+    <div class="table-wrap scroll" style="max-height:360px"><table class="res-table"><thead><tr><th>Well</th><th class="l">Field</th><th class="l">Platform</th><th class="l">Layer</th><th>Oil (${unitOf('oil')})</th><th>Gas (${unitOf('gas')})</th></tr></thead><tbody>
+    ${D.topWells.slice(0, 40).map(([w, f, inst, env, cls, o, g]) => { const fo = fieldBy(f); return `<tr><td>${esc(w)}</td><td class="l">${fo ? `<button class="row-link" onclick="openSheet(${jsq(f)})">${esc(fo.name)}</button>` : esc(f)}</td>
+      <td class="l">${inst && instBy(inst) ? `<button class="row-link" onclick="openInst(${jsq(inst)})">${esc(title(inst))}</button>` : esc(inst || '–')}</td><td class="l">${cls === 'pre' ? '<span class="tag pre">Pre-salt</span>' : cls === 'post' ? 'Post-salt' : 'Onshore'}</td>
+      <td>${fmt(o * (S.u === 'm3' ? 1 : BBL_PER_M3))}</td><td>${fmt(g / 1000, 2)}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+
+// ── FIELDS ──
+function viewFields() {
+  const basins = [...new Set(F.map(f => f.basin))].sort();
+  setControls(pills('rk', [['l12', 'Last 12 months'], ['cum', 'Produced to date'], ['voip', 'Oil in place'], ['rf', 'Recovery factor']], 'Rank by') +
+    pills('env', [['', 'All'], ['off', 'Offshore'], ['on', 'Onshore']], 'Location') +
+    select('bs', [['', 'All basins']].concat(basins.map(b => [b, b])), 'Basin') +
+    pills('cx', [['1', 'Combine'], ['0', 'Separate']], 'Field areas') + search('Field', 'drawFieldTable'));
+  const pool = fieldPool();
+  const val = rankVal();
+  const top = pool.filter(f => val(f) > 0).sort((a, b) => val(b) - val(a)).slice(0, 25);
+  const unit = {l12: 'boe/day', cum: 'million boe', voip: 'million bbl', rf: '%'}[S.rk];
+  const ttl = {l12: 'Oil + gas production, last 12 months', cum: 'Produced to date', voip: 'Oil originally in place (VOIP)', rf: 'Oil recovery factor (produced / in place)'}[S.rk];
+  setView(chartCard('rankChart', ttl, `The 25 largest${S.rk === 'rf' ? ' fields with at least 100 million bbl in place' : ''} · ${unit} · colour = location · click a field for its factsheet`, {h: 560}) +
+    `<div class="tbl-sec">Fields<small>${fmt(pool.length)} fields. In-place volumes and recovery factor from ANP's annual reserves bulletin (BAR ${D.reserves.barYear}), as declared by the operators</small></div>
+    <div class="table-wrap scroll" style="max-height:560px" id="fieldTable"></div>`);
+  barChart('rankChart', top.map(f => f.name), [{label: ttl, data: top.map(val), backgroundColor: top.map(f => f.env === 'on' ? ENV.on.color : f.presal > 0.5 ? SALT.pre.color : SALT.post.color), borderWidth: 0}],
+    unit, {horizontal: true, noFooter: true, dec: S.rk === 'rf' ? 1 : 0, legend: [{label: 'Offshore, mostly pre-salt', color: SALT.pre.color}, {label: 'Offshore, post-salt', color: SALT.post.color}, {label: 'Onshore', color: ENV.on.color}],
+      onClick: i => openSheet(top[i].code)});
+  drawFieldTable();
+}
+function fieldPool() {
+  const base = S.cx === '1' ? CX.map(c => {
+    const m = c.main, bar = c.parts.filter(p => p.bar);
+    const sb = k => bar.reduce((s, p) => s + (p.bar[k] || 0), 0);
+    return {...m, name: c.name, l12: c.l12, cum: c.cum, parts: c.parts, wells: c.parts.reduce((s, p) => s + (p.wells || 0), 0),
+      bar: bar.length ? [sb(0), sb(1), sb(2), sb(3), sb(0) ? sb(2) / sb(0) : 0, m.bar ? m.bar[5] : ''] : null};
+  }) : F;
+  const q = S.q.trim().toLowerCase();
+  return base.filter(f => (!S.env || f.env === S.env) && (!S.bs || f.basin === S.bs) && (!q || f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q)));
+}
+const rankVal = () => S.rk === 'l12' ? f => boeD(f.l12) : S.rk === 'cum' ? cumBoe : S.rk === 'voip' ? f => f.bar ? f.bar[0] : 0 : f => f.bar && f.bar[0] >= 100 ? f.bar[4] * 100 : 0;
+function drawFieldTable() {
+  const el = document.getElementById('fieldTable'); if (!el) return;
+  const val = rankVal();
+  const rows = fieldPool().sort((a, b) => val(b) - val(a) || boeD(b.l12) - boeD(a.l12)).slice(0, 400);
+  el.innerHTML = `<table class="res-table"><thead><tr><th>Field</th><th class="l">Basin</th><th class="l">State</th><th class="l">Operator</th><th>Discovered</th><th>Water depth (m)</th><th>Oil (${unitOf('oil')})</th><th>Gas (${unitOf('gas')})</th><th>Produced (MMboe)</th><th>Oil in place (MMbbl)</th><th>Recovery</th></tr></thead><tbody>
+    ${rows.map(f => `<tr class="click" onclick="openSheet(${jsq(f.code)})"><td><button class="row-link">${esc(f.name)}</button>${f.env === 'on' ? ' <span class="tag">onshore</span>' : f.presal > 0.5 ? ' <span class="tag pre">pre-salt</span>' : ''}</td>
+      <td class="l">${esc(f.basin)}</td><td class="l">${esc(f.state)}</td><td class="l">${esc(f.op || '–')}</td><td>${f.disc ? f.disc.slice(0, 4) : '–'}</td><td>${fmt(f.wd)}</td>
+      <td>${fmt(l12In(f.l12, 'oil'))}</td><td>${fmt(l12In(f.l12, 'gas'), 3)}</td><td>${fmt(cumBoe(f), 1)}</td><td>${f.bar ? fmt(f.bar[0]) : '–'}</td><td>${f.bar && f.bar[0] ? pct(f.bar[4], 1) : '–'}</td></tr>`).join('') || '<tr><td colspan="11">No fields</td></tr>'}
+    </tbody></table>${rows.length === 400 ? '<div class="pf-note">The first 400 shown; search to narrow down.</div>' : ''}`;
+}
+
+// ── PLATFORMS ──
+function viewInstallations() {
+  setControls(pills('env', [['', 'All'], ['off', 'Offshore'], ['on', 'Onshore']], 'Location') + pills('ip', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Rank by') + unitPills() + search('Platform or field', 'drawInstTable'));
+  const pool = I.filter(i => !S.env || i.env === S.env);
+  const val = i => l12In(i.l12, S.ip);
+  const top = pool.filter(i => val(i) > 0).sort((a, b) => val(b) - val(a)).slice(0, 25);
+  const live12 = pool.filter(i => val(i) > 0);
+  const fpso = live12.filter(i => /FPSO|FPSO/i.test(i.name) && i.env === 'off');
+  const offAll = I.filter(i => i.env === 'off' && boeD(i.l12) > 0);
+  const offTot = offAll.reduce((s, i) => s + boeD(i.l12), 0);
+  const top10 = offAll.slice().sort((a, b) => boeD(b.l12) - boeD(a.l12)).slice(0, 10).reduce((s, i) => s + boeD(i.l12), 0);
+  setView(`<div class="kpis"><div class="kpi"><span>Producing units</span><strong>${live12.length}</strong><small>with production last 12 months</small></div>
+      <div class="kpi"><span>Named FPSOs</span><strong>${fpso.length}</strong><small>with «FPSO» in the name; many Petrobras FPSOs are called P-xx</small></div>
+      <div class="kpi"><span>Ten largest offshore</span><strong>${pct(top10 / offTot)}</strong><small>of offshore oil + gas</small></div>
+      <div class="kpi"><span>Largest</span><strong style="font-size:0.95rem">${esc(title(top[0] ? top[0].name : '–'))}</strong><small>${top[0] ? fmt(val(top[0])) + ' ' + unitOf(S.ip) : ''}</small></div></div>` +
+    chartCard('instChart', 'Largest production units', `${prodLabel(S.ip)} · ${unitOf(S.ip)}, last 12 months · colour = main field's layer · click for the factsheet`, {h: 560}) +
+    `<div class="info-box">Production units as ANP records them for each well (<i>instalação</i>): floating production units (FPSOs; Petrobras names many of them «Petrobras 74» etc.), fixed platforms and onshore collecting stations. A platform's position on the maps is the median position of the wells that produce to it, from ANP's well register (to ${D.sources.wellRegister.slice(-4)}); newer units use the field's position.</div>
+    <div class="tbl-sec">Production units</div><div class="table-wrap scroll" style="max-height:560px" id="instTable"></div>`);
+  const col = i => { const f = i.fields[0] && fieldBy(i.fields[0][0]); return i.env === 'on' ? ENV.on.color : f && f.presal > 0.5 ? SALT.pre.color : SALT.post.color; };
+  barChart('instChart', top.map(i => title(i.name)), [{label: prodLabel(S.ip), data: top.map(val), backgroundColor: top.map(col), borderWidth: 0}], unitOf(S.ip),
+    {horizontal: true, noFooter: true, dec: S.ip === 'gas' ? 2 : 0, legend: [{label: 'Mostly pre-salt', color: SALT.pre.color}, {label: 'Post-salt', color: SALT.post.color}, {label: 'Onshore', color: ENV.on.color}], onClick: i => openInst(top[i].name)});
+  drawInstTable();
+}
+function drawInstTable() {
+  const el = document.getElementById('instTable'); if (!el) return;
+  const q = S.q.trim().toLowerCase();
+  const rows = I.filter(i => (!S.env || i.env === S.env) && (!q || i.name.toLowerCase().includes(q) || i.fields.some(([c]) => { const f = fieldBy(c); return (f ? f.name : c).toLowerCase().includes(q); })))
+    .sort((a, b) => l12In(b.l12, S.ip) - l12In(a.l12, S.ip)).slice(0, 300);
+  el.innerHTML = `<table class="res-table"><thead><tr><th>Unit</th><th class="l">Basin</th><th class="l">Fields</th><th>Oil (${unitOf('oil')})</th><th>Gas (${unitOf('gas')})</th><th>Wells</th><th>First production</th><th>Latest</th><th>Incidents</th></tr></thead><tbody>
+    ${rows.map(i => `<tr class="click" onclick="openInst(${jsq(i.name)})"><td><button class="row-link">${esc(title(i.name))}</button></td><td class="l">${esc(i.basin)}</td>
+      <td class="l">${esc(i.fields.slice(0, 3).map(([c]) => { const f = fieldBy(c); return f ? f.name : c; }).join(', '))}${i.fields.length > 3 ? ' …' : ''}</td>
+      <td>${fmt(l12In(i.l12, 'oil'))}</td><td>${fmt(l12In(i.l12, 'gas'), 2)}</td><td>${fmt(i.wells)}</td><td>${ymTxt(i.first)}</td><td>${ymTxt(i.last)}</td><td>${i.inc ? fmt(i.inc) : '–'}</td></tr>`).join('') || '<tr><td colspan="9">None</td></tr>'}
+    </tbody></table>`;
+}
+
+// ── RESERVES ──
+function viewReserves() {
+  setControls(pills('rp', [['oil', 'Oil'], ['gas', 'Gas']], 'Product'));
+  const R = D.reserves, H = R.history, oil = S.rp === 'oil';
+  const unit = oil ? 'billion bbl' : 'billion m³', k = oil ? 1 : 2;
+  const lastH = H[H.length - 1];
+  const prod12 = oil ? sum12(D.total, 'oil') * 1000 * BBL_PER_M3 / 1e6 : sum12(D.total, 'gas') / 1000;   // mill. fat / mrd. m³
+  const v1 = lastH[k][0] / 1000;
+  const basins = Object.entries(R.basins).map(([b, v]) => ({b, all: (v.all || {})[S.rp] || [0, 0, 0, 0], off: (v.off || {})[S.rp], on: (v.on || {})[S.rp]}))
+    .filter(x => x.all[2] > 0 || x.all[3] > 0).sort((a, b) => b.all[1] - a.all[1]);
+  const T = R.total ? R.total[S.rp] : null;
+  setView(`<div class="kpis">
+      <div class="kpi"><span>Proved (1P)</span><strong>${fmt(v1, 2)}</strong><small>${unit}, 31 Dec ${lastH[0]}</small></div>
+      <div class="kpi"><span>Proved + probable (2P)</span><strong>${fmt(lastH[k][1] / 1000, 2)}</strong><small>${unit}</small></div>
+      <div class="kpi"><span>Proved + probable + possible (3P)</span><strong>${fmt(lastH[k][2] / 1000, 2)}</strong><small>${unit}</small></div>
+      <div class="kpi"><span>Proved reserves / production</span><strong>${fmt(lastH[k][0] / prod12, 1)}</strong><small>years at the last 12 months' rate</small></div>
+      ${lastH[k + 2] ? `<div class="kpi"><span>Pre-salt share of proved</span><strong>${pct(lastH[k + 2][1] / (lastH[k + 2][0] + lastH[k + 2][1]))}</strong><small>${lastH[0]}</small></div>` : ''}</div>` +
+    `<div class="grid2">${chartCard('resHist', `${oil ? 'Oil' : 'Gas'} reserves over time`, `${unit} · proved, probable and possible as declared each 31 December`)}${chartCard('resSalt', 'Proved reserves by layer', `${unit} · pre-salt and post-salt (incl. onshore)`)}</div>` +
+    chartCard('resBasin', 'Reserves by basin', `${unit} · 1P, 2P−1P and 3P−2P stacked, and contingent resources · ${R.pdfYear}`, {h: 360}) +
+    `<div class="tbl-sec">Basins · 31 Dec ${R.pdfYear}<small>${oil ? 'Million bbl' : 'Million m³'}; offshore and onshore from ANP's tables 3–6</small></div>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Basin</th><th>1P</th><th>2P</th><th>3P</th><th>Contingent</th><th>1P offshore</th><th>1P onshore</th></tr></thead><tbody>
+      ${basins.map(x => `<tr><td>${esc(x.b)}</td>${x.all.map(v => `<td>${fmt(v, oil ? 1 : 0)}</td>`).join('')}<td>${x.off ? fmt(x.off[0], oil ? 1 : 0) : '–'}</td><td>${x.on ? fmt(x.on[0], oil ? 1 : 0) : '–'}</td></tr>`).join('')}
+      ${T ? `<tr class="total-row"><td>Total</td>${T.map(v => `<td>${fmt(v, oil ? 1 : 0)}</td>`).join('')}<td></td><td></td></tr>` : ''}</tbody></table></div>` +
+    chartCard('voipChart', 'Largest fields by oil in place', 'Million bbl · produced to date (grey) and the rest of the oil in place (green) · click a field', {h: 520}) +
+    `<div class="info-box"><strong>Source:</strong> ANP, «Boletim anual de recursos e reservas» ${R.pdfYear} (reserves as declared by the operators under ANP resolution 47/2014, SPE-PRMS definitions) and the bulletin's field table (BAR ${R.barYear}). The history is read from the bulletin's charts, which ANP publishes with the values printed. ANP does not publish reserves field by field; the field table gives volumes originally in place and production to date, from which the recovery factor follows.</div>`);
+  barChart('resHist', H.map(h => h[0]), [
+    {label: 'Proved (1P)', backgroundColor: '#00b373', data: H.map(h => h[k][0] / 1000), borderWidth: 1, borderColor: '#fff'},
+    {label: 'Probable', backgroundColor: '#4993b4', data: H.map(h => (h[k][1] - h[k][0]) / 1000), borderWidth: 1, borderColor: '#fff'},
+    {label: 'Possible', backgroundColor: '#b9c0c9', data: H.map(h => (h[k][2] - h[k][1]) / 1000), borderWidth: 1, borderColor: '#fff'},
+  ], unit, {dec: 2});
+  const HS = H.filter(h => h[k + 2]);
+  barChart('resSalt', HS.map(h => h[0]), [
+    {label: 'Pre-salt', backgroundColor: SALT.pre.color, data: HS.map(h => h[k + 2][1] / 1000), borderWidth: 1, borderColor: '#fff'},
+    {label: 'Post-salt', backgroundColor: SALT.post.color, data: HS.map(h => h[k + 2][0] / 1000), borderWidth: 1, borderColor: '#fff'},
+  ], unit, {dec: 2});
+  const bb = basins.slice(0, 10);
+  barChart('resBasin', bb.map(x => x.b), [
+    {label: '1P', backgroundColor: '#00b373', data: bb.map(x => x.all[0] / 1000), stack: 'r'},
+    {label: '2P − 1P', backgroundColor: '#4993b4', data: bb.map(x => (x.all[1] - x.all[0]) / 1000), stack: 'r'},
+    {label: '3P − 2P', backgroundColor: '#b9c0c9', data: bb.map(x => (x.all[2] - x.all[1]) / 1000), stack: 'r'},
+    {label: 'Contingent resources', backgroundColor: '#f68d2e', data: bb.map(x => (x.all[3] || 0) / 1000), stack: 'c'},
+  ], unit, {dec: 2, horizontal: true, noFooter: true});
+  const tv = (S.cx === '1' ? fieldPool() : F).filter(f => f.bar && f.bar[0] > 0).sort((a, b) => b.bar[0] - a.bar[0]).slice(0, 20);
+  barChart('voipChart', tv.map(f => f.name), [
+    {label: 'Produced', backgroundColor: 'rgba(148,163,184,0.75)', data: tv.map(f => f.bar[2])},
+    {label: 'Remaining in place', backgroundColor: 'rgba(0,179,115,0.85)', data: tv.map(f => Math.max(0, f.bar[0] - f.bar[2]))},
+  ], 'million bbl', {horizontal: true, onClick: i => openSheet(tv[i].code)});
+}
+
+// ── COMPANY ──
+function viewCompany() {
+  const C = D.company, eqMode = S.b !== 'op';
+  const SRC = eqMode ? C.equity : C.operated, off = MONTHS.indexOf(C.start);
+  const names = [...new Set(C.net12.map(x => x[0]).concat(C.op12.map(x => x[0])))];
+  setControls(pills('b', [['eq', 'Equity (net)'], ['op', 'Operated']], 'Basis') +
+    select('c', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company') +
+    pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['boe', 'Oil + gas']], 'Product') + pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') + unitPills());
+  if (S.p === 'water') S.p = 'oil';
+  const ps = periods(S.per, C.start.slice(0, 4) > S.from ? C.start.slice(0, 4) : S.from), unit = unitOf(S.p);
+  const get = (G, g) => i => { const j = i - off; return j < 0 || !G[g] ? 0 : pick(G[g], j, S.p); };
+  const order = (eqMode ? C.net12 : C.op12).map(x => x[0]);
+  let datasets;
+  if (!S.c) {
+    const shown = order.filter(g => SRC[g]).slice(0, TOP);
+    datasets = shown.map(g => ({label: g, backgroundColor: colorFor('co', g), data: perDay(get(SRC, g), ps, S.p)}));
+    datasets.push({label: 'Other companies', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - shown.reduce((t, g) => t + get(SRC, g)(i), 0)), ps, S.p)});
+  } else {
+    datasets = [{label: `${S.c} (${eqMode ? 'equity' : 'operated'})`, backgroundColor: colorFor('co', S.c) === OTHER_COLOR ? '#7d2248' : colorFor('co', S.c), data: SRC[S.c] ? perDay(get(SRC, S.c), ps, S.p) : []}];
+  }
+  datasets = dsStyle(datasets);
+  const t = trimLead(ps.map(p => p.label), datasets);
+  const eq12 = Object.fromEntries(C.net12), op12 = Object.fromEntries(C.op12);
+  let table;
+  if (!S.c) {
+    const rows = names.map(g => ({g, eq: eq12[g] || 0, op: op12[g] || 0})).sort((a, b) => eqMode ? b.eq - a.eq || b.op - a.op : b.op - a.op || b.eq - a.eq).slice(0, 50);
+    table = `<div class="tbl-sec">Companies<small>Oil + gas, boe/day, average of the last 12 months. <b>Equity</b> = the company's share by today's contract shares; <b>operated</b> = all production from fields it operates</small></div>
+      <div class="table-wrap"><table class="res-table"><thead><tr><th>Company</th><th>Equity (boe/d)</th><th>Operated (boe/d)</th><th>Fields with equity</th><th>Operated fields</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="click" onclick="set({c:${jsq(r.g)}})"><td><span class="dot" style="background:${colorFor('co', r.g)}"></span><button class="row-link">${esc(r.g)}</button></td>
+        <td>${r.eq >= 1 ? fmt(r.eq) : '–'}</td><td>${r.op >= 1 ? fmt(r.op) : '–'}</td><td>${(C.equityFields[r.g] || []).length || '–'}</td><td>${F.filter(f => f.op === r.g && live(f)).length || '–'}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  } else {
+    const ef = (C.equityFields[S.c] || []).map(([code, v, share]) => ({f: fieldBy(code), code, v, share}));
+    const opf = F.filter(f => f.op === S.c && live(f)).sort((a, b) => boeD(b.l12) - boeD(a.l12));
+    table = `<div class="kpis"><div class="kpi"><span>Equity · last 12 months</span><strong>${fmt(eq12[S.c] || 0)}</strong><small>boe/day, at today's shares</small></div>
+      <div class="kpi"><span>Operated · last 12 months</span><strong>${op12[S.c] ? fmt(op12[S.c]) : '–'}</strong><small>boe/day</small></div>
+      <div class="kpi"><span>Fields with equity</span><strong>${ef.length}</strong><small>producing</small></div>
+      <div class="kpi"><span>Operated fields</span><strong>${opf.length}</strong><small>producing</small></div>
+      <div class="kpi" id="coBlocks"><span>Exploration blocks</span><strong>…</strong><small></small></div></div>
+      ${ef.length ? `<div class="tbl-sec">Equity by field<small>The company's share of each field's production over the last 12 months, at today's contract shares</small></div>
+      <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Operator</th><th class="l">Basin</th><th>Share</th><th>Net (boe/d)</th><th>Field total (boe/d)</th></tr></thead><tbody>
+      ${ef.map(({f, code, v, share}) => `<tr${f ? ` class="click" onclick="openSheet(${jsq(code)})"` : ''}><td>${f ? `<button class="row-link">${esc(f.name)}</button>` : esc(code)}</td>
+        <td class="l">${esc(f && f.op || '–')}</td><td class="l">${esc(f ? f.basin : '–')}</td><td>${fmt(share, 1)} %</td><td>${fmt(v)}</td><td>${f ? fmt(boeD(f.l12)) : '–'}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      <div id="coExpl"></div>`;
+  }
+  const info = eqMode
+    ? `<strong>Equity production</strong> is each field's production multiplied by the contract shares in ANP's list of rights holders (<i>relação de concessionários</i>) today, applied to every month — ANP publishes no history of the shares, so past years are shown with today's owners (assignments are listed in Licensing). Non-contracted areas (<i>AnC</i>) in unitised pre-salt fields are credited to the Union, managed by PPSA. Shares cover ${pct(C.coverage, 1)} of production over the last 12 months.`
+    : `<strong>Operated volumes</strong> credit each field's production to the operator ANP recorded for it that year (well archive 2005–${D.presalArchive.slice(0, 4)}), and to today's operator after that.`;
+  setView(chartCard('cmpChart', S.c ? `${esc(S.c)} · ${eqMode ? 'equity' : 'operated'} production` : `${eqMode ? 'Equity' : 'Operated'} production by company`,
+      `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit}`, {cls: 'tall'}) +
+    `<div class="info-box">${info} Companies are grouped under today's parent where the line is clear (BG under Shell, Statoil under Equinor, Petrogal under Galp, 3R and Enauta under Brava Energia, PetroRio under PRIO, Maersk under TotalEnergies).</div>` + table);
+  barChart('cmpChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: S.p === 'gas' ? 1 : 0, noAnim: t.labels.length > 300});
+  if (S.c) loadExpl().then(() => {
+    const el = document.getElementById('coExpl'), kb = document.getElementById('coBlocks'); if (!el || S.v !== 'company') return;
+    const bl = E.blocks.list.filter(b => b.holders.some(h => groupName(h[0]) === S.c) || b.opG === S.c);
+    const area = bl.reduce((s, b) => s + b.area, 0);
+    if (kb) kb.innerHTML = `<span>Exploration blocks</span><strong>${bl.length}</strong><small>${fmt(area)} km², ${bl.filter(b => b.opG === S.c).length} as operator</small>`;
+    const ew = E.wells.list.filter(w => w.opG === S.c).slice().sort((a, b) => (b.spud || '').localeCompare(a.spud || '')).slice(0, 15);
+    el.innerHTML = (bl.length ? `<div class="tbl-sec">Exploration blocks<small>Under contract, ${esc(E.blocks.asOf)}</small></div>
+      <div class="table-wrap scroll" style="max-height:320px"><table class="res-table"><thead><tr><th>Block</th><th class="l">Basin</th><th class="l">Operator</th><th>Share</th><th class="l">Round</th><th class="l">Status</th><th>Area (km²)</th></tr></thead><tbody>
+      ${bl.sort((a, b) => b.area - a.area).map(b => { const h = b.holders.find(h => groupName(h[0]) === S.c); return `<tr><td>${esc(b.block)}</td><td class="l">${esc(b.basin)}</td><td class="l">${esc(b.op)}</td><td>${h ? fmt(h[1], 1) + ' %' : '–'}</td><td class="l">${esc(b.round)}</td><td class="l">${esc(b.period)}</td><td>${fmt(b.area)}</td></tr>`; }).join('')}</tbody></table></div>` : '') +
+      (ew.length ? `<div class="tbl-sec">Latest exploration wells operated</div>${wellTable(ew)}` : '');
+  });
+}
+// Konsernnavn i frontend (samme grupper som fetch_anp.py for de vanligste)
+const GROUP_RX = [[/petrobras|petróleo brasileiro/i, 'Petrobras'], [/^shell|^bg /i, 'Shell'], [/^total/i, 'TotalEnergies'], [/equinor|statoil/i, 'Equinor'], [/petrogal|galp/i, 'Galp'],
+  [/repsol/i, 'Repsol Sinopec'], [/^sinopec/i, 'Sinopec'], [/cnooc/i, 'CNOOC'], [/^cnpc|petrochina/i, 'CNPC'], [/exxon/i, 'ExxonMobil'], [/^prio|petro ?rio/i, 'PRIO'],
+  [/^brava|^3r|enauta/i, 'Brava Energia'], [/petronas/i, 'Petronas'], [/qatar/i, 'QatarEnergy'], [/^bp energy|^bp$/i, 'bp'], [/^bprl/i, 'BPRL'], [/^ongc/i, 'ONGC'],
+  [/karoon/i, 'Karoon'], [/chevron/i, 'Chevron'], [/^eneva/i, 'Eneva'], [/petrorec[oô]ncavo/i, 'PetroReconcavo'], [/^origem/i, 'Origem Energia'], [/seacrest/i, 'Seacrest'],
+  [/ecopetrol/i, 'Ecopetrol'], [/murphy/i, 'Murphy'], [/^bw /i, 'BW Energy'], [/perenco/i, 'Perenco'], [/geopark/i, 'GeoPark'], [/trident/i, 'Trident Energy']];
+const groupName = n => { for (const [rx, g] of GROUP_RX) if (rx.test(n)) return g; return n; };
+
+// ── EXPLORATION ──
+function wellTable(list) {
+  return `<div class="table-wrap scroll"><table class="res-table"><thead><tr><th>Well</th><th class="l">Block</th><th class="l">Basin</th><th class="l">Operator</th><th class="l">Spud</th><th class="l">Completed</th><th>Depth (m)</th><th>Water depth (m)</th><th class="l">Pre-salt</th><th class="l">Discovery</th></tr></thead><tbody>
+    ${list.map(w => `<tr><td>${esc(w.well)}</td><td class="l">${esc(w.block)}</td><td class="l">${esc(w.basin)}</td><td class="l">${esc(w.op)}</td><td class="l">${esc(dateTxt(w.spud))}</td><td class="l">${esc(dateTxt(w.end))}</td>
+      <td>${fmt(w.td)}</td><td>${fmt(w.wd)}</td><td class="l">${w.presal ? '<span class="tag pre">reached</span>' : '–'}</td><td class="l">${w.disc ? `<span class="tag disc">${esc(fluidEn(w.fluid) || 'yes')}</span> ${esc(dateTxt(w.discDate))}` : '–'}</td></tr>`).join('') || '<tr><td colspan="10">No wells</td></tr>'}</tbody></table></div>`;
+}
+const fluidEn = f => ({'Petróleo': 'Oil', 'Gás': 'Gas', 'Gás e Petróleo': 'Oil and gas', 'Não Caracterizado': 'Not characterised'}[f] || f);
+function viewExploration() {
+  setControls(pills('env', [['', 'All'], ['off', 'Offshore'], ['on', 'Onshore']], 'Location'));
+  const X = D.expl, wy = X.wellsByYear, years = Object.keys(wy).filter(y => y >= '1998');
+  const cnt = y => S.env ? wy[y][S.env] : wy[y].off + wy[y].on;
+  const curY = String(new Date().getFullYear());
+  const last5 = years.slice(-6, -1);
+  const disc5 = last5.reduce((s, y) => s + wy[y].disc, 0), all5 = last5.reduce((s, y) => s + wy[y].off + wy[y].on, 0);
+  const bh = X.blockHistory[X.blockHistory.length - 1] || [];
+  setView(`<div class="kpis"><div class="kpi"><span>Blocks under contract</span><strong>${fmt(X.nBlocks)}</strong><small>${bh.length ? `${fmt(bh[1])} offshore, ${fmt(bh[2])} onshore · ${esc(X.blocksAsOf)}` : ''}</small></div>
+      <div class="kpi"><span>Exploration wells ${last5[0]}–${last5[last5.length - 1]}</span><strong>${fmt(all5)}</strong><small>${fmt(all5 / 5, 0)} a year</small></div>
+      <div class="kpi"><span>Discovery notifications</span><strong>${pct(disc5 / all5)}</strong><small>of exploration wells ${last5[0]}–${last5[last5.length - 1]}</small></div>
+      <div class="kpi"><span>Spudded ${curY}</span><strong>${fmt(wy[curY] ? wy[curY].off + wy[curY].on : 0)}</strong><small>to ${esc(X.wellsAsOf)}</small></div></div>` +
+    chartCard('explChart', 'Exploration wells per year', `Spud year · ${S.env ? ENV[S.env].label.toLowerCase() : 'offshore and onshore'} · line: wells that led to a discovery notification · click a year to list its wells`) +
+    `<div class="grid2">${chartCard('newWellsChart', 'New producing wells per year', 'Wells with their first month of production that year (development drilling result)')}${chartCard('blkHist', 'Blocks under contract', 'Number of exploration blocks, month by month')}</div>
+    <div id="wellList">${loading()}</div><div id="padList"></div>
+    <div class="info-box"><strong>Source:</strong> ANP, «Painel dinâmico da fase de exploração»: exploration wells drilled under contract since 1998 with discovery notifications, blocks under contract, appraisal plans (PAD) and declarations of commerciality, published monthly (latest ${esc(X.wellsAsOf)}). Positions and water depth from ANP's well register (shapefile, to ${D.sources.wellRegister.slice(-4)}).</div>`);
+  barChart('explChart', years.map(y => y === curY ? y + '*' : y), [
+    {label: 'Offshore', backgroundColor: ENV.off.color, data: years.map(y => S.env === 'on' ? 0 : wy[y].off), stack: 's', borderWidth: 1, borderColor: '#fff'},
+    {label: 'Onshore', backgroundColor: ENV.on.color, data: years.map(y => S.env === 'off' ? 0 : wy[y].on), stack: 's', borderWidth: 1, borderColor: '#fff'},
+    {type: 'line', label: 'With discovery', borderColor: '#ce0f69', backgroundColor: '#ce0f69', data: years.map(y => wy[y].disc), pointRadius: 2, borderWidth: 2, noSum: true, tension: 0.2},
+  ], 'wells', {ticks: 30, onClick: i => set({ey: years[i]}, false)});
+  const nw = D.newWells.filter(r => r[0] >= '1990');
+  barChart('newWellsChart', nw.map(r => r[0]), [
+    {label: 'Offshore', backgroundColor: ENV.off.color, data: nw.map(r => r[1]), stack: 's', borderWidth: 1, borderColor: '#fff'},
+    {label: 'Onshore', backgroundColor: ENV.on.color, data: nw.map(r => r[2]), stack: 's', borderWidth: 1, borderColor: '#fff'}], 'wells', {ticks: 20});
+  barChart('blkHist', X.blockHistory.map(r => r[0]), [
+    {label: 'Offshore', backgroundColor: ENV.off.color, data: X.blockHistory.map(r => r[1]), stack: 's', borderWidth: 0},
+    {label: 'Onshore', backgroundColor: ENV.on.color, data: X.blockHistory.map(r => r[2]), stack: 's', borderWidth: 0}], 'blocks', {ticks: 12});
+  loadExpl().then(() => {
+    const el = document.getElementById('wellList'); if (!el || S.v !== 'exploration') return;
+    const ey = S.ey && years.includes(S.ey) ? S.ey : years[years.length - 1];
+    const list = E.wells.list.filter(w => (w.spud || '').startsWith(ey) && (!S.env || w.env === S.env)).sort((a, b) => (b.spud || '').localeCompare(a.spud || ''));
+    el.innerHTML = `<div class="tbl-sec">${ey}: ${list.length} exploration well${list.length === 1 ? '' : 's'} spudded<small>${list.filter(w => w.disc).length} with a discovery notification</small></div>${wellTable(list)}`;
+    const pc = E.padCols, row = (name, r) => Object.fromEntries(pc[name].map((k, i) => [k, r[i]]));
+    const act = E.padsActive.map(r => row('padsActive', r)).filter(p => !S.env || (S.env === 'off') === /mar/i.test(p.env));
+    const dc = E.commerciality.map(r => row('commerciality', r)).filter(p => !S.env || (S.env === 'off') === /mar/i.test(p.env)).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    document.getElementById('padList').innerHTML = `<div class="grid2"><div><div class="tbl-sec">Appraisal plans in progress (PAD)<small>${act.length} plans</small></div>
+      <div class="table-wrap scroll" style="max-height:360px"><table class="res-table"><thead><tr><th>Block</th><th class="l">Basin</th><th class="l">Operator</th><th class="l">Status</th><th class="l">Ends</th></tr></thead><tbody>
+      ${act.map(p => `<tr><td>${esc(p.block)}</td><td class="l">${esc(p.basin)}</td><td class="l">${esc(p.op)}</td><td class="l wrap">${esc(p.status)}</td><td class="l">${esc(dateTxt(p.end))}</td></tr>`).join('')}</tbody></table></div></div>
+      <div><div class="tbl-sec">Declarations of commerciality<small>New fields declared from exploration blocks, newest first</small></div>
+      <div class="table-wrap scroll" style="max-height:360px"><table class="res-table"><thead><tr><th>New field</th><th class="l">Block</th><th class="l">Basin</th><th class="l">Operator</th><th class="l">Declared</th></tr></thead><tbody>
+      ${dc.map(p => { const f = F.find(x => x.name.toUpperCase() === String(p.area).toUpperCase() || x.code === String(p.area).toUpperCase());
+        return `<tr><td>${f ? `<button class="row-link" onclick="openSheet(${jsq(f.code)})">${esc(f.name)}</button>` : esc(title(p.area))}</td><td class="l">${esc(p.block)}</td><td class="l">${esc(p.basin)}</td><td class="l">${esc(p.op)}</td><td class="l">${esc(dateTxt(p.date))}</td></tr>`; }).join('')}</tbody></table></div></div></div>`;
+  });
+}
+
+// ── LICENSING ──
+function viewLicensing() {
+  setControls(pills('lt', [['blocks', 'Blocks under contract'], ['rounds', 'Licensing rounds'], ['transfers', 'Assignments']], 'Show') +
+    (S.lt !== 'rounds' ? pills('env', [['', 'All'], ['off', 'Offshore'], ['on', 'Onshore']], 'Location') + search(S.lt === 'blocks' ? 'Block, basin or company' : 'Contract or company', 'drawLic') : ''));
+  setView(`<div id="licView">${loading()}</div>`);
+  loadExpl().then(() => S.v === 'licensing' && drawLicHead());
+}
+function drawLicHead() {
+  const el = document.getElementById('licView'); if (!el) return;
+  if (S.lt === 'rounds') {
+    const R = E.rounds, rs = [...new Set(R.offered.map(r => r[0]).concat(R.awarded.map(r => r[0])))].filter(x => typeof x === 'number').sort((a, b) => a - b);
+    const off = r => R.offered.filter(x => x[0] === r).length, won = r => R.awarded.filter(x => x[0] === r).length;
+    const bonus = r => R.awarded.filter(x => x[0] === r).reduce((s, x) => s + (x[6] || 0), 0);
+    el.innerHTML = chartCard('rndChart', 'Bidding rounds 9–17: blocks offered and awarded', 'Concession rounds · signature bonus (line, R$ million, right axis)') +
+      `<div class="info-box">ANP publishes block-level results for concession rounds 9 to 17 (2007–2021). Later awards go through the permanent offer cycles and the production-sharing rounds; the blocks they gave are in «Blocks under contract» with their round.</div>
+      <div class="tbl-sec">Largest signature bonuses</div><div class="table-wrap scroll"><table class="res-table"><thead><tr><th>Block</th><th class="l">Round</th><th class="l">Basin</th><th class="l">Winner (*operator)</th><th>Bonus (R$ million)</th><th>Work programme (R$ million)</th></tr></thead><tbody>
+      ${R.awarded.slice().sort((a, b) => (b[6] || 0) - (a[6] || 0)).slice(0, 60).map(r => `<tr><td>${esc(r[3])}</td><td class="l">Round ${r[0]}</td><td class="l">${esc(r[1])}</td><td class="l wrap">${esc(r[4])}</td><td>${fmt(r[6], 1)}</td><td>${fmt(r[7], 1)}</td></tr>`).join('')}</tbody></table></div>`;
+    barChart('rndChart', rs.map(r => 'Round ' + r), [
+      {label: 'Offered', backgroundColor: '#b9c0c9', data: rs.map(off), borderWidth: 0},
+      {label: 'Awarded', backgroundColor: '#ce0f69', data: rs.map(won), borderWidth: 0},
+      {type: 'line', label: 'Signature bonus', borderColor: '#7d2248', backgroundColor: '#7d2248', data: rs.map(bonus), yAxisID: 'y2', unit: 'R$ million', noSum: true, pointRadius: 3},
+    ], 'blocks', {stacked: false, noFooter: true, y2: 'R$ million'});
+    return;
+  }
+  el.innerHTML = S.lt === 'blocks'
+    ? `<div class="tbl-sec" id="licHead"></div><div class="table-wrap scroll" style="max-height:640px" id="licTable"></div>
+       <div class="info-box">Exploration blocks under contract (<i>blocos sob contrato</i>) as ANP lists them for ${esc(E.blocks.asOf)}, with the contractors' shares (* operator). Status (<i>período</i>): exploration period, extension, suspended, or appraisal plan (PAD). Blocks in production phase are fields and appear under Fields.</div>`
+    : `<div class="tbl-sec" id="licHead"></div><div class="table-wrap scroll" style="max-height:640px" id="licTable"></div>
+       <div class="info-box">Assignments of exploration and production contracts (<i>cessões de direitos</i>) processed by ANP since 2001: who assigned to whom, the shares before and after, and the date ANP's board approved it. Type 1 = assignment of shares, 2 = transfer within a group, 3 = change of operator, 4–5 = other changes, as ANP codes them.</div>`;
+  drawLic();
+}
+function drawLic() {
+  const el = document.getElementById('licTable'), hd = document.getElementById('licHead'); if (!el || !E) return;
+  const q = S.q.trim().toLowerCase();
+  if (S.lt === 'blocks') {
+    const rows = E.blocks.list.filter(b => (!S.env || b.env === S.env) && (!q || [b.block, b.basin, b.op, b.region, b.round].concat(b.holders.map(h => h[0])).join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => a.basin.localeCompare(b.basin) || a.block.localeCompare(b.block));
+    hd.innerHTML = `${rows.length} blocks<small>${fmt(rows.reduce((s, b) => s + b.area, 0))} km² · ${rows.filter(b => b.regime === 'Production sharing').length} under production sharing</small>`;
+    el.innerHTML = `<table class="res-table"><thead><tr><th>Block</th><th class="l">Basin</th><th class="l">Region</th><th class="l">Contractors (* operator)</th><th class="l">Round</th><th class="l">Regime</th><th class="l">Status</th><th class="l">Signed</th><th class="l">Exploration phase ends</th><th>Area (km²)</th><th>Wells</th></tr></thead><tbody>
+      ${rows.map(b => `<tr><td>${esc(b.block)}</td><td class="l">${esc(b.basin)}</td><td class="l">${esc(b.region)}</td><td class="l wrap">${b.holders.map(h => `${h[2] ? '*' : ''}${esc(h[0])} ${fmt(h[1], h[1] % 1 ? 1 : 0)} %`).join(', ')}</td>
+        <td class="l">${esc(b.round)}</td><td class="l">${esc(b.regime)}</td><td class="l">${esc(b.period)}</td><td class="l">${esc(dateTxt(b.signed))}</td><td class="l">${esc(dateTxt(b.expires))}</td><td>${fmt(b.area)}</td><td>${fmt(b.wells)}</td></tr>`).join('')}</tbody></table>`;
+  } else {
+    const rows = E.rounds.transfers.filter(t => (!S.env || (S.env === 'on') === /terra/i.test(t.env)) && (!q || [t.contract, t.from, t.to, t.basin, t.fromG, t.toG].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => (b.approved || b.req || '').localeCompare(a.approved || a.req || '')).slice(0, 500);
+    hd.innerHTML = `${rows.length}${rows.length === 500 ? '+' : ''} assignments<small>Newest first; search for a contract or a company</small>`;
+    el.innerHTML = `<table class="res-table"><thead><tr><th>Contract</th><th class="l">Basin</th><th class="l">From</th><th class="l">To</th><th class="l">Before</th><th class="l">After</th><th class="l">Approved</th><th class="l">Amendment</th></tr></thead><tbody>
+      ${rows.map(t => `<tr><td>${esc(t.contract)}</td><td class="l">${esc(t.basin)}</td><td class="l">${esc(t.from)}</td><td class="l">${esc(t.to)}</td><td class="l wrap">${t.before.map(esc).join('<br>')}</td><td class="l wrap">${t.after.map(esc).join('<br>')}</td>
+        <td class="l">${esc(dateTxt(t.approved))}</td><td class="l">${esc(/^\d{4}-/.test(t.signed || '') ? dateTxt(t.signed) : t.signed || '–')}</td></tr>`).join('')}</tbody></table>`;
+  }
+}
+
+// ── SAFETY ──
+function viewSafety() {
+  setControls('');
+  const Y = D.incidents.byYear, ys = Object.keys(Y).filter(y => y >= '2014');
+  const curY = String(new Date().getFullYear());
+  const prevY = String(+curY - 1);
+  setView(`<div class="kpis"><div class="kpi"><span>Incidents reported ${prevY}</span><strong>${fmt(Y[prevY] ? Y[prevY].n : 0)}</strong><small>${fmt(Y[prevY] ? Y[prevY].acc : 0)} accidents, ${fmt(Y[prevY] ? Y[prevY].near : 0)} near misses</small></div>
+      <div class="kpi"><span>Serious injuries ${prevY}</span><strong>${fmt(Y[prevY] ? Y[prevY].inj : 0)}</strong><small>as reported</small></div>
+      <div class="kpi"><span>Fatalities since ${ys[0]}</span><strong>${fmt(ys.reduce((s, y) => s + Y[y].fat, 0))}</strong><small>${ys.filter(y => Y[y].fat).map(y => `${y}: ${Y[y].fat}`).join(' · ')}</small></div>
+      <div class="kpi"><span>${curY} so far</span><strong>${fmt(Y[curY] ? Y[curY].n : 0)}</strong><small>incidents</small></div></div>` +
+    chartCard('incChart', 'Incidents reported to ANP', 'Per year · accidents and near misses · line: serious injuries (right axis)') +
+    `<div class="grid2"><div class="card"><div class="chart-title">Most common incident types<span class="ct-sub">Last two years</span></div><div class="table-wrap"><table class="res-table"><tbody>
+      ${D.incidents.types.map(([t, n]) => `<tr><td class="wrap">${esc(t.replace(/^SSO - /, ''))}</td><td>${fmt(n)}</td></tr>`).join('')}</tbody></table></div></div>
+      <div class="card"><div class="chart-title">Reporting companies<span class="ct-sub">Last two years</span></div><div class="table-wrap"><table class="res-table"><tbody>
+      ${D.incidents.groups.map(([t, n]) => `<tr><td>${esc(t)}</td><td>${fmt(n)}</td></tr>`).join('')}</tbody></table></div></div></div>
+    <div class="ctrl" style="margin:6px 2px 4px">${search('Platform, company or text', 'drawIncList').replace('<div class="ctrl">', '').replace(/<\/div>$/, '')}</div><div id="incList">${loading()}</div>
+    <div class="info-box"><strong>Source:</strong> ANP, «Incidentes de segurança operacional»: incidents operators must report to ANP, offshore and onshore, including near misses. Counts reflect reporting as well as safety; the descriptions are the operators' own first notices, in Portuguese.</div>`);
+  barChart('incChart', ys, [
+    {label: 'Accidents', backgroundColor: '#d14f4e', data: ys.map(y => Y[y].acc), stack: 's', borderWidth: 1, borderColor: '#fff'},
+    {label: 'Near misses', backgroundColor: '#e8c942', data: ys.map(y => Y[y].near), stack: 's', borderWidth: 1, borderColor: '#fff'},
+    {label: 'Not classified', backgroundColor: OTHER_COLOR, data: ys.map(y => Math.max(0, Y[y].n - Y[y].acc - Y[y].near)), stack: 's', borderWidth: 1, borderColor: '#fff'},
+    {type: 'line', label: 'Serious injuries', borderColor: '#7d2248', backgroundColor: '#7d2248', data: ys.map(y => Y[y].inj), yAxisID: 'y2', noSum: true, unit: 'people', pointRadius: 3},
+  ], 'incidents', {ticks: 20, y2: 'serious injuries'});
+  loadInc().then(() => S.v === 'safety' && drawIncList());
+}
+function incTable(list) {
+  const sevTag = s => s === 'GRAVE' ? '<span class="tag pre">serious</span>' : s === 'MODERADO' ? '<span class="tag">moderate</span>' : s === 'LEVE' ? 'minor' : '–';
+  return `<div class="table-wrap scroll" style="max-height:520px"><table class="res-table"><thead><tr><th class="l">Date</th><th class="l">Unit</th><th class="l">Company</th><th class="l">Type</th><th class="l">Severity</th><th>Injured</th><th class="l">Description (operator's notice)</th></tr></thead><tbody>
+    ${list.map(r => `<tr><td class="l">${esc(dateTxt(r.date))}</td><td class="l">${esc(title(r.inst))}</td><td class="l">${esc(r.group)}</td><td class="l wrap">${esc((r.types || []).join('; ').replace(/^SSO - /, ''))}</td><td class="l">${sevTag(r.sev)}${r.acc === 'near' ? ' · near miss' : ''}</td><td>${r.inj || r.fat ? `${r.inj}${r.fat ? ` · <b>${r.fat} fatal</b>` : ''}` : '–'}</td><td class="l wrap" style="min-width:320px">${esc(r.desc)}</td></tr>`).join('') || '<tr><td colspan="7">None</td></tr>'}</tbody></table></div>`;
+}
+function drawIncList() {
+  const el = document.getElementById('incList'); if (!el || !INC) return;
+  const q = S.q.trim().toLowerCase();
+  const list = INC.items.filter(r => !q || [r.inst, r.company, r.desc, (r.types || []).join(' ')].join(' ').toLowerCase().includes(q)).slice(0, 300);
+  el.innerHTML = `<div class="tbl-sec">Latest incidents<small>Since ${esc(dateTxt(INC.from))}; ${list.length === 300 ? 'first 300 shown' : list.length + ' shown'}</small></div>${incTable(list)}`;
+}
+
+// ── KART ─────────────────────────────────────────────────────────────────────
+const EXTENT = [-74.5, -34.5, -28.5, 6.5];
+const OFFSHORE_FIT = [-49.5, -27.5, -34.5, -2.5];
+function viewMap() {
+  setControls(pills('ml', [['fields', 'Fields and platforms'], ['blocks', '+ exploration blocks']], 'Layers') +
+    pills('mw', [['', 'No wells'], ['expl', 'Exploration wells'], ['disc', 'Discoveries'], ['offdev', 'Offshore development wells']], 'Wells'));
+  setView(`<div class="card"><div class="chart-title">Fields, platforms${S.ml === 'blocks' ? ' and exploration blocks' : ''}<span class="ct-sub">Field outlines coloured by layer · squares = production units sized by output · scroll or use the buttons to zoom, drag to pan · click a field or platform</span></div>
+    <div class="map-box map-main" id="mainMap">${loading()}</div>
+    <div class="legend-row"><span class="legend-item"><span class="legend-dot" style="background:${SALT.pre.color}"></span>Pre-salt field</span><span class="legend-item"><span class="legend-dot" style="background:${SALT.post.color}"></span>Post-salt offshore field</span>
+      <span class="legend-item"><span class="legend-dot" style="background:${ENV.on.color}"></span>Onshore field</span><span class="legend-item"><span class="legend-dot" style="background:#1a2332"></span>Production unit</span>
+      ${S.ml === 'blocks' ? '<span class="legend-item"><span class="legend-dot" style="background:none;border:1.5px solid #7d2248"></span>Exploration block under contract</span>' : ''}
+      ${S.mw ? '<span class="legend-item"><span class="legend-dot" style="background:#00b373;border-radius:50%"></span>Well (discovery: pink)</span>' : ''}</div></div>
+    <div class="info-box">Outlines of fields (August 2023) and exploration blocks (August 2023; blocks awarded since then have no outline yet) from ANP's open geodata; fields declared after that have no outline yet. Wells from ANP's well register (to ${D.sources.wellRegister.slice(-4)}) and the exploration panel.</div>`);
+  Promise.all([loadCoast(), loadOutl(), S.mw ? loadWells() : null, S.mw === 'disc' || S.mw === 'expl' ? loadExpl() : null]).then(() => {
+    if (S.v !== 'map') return;
+    drawMap(document.getElementById('mainMap'), {fit: OFFSHORE_FIT, blocks: S.ml === 'blocks', wells: S.mw});
+  });
+}
+function fieldColor(f) { return f.env === 'on' ? ENV.on.color : f.presal > 0.5 ? SALT.pre.color : SALT.post.color; }
+function drawMap(box, o) {
+  const [w0, s0, e0, n0] = EXTENT;
+  const lat0 = -15, kx = Math.cos(lat0 * Math.PI / 180);
+  const Pj = (lon, lat) => [(lon - w0) * kx * 100, (n0 - lat) * 100];
+  const Wd = (e0 - w0) * kx * 100, Ht = (n0 - s0) * 100;
+  const path = rings => rings.map(r => 'M' + r.map(([x, y]) => Pj(x, y).map(v => v.toFixed(2)).join(',')).join('L') + 'Z').join('');
+  const parts = [`<rect x="-5000" y="-5000" width="20000" height="20000" fill="#eef3f8"/>`];
+  parts.push(`<path d="${path(COAST.rings)}" fill="#e3e7ec" stroke="#b8c0ca" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`);
+  if (o.blocks && E) {
+    E.blocks.list.forEach(b => {
+      const r = OUTL.blocks[b.block.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '')] || OUTL.blocks[b.block.toUpperCase()];
+      if (!r) return;
+      parts.push(`<path class="lic" d="${path(r)}" fill="rgba(125,34,72,0.05)" stroke="#7d2248" stroke-dasharray="3 2" data-tip="${esc(`<b>${esc(b.block)}</b> · ${esc(b.basin)}<br>${esc(b.holders.map(h => (h[2] ? '*' : '') + h[0] + ' ' + h[1] + '%').join(', '))}<br>${esc(b.round)} · ${esc(b.period)}`)}"/>`);
+    });
+  }
+  // Felt: omriss, ellers punkt
+  const fl = F.filter(f => (!o.only || o.only.includes(f.code)));
+  const okey = s => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  fl.forEach(f => {
+    const r = f.outline && OUTL.fields[okey(f.outline)];
+    const tip = `<b>${esc(f.name)}</b> · ${esc(f.basin)}<br>${live(f) ? fmt(boeD(f.l12)) + ' boe/d' : 'not producing'} · ${esc(f.op || '')}`;
+    if (r) parts.push(`<path class="lic" d="${path(r)}" fill="${fieldColor(f)}" fill-opacity="${live(f) ? 0.55 : 0.2}" stroke="${fieldColor(f)}" data-field="${esc(f.code)}" style="cursor:pointer" data-tip="${esc(tip)}"/>`);
+  });
+  // Brønner
+  if (o.wells && WL) {
+    let wl = [];
+    if (o.wells === 'offdev') wl = WL.list.filter(w => w.env === 'off' && (w.cat === 'development' || w.cat === 'injection'));
+    else if (o.wells.startsWith('field:')) { const nm = o.wells.slice(6); wl = WL.list.filter(w => okey(w.field) === nm); }
+    else if (E) {
+      const reg = Object.fromEntries(WL.list.map(w => [w.well, w]));
+      wl = E.wells.list.filter(w => (o.wells === 'expl' || w.disc) && w.lat).map(w => ({...w, cat: 'expl'}));
+    }
+    wl.forEach(w => {
+      if (!w.lat || !w.lon) return;
+      const [x, y] = Pj(w.lon, w.lat), disc = w.disc || /COMERCIAL|DESCOBRIDOR|PORTADOR/i.test(w.result || '');
+      parts.push(`<circle class="pt" data-r="1.8" cx="${x}" cy="${y}" r="1.8" fill="${disc && w.cat !== 'development' ? '#ce0f69' : '#00b373'}" stroke="#fff" stroke-width="0.4" vector-effect="non-scaling-stroke"
+        data-tip="${esc(`<b>${esc(w.well)}</b><br>${esc(w.op || '')}${w.spud ? ' · spud ' + esc(String(w.spud).slice(0, 4)) : ''}${w.fluid ? '<br>Discovery: ' + esc(fluidEn(w.fluid)) : ''}${w.result ? '<br>' + esc(title(w.result)) : ''}`)}"/>`);
+    });
+  }
+  // Innretninger: kvadrat etter produksjon
+  const il = I.filter(i => i.loc && boeD(i.l12) > 0 && (!o.onlyInst || o.onlyInst.includes(i.name)) && (i.env === 'off' || o.only)).sort((a, b) => boeD(b.l12) - boeD(a.l12));
+  il.forEach(i => {
+    const [x, y] = Pj(i.loc[0], i.loc[1]), r = Math.max(1.6, Math.sqrt(boeD(i.l12)) / 90);
+    parts.push(`<rect class="pt sq" data-r="${r.toFixed(2)}" data-cx="${x}" data-cy="${y}" x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" fill="#1a2332" fill-opacity="0.85" stroke="#fff" stroke-width="0.6" vector-effect="non-scaling-stroke"
+      data-inst="${esc(i.name)}" style="cursor:pointer" data-tip="${esc(`<b>${esc(title(i.name))}</b><br>${fmt(boeD(i.l12))} boe/d · ${esc(i.fields.slice(0, 3).map(([c]) => { const f = fieldBy(c); return f ? f.name : c; }).join(', '))}`)}"/>`);
+  });
+  // Navn på de største feltene
+  const lbl = (o.labels ?? 16);
+  CX.filter(c => c.main.loc && live(c.main) && (!o.only || o.only.includes(c.code))).sort((a, b) => boeD(b.l12) - boeD(a.l12)).slice(0, lbl).forEach(c => {
+    const [x, y] = Pj(c.main.loc[0], c.main.loc[1]);
+    parts.push(`<text class="map-lbl" data-x="${x}" data-y="${y}" data-dx="6" x="${x + 6}" y="${y + 3}">${esc(c.name)}</text>`);
+  });
+  box.innerHTML = `<svg viewBox="0 0 ${Wd.toFixed(0)} ${Ht.toFixed(0)}" preserveAspectRatio="xMidYMid meet" aria-label="Map">${parts.join('')}</svg>
+    <div class="map-ctl"><button title="Zoom in" data-z="0.6">+</button><button title="Zoom out" data-z="1.6">−</button><button title="Reset" data-z="0" style="font-size:0.8rem">⟲</button></div><div class="map-tip"></div>`;
+  const svg = box.querySelector('svg'), tip = box.querySelector('.map-tip');
+  let vb = [0, 0, Wd, Ht], home = null;
+  const apply = () => {
+    svg.setAttribute('viewBox', vb.map(v => v.toFixed(2)).join(' '));
+    const r = svg.getBoundingClientRect(), scale = Math.min(r.width / vb[2], r.height / vb[3]) || 1;
+    svg.querySelectorAll('circle.pt').forEach(c => c.setAttribute('r', c.dataset.r / scale));
+    svg.querySelectorAll('rect.sq').forEach(q => { const s = q.dataset.r / scale; q.setAttribute('x', q.dataset.cx - s); q.setAttribute('y', q.dataset.cy - s); q.setAttribute('width', 2 * s); q.setAttribute('height', 2 * s); });
+    svg.querySelectorAll('text.map-lbl').forEach(t => { t.style.fontSize = (10 / scale) + 'px'; t.style.strokeWidth = (3 / scale) + 'px';
+      t.setAttribute('x', +t.dataset.x + t.dataset.dx / scale); t.setAttribute('y', +t.dataset.y + 3 / scale); });
+  };
+  const zoom = (f, cx, cy) => {
+    if (!f) { vb = home ? [...home] : [0, 0, Wd, Ht]; return apply(); }
+    const nw = Math.min(Wd * 1.5, Math.max(Wd / 400, vb[2] * f)), k = nw / vb[2];
+    vb = [cx - (cx - vb[0]) * k, cy - (cy - vb[1]) * k, nw, vb[3] * k]; apply();
+  };
+  const toMap = (ex, ey) => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb[2], r.height / vb[3]);
+    const ox = (r.width - vb[2] * s) / 2, oy = (r.height - vb[3] * s) / 2; return [vb[0] + (ex - r.left - ox) / s, vb[1] + (ey - r.top - oy) / s, s]; };
+  box.querySelectorAll('.map-ctl button').forEach(b => b.onclick = () => zoom(+b.dataset.z, vb[0] + vb[2] / 2, vb[1] + vb[3] / 2));
+  svg.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = toMap(e.clientX, e.clientY); zoom(e.deltaY > 0 ? 1.25 : 0.8, x, y); }, {passive: false});
+  let drag = null, moved = false;
+  svg.addEventListener('pointerdown', e => { drag = {x: e.clientX, y: e.clientY, vb: [...vb]}; moved = false; });
+  window.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) { moved = true; svg.classList.add('drag'); tip.style.display = 'none'; }
+    if (!moved) return;
+    const s = toMap(0, 0)[2]; vb = [drag.vb[0] - dx / s, drag.vb[1] - dy / s, vb[2], vb[3]]; apply();
+  });
+  window.addEventListener('pointerup', () => { drag = null; svg.classList.remove('drag'); });
+  svg.addEventListener('click', e => {
+    if (moved || o.noClick) return;
+    const fi = e.target.closest('[data-inst]'); if (fi) return openInst(fi.dataset.inst);
+    const el = e.target.closest('[data-field]'); if (el) openSheet(el.dataset.field);
+  });
+  svg.addEventListener('mousemove', e => {
+    if (drag && moved) return;
+    const el = e.target.closest('[data-tip]');
+    if (!el) { tip.style.display = 'none'; return; }
+    tip.innerHTML = el.dataset.tip; tip.style.display = 'block';
+    const r = box.getBoundingClientRect();
+    let x = e.clientX - r.left + 12, y = e.clientY - r.top + 12;
+    if (x + tip.offsetWidth > r.width) x = e.clientX - r.left - tip.offsetWidth - 12;
+    if (y + tip.offsetHeight > r.height) y = e.clientY - r.top - tip.offsetHeight - 12;
+    tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px';
+  });
+  svg.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  if (o.fit) {
+    const [a, b] = Pj(o.fit[0], o.fit[3]), [c, d] = Pj(o.fit[2], o.fit[1]);
+    const r = box.getBoundingClientRect(), asp = r.width / r.height || 2;
+    let w = Math.abs(c - a), h = Math.abs(d - b); if (w / h < asp) w = h * asp; else h = w / asp;
+    vb = [(a + c) / 2 - w / 2, (b + d) / 2 - h / 2, w, h]; home = [...vb];
+  }
+  requestAnimationFrame(apply);
+  new ResizeObserver(apply).observe(box);
+}
+function bbox(pts, pad) { const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]); return [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad]; }
+
+// ── FAKTAARK: FELT ───────────────────────────────────────────────────────────
+async function openSheet(code, quiet) {
+  const f = fieldBy(code); if (!f) return;
+  if (!quiet && S.fs !== code) { S.fs = code; S.is = ''; writeUrl(true); }
+  const ov = document.getElementById('sheet');
+  ov.classList.add('open'); document.body.classList.add('sheet-open');
+  const panel = document.getElementById('sheetPanel');
+  if (!P || !OUTL || !COAST) { panel.innerHTML = loading(); await Promise.all([loadProd(), loadOutl(), loadCoast()]); if (S.fs !== code) return; }
+  const c = cxOf(f), parts = c ? c.parts.slice().sort((a, b) => boeD(b.l12) - boeD(a.l12)) : [f];
+  const multi = parts.length > 1;
+  const insts = I.filter(i => i.fields.some(([fc]) => parts.some(p => p.code === fc))).sort((a, b) => boeD(b.l12) - boeD(a.l12));
+  const ps = f.pe ? Object.entries(f.pe) : [];
+  const facts = [
+    ['Basin', f.basin], ['State', f.state], ['Location', f.env === 'off' ? `Offshore${f.wd ? ` · ${fmt(f.wd)} m water depth` : ''}` : 'Onshore'],
+    ['Discovered', f.disc ? dateTxt(f.disc) : '–'], ['First production', f.first ? ymTxt(f.first) : '–'], ['Latest production', f.last ? ymTxt(f.last) : '–'],
+    ['Operator', f.op ? f.op + (f.opLegal && f.opLegal !== f.op ? ` (${f.opLegal})` : '') : '–'], ['Contract', f.contract || '–'], ['Regime', f.regime || '–'], ['Awarded in', f.round || '–'],
+    ['Main fluid', f.fluid ? title(f.fluid) : '–'], ['Stage', f.stage || '–'], ['Area', f.area ? fmt(f.area, 1) + ' km²' : '–'],
+    ['Oil, last 12 months', `${fmt(l12In(f.l12, 'oil'))} ${unitOf('oil')}`], ['Gas, last 12 months', `${fmt(l12In(f.l12, 'gas'), 2)} ${unitOf('gas')}`],
+    ['Water cut', f.l12[0] + f.l12[2] > 0 ? pct(f.l12[2] / (f.l12[0] + f.l12[2])) : '–'], ['Producing wells', f.wells ? `${fmt(f.wells)} (${ymTxt(lastYM())})` : '–'],
+    ['Pre-salt share', f.env === 'off' && f.presal != null ? pct(f.presal) : '–'], ['Oil API gravity', f.api ? `${fmt(f.api, 1)}°` : '–'],
+    ['Gas reinjected', f.inj12 ? `${fmt(f.inj12 / 1000, 2)} million m³/day` : '–'],
+    ['Produced to date', `${fmt(f.cum[0] * (S.u === 'm3' ? 1 : BBL_PER_M3), 1)} ${S.u === 'm3' ? 'million m³' : 'MMbbl'} oil · ${fmt(f.cum[1], 1)} bn m³ gas`],
+  ];
+  const pf = P.fields[code];
+  panel.innerHTML = `
+    <div class="wd-head"><div><h2>${esc(f.name)}</h2><div class="wd-sub">${esc(f.code)} · ${f.env === 'off' ? (f.presal > 0.5 ? 'Pre-salt' : 'Post-salt') + ' offshore field' : 'Onshore field'} · ${esc(f.basin)} basin, ${esc(f.state)} · ${esc(f.op || '')}</div></div>
+      <button class="wd-close" onclick="closeSheet()" aria-label="Close">✕</button></div>
+    <div class="pf-card"><div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div>
+      ${isAnc(code) ? '<div class="pf-note"><b>AnC</b> (área não contratada): the part of a unitised field outside the contract area. The Union owns it; PPSA manages the Union\'s share and the field operator produces it.</div>' : ''}
+      ${/_ECO$/i.test(code) ? '<div class="pf-note"><b>ECO</b>: volumes beyond the 5 billion boe Petrobras was granted under the 2010 transfer-of-rights (cessão onerosa), awarded in 2019–2021 under production sharing.</div>' : ''}</div>
+    ${multi ? `<div class="pf-card"><h3>Field areas <small>· ANP reports this field under ${parts.length} names; the charts below are for ${esc(f.name)} only</small></h3><div class="table-wrap"><table class="res-table"><thead><tr><th>Area</th><th class="l">Regime</th><th class="l">Operator</th><th>Oil (${unitOf('oil')})</th><th>Gas (${unitOf('gas')})</th><th>Wells</th></tr></thead><tbody>
+      ${parts.map(p => `<tr class="click${p.code === code ? ' sel' : ''}" onclick="openSheet(${jsq(p.code)})"><td><button class="row-link">${esc(p.name)}</button></td><td class="l">${esc(p.regime || '–')}</td><td class="l">${esc(p.op || '–')}</td><td>${fmt(l12In(p.l12, 'oil'))}</td><td>${fmt(l12In(p.l12, 'gas'), 2)}</td><td>${fmt(p.wells)}</td></tr>`).join('')}
+      <tr class="total-row"><td>Total</td><td></td><td></td><td>${fmt(l12In(c.l12, 'oil'))}</td><td>${fmt(l12In(c.l12, 'gas'), 2)}</td><td>${fmt(parts.reduce((s, p) => s + (p.wells || 0), 0))}</td></tr></tbody></table></div></div>` : ''}
+    <div class="pf-card"><h3>Production <small>· annual average, ${esc(unitOf(S.sp))}</small></h3>
+      <div class="pill-group" style="margin-bottom:8px">${[['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']].map(([v, t]) => `<button class="pill-btn${S.sp === v ? ' active' : ''}" onclick="S.sp='${v}';writeUrl();openSheet(${jsq(code)},true)">${t}</button>`).join('')}</div>
+      ${pf ? `<div class="chart-container short"><canvas id="sheetChart"></canvas></div>` : '<div class="pf-note">No production recorded.</div>'}</div>
+    ${pf && pf.w ? `<div class="pf-card"><h3>Producing wells <small>· per month, last ten years</small></h3><div class="chart-container short" style="height:170px"><canvas id="sheetWells"></canvas></div></div>` : ''}
+    ${f.bar ? `<div class="pf-card"><h3>Volumes in place <small>· BAR ${D.reserves.barYear}, as declared by the operator</small></h3>
+      <div class="pf-facts">${[['Oil in place (VOIP)', `${fmt(f.bar[0])} MMbbl`], ['Gas in place (VGIP)', `${fmt(f.bar[1], 1)} bn m³`], ['Oil produced', `${fmt(f.bar[2])} MMbbl`], ['Gas produced', `${fmt(f.bar[3], 1)} bn m³`],
+        ['Oil recovery factor', pct(f.bar[4], 1)], ['ANP classification', f.bar[5] === 'Maduro' ? 'Mature' : f.bar[5] === 'Não Maduro' ? 'Not mature' : (f.bar[5] || '–')]].map(([k, v]) => `<div class="pf-fact"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div>
+      ${f.bar[0] ? `<div class="bar-track" style="margin-top:10px"><span style="width:${Math.min(100, f.bar[4] * 100)}%;background:rgba(148,163,184,0.75)"></span><span style="flex:1;background:rgba(0,179,115,0.85)"></span></div>
+      <div class="pf-note">Grey: oil produced; green: oil still in place. ANP does not publish reserves per field — only the volumes in place and production to date.</div>` : ''}
+      ${f.barHist ? `<div class="chart-container short" style="height:180px;margin-top:10px"><canvas id="sheetBar"></canvas></div>` : ''}</div>` : ''}
+    ${holdersHtml(f)}
+    ${ps.length ? `<div class="pf-card"><h3>Special participation <small>· government take on large fields (participação especial), R$ million per year</small></h3><div class="chart-container short" style="height:170px"><canvas id="sheetPe"></canvas></div></div>` : ''}
+    ${insts.length ? `<div class="pf-card"><h3>Production units <small>· ${insts.length}</small></h3><div class="table-wrap"><table class="res-table"><thead><tr><th>Unit</th><th>Share of field</th><th>Oil (${unitOf('oil')})</th><th>Gas (${unitOf('gas')})</th><th>First production</th></tr></thead><tbody>
+      ${insts.map(i => { const sh = i.fields.find(([fc]) => fc === code); return `<tr class="click" onclick="openInst(${jsq(i.name)})"><td><button class="row-link">${esc(title(i.name))}</button></td><td>${sh ? fmt(sh[1], 0) + ' % of unit' : '–'}</td><td>${fmt(l12In(i.l12, 'oil'))}</td><td>${fmt(l12In(i.l12, 'gas'), 2)}</td><td>${ymTxt(i.first)}</td></tr>`; }).join('')}</tbody></table></div></div>` : ''}
+    <div class="pf-card"><h3>Map <small>· field outline, production units and wells</small></h3><div class="map-box map-small" id="sheetMap"></div></div>
+    <div class="source-note">Source: ANP — production by well, rights holders, BAR, geodata and well register.</div>`;
+  if (pf) {
+    const ps = periods('a', f.first ? f.first.slice(0, 4) : '1941');
+    const s = fieldSeries(code);
+    const t = trimLead(ps.map(p => p.label), [{label: {oil: 'Oil', gas: 'Gas', water: 'Water'}[S.sp], data: perDay(i => pick(s, i, S.sp), ps, S.sp),
+      backgroundColor: {oil: '#ce0f69', gas: '#f68d2e', water: '#4993b4'}[S.sp], borderWidth: 1, borderColor: '#fff'}]);
+    barChart('sheetChart', t.labels, t.datasets, unitOf(S.sp), {ticks: 30, dec: S.sp === 'gas' ? 2 : 0, legend: false});
+    if (pf.w) { const ms = []; let ym = pf.w[0]; pf.w[1].forEach(() => { ms.push(ym); let y = +ym.slice(0, 4), m = +ym.slice(4) + 1; if (m > 12) { m = 1; y++; } ym = `${y}${String(m).padStart(2, '0')}`; });
+      barChart('sheetWells', ms.map(m => `${m.slice(0, 4)}-${m.slice(4)}`), [{label: 'Producing wells', backgroundColor: '#7d2248', data: pf.w[1], borderWidth: 0}], 'wells', {ticks: 10, legend: false, titleFn: i => ymTxt(ms[i])}); }
+  }
+  if (f.barHist) barChart('sheetBar', f.barHist.map(r => r[0]), [
+    {label: 'Oil produced', backgroundColor: 'rgba(148,163,184,0.75)', data: f.barHist.map(r => r[3])},
+    {label: 'Remaining in place', backgroundColor: 'rgba(0,179,115,0.85)', data: f.barHist.map(r => Math.max(0, r[1] - r[3]))}], 'MMbbl', {legend: false});
+  if (ps.length) barChart('sheetPe', ps.map(x => x[0]), [{label: 'Special participation', backgroundColor: '#e8c942', data: ps.map(x => x[1]), borderWidth: 0}], 'R$ million', {legend: false, ticks: 20});
+  const el = document.getElementById('sheetMap');
+  const ring = f.outline && OUTL.fields[f.outline.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()];
+  const pts = (ring ? ring.flat() : []).concat(f.loc ? [f.loc] : []).concat(insts.filter(i => i.loc).map(i => i.loc));
+  if (el && pts.length) {
+    await loadWells();
+    const okey = s => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    drawMap(el, {fit: bbox(pts, 0.08), wells: 'field:' + okey(f.name.replace(/ ECO.*| \(AnC\)/, '')), noClick: true, labels: 0, only: parts.map(p => p.code), onlyInst: insts.map(i => i.name)});
+  } else if (el) el.innerHTML = '<div class="status">No outline or position</div>';
+}
+function holdersHtml(f) {
+  const hs = f.holders || [];
+  if (!hs.length) return f.contract ? '' : `<div class="pf-card"><h3>Rights holders</h3><div class="pf-note">The field is not linked to a contract in ANP's current list of rights holders (contract ended, or the field name differs).</div></div>`;
+  const tot = hs.reduce((s, h) => s + h[1], 0);
+  const col = (g, i) => colorFor('co', g) !== OTHER_COLOR ? colorFor('co', g) : ['#7d2248', '#6b7a8f', '#b9c0c9', '#8a96a6'][i % 4];
+  const rows = hs.map(h => ({n: h[0], g: groupName(h[0]), p: h[1] / tot * 100, op: h[2]})).sort((a, b) => b.p - a.p);
+  return `<div class="pf-card"><h3>Rights holders <small>· ${esc(f.contract || '')} · today's shares</small></h3><div class="pf-own">${pieSvg(rows.map((r, i) => ({v: r.p, color: col(r.g, i)})))}
+    <div class="pf-own-list">${rows.map((r, i) => `<div class="pf-own-row"><span class="pf-own-dot" style="background:${col(r.g, i)}"></span>
+      <span class="pf-own-name"><button class="row-link" onclick="closeSheet();set({v:'company',c:${jsq(r.g)}})">${esc(r.n)}</button>${r.op ? '<span class="pf-op-tag">Operator</span>' : ''}</span><span class="pf-own-pct">${fmt(r.p, 1)} %</span></div>`).join('')}</div></div>
+    <div class="pf-note">From ANP's list of rights holders (relação de concessionários). In unitised fields the unit's tract shares can differ from the contract's.</div></div>`;
+}
+function pieSvg(parts) {
+  const tot = parts.reduce((t, p) => t + p.v, 0);
+  let a = -Math.PI / 2;
+  if (parts.length === 1) return `<svg class="pf-pie" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="${parts[0].color}"/><circle cx="50" cy="50" r="26" fill="#fff"/></svg>`;
+  const segs = parts.map(p => {
+    const a2 = a + p.v / tot * Math.PI * 2, large = a2 - a > Math.PI ? 1 : 0;
+    const d = `M50,50 L${50 + 48 * Math.cos(a)},${50 + 48 * Math.sin(a)} A48,48 0 ${large} 1 ${50 + 48 * Math.cos(a2)},${50 + 48 * Math.sin(a2)} Z`;
+    a = a2;
+    return `<path d="${d}" fill="${p.color}" stroke="#fff" stroke-width="1"/>`;
+  });
+  return `<svg class="pf-pie" viewBox="0 0 100 100">${segs.join('')}<circle cx="50" cy="50" r="26" fill="#fff"/></svg>`;
+}
+
+// ── FAKTAARK: INNRETNING ─────────────────────────────────────────────────────
+async function openInst(name, quiet) {
+  const it = instBy(name); if (!it) return;
+  if (!quiet && S.is !== name) { S.is = name; S.fs = ''; writeUrl(true); }
+  document.getElementById('sheet').classList.add('open'); document.body.classList.add('sheet-open');
+  const panel = document.getElementById('sheetPanel');
+  if (!P || !COAST || !OUTL) { panel.innerHTML = loading(); await Promise.all([loadProd(), loadCoast(), loadOutl()]); if (S.is !== name) return; }
+  const facts = [['Basin', it.basin], ['State', it.state], ['Location', it.env === 'off' ? 'Offshore' : 'Onshore'], ['Type (ANP)', it.type === 'UEP' ? 'Production unit (UEP)' : it.type ? title(it.type) : '–'],
+    ['First production', ymTxt(it.first)], ['Latest production', ymTxt(it.last)], ['Oil, last 12 months', `${fmt(l12In(it.l12, 'oil'))} ${unitOf('oil')}`],
+    ['Gas, last 12 months', `${fmt(l12In(it.l12, 'gas'), 2)} ${unitOf('gas')}`], ['Producing wells', it.wells ? fmt(it.wells) : '–'],
+    ['Produced since 2010', `${fmt(it.cum[0] * (S.u === 'm3' ? 1 : BBL_PER_M3), 1)} ${S.u === 'm3' ? 'million m³' : 'MMbbl'} oil · ${fmt(it.cum[1], 1)} bn m³ gas`], ['Incidents reported', it.inc ? fmt(it.inc) : '–']];
+  panel.innerHTML = `<div class="wd-head"><div><h2>${esc(title(name))}</h2><div class="wd-sub">Production unit · ${esc(it.basin)} · ${esc(it.fields.slice(0, 3).map(([c]) => { const f = fieldBy(c); return f ? f.name : c; }).join(', '))}</div></div>
+      <button class="wd-close" onclick="closeSheet()" aria-label="Close">✕</button></div>
+    <div class="pf-card"><div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div></div>
+    <div class="pf-card"><h3>Production <small>· monthly, ${esc(unitOf(S.sp))}</small></h3>
+      <div class="pill-group" style="margin-bottom:8px">${[['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']].map(([v, t]) => `<button class="pill-btn${S.sp === v ? ' active' : ''}" onclick="S.sp='${v}';writeUrl();openInst(${jsq(name)},true)">${t}</button>`).join('')}</div>
+      <div class="chart-container short"><canvas id="sheetChart"></canvas></div></div>
+    <div class="pf-card"><h3>Fields produced <small>· share of the unit's oil + gas since 2010</small></h3><div class="table-wrap"><table class="res-table"><tbody>
+      ${it.fields.map(([c, p]) => { const f = fieldBy(c); return `<tr${f ? ` class="click" onclick="openSheet(${jsq(c)})"` : ''}><td>${f ? `<button class="row-link">${esc(f.name)}</button>` : esc(c)}</td><td>${fmt(p, 1)} %</td></tr>`; }).join('')}</tbody></table></div></div>
+    <div class="pf-card"><h3>Map</h3><div class="map-box map-small" id="sheetMap"></div></div>
+    <div id="sheetInc"></div>
+    <div class="source-note">Source: ANP — production by well and installation, incidents.</div>`;
+  const ps = periods('m', '2010'), s = instSeries(name);
+  const t = trimLead(ps.map(p => p.label), [{label: {oil: 'Oil', gas: 'Gas', water: 'Water'}[S.sp], data: perDay(i => pick(s, i, S.sp), ps, S.sp), backgroundColor: {oil: '#ce0f69', gas: '#f68d2e', water: '#4993b4'}[S.sp], borderWidth: 0}]);
+  barChart('sheetChart', t.labels, t.datasets, unitOf(S.sp), {ticks: 12, dec: S.sp === 'gas' ? 2 : 0, legend: false, titleFn: i => ymTxt(t.labels[i].replace('-', ''))});
+  const el = document.getElementById('sheetMap');
+  if (el && it.loc) drawMap(el, {fit: bbox([it.loc], 0.35), noClick: true, labels: 0, only: it.fields.map(x => x[0]), onlyInst: [name]});
+  else if (el) el.innerHTML = '<div class="status">No position</div>';
+  if (it.inc) loadInc().then(() => {
+    const k = name.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+    const list = INC.items.filter(r => String(r.inst).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ') === k);
+    const box = document.getElementById('sheetInc'); if (!box || S.is !== name) return;
+    box.innerHTML = `<div class="pf-card"><h3>Incidents <small>· ${fmt(it.inc)} reported in total; ${list.length} since ${esc(dateTxt(INC.from))}</small></h3>${list.length ? incTable(list) : ''}</div>`;
+  });
+}
+function hideSheet() {
+  document.getElementById('sheet').classList.remove('open');
+  document.body.classList.remove('sheet-open');
+  Object.keys(charts).filter(k => k.startsWith('sheet')).forEach(k => { charts[k].destroy(); delete charts[k]; });
+}
+function closeSheet() { hideSheet(); if (S.fs || S.is) { S.fs = ''; S.is = ''; writeUrl(true); } }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && (S.fs || S.is)) closeSheet(); });
+
+// ── OPPSTART ─────────────────────────────────────────────────────────────────
+async function init() {
+  readUrl(); render();
+  try { D = await loadJson('data/brazil.json'); }
+  catch (e) { setView(`<div class="status">Could not load data/brazil.json (${esc(e.message)}).</div>`); return; }
+  F = D.fields.map(r => Object.fromEntries(D.fieldCols.map((k, i) => [k, r[i]])));
+  I = D.installations.map(r => Object.fromEntries(D.instCols.map((k, i) => [k, r[i]])));
+  buildMonths();
+  buildComplexes();
+  const n = MONTHS.length, ord = src => Object.keys(src).map(k => [k, sum12(src[k], 'boe')]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+  COLOR_ORDER = {basin: ord(D.byBasin), state: ord(D.byState), cx: CX.slice().sort((a, b) => boeD(b.l12) - boeD(a.l12)).map(c => c.cx),
+    inst: I.slice().sort((a, b) => boeD(b.l12) - boeD(a.l12)).map(i => i.name), co: D.company.net12.map(x => x[0])};
+  document.getElementById('sourceNote').innerHTML = `Source: <a href="https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos" target="_blank" rel="noopener">Agência Nacional do Petróleo, Gás Natural e Biocombustíveis (ANP), open data</a> — production by well, rights holders, reserves bulletin, exploration panel, bidding rounds, assignments, special participation, incidents and geodata. Production through ${ymTxt(lastYM())}; fetched ${esc(D.fetched.slice(0, 10))}.`;
+  render();
+}
+init();
+</script>
+</body>
+</html>

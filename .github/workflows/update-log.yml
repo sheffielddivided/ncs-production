@@ -14,6 +14,7 @@ on:
       - Oppdater normpris-data
       - Oppdater Canada (C-NLOER)
       - Oppdater US Gulf of Mexico (BOEM)
+      - Oppdater Brasil (ANP)
     types: [completed]
   schedule:
     - cron: '52 23 * * *'
