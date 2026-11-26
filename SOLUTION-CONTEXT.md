@@ -319,7 +319,7 @@ forrige vannkolonne (`keep_previous_water()`), som før.
 Bygges av `fetch_shipping.py` for feltene i `data/shipping_fields.json`
 (`{"fields": [{"name": "SKARV", "radiusKm": 3}]}`, feltnavn som i Sodir;
 foreløpig FPSO- og lastefeltene Skarv, Alvheim, Norne, Åsgard, Balder (med
-Jotun FPSO), Goliat, Johan Castberg, Njord, Kristin og Heidrun). Bare tankskip
+Jotun FPSO), Goliat, Johan Castberg, Njord og Heidrun; Kristin er tatt ut, det hadde ingen egne anløp og ligger i Åsgard-huben). Bare tankskip
 (skytteltankere) er med; andre skip hentes i boksen, men lagres ikke.
 Kilde: Kystverkets Kystdatahuset, åpne endepunkter uten innlogging:
 `ais/positions/within-bbox-time` (alle posisjoner i en boks som dekker
