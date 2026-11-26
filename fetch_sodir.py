@@ -940,19 +940,32 @@ def build_licence_transfers():
             companies.append(name)
         return cidx[name]
 
+    out = _pair_transfers(rows, 'prlNpdidLicence', 'prlTransfer', ci, kinds, kidx)
+    out.sort(key=lambda x: (x[0], x[1], x[5], x[2], x[3], x[4]))
+    return {'companies': companies, 'kinds': kinds,
+            'columns': ['day', 'licence', 'seller', 'buyer', 'share', 'kind'], 'rows': out}
+
+
+def _pair_transfers(rows, id_field, pre, ci, kinds, kidx):
+    """Par FROM- og TO-rader (samme objekt, dato og type), storst mot storst.
+
+    Gir [dag, objekt-id, selger, kjoper, andel, type] der selger/kjoper er
+    indeks fra ci() eller -1 nar motparten mangler i kilden. Brukes for
+    lisenser (lag 3003, pre='prlTransfer') og BAA-er (lag 3305, pre='baaTransfer').
+    """
     groups = {}
     for r in rows:
-        pid, day = as_int(r.get('prlNpdidLicence')), _d(as_int(r.get('prlTransferDateValidFrom')))
+        oid, day = as_int(r.get(id_field)), _d(as_int(r.get(f'{pre}DateValidFrom')))
         name = (r.get('cmpLongName') or '').strip()
-        kind = (r.get('prlTransferKind') or '').strip() or 'UNKNOWN'
-        side = (r.get('prlTransferDirection') or '').strip()
-        share = num(r.get('prlTransferredInterest'))
-        if pid is None or day is None or not name or side not in ('FROM', 'TO') or share is None:
+        kind = (r.get(f'{pre}Kind') or '').strip() or 'UNKNOWN'
+        side = (r.get(f'{pre}Direction') or '').strip()
+        share = num(r.get(f'{pre}redInterest'))
+        if oid is None or day is None or not name or side not in ('FROM', 'TO') or share is None:
             continue
-        g = groups.setdefault((pid, day, kind), {'FROM': [], 'TO': []})
+        g = groups.setdefault((oid, day, kind), {'FROM': [], 'TO': []})
         g[side].append([share, name])
     out = []
-    for (pid, day, kind), g in groups.items():
+    for (oid, day, kind), g in groups.items():
         if kind not in kidx:
             kidx[kind] = len(kinds)
             kinds.append(kind)
@@ -962,7 +975,7 @@ def build_licence_transfers():
             s = sellers[0] if sellers else None
             b = buyers[0] if buyers else None
             amt = min(x[0] for x in (s, b) if x)
-            out.append([day, pid, ci(s[1]) if s else -1, ci(b[1]) if b else -1,
+            out.append([day, oid, ci(s[1]) if s else -1, ci(b[1]) if b else -1,
                         round(amt, 4), kidx[kind]])
             for x in (s, b):
                 if x:
@@ -971,9 +984,74 @@ def build_licence_transfers():
                 sellers.pop(0)
             if b and b[0] <= 1e-6:
                 buyers.pop(0)
-    out.sort(key=lambda x: (x[0], x[1], x[5], x[2], x[3], x[4]))
+    return out
+
+
+# Forretningsavtaleomrader (BAA): units, glideskala- og parsellavtaler m.m.
+# Et felt eller funn som eies av en BAA har sine eierandeler her, ikke i de
+# underliggende lisensene (lisensandelen og unitandelen er som regel ulike).
+#   baas      [id, navn, type, godkjent, fra, til, aktiv, operator]  (lag 3300)
+#   shares    [id, selskap, fra, til, andel]                        (lag 3304)
+#   oper      [id, selskap, fra, til]                               (lag 3302)
+#   transfers [dag, id, selger, kjoper, andel, type]                (lag 3305)
+# Selskaper er indeks i 'companies', typer indeks i 'kinds'. Dager som i
+# lisensfilene. Hvilke lisenser som inngar, star i licence_baa.json.
+BAA_LAYER = 3300           # bsns_arr_area
+BAA_OPER_LAYER = 3302      # bsns_arr_area_operator
+BAA_TRANSFER_LAYER = 3305  # bsns_arr_area_transfer_hst
+
+
+def build_baa():
+    companies, idx, kinds, kidx = [], {}, [], {}
+
+    def ci(name):
+        name = (name or '').strip()
+        if name not in idx:
+            idx[name] = len(companies)
+            companies.append(name)
+        return idx[name]
+
+    baas = []
+    for r in fetch_layer(BAA_LAYER, 'baaNpdidBsnsArrArea,baaName,baaKind,baaDateApproved,'
+                         'baaDateValidFrom,baaDateValidTo,baaActive,cmpLongName'):
+        bid, name = as_int(r.get('baaNpdidBsnsArrArea')), (r.get('baaName') or '').strip()
+        if bid is None or not name:
+            continue
+        baas.append([bid, name, (r.get('baaKind') or '').strip(),
+                     _d(as_int(r.get('baaDateApproved'))), _d(as_int(r.get('baaDateValidFrom'))),
+                     _d(as_int(r.get('baaDateValidTo'))), 1 if r.get('baaActive') == 'Y' else 0,
+                     (r.get('cmpLongName') or '').strip()])
+    baas.sort(key=lambda x: x[1])
+
+    shares = []
+    for r in fetch_layer(BAA_LIC_LAYER, 'baaNpdidBsnsArrArea,cmpLongName,baaLicenseeDateValidFrom,'
+                         'baaLicenseeDateValidTo,baaLicenseeInterest'):
+        bid, frm = as_int(r.get('baaNpdidBsnsArrArea')), _d(as_int(r.get('baaLicenseeDateValidFrom')))
+        if bid is None or frm is None or not (r.get('cmpLongName') or '').strip():
+            continue
+        shares.append([bid, ci(r.get('cmpLongName')), frm,
+                       _d(as_int(r.get('baaLicenseeDateValidTo'))), num(r.get('baaLicenseeInterest'))])
+    oper = []
+    for r in fetch_layer(BAA_OPER_LAYER, 'baaNpdidBsnsArrArea,cmpLongName,baaOperatorDateValidFrom,'
+                         'baaOperatorDateValidTo'):
+        bid, frm = as_int(r.get('baaNpdidBsnsArrArea')), _d(as_int(r.get('baaOperatorDateValidFrom')))
+        if bid is None or frm is None or not (r.get('cmpLongName') or '').strip():
+            continue
+        oper.append([bid, ci(r.get('cmpLongName')), frm, _d(as_int(r.get('baaOperatorDateValidTo')))])
+    key = lambda x: (x[0], x[2], x[1], x[3] if x[3] is not None else 10**9)
+    shares.sort(key=key)
+    oper.sort(key=key)
+
+    rows = fetch_layer(BAA_TRANSFER_LAYER,
+                       'baaNpdidBsnsArrArea,cmpLongName,baaTransferDateValidFrom,'
+                       'baaTransferDirection,baaTransferKind,baaTransferredInterest')
+    transfers = _pair_transfers(rows, 'baaNpdidBsnsArrArea', 'baaTransfer', ci, kinds, kidx)
+    transfers.sort(key=lambda x: (x[0], x[1], x[5], x[2], x[3], x[4]))
     return {'companies': companies, 'kinds': kinds,
-            'columns': ['day', 'licence', 'seller', 'buyer', 'share', 'kind'], 'rows': out}
+            'baaColumns': ['id', 'name', 'kind', 'approved', 'from', 'to', 'active', 'operator'],
+            'baas': baas, 'shares': shares, 'oper': oper,
+            'transferColumns': ['day', 'baa', 'seller', 'buyer', 'share', 'kind'],
+            'transfers': transfers}
 
 
 # Lisensenes arealhistorikk med geometri (lag 3002): én post per lisens og
@@ -1412,6 +1490,7 @@ def main():
         ('licence_history.json', 'lisenshistorikk', build_licence_history),
         ('licence_transfers.json', 'overdragelser', build_licence_transfers),
         ('licence_areas.json', 'lisensareal over tid', build_licence_areas),
+        ('baa.json', 'forretningsavtaleomrader (BAA)', build_baa),
         ('companies.json', 'selskaper', build_companies),
         ('exploration_wells.json', 'letebronner', build_exploration_wells),
         ('rig_wells.json', 'utviklingsbronner til riggoversikt', build_rig_wells),

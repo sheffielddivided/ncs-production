@@ -3385,6 +3385,7 @@ function applyHash() {
     if (!['all','op'].includes(licF.rby)) licF.rby = 'all';
     if (!['any','buy','sell'].includes(licF.txRole)) licF.txRole = 'any';
     if (!['group','entity'].includes(licF.txLevel)) licF.txLevel = 'group';
+    if (!['lic','unit','all'].includes(licF.txAsset)) licF.txAsset = 'lic';
     if (!/^\d+$/.test(licF.ovn)) licF.ovn = '15';
     if (licF.date && !/^\d{4}-\d{2}-\d{2}$/.test(licF.date)) licF.date = '';
   }
@@ -13953,7 +13954,7 @@ function drawFieldProfile() {
         ${fact('Supply base', p.supplyBase)}
         ${factHtml('Hub', hub && hub !== name ? hubLink(hub) : '')}
         ${factHtml(p.ownerKind === 'BUSINESS ARRANGEMENT AREA' ? 'Business arrangement area' : 'Production licence',
-                   p.owner && (p.ownerKind === 'PRODUCTION LICENCE' ? licenceLink(p.owner) : esc(p.owner)))}
+                   p.owner && (p.ownerKind === 'PRODUCTION LICENCE' ? licenceLink(p.owner) : baaLink(p.owner)))}
       </div>
       <div class="lc-links">${factPageBtn('field', id)}</div>
     </div>`;
@@ -16776,7 +16777,7 @@ function drawDiscoveryProfile() {
         ${fact('Status', d.status)}
         ${fact('Hydrocarbons', d.hc)}
         ${factHtml('Operator', d.operator && companyLink(d.operator))}
-        ${factHtml(ownerLabel, d.owner && (d.ownerKind === 'PRODUCTION LICENCE' ? licenceLink(d.owner) : esc(d.owner)))}
+        ${factHtml(ownerLabel, d.owner && (d.ownerKind === 'PRODUCTION LICENCE' ? licenceLink(d.owner) : baaLink(d.owner)))}
         ${fact('Main area', d.area)}
         ${factHtml('Part of field', d.field && fieldLink(d.field, d.field))}
         ${factHtml('Resources booked under', d.inclIn && fieldLink(d.inclIn, d.inclIn))}
@@ -17055,11 +17056,13 @@ function licContentHtml(fields, ds) {
 function licenceDealsCard(name) {
   if (!licTransfers) return '';
   const key = concernKey(name), kinds = new Set(LIC_DEAL_KINDS.split(','));
-  const deals = licTransfers.filter(t => {
+  const deals = licTransfers.concat(baaTransfers).filter(t => {
     if (!kinds.has(t.kind)) return false;
     const buy = !!t.buyer && concernKey(t.buyer) === key, sell = !!t.seller && concernKey(t.seller) === key;
     return buy !== sell;
-  }).sort((a, b) => b.day - a.day || b.lic - a.lic);
+  }).sort((a, b) => b.day - a.day || licTxKey(b).localeCompare(licTxKey(a)));
+  // Lisenser først, så BAA-er, i hver pakke.
+  const itemName = t => t.baa ? '~' + baaName(t.baa) : licName(t.lic);
   // Overføringer mellom de samme partene på samme dato er én transaksjon for
   // selskapene (en pakke med flere lisenser, eller et bytte der andeler går
   // begge veier), så de slås sammen til én rad.
@@ -17070,9 +17073,9 @@ function licenceDealsCard(name) {
     if (!g) { g = {day: t.day, seller: t.seller, buyer: t.buyer, items: []}; pkgMap.set(k, g); pkgs.push(g); }
     g.items.push(t);
   });
-  pkgs.forEach(g => g.items.sort((a, b) => licName(a.lic).localeCompare(licName(b.lic), 'en', {numeric: true})));
+  pkgs.forEach(g => g.items.sort((a, b) => itemName(a).localeCompare(itemName(b), 'en', {numeric: true})));
   if (!deals.length) return `<div class="pf-card pf-wide"><h3>Recent transactions</h3>
-    <div class="pf-map-note">No licence transactions found for the company's group. Source: Sodir layer 3003.</div></div>`;
+    <div class="pf-map-note">No licence or unit transactions found for the company's group. Source: Sodir layers 3003 and 3305.</div></div>`;
   const thisYear = pkgs.filter(g => licDayYear(g.day) === currentYear).length;
   const shown = Math.max(5, thisYear);
   const {byField, byDisc} = licenceInfo();
@@ -17091,11 +17094,20 @@ function licenceDealsCard(name) {
     // Selskapets egen side først: det det kjøpte, så det det solgte.
     dirs.sort((a, b) => (concernKey(b.buyer || '') === key) - (concernKey(a.buyer || '') === key));
     const n = g.items.length, swap = dirs.length > 1;
-    const sub = swap ? `Swap · ${n} licences` : n > 1 ? `${n} licences, one transaction` : '';
+    const what = g.items.some(t => t.baa) ? (g.items.every(t => t.baa) ? 'units' : 'licences and units') : 'licences';
+    const sub = swap ? `Swap · ${n} ${what}` : n > 1 ? `${n} ${what}, one transaction` : '';
     return `<tbody class="tx-grp">${dirs.map((d, i) => {
-      const lics = d.items.map(t => `<span class="tx-lic"><strong>${licenceLink(licName(t.lic))}</strong> <small>${licPct(t.share)}</small></span>`).join(' ');
-      const info = d.items.map(t => { const ln = licName(t.lic); return licContentHtml(byField[ln] || [], byDisc[ln] || []); })
-        .filter(Boolean).join(', ');
+      const lics = d.items.map(t => `<span class="tx-lic"><strong>${licTxAsset(t)}</strong> <small>${licPct(t.share)}</small></span>`).join(' ');
+      // En unit og lisensene i den peker ofte på samme felt; hvert felt nevnes én gang.
+      const seen = new Set();
+      const info = d.items.map(t => {
+        let fs, ds;
+        if (t.baa) ({fields: fs, discoveries: ds} = baaOwned(baaName(t.baa)));
+        else { const ln = licName(t.lic); fs = byField[ln] || []; ds = byDisc[ln] || []; }
+        const html = licContentHtml(fs.filter(x => !seen.has('f' + x.id)), ds.filter(x => !seen.has('d' + x.id)));
+        fs.forEach(x => seen.add('f' + x.id)); ds.forEach(x => seen.add('d' + x.id));
+        return html;
+      }).filter(Boolean).join(', ');
       return `<tr>${i === 0 ? `<td class="ex-l tx-date" rowspan="${dirs.length}">${licDayStr(g.day)}${sub ? `<small>${sub}</small>` : ''}</td>` : ''}
         <td class="ex-l tx-lics">${lics}</td>
         <td class="ex-l">${d.seller ? companyLink(d.seller) : '—'}</td><td class="ex-l">${d.buyer ? companyLink(d.buyer) : '—'}</td>
@@ -17104,13 +17116,13 @@ function licenceDealsCard(name) {
     }).join('')}</tbody>`;
   };
   const table = rows => `<div class="pf-scroll"><table class="res-table ex-table tx-table"><thead><tr>
-      <th class="ex-l">Date</th><th class="ex-l">Licences and shares</th><th class="ex-l">Seller</th>
+      <th class="ex-l">Date</th><th class="ex-l">Licences / units and shares</th><th class="ex-l">Seller</th>
       <th class="ex-l">Buyer</th><th class="ex-l">Type</th><th class="ex-l">Fields / discoveries</th></tr></thead>
       ${rows.map(grp).join('')}</table></div>`;
   const rest = pkgs.slice(shown);
   return `<div class="pf-card pf-wide"><h3>Recent transactions</h3>
     <div class="ex-sum"><strong>${thisYear}</strong> ${thisYear === 1 ? 'transaction' : 'transactions'} in ${currentYear} ·
-      ${pkgs.length} in total${pkgs.length < deals.length ? ` (${deals.length} licence transfers)` : ''}</div>
+      ${pkgs.length} in total${pkgs.length < deals.length ? ` (${deals.length} transfers)` : ''}</div>
     ${table(pkgs.slice(0, shown))}
     ${rest.length ? `<details class="hv-more"><summary>Show ${rest.length} earlier</summary>${table(rest)}</details>` : ''}
     <div class="pf-map-note">Licence stakes the company's group bought or sold: transfers, state (SDFI) transfers,
@@ -17118,7 +17130,8 @@ function licenceDealsCard(name) {
       on the same date are one transaction and shown together; when shares go both ways (a swap), each direction has its own
       line with seller, buyer and the fields and discoveries involved. All transactions this year
       are shown, and at least the five latest. The last column is the same as in the licence table below.
-      Source: Sodir layer 3003.</div></div>`;
+      Stakes in units and other business arrangement areas are shown with a grey tag; their share is a share of the unit,
+      which usually differs from the licence share in the same deal. Source: Sodir layers 3003 and 3305.</div></div>`;
 }
 
 // Lisenstabellen for ett selskap, felles for Company → Licences og
@@ -17144,7 +17157,7 @@ function licPortfolioTableHtml(c, rows, {sort, sortJs, lim = rows.length, moreJs
     const parts = r.fields.map(f => fieldLink(f.id, f.name));
     r.discoveries.slice(0, 3).forEach(d => parts.push(discoveryLink(d.id, dn(d))));
     if (r.discoveries.length > 3) parts.push(`<span class="lic-more" title="${esc(r.discoveries.slice(3).map(dn).join(', '))}">+${r.discoveries.length - 3} more</span>`);
-    const baa = r.baas.map(b => `<span class="lc-baa" title="${esc(tc(b.kind))}">${esc(b.name)}</span>`).join(' ');
+    const baa = r.baas.map(b => `<span class="lc-baa" title="${esc(tc(b.kind))}">${baaLink(b.name)}</span>`).join(' ');
     return [parts.join(', '), baa].filter(Boolean).join('<br>');
   };
   const COLS = [['name', 'Licence', 'ex-l'], ['sea', 'Area', 'ex-l'], ['round', 'Round', 'ex-l'],
@@ -23469,11 +23482,11 @@ let licSubView = 'overview';
 const LIC_DEAL_KINDS = 'transfer,sdfi,withdrawal,merger';
 const licDefaults = () => ({company: '', metric: 'count', role: 'all', q: '', top: 20, all: false,
   tableAll: false, rowsAll: false, round: '', rby: 'all', ova: '', ovb: '', ovn: '15', ovm: 'count',
-  txRole: 'any', txFrom: '', txTo: '', txKinds: LIC_DEAL_KINDS, txAll: false, txLevel: 'group', date: '', lic: ''});
+  txRole: 'any', txFrom: '', txTo: '', txKinds: LIC_DEAL_KINDS, txAll: false, txLevel: 'group', txAsset: 'lic', date: '', lic: ''});
 // Parametrene i adressen. Bare avvik fra standardverdiene skrives.
 const LIC_PARAMS = [['company','lc'],['metric','lm'],['role','lr'],['q','lq'],['round','lrd'],['rby','lb'],
   ['ova','lo'],['ovb','lp'],['ovn','ln'],['ovm','lx'],['txRole','tr'],['txFrom','tf'],['txTo','tt'],
-  ['txKinds','tk'],['txLevel','tl'],['date','md'],['lic','ll']];
+  ['txKinds','tk'],['txLevel','tl'],['txAsset','ta'],['date','md'],['lic','ll']];
 let licF = licDefaults();
 let licSort = {key: 'count', dir: -1};          // oversiktstabellen
 let licProfSort = {key: 'net', dir: -1};        // lisenstabellen på selskapssiden
@@ -23623,9 +23636,10 @@ function licRenderBar() {
       .sort((a, b) => a.name.localeCompare(b.name, 'en', {numeric: true}));
     setBar('licBar', `
       <div class="ex-bar">
-        ${pickerHtml({id: 'licLic', value: f.lic, placeholder: 'Licence, e.g. 050 or 1185 S…', label: 'Licence',
+        ${pickerHtml({id: 'licLic', value: f.lic, placeholder: 'Licence or unit, e.g. 050 or Verdande…', label: 'Licence',
           items: names.map(l => ({v: l.name, sub: [licSeaOf(l.area || l.sea)?.label, l.active === 0 ? 'ended' : 'active', l.operator]
-            .filter(Boolean).join(' · ')})),
+            .filter(Boolean).join(' · ')})).concat(baaList.map(b => ({v: b.name,
+            sub: [baaKindLabel(b.kind), b.active ? 'active' : 'ended', b.operator].filter(Boolean).join(' · ')}))),
           pick: licPickLicence})}
       </div>`);
     return;
@@ -23695,10 +23709,16 @@ function openLicenceProfile(name) {
   });
 }
 const licenceLink = name => name ? rowLink(name, `openLicenceProfile(${esc(jsStr(name))})`, `Open the factsheet for licence ${name}`) : '';
+// Forretningsavtaleområder (BAA: units, glideskala, parseller) har faktaark i
+// samme fane som lisensene, med navnet i licF.lic. Navnene kolliderer ikke med
+// lisensnavnene, som er nummer («127 DS»).
+const baaLink = name => name ? rowLink(name, `openLicenceProfile(${esc(jsStr(name))})`,
+  `Open the factsheet for business arrangement area ${name}`) : '';
 
 function licPickLicence(name) {
   const n = String(name || '').trim().toUpperCase();
-  const hit = licAll.find(l => l.name.toUpperCase() === n) || licList.find(l => l.name.toUpperCase() === n);
+  const hit = licAll.find(l => l.name.toUpperCase() === n) || licList.find(l => l.name.toUpperCase() === n)
+    || baaList.find(b => b.name.toUpperCase() === n);
   if (!hit) return;
   markNav();
   licF.lic = hit.name;
@@ -23708,8 +23728,8 @@ function licPickLicence(name) {
 
 // Eierskapet over tid som én rad per endring: hvem som satt med hvor mye fra
 // den datoen og til neste endring. Andelsradene har til-dato inklusive.
-function licOwnerPeriods(id) {
-  const rows = licShares[id] || [], opers = licOper[id] || [];
+function licOwnerPeriods(id) { return ownerPeriods(licShares[id] || [], licOper[id] || []); }
+function ownerPeriods(rows, opers) {
   const starts = [...new Set(rows.map(r => r.from))].sort((a, b) => a - b);
   return starts.map((d, i) => {
     const at = r => r.from <= d && (r.to == null || r.to >= d);
@@ -23726,6 +23746,7 @@ function licRenderLicence() {
   const name = licF.lic;
   const base = licAll.find(l => l.name === name);
   const act = licByName[name];
+  if (!base && !act && baaByName[name]) return licRenderBaa(baaByName[name]);
   if (!base && !act) {
     box.innerHTML = `<div class="status">No licence named ${esc(name || '—')}.</div>`;
     dockBar('licBody');
@@ -23804,7 +23825,7 @@ function licRenderLicence() {
         ${fact('Licensees', nowParts.length || '')}
         ${fact('Area today', active && act.km2 ? licKm(act.km2) + ' km²' : '')}
         ${fact('Original area', base && base.origKm2 ? licKm(base.origKm2) + ' km²' : '')}
-        ${fact('Business arrangement areas', links.baas.map(b => b.name).join(', '))}
+        ${factHtml('Business arrangement areas', links.baas.map(b => baaLink(b.name)).join(', '))}
         ${factHtml('Fields', fieldsHtml)}
         ${factHtml('Discoveries', discHtml)}
       </div>
@@ -24083,7 +24104,9 @@ function licLoadHistory() {
 function licLoadTransfers() {
   if (licTransfers) return Promise.resolve();
   if (licTransfersLoading) return licTransfersLoading;
-  licTransfersLoading = Promise.all([fetchBundle('licence_transfers'), fetchBundle('licence_all')]).then(([t, all]) => {
+  licTransfersLoading = Promise.all([fetchBundle('licence_transfers'), fetchBundle('licence_all'),
+                                     fetchBundle('baa')]).then(([t, all, baa]) => {
+    baaBuild(baa);
     if (!t) return;
     if (all && !licAll.length) {
       licAll = all.rows.map(r => { const l = {}; all.columns.forEach((c, k) => { l[c] = r[k]; }); return l; });
@@ -24098,6 +24121,147 @@ function licLoadTransfers() {
 }
 
 const licName = id => (licAllById[id] && licAllById[id].name) || String(id);
+
+// ── Forretningsavtaleområder (BAA) ───────────────────────────────────────────
+// Units, glideskala- og parsellavtaler m.m. går på tvers av lisenser. Et felt
+// eller funn som eies av en BAA har sine eierandeler i BAA-en, og de er som
+// regel ulike andelene i de underliggende lisensene: Aker BPs salg til Japex i
+// 2025 var 25 % av PL 127, men 3,5 % av Verdande Unit. data/baa.json har
+// BAA-ene (lag 3300), eierandeler over tid (3304), operatører (3302) og
+// overdragelser (3305), parret som lisensoverdragelsene. Hvilke lisenser som
+// inngår, står i licence_baa.json.
+let baaList = [], baaById = {}, baaByName = {}, baaShares = {}, baaOper = {}, baaTransfers = [];
+
+function baaBuild(b) {
+  if (!b || !b.baas) return;
+  const bi = Object.fromEntries(b.baaColumns.map((c, k) => [c, k]));
+  baaList = b.baas.map(r => ({id: r[bi.id], name: r[bi.name], kind: r[bi.kind], approved: r[bi.approved],
+    from: r[bi.from], to: r[bi.to], active: r[bi.active], operator: r[bi.operator] || ''}));
+  baaById = Object.fromEntries(baaList.map(x => [x.id, x]));
+  baaByName = Object.fromEntries(baaList.map(x => [x.name, x]));
+  baaShares = {}; baaOper = {};
+  b.shares.forEach(([id, ci, from, to, share]) =>
+    (baaShares[id] = baaShares[id] || []).push({co: b.companies[ci], from, to, share}));
+  b.oper.forEach(([id, ci, from, to]) =>
+    (baaOper[id] = baaOper[id] || []).push({co: b.companies[ci], from, to}));
+  // Samme form som licTransfers, men med baa i stedet for lic.
+  baaTransfers = b.transfers.map(r => ({
+    day: r[0], lic: null, baa: r[1], seller: r[2] < 0 ? '' : b.companies[r[2]],
+    buyer: r[3] < 0 ? '' : b.companies[r[3]], share: r[4], kind: LIC_KIND_OF[b.kinds[r[5]]] || 'unknown',
+  }));
+}
+
+const BAA_KIND_LABEL = {'UNITIZED': 'Unit', 'SLIDING SCALE': 'Sliding scale', 'PARCELL': 'Parcel',
+  'EXPLORATION LICENCE': 'Exploration licence', 'EXPLOITATION LICENCE': 'Exploitation licence'};
+const baaKindLabel = k => BAA_KIND_LABEL[k] || tc(k || '');
+const baaName = id => (baaById[id] && baaById[id].name) || String(id);
+
+// Lisensene som inngår i BAA-en i dag (licence_baa.json, lag 3301).
+function baaLicences(name) {
+  const bb = bundle.licence_baa;
+  return bb ? [...new Set(bb.rows.filter(r => r[1] === name).map(r => r[0]))]
+    .sort((a, b) => a.localeCompare(b, 'en', {numeric: true})) : [];
+}
+
+// Felt og funn BAA-en eier selv.
+function baaOwned(name) {
+  const out = {fields: [], discoveries: []};
+  const pb = bundle.field_profile, db = bundle.discoveries;
+  if (pb) {
+    const i = Object.fromEntries(pb.columns.map((c, k) => [c, k]));
+    pb.rows.forEach(r => {
+      if (r[i.ownerKind] === 'BUSINESS ARRANGEMENT AREA' && r[i.owner] === name)
+        out.fields.push({id: r[i.id], name: allFields.find(f => f.id === r[i.id])?.name || String(r[i.id])});
+    });
+  }
+  if (db) {
+    const i = Object.fromEntries(db.columns.map((c, k) => [c, k]));
+    db.rows.forEach(r => {
+      if (r[i.ownerKind] === 'BUSINESS ARRANGEMENT AREA' && r[i.owner] === name)
+        out.discoveries.push({id: r[i.id], name: r[i.name]});
+    });
+  }
+  return out;
+}
+
+function licRenderBaa(b) {
+  const box = document.getElementById('licBody');
+  const fact = (k, v) => v ? `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>` : '';
+  const active = !!b.active;
+  const periods = ownerPeriods(baaShares[b.id] || [], baaOper[b.id] || []);
+  const nowParts = (active ? (baaShares[b.id] || []).filter(r => r.to == null)
+    : (periods[0] ? periods[0].holders : [])).map(h => ({name: h.co, share: h.share}))
+    .sort((x, y) => y.share - x.share);
+  const operator = b.operator || (periods[0] || {}).operator || '';
+  const owners = nowParts.length ? ownershipPie(nowParts, operator, `Ownership split between ${nowParts.length} licensees`)
+    + `<div class="pf-map-note">${active ? 'Current interests in the' : 'Interests when it ended in the'} ${esc(baaKindLabel(b.kind).toLowerCase())}.
+       Fields and discoveries the ${esc(baaKindLabel(b.kind).toLowerCase())} owns follow these interests, not the interests in the licences.</div>` : '';
+
+  const lics = baaLicences(b.name);
+  const owned = baaOwned(b.name);
+  const discs = owned.discoveries;
+  const discHtml = discs.slice(0, 6).map(d => discoveryLink(d.id, d.name)).join(', ')
+    + (discs.length > 6 ? ` <span class="lic-more" title="${esc(discs.slice(6).map(d => d.name).join(', '))}">+${discs.length - 6} more</span>` : '');
+
+  const showRows = 12;
+  const histRow = p => `<tr><td class="ex-l">${licDayStr(p.from)}</td><td class="ex-l">${p.to != null ? licDayStr(p.to) : 'today'}</td>
+      <td class="ex-l lic-info">${p.holders.map(h => `${companyLink(h.co)} ${licPct(h.share)}${h.co === p.operator ? ' <span class="pf-op-tag">Operator</span>' : ''}`).join('<br>')}</td></tr>`;
+  const histTable = rows => `<div class="pf-scroll"><table class="res-table ex-table"><thead><tr>
+      <th class="ex-l">From</th><th class="ex-l">To</th><th class="ex-l">Licensees</th></tr></thead><tbody>${rows.map(histRow).join('')}</tbody></table></div>`;
+  const history = periods.length ? `<div class="pf-card"><h3>Ownership over time</h3>
+      ${histTable(periods.slice(0, showRows))}
+      ${periods.length > showRows ? `<details class="hv-more"><summary>Show ${periods.length - showRows} earlier</summary>${histTable(periods.slice(showRows))}</details>` : ''}
+      <div class="pf-map-note">One row per change in the licensee group, newest first. Source: Sodir layers 3304 and 3302.</div></div>` : '';
+
+  const kindChip = t => { const k = licKindOf(t.kind) || {label: t.kind, color: '#9aa5b1'}; return `<span class="lc-kind" style="--c:${k.color}">${esc(k.label)}</span>`; };
+  const dealTable = (rows, licCol) => `<div class="pf-scroll"><table class="res-table ex-table"><thead><tr><th class="ex-l">Date</th>
+      ${licCol ? '<th class="ex-l">Licence</th>' : ''}<th class="ex-l">From</th><th class="ex-l">To</th><th>Share</th><th class="ex-l">Type</th></tr></thead>
+      <tbody>${rows.map(t => `<tr><td class="ex-l">${licDayStr(t.day)}</td>${licCol ? `<td class="ex-l"><strong>${licenceLink(licName(t.lic))}</strong></td>` : ''}
+      <td class="ex-l">${t.seller ? companyLink(t.seller) : '—'}</td><td class="ex-l">${t.buyer ? companyLink(t.buyer) : '—'}</td>
+      <td>${licPct(t.share)}</td><td class="ex-l">${kindChip(t)}</td></tr>`).join('')}</tbody></table></div>`;
+  const dealBlock = (rows, licCol) => dealTable(rows.slice(0, showRows), licCol)
+    + (rows.length > showRows ? `<details class="hv-more"><summary>Show ${rows.length - showRows} more</summary>${dealTable(rows.slice(showRows), licCol)}</details>` : '');
+  const deals = baaTransfers.filter(t => t.baa === b.id).sort((x, y) => y.day - x.day);
+  const dealCard = `<div class="pf-card"><h3>Transactions · ${deals.length}</h3>
+      ${deals.length ? dealBlock(deals, false) : '<div class="ex-sum">No transactions recorded.</div>'}
+      <div class="pf-map-note">Stakes in the ${esc(baaKindLabel(b.kind).toLowerCase())} that changed hands. The shares are
+        shares of the ${esc(baaKindLabel(b.kind).toLowerCase())}, which is what the fields it owns are split by. Source: Sodir layer 3305.</div></div>`;
+
+  // De samme handlene står ofte også på lisensnivå, med lisensandelen.
+  const licIds = new Set(lics.map(n => (licAll.find(l => l.name === n) || licByName[n] || {}).id).filter(Boolean));
+  const since = deals.length ? Math.min(...deals.map(t => t.day)) : (b.from || 0);
+  const licDeals = (licTransfers || []).filter(t => licIds.has(t.lic) && t.day >= since)
+    .sort((x, y) => y.day - x.day || licName(x.lic).localeCompare(licName(y.lic), 'en', {numeric: true}));
+  const licDealCard = licDeals.length ? `<div class="pf-card"><h3>Transactions in the underlying licences · ${licDeals.length}</h3>
+      ${dealBlock(licDeals, true)}
+      <div class="pf-map-note">Licence-level transfers in ${lics.map(esc).join(', ')}${deals.length ? ' since the first unit transaction' : ''}.
+        The same deal usually appears here with the licence share, which differs from the share of the
+        ${esc(baaKindLabel(b.kind).toLowerCase())}. Source: Sodir layer 3003.</div></div>` : '';
+
+  box.innerHTML = `<div class="pf-cols">
+    <div class="pf-card"><h3>${esc(b.name)}</h3><div class="ex-slot"></div>
+      <div class="pf-facts">
+        ${fact('Type', 'Business arrangement area · ' + baaKindLabel(b.kind))}
+        ${fact('Status', active ? 'Active' : 'Ended')}
+        ${fact('Approved', b.approved != null ? licDayStr(b.approved) : '')}
+        ${fact('Valid from', b.from != null && b.from !== b.approved ? licDayStr(b.from) : '')}
+        ${fact('Ended', !active && b.to != null ? licDayStr(b.to) : '')}
+        ${factHtml('Operator', operator && companyLink(operator))}
+        ${fact('Licensees', nowParts.length || '')}
+        ${factHtml('Licences', lics.map(licenceLink).join(', '))}
+        ${factHtml('Fields', owned.fields.map(f => fieldLink(f.id, f.name)).join(', '))}
+        ${factHtml('Discoveries', discHtml)}
+      </div>
+      <div class="pf-map-note">A business arrangement area is an agreement that spans parts of several production licences,
+        typically a unit around a field that crosses licence boundaries. It has its own licensees and interests.</div>
+      <div class="lc-links">${factPageBtn('bsns_arr_area', b.id)}</div>
+    </div>
+    ${owners ? `<div class="pf-card"><h3>Ownership</h3>${owners}</div>` : ''}
+    ${dealCard}
+    ${history}
+    ${licDealCard}</div>`;
+  dockBar('licBody');
+}
 const licKmDisp = n => n ? licKm(n) : '—';
 
 // ── Overdragelser ────────────────────────────────────────────────────────────
@@ -24165,11 +24329,23 @@ const licEnt = name => !name ? '' : licF.txLevel === 'group' ? licConcern(name).
 const licSameSide = (n, q) => !!n && (n.toLowerCase().includes(q) ||
   (licF.txLevel === 'group' && licConcern(n).label.toLowerCase().includes(q)));
 
+// Lisensoverdragelser, BAA-overdragelser (units m.m.) eller begge. Samme handel
+// står ofte på begge nivåer med ulik andel, så «Both» teller den to ganger.
+function licTxSource() {
+  const a = licF.txAsset;
+  return a === 'unit' ? baaTransfers : a === 'all' ? licTransfers.concat(baaTransfers) : licTransfers;
+}
+const licTxKey = t => t.baa ? 'b' + t.baa : 'l' + t.lic;
+// Lisens- eller BAA-lenke til tabellene, med en grå «unit»-brikke for BAA.
+const licTxAsset = t => t.baa
+  ? `${baaLink(baaName(t.baa))} <span class="lc-baa">${esc(baaKindLabel((baaById[t.baa] || {}).kind).toLowerCase())}</span>`
+  : licenceLink(licName(t.lic));
+
 function licTxFiltered() {
   const f = licF, kinds = new Set(f.txKinds.split(',').filter(Boolean));
   const y0 = f.txFrom ? +f.txFrom : -Infinity, y1 = f.txTo ? +f.txTo : Infinity;
   const q = f.company.trim().toLowerCase();
-  return licTransfers.filter(t => {
+  return licTxSource().filter(t => {
     if (!kinds.has(t.kind)) return false;
     const y = licDayYear(t.day);
     if (y < y0 || y > y1) return false;
@@ -24200,12 +24376,15 @@ function licRenderTxBar() {
   const years = Array.from({length: currentYear - 1966 + 1}, (_, i) => String(currentYear - i));
   const on = new Set(f.txKinds.split(',').filter(Boolean));
   const cnt = {};
-  licTransfers.forEach(t => [t.seller, t.buyer].forEach(n => { if (n) { const k = licEnt(n); cnt[k] = (cnt[k] || 0) + 1; } }));
+  licTxSource().forEach(t => [t.seller, t.buyer].forEach(n => { if (n) { const k = licEnt(n); cnt[k] = (cnt[k] || 0) + 1; } }));
   const names = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b, 'en'));
   setBar('licBar', `
     <div class="ex-bar">
       <div class="pill-group"><button class="pill-btn${f.txLevel === 'group' ? ' active' : ''}" onclick="licTxSet('txLevel','group',true)">Concerns</button>
         <button class="pill-btn${f.txLevel === 'entity' ? ' active' : ''}" onclick="licTxSet('txLevel','entity',true)">Legal entities</button></div>
+      <div class="pill-group" title="Production licences, business arrangement areas (units etc.), or both">
+        ${[['lic', 'Licences'], ['unit', 'Units'], ['all', 'Both']].map(([v, l]) =>
+          `<button class="pill-btn${f.txAsset === v ? ' active' : ''}" onclick="licTxSet('txAsset','${v}',true)">${l}</button>`).join('')}</div>
       ${pickerHtml({id: 'licTxCo', value: f.company, placeholder: 'Company…', label: 'Company', allowEmpty: true,
         items: names.map(n => ({v: n, sub: `${cnt[n]} ${cnt[n] === 1 ? 'deal' : 'deals'}`})),
         pick: v => licTxSet('company', v, true)})}
@@ -24275,7 +24454,8 @@ function licRenderTransactions() {
   const sel = co ? list[0] : null;
   const isBuy = t => licSameSide(t.buyer, q);
   const isSell = t => licSameSide(t.seller, q);
-  const lics = new Set(list.map(t => t.lic));
+  const lics = new Set(list.map(licTxKey));
+  const assetWord = {lic: ['licence', 'licences'], unit: ['unit', 'units'], all: ['licence or unit', 'licences and units']}[f.txAsset];
   const years = list.map(t => licDayYear(t.day));
   const y0 = f.txFrom ? +f.txFrom : (years.length ? Math.min(...years) : currentYear);
   const y1 = f.txTo ? +f.txTo : currentYear;
@@ -24329,7 +24509,7 @@ function licRenderTransactions() {
 
   // Tabell
   const lim = f.txAll ? list.length : 40;
-  const rows = list.slice().sort((a, b) => b.day - a.day || b.lic - a.lic).slice(0, lim);
+  const rows = list.slice().sort((a, b) => b.day - a.day || licTxKey(b).localeCompare(licTxKey(a))).slice(0, lim);
   const chipOf = t => { const k = licKindOf(t.kind); return `<span class="lc-kind" style="--c:${k.color}">${k.label}</span>`; };
   const coLink = n => n ? `<a class="row-link" href="#" onclick="licTxCompany(${esc(JSON.stringify(n))});return false;">${esc(n)}</a>` : '<span class="ex-none">—</span>';
   const sea = id => { const z = licSeaOf((licAllById[id] || {}).area); return z ? `<i class="ex-dot" style="background:${z.color}" title="${z.label}"></i>` : ''; };
@@ -24337,17 +24517,19 @@ function licRenderTransactions() {
   box.innerHTML = `
     <div class="pf-card"><h3>${co && sel ? 'Bought and sold per year' : 'Transactions per year'}</h3><div class="ex-slot"></div>
       <div class="ex-sum"><strong>${list.length}</strong> ${list.length === 1 ? 'stake' : 'stakes'} traded in
-      <strong>${lics.size}</strong> licences${list.length ? ` · ${licDayStr(Math.min(...list.map(t => t.day)))} – ${licDayStr(Math.max(...list.map(t => t.day)))}` : ''}${co ? ` · filtered on <strong>${esc(co)}</strong>` : ''}</div>
+      <strong>${lics.size}</strong> ${assetWord[lics.size === 1 ? 0 : 1]}${list.length ? ` · ${licDayStr(Math.min(...list.map(t => t.day)))} – ${licDayStr(Math.max(...list.map(t => t.day)))}` : ''}${co ? ` · filtered on <strong>${esc(co)}</strong>` : ''}</div>
       ${list.length ? licYearChart(y0, y1, series, 'stakes') : '<div class="ex-sum">No transactions match the filters.</div>'}
       <div class="ex-legend">${legend}</div>
-      <div class="pf-map-note">One stake is one company's interest in one licence changing hands. Transfers, state (SDFI) transfers,
+      <div class="pf-map-note">One stake is one company's interest in one ${assetWord[0]} changing hands. Transfers, state (SDFI) transfers,
         withdrawals and mergers are shown by default; turn on name changes to see corporate renames.
-        Source: Sodir layer 3003.</div></div>
+        ${f.txAsset === 'lic' ? 'Units and other business arrangement areas are under <em>Units</em>.' :
+          'A unit share is a share of the unit, which is what the fields it owns are split by; the same deal usually also appears with the licence share' + (f.txAsset === 'all' ? ', so <em>Both</em> counts it twice.' : ' under <em>Licences</em>.')}
+        Source: Sodir layers ${f.txAsset === 'lic' ? '3003' : f.txAsset === 'unit' ? '3305' : '3003 and 3305'}.</div></div>
     <div class="pf-card">${side}</div>
     <div class="pf-card"><h3>Deals</h3>
       <div class="pf-scroll"><table class="res-table ex-table"><thead><tr>
-        <th class="ex-l">Date</th><th class="ex-l">Licence</th><th class="ex-l">From</th><th class="ex-l">To</th><th>Share</th><th class="ex-l">Type</th></tr></thead>
-        <tbody>${rows.map(t => `<tr><td class="ex-l">${licDayStr(t.day)}</td><td class="ex-l">${sea(t.lic)}<strong>${licenceLink(licName(t.lic))}</strong></td>
+        <th class="ex-l">Date</th><th class="ex-l">${f.txAsset === 'lic' ? 'Licence' : f.txAsset === 'unit' ? 'Unit' : 'Licence / unit'}</th><th class="ex-l">From</th><th class="ex-l">To</th><th>Share</th><th class="ex-l">Type</th></tr></thead>
+        <tbody>${rows.map(t => `<tr><td class="ex-l">${licDayStr(t.day)}</td><td class="ex-l">${t.lic ? sea(t.lic) : ''}<strong>${licTxAsset(t)}</strong></td>
           <td class="ex-l">${coLink(t.seller)}</td><td class="ex-l">${coLink(t.buyer)}</td><td>${licPct(t.share)}</td><td class="ex-l">${chipOf(t)}</td></tr>`).join('')}</tbody></table></div>
       ${lim < list.length ? `<button class="grp-btn ex-more" onclick="licSet('txAll',true,false)">Show all ${list.length} deals</button>` : ''}
     </div>`;
@@ -24678,7 +24860,7 @@ function licOverlapDetail(a, b) {
   const info = l => {
     const parts = l.fields.map(f => fieldLink(f.id, f.name));
     l.discoveries.slice(0, 2).forEach(d => parts.push(discoveryLink(d.id, d.name)));
-    return [parts.join(', '), l.baas.map(x => `<span class="lc-baa">${esc(x.name)}</span>`).join(' ')].filter(Boolean).join('<br>');
+    return [parts.join(', '), l.baas.map(x => `<span class="lc-baa">${baaLink(x.name)}</span>`).join(' ')].filter(Boolean).join('<br>');
   };
   const rows = shared.slice().sort((x, y) => y.km2 - x.km2);
   const opA = shared.filter(l => l.operator === a).length, opB = shared.filter(l => l.operator === b).length;
