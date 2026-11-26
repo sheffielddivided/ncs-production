@@ -14220,14 +14220,17 @@ function drawShipping(ids, name, kind) {
     if (data.some(x => x != null)) oilDs = {type: 'line', label: oilHub ? `Reported oil production, ${tc(oilHub)} hub (Sodir)` : 'Reported oil production (Sodir)', data, stack: 'oil', _noTotal: true,
       borderColor: '#1a2332', backgroundColor: '#1a2332', borderWidth: 2, pointRadius: 2, tension: 0, spanGaps: false, order: 0};
   }
-  const missing = hub ? ids.filter(id => !Fs.includes(shippingData.fields[String(id)])).map(id => tc(fieldNameOf(id))) : [];
-  setInfo((hub ? `<strong>Hub:</strong> ${esc(name)}, fields with tanker data: ${Fs.map(f => esc(tc(f.name))).join(', ')}` +
-      (missing.length ? ` (not collected: ${missing.map(esc).join(', ')})` : '') +
-      `. A tanker going from one of these fields to another with less than ${SHIP_GAP_H} hours between counts as one call &nbsp;|&nbsp; `
+  // Huben: tankskipene lastes ved feltene i shipping_fields.json (lastefeltene);
+  // de andre feltene i huben har ikke egen lasting her, men oljen deres er med
+  // i produksjonslinjen.
+  const others = hub ? ids.filter(id => !Fs.includes(shippingData.fields[String(id)])).map(id => tc(fieldNameOf(id))) : [];
+  setInfo((hub ? `<strong>Hub:</strong> ${esc(name)}, tanker loading at ${Fs.map(f => esc(tc(f.name))).join(', ')}` +
+      (others.length ? `; the other fields in the hub (${others.map(esc).join(', ')}) have no tanker loading of their own here, but their oil is in the production line` : '') +
+      (Fs.length > 1 ? `. A tanker going from one of the loading fields to another with less than ${SHIP_GAP_H} hours between counts as one call` : '') + ` &nbsp;|&nbsp; `
     : `<strong>Field:</strong> ${esc(tc(name))}, around ${Fs[0].facilities.map(x => esc(x)).join(', ')} &nbsp;|&nbsp; `) +
     `<strong>Period:</strong> ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))} &nbsp;|&nbsp; ` +
     `<strong>Tankers:</strong> AIS ship type 80–89, or unknown type over 220 m (shuttle tankers); other vessels and the fields' own storage units are not included &nbsp;|&nbsp; ` +
-    `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours; tankers passing through are left out. Calls by the same tanker less than 72 hours apart count as one (it moved off and came back to load), so the time at the field can include waiting nearby &nbsp;|&nbsp; ` +
+    `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours, and that either stayed at least 6 hours or came within 0.7 km (loading position; AIS coverage offshore is patchy, on Haltenbanken especially, so a loading can show as only an hour or two); tankers passing through or waiting nearby are left out. Calls by the same tanker less than 72 hours apart count as one (it moved off and came back to load), so the time at the field can include waiting nearby &nbsp;|&nbsp; ` +
     (() => {
       const st = Fs.flatMap(f => f.storage || []);
       if (!st.length) return '';
