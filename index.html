@@ -14045,7 +14045,10 @@ function loadShipping() {
 }
 // De SHIP_TOP skipene med flest anløp får egen farge i grafen; resten samles.
 const SHIP_TOP = 8;
-const SHIP_COLORS = ['#7d2248', '#2a6fa8', '#e3a73a', '#3fa7a0', '#8e6bbf', '#d14f4e', '#6c9a2f', '#003057'];
+// Fast rekkefølge, validert for fargeblinde (dataviz-skillens referansepalett:
+// nabopar i stabelen ΔE ≥ 11,8 ved CVD, ≥ 20,5 normalt). Ingen mørk marineblå,
+// så produksjonslinjen (#1a2332) ikke forveksles med et skip.
+const SHIP_COLORS = ['#257de0', '#f47230', '#00b894', '#f2a600', '#ee7fac', '#008a17', '#6a4ce2', '#ec4647'];
 const SHIP_OTHER = '~other';
 const monthKey = t => new Date(t).toISOString().slice(0, 7);
 function fmtStay(h) { return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1)} days`; }
@@ -14218,7 +14221,7 @@ function drawShipping(ids, name, kind) {
     const oil = oilByMonth(oilIds);
     const data = months.map(mo => oil[mo] != null ? +(oil[mo] / 1e6).toFixed(2) : null);
     if (data.some(x => x != null)) oilDs = {type: 'line', label: oilHub ? `Reported oil production, ${tc(oilHub)} hub (Sodir)` : 'Reported oil production (Sodir)', data, stack: 'oil', _noTotal: true,
-      borderColor: '#1a2332', backgroundColor: '#1a2332', borderWidth: 2, pointRadius: 2, tension: 0, spanGaps: false, order: 0};
+      borderColor: '#1a2332', backgroundColor: '#1a2332', borderWidth: 2, pointRadius: 4, pointHoverRadius: 5, pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0, spanGaps: false, order: 0};
   }
   // Huben: tankskipene lastes ved feltene i shipping_fields.json (lastefeltene);
   // de andre feltene i huben har ikke egen lasting her, men oljen deres er med
