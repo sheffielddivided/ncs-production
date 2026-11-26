@@ -1228,6 +1228,104 @@ innretninger (feltkode eller navn: Atlantis-plattformen står på en annen
 feltkode) og brønner. Lenkeparametre: `v`, `g`, `p`, `per`, `u`, `from`, `rk`,
 `dc`, `q`, `c`, `b` (eq/op), `rp`, `wt`, `wd`, `dy`, `mw`, `fs`, `sp`.
 
+### `data/brazil*.json` — Brasil, hav og land (`brazil.html`)
+
+Egen side som `gom.html`, med samme stil og hjelpefunksjoner (skjult lenke
+`modeBtnBrazil` i menyen, `noindex`). Dekker hele Brasil, til havs og på land.
+
+Bygges av `fetch_anp.py` (workflow `update-anp.yml`, tirsdag og fredag 07:23
+UTC, med `actions/cache` for nedlastingene, om lag 600 MB første gang). ANP
+bytter filnavn fra år til år (`2021_01_producao.zip`, `producao-2022-01.zip`,
+`producao_por_poco_2024.csv`), så alle lenker leses fra datasettsidene på
+gov.br/anp. ANP svarer 403 på HEAD; med `--cache` gjenbrukes derfor bare filer
+som ikke endres (produksjonsår til og med i forfjor, arkivet per brønn, PDF-er,
+eldre BAR), resten lastes ned hver gang. Feiler en nedlasting, brukes forrige
+kopi hvis den finnes.
+
+| Kilde (gov.br/anp, «Dados abertos») | Brukes til |
+|---|---|
+| Fase de desenvolvimento e produção: `pm/producao-mar-*.csv` (1954–), `pt/…terra…csv` (1941–, kvartalsvis fra 2016) | Produksjon per brønn og måned med felt, basseng, delstat, innretning og injeksjon. Grunnlaget for alle produksjonstall |
+| Produção por poço: zip per år (2005–2020) og måned (2021–2023) med Mar/Terra/PreSal | Pre-salt-brønnene, operatør og kontrakt per felt og år, installasjonstype, API-grad |
+| Produção por estado e localização (`ppgn-el`) | Offisielle totaler per delstat og måned: kontroll og utfylling av hull |
+| Relação de concessionários | Dagens rettighetshavere og andeler per kontrakt |
+| Dados georreferenciados: `campos-producao.zip`, `blocos-exploratorios.zip`, `shapefile-de-pocos.zip` (august/september 2023) | Feltomriss med kontrakt, funndato, vanndyp og væske; blokkomriss; brønnregisteret (30 535 brønner med posisjon, type, status, rigg, «atingiu pré-sal») |
+| Dados estatísticos: `tabela-dados-bar-YYYY.xlsx` (2020–) og `boletim-anual-reservas-YYYY.pdf` | VOIP, VGIP, akkumulert produksjon og utvinningsgrad per felt; 1P/2P/3P og betingede ressurser per basseng (tabell 1–6) og historikken 2016– fra grafene |
+| Fase de exploração: `bsc`, `pocos-exploratorios`, `pads-andamento`, `pads-concluidos`, `dcfe` (månedlige øyeblikksbilder) | Blokker under kontrakt med andeler (og antall over tid), letebrønner 1998– med funnmelding, PAD-er, kommersialitetserklæringer |
+| Rodadas de licitações: `blocos-ofertados-rodadas.csv`, `ofertas-vencedoras-rodadas.csv`, `processos-cessao-contratos.csv` | Runde 9–17 (tilbudt, tildelt, bonus), overdragelser 2001– med andeler før og etter |
+| Participações governamentais: `pe_campo.csv` | Særskatt (participação especial) per felt og år |
+| Incidentes de segurança operacional (`issm/incidentes*.csv`) | Hendelser 2013–: år, type, alvorlighet, innretning; liste siste to år |
+| `previsao-producao.csv` | Operatørenes femårsprognose per basseng og hav/land |
+
+- **CSV-variantene:** UTF-8 med BOM eller cp1252, komma eller semikolon,
+  tall som «1.234,56», «22,3», «,878» eller «3070» (`num`). Havfilene for
+  2019–2021 har hele linjen i anførselstegn med doble anførselstegn inni
+  (`read_csv` pakker dem opp). Landfilen for 4. kvartal 2025 skriver måneden
+  som «nov/2025» (`ym_of`). Arkivfilene før 2021 har fire linjer forord og en
+  overskrift over to linjer (`read_archive_csv`).
+- **Kontroll** (exit 1): summen per brønn mot ANPs totaler per delstat, hvert
+  år fra 1997: til havs innenfor 1 %, på land innenfor 2 % (4 % før 2006).
+  Paraná på land er tatt ut av totalene: der er skiferolje (SIX, fra 2024)
+  med, og den kommer ikke fra brønner. I dag stemmer havet innenfor 0,1 % de
+  fleste år. Andre kontroller: ingen måneder uten produksjon, minst 250 felt
+  i produksjon, og dagens andeler skal dekke minst 90 % av produksjonen siste
+  12 måneder (i dag 100 %). Akkumulert olje per felt mot BAR skrives ut som
+  myk kontroll (65 av 72 store felt innenfor 5 %).
+- **Hull i landfilene:** måneder der landproduksjonen per brønn er under 97 %
+  av ANPs totaler (i dag sep. og okt. 2007, mai, nov. og des. 2021, mars, april
+  og juli 2026; april og juli 2026 mangler helt i kvartalsfilene) får
+  differansen lagt til totalen, land, pre-salt-fordelingen («onshore») og
+  delstatene. Feltene og bassengene fylles ikke; differansen havner i «Other»
+  i bassenggrafen. `onshoreGaps` lister månedene, og siden sier det.
+- **Pre-salt:** en brønn er pre-salt når ANP har den i PreSal-filene i arkivet
+  per brønn (2005–2023). PreSal-filene gjentar brønnene i Mar-filene. Brønner
+  som ikke finnes i arkivet (boret etter 2023) følger feltets andel i arkivets
+  siste år (minst 50 % gir pre-salt), og felt som ikke finnes i arkivet, regnes
+  som pre-salt i Santos-bassenget. Kontroll mot ANP: september 2026 gir 82,2 %
+  av o.e., ANP oppgir 83,3 %.
+- **Feltnavn:** koden er navnet i produksjonsfilene. AnC-prefikset skrives
+  forskjellig (`AnC_TUPI`, `ANC_TUPI`) og normaliseres (`norm_field`). ANP
+  fører samme felt under flere navn: `BÚZIOS` og `BÚZIOS_ECO` (overskuddet fra
+  cessão onerosa, under produksjonsdeling) og `AnC_…` (område utenfor kontrakt i
+  samordnede felt, eid av staten via PPSA). `cx` (`complex_of`) samler dem.
+  Siden slår dem sammen som standard (Fields: «Combine/Separate»); BAR-volumene
+  er egne per område og summeres.
+- **Kontrakt per felt:** fra feltomrisset (`NUM_CONTRA`), ellers arkivet per
+  brønn, ellers navnet, ellers `data/brazil_aliases.json` (`fieldContracts`).
+  En kontrakt kan stå én gang per fase og ha flere områder etter hverandre
+  under samme navn (BM-S-9: Sapinhoá og Lapa, BM-S-11: Tupi og Berbigão-
+  området); en ny gruppe begynner når andelene har nådd 100 %, og feltet får
+  gruppen der operatøren er feltets operatør i arkivet.
+- **Selskaper** (`GROUPS`): juridiske navn under dagens morselskap der linjen
+  er klar (BG → Shell, Statoil → Equinor, Petrogal → Galp, 3R/Enauta/QGEP →
+  Brava Energia, PetroRio → PRIO, Maersk → TotalEnergies, Petrochina → CNPC).
+  Egenandel: feltets produksjon × dagens andeler, for alle måneder fra 2005
+  (ANP publiserer ingen historikk for andelene; overdragelsene vises for seg).
+  AnC-områdene krediteres «PPSA (Union)». Opererte volumer: operatøren i
+  arkivet det året (2005–2023), deretter dagens operatør.
+- **Innretninger:** navnet ANP fører per brønn (FPSO-er, «Petrobras 74»,
+  plattformer, landstasjoner), fra 2010. Posisjon: median av brønnene som
+  produserte til innretningen siste to år, fra brønnregisteret; nyere enheter
+  (brønner etter 2023) får feltets posisjon. Antall hendelser kobles på navnet.
+- **Reserver:** ANP publiserer ikke reserver per felt. Tabellene per basseng
+  leses fra siste boletin (tabell 1–2 alle, 3–4 hav, 5–6 land, valgt etter
+  tabellnummeret). Historikken leses fra grafene (tallene over søylene knyttes
+  til nærmeste år etter tegnposisjon, segmentene nedenfra) og brukes bare når
+  siste år stemmer med tabellen.
+- **Filstørrelse:** `brazil.json` ~1 MB lastes ved start; resten ved behov
+  (`brazil_incidents.json` ~3,5 MB bare i Safety og innretningsarkene).
+
+Frontend (`brazil.html`): Production (pre-salt/post-salt/land, basseng,
+delstat, felt, innretning, total; olje, gass, o.e., vann; måned/år; fat eller
+m³, gass alltid i mill. m³/d som ANP), produserende brønner, gass produsert og
+reinjisert, prognosen, største felt og mest produktive brønner; Fields
+(rangering etter produksjon, akkumulert, VOIP eller utvinningsgrad); Platforms;
+Reserves; Company (egenandel/opererte, ett selskap med felt, blokker og
+letebrønner); Exploration; Licensing (blokker, runder, overdragelser); Safety;
+Map (feltomriss, blokker, innretninger, brønner). Faktaark for felt
+(`openSheet`) og innretninger (`openInst`). Lenkeparametre: `v`, `g`, `p`,
+`per`, `u`, `from`, `rk`, `env`, `bs`, `q`, `cx`, `c`, `b`, `rp`, `ey`, `lt`,
+`mw`, `ml`, `fs`, `is`, `sp`, `ip`.
+
 ### `data/update_log.json` — oppdateringsloggen (`updates.html`)
 
 Hva som er endret i dataene, dag for dag, til `updates.html` (lenke nederst
