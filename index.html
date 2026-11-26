@@ -2119,6 +2119,7 @@ const FIELD_TABS   = [
   {id:'havtil',         label:'Havtil'},
   {id:'downtime',       label:'Gas outage'},
   {id:'shipping',       label:'Shipping'},
+  {id:'valuation',      label:'Valuation BETA'},
 ];
 const HUB_TABS     = [
   {id:'production',     label:'Production'},
@@ -3765,6 +3766,12 @@ async function refreshFields() {
     drawChart();
     return;
   }
+  // Samme modell og data som Hubs → Valuation BETA.
+  if (fieldSubView === 'valuation') {
+    await Promise.all([loadProdForFields(ids), loadFieldReserves(), loadLicForFields(ids), loadPriceHistory()]);
+    drawChart();
+    return;
+  }
   if (fieldSubView === 'map') { drawChart(); return; }
   if (fieldSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
   if (fieldSubView === 'downtime') { await loadGassco(); drawChart(); return; }
@@ -3916,6 +3923,7 @@ function drawChartView() {
     else if (sv === 'havtil')          drawFieldHavtil();
     else if (sv === 'downtime')        drawFieldDowntime();
     else if (sv === 'shipping')        drawFieldShipping();
+    else if (sv === 'valuation')       betaGate(drawFieldValuation);
     if (isProdView(sv)) ncsToggleAbove(prodPills());
   } else if (topMode === 'hubs') {
     // Gjenbruker feltvisningene med hubens medlemsfelt.
@@ -3975,7 +3983,7 @@ function drawChartView() {
 }
 
 // ── PASSORD FOR VALUATION BETA ───────────────────────────────────────────────
-// Valuation BETA (hub og selskap) og Company → Analytics BETA vises først når
+// Valuation BETA (felt, hub og selskap) og Company → Analytics BETA vises først når
 // passordet er tastet inn.
 // Passordet ligger bare i GitHub-secreten BETA_PASSWORD. Workflowen
 // beta-password.yml (kjøres for hånd) skriver en saltet PBKDF2-SHA256-hash av
@@ -12939,6 +12947,7 @@ function isReservesView() {
       || (topMode === 'fields'    && fieldSubView   === 'havtil')
       || (topMode === 'fields'    && fieldSubView   === 'downtime')
       || (topMode === 'fields'    && fieldSubView   === 'shipping')
+      || (topMode === 'fields'    && fieldSubView   === 'valuation')
       || (topMode === 'hubs'      && hubSubView     === 'profile')
       || (topMode === 'hubs'      && hubSubView     === 'reserves')
       || (topMode === 'hubs'      && hubSubView     === 'installations')
@@ -15293,7 +15302,7 @@ const CF_CAPEX = 'rgba(26,35,50,0.85)', CF_OPEX = 'rgba(154,165,177,0.9)', CF_AB
 const CF_SERIES = [['liq', 'Revenue, liquids', OIL_COLOR], ['gas', 'Revenue, gas', GAS_COLOR],
                    ['capex', 'Capex', CF_CAPEX], ['opex', 'Opex', CF_OPEX], ['abex', 'Abandonment', CF_ABEXC]];
 
-function hubCashFlowCard(ids) {
+function hubCashFlowCard(ids, noun = 'hub') {
   const cf = hubCashFlow(ids, hubCfPrice);
   if (!cf) return '';
   const {rows, y0} = cf;
@@ -15338,18 +15347,18 @@ function hubCashFlowCard(ids) {
       </div>
       ${npvTable}
     </div>
-    <div class="pf-map-note">A simplified, pre-tax cash flow in nominal USD bn for 100 % of the hub; the cumulative line is
+    <div class="pf-map-note">A simplified, pre-tax cash flow in nominal USD bn for 100 % of the ${noun}; the cumulative line is
       undiscounted. <strong>History</strong> (to ${y0 - 1}): capex as reported to Sodir, converted from NOK at each year's
       average rate; opex a flat USD ${OPEX_USD} per boe in ${OPEX_BASE} money, deflated with the US CPI; liquids sold at
       Brent and gas at the World Bank's European gas price (TTF in recent years), ${GAS_MJ_PER_SM3} MJ/Sm³.
       ${cf.hasForecast ? `<strong>Forecast</strong> (from ${y0}, ${Math.round(CF_INFL * 1000) / 10} % inflation from ${OPEX_BASE}):
-      the producing fields decline together from last year's production (P) until their remaining reserves
+      ${noun === 'hub' ? 'the producing fields decline together' : 'a producing field declines'} from last year's production (P) until ${noun === 'hub' ? 'their' : 'its'} remaining reserves
       (R, latest Sodir estimates) are produced, at an annual rate of ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P),
-      split between them by their share of the reserves. Fields under development come on top from their start-up
+      ${noun === 'hub' ? 'split between them by their share of the reserves. Fields under development come on top' : 'A field under development starts'} from ${noun === 'hub' ? 'their' : 'its'} start-up
       year (production this year, otherwise Sodir's planned start-up, otherwise ${y0 + 3}): half a plateau year, then a
-      plateau of ${Math.round(CF_PLATEAU_RATE * 100)} % of their reserves a year until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced,
-      then the same decline. Everything stops at the latest when the hub would have produced all its reserves with
-      that decline, so the hub's life governs the fields'. All boe, gas and NGL included, sold at the
+      plateau of ${Math.round(CF_PLATEAU_RATE * 100)} % of ${noun === 'hub' ? 'their' : 'its'} reserves a year until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced,
+      then the same decline.${noun === 'hub' ? ` Everything stops at the latest when the hub would have produced all its reserves with
+      that decline, so the hub's life governs the fields'.` : ''} All boe, gas and NGL included, sold at the
       scenario oil price in ${OPEX_BASE} dollars. Opex as in the history. Sodir's expected future investments spread
       ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} % over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length},
       the first years without reported figures; amounts before ${y0} are sunk and not in the NPV. Abandonment
@@ -16009,7 +16018,7 @@ function hubMemberTable(ids) {
 // prognose (profilen) vises inneværende år som snitt hittil i år, som i
 // selskapsprofilen. Med prognose (Valuation) går historikken til og med i fjor
 // og prognosen (cfHubForecast, samme som kontantstrømmen) fra i år, skravert.
-function drawHubProdChart(ids, withFc) {
+function drawHubProdChart(ids, withFc, noun = 'hub') {
   const nameOf = id => allFields.find(f => f.id === id)?.name || String(id);
   const y0 = currentYear;
   const fcHub = withFc ? cfHubForecast(ids) : null;
@@ -16060,7 +16069,7 @@ function drawHubProdChart(ids, withFc) {
       series: lastDatasets.map((d, i) => ({name: d.label, type: 'bar', color: pptHex(datasets[i]._color), values: d.data,
         ...(hasFc ? {est: lastLabels.map(l => +String(l).slice(0, 4) >= y0)} : {})}))};
   } else {
-    setChartEmpty('No production reported for this hub.');
+    setChartEmpty(`No production reported for this ${noun}.`);
   }
 
   return {partialSrc, lastYear, hasFc, y0};
@@ -16179,6 +16188,34 @@ function drawHubValuation() {
   `);
   // Produksjonsgrafen er tegnet i grafområdet øverst (renderChart, så Excel og
   // «Add to PPT» virker som før) og flyttes ned i sitt kort under kontantstrømmen.
+  const slot = document.getElementById('hubProdSlot'), top = document.getElementById('chartArea');
+  while (top.firstChild) slot.appendChild(top.firstChild);
+  drawHubCashFlow(ids);
+}
+
+// Fields → Valuation BETA: samme simulerte kontantstrøm og prognose som
+// Hubs → Valuation BETA, kjørt på ett felt alene. Feltet regnes uten de andre
+// feltene i huben, så hubens felles fall (og levetid) gjelder ikke her.
+function drawFieldValuation() {
+  const ids = [...selectedFieldIds];
+  if (ids.length !== 1) {
+    setChartEmpty(ids.length ? 'Select a single field to see its valuation.' : 'Tap the button below to select a field.');
+    setInfo('');
+    return;
+  }
+  const name = allFields.find(f => f.id === ids[0])?.name || String(ids[0]);
+  const hub = hubOfField[ids[0]];
+  const {partialSrc, lastYear, hasFc, y0} = drawHubProdChart(ids, true, 'field');
+  setChartTitle(name, 'Valuation BETA · simulated cash flow and production forecast');
+  setInfo(`<strong>Field:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production, with forecast &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages, price paths from the World Bank and FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
+  setProfile(`
+    ${valWarnCard(false)}
+    ${hubCashFlowCard(ids, 'field')}
+    <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
+      <div class="pf-map-note">Annual gross production, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above.` : ''}
+        ${hub && hub !== name ? `The field is valued on its own here; ${hubLink(hub)} → Valuation BETA values it together with the rest of the hub, where the fields share one decline.` : ''}
+        Source: Sodir FactPages.</div></div>
+  `);
   const slot = document.getElementById('hubProdSlot'), top = document.getElementById('chartArea');
   while (top.firstChild) slot.appendChild(top.firstChild);
   drawHubCashFlow(ids);
@@ -24130,7 +24167,11 @@ const licName = id => (licAllById[id] && licAllById[id].name) || String(id);
 // BAA-ene (lag 3300), eierandeler over tid (3304), operatører (3302) og
 // overdragelser (3305), parret som lisensoverdragelsene. Hvilke lisenser som
 // inngår, står i licence_baa.json.
-let baaList = [], baaById = {}, baaByName = {}, baaShares = {}, baaOper = {}, baaTransfers = [];
+let baaList = [], baaById = {}, baaByName = {}, baaShares = {}, baaOper = {}, baaTransfers = [], baaTransfersAll = [];
+// CO₂-lagringslisensene (EL001 Northern Lights, EXL002 osv.) er BAA-er hos Sodir,
+// men ikke petroleum. De har faktaark, men holdes utenfor Units i Transactions
+// og selskapenes transaksjonskort.
+const BAA_CO2_KINDS = new Set(['EXPLORATION LICENCE', 'EXPLOITATION LICENCE']);
 
 function baaBuild(b) {
   if (!b || !b.baas) return;
@@ -24145,14 +24186,16 @@ function baaBuild(b) {
   b.oper.forEach(([id, ci, from, to]) =>
     (baaOper[id] = baaOper[id] || []).push({co: b.companies[ci], from, to}));
   // Samme form som licTransfers, men med baa i stedet for lic.
-  baaTransfers = b.transfers.map(r => ({
+  baaTransfersAll = b.transfers.map(r => ({
     day: r[0], lic: null, baa: r[1], seller: r[2] < 0 ? '' : b.companies[r[2]],
     buyer: r[3] < 0 ? '' : b.companies[r[3]], share: r[4], kind: LIC_KIND_OF[b.kinds[r[5]]] || 'unknown',
   }));
+  baaTransfers = baaTransfersAll.filter(t => !BAA_CO2_KINDS.has((baaById[t.baa] || {}).kind));
 }
 
 const BAA_KIND_LABEL = {'UNITIZED': 'Unit', 'SLIDING SCALE': 'Sliding scale', 'PARCELL': 'Parcel',
-  'EXPLORATION LICENCE': 'Exploration licence', 'EXPLOITATION LICENCE': 'Exploitation licence'};
+  'EXPLORATION LICENCE': 'CO₂ storage exploration licence', 'EXPLOITATION LICENCE': 'CO₂ storage exploitation licence',
+  'SEISMIC AREA': 'Seismic area'};
 const baaKindLabel = k => BAA_KIND_LABEL[k] || tc(k || '');
 const baaName = id => (baaById[id] && baaById[id].name) || String(id);
 
@@ -24221,7 +24264,7 @@ function licRenderBaa(b) {
       <td>${licPct(t.share)}</td><td class="ex-l">${kindChip(t)}</td></tr>`).join('')}</tbody></table></div>`;
   const dealBlock = (rows, licCol) => dealTable(rows.slice(0, showRows), licCol)
     + (rows.length > showRows ? `<details class="hv-more"><summary>Show ${rows.length - showRows} more</summary>${dealTable(rows.slice(showRows), licCol)}</details>` : '');
-  const deals = baaTransfers.filter(t => t.baa === b.id).sort((x, y) => y.day - x.day);
+  const deals = baaTransfersAll.filter(t => t.baa === b.id).sort((x, y) => y.day - x.day);
   const dealCard = `<div class="pf-card"><h3>Transactions · ${deals.length}</h3>
       ${deals.length ? dealBlock(deals, false) : '<div class="ex-sum">No transactions recorded.</div>'}
       <div class="pf-map-note">Stakes in the ${esc(baaKindLabel(b.kind).toLowerCase())} that changed hands. The shares are
@@ -24522,8 +24565,8 @@ function licRenderTransactions() {
       <div class="ex-legend">${legend}</div>
       <div class="pf-map-note">One stake is one company's interest in one ${assetWord[0]} changing hands. Transfers, state (SDFI) transfers,
         withdrawals and mergers are shown by default; turn on name changes to see corporate renames.
-        ${f.txAsset === 'lic' ? 'Units and other business arrangement areas are under <em>Units</em>.' :
-          'A unit share is a share of the unit, which is what the fields it owns are split by; the same deal usually also appears with the licence share' + (f.txAsset === 'all' ? ', so <em>Both</em> counts it twice.' : ' under <em>Licences</em>.')}
+        ${f.txAsset === 'lic' ? 'Units and other business arrangement areas are under <em>Units</em>.' : 'CO₂ storage licences are left out. ' + (
+          'A unit share is a share of the unit, which is what the fields it owns are split by; the same deal usually also appears with the licence share' + (f.txAsset === 'all' ? ', so <em>Both</em> counts it twice.' : ' under <em>Licences</em>.'))}
         Source: Sodir layers ${f.txAsset === 'lic' ? '3003' : f.txAsset === 'unit' ? '3305' : '3003 and 3305'}.</div></div>
     <div class="pf-card">${side}</div>
     <div class="pf-card"><h3>Deals</h3>

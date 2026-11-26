@@ -168,7 +168,7 @@ utenfor. *dry_run* viser fillisten uten å laste opp. Secrets: `DEPLOY_HOST`
 
 ## Passord for Valuation BETA
 
-Fanene **Valuation BETA** under Company og Hub krever passord. Passordet ligger
+Fanene **Valuation BETA** under Company, Hub og Field krever passord. Passordet ligger
 bare i GitHub-secreten `BETA_PASSWORD`. Workflowen
 `.github/workflows/beta-password.yml` skriver en saltet PBKDF2-SHA256-hash av det
 til `data/beta_gate.json`, og appen sjekker det inntastede passordet mot hashen.
