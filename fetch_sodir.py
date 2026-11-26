@@ -1498,12 +1498,21 @@ def main():
         ('rig_facts.json', 'riggfakta', build_rig_facts),
     ]
 
+    # Datasett som ikke henger sammen med de andre (ren tekst). Feiler et av
+    # disse, beholdes forrige fil og resten oppdateres likevel. Sodir fjernet
+    # f.eks. laget med funnbeskrivelser (7001) fra API-et i november 2026.
+    optional = {'discovery_descriptions.json'}
+
     changed = False
     for filename, label, builder in datasets:
         print(f"\nHenter {label}...")
         try:
             payload = builder()
         except Exception as exc:  # noqa: BLE001
+            if filename in optional:
+                print(f"::warning::Henting av {label} feilet ({exc}); "
+                      f"beholder forrige {filename}.")
+                continue
             # Avbryt uten a skrive noe. Da beholder repoet forrige gyldige
             # datasett, og appen fortsetter a fungere pa gamle tall.
             print(f"FEIL under henting av {label}: {exc}", file=sys.stderr)
