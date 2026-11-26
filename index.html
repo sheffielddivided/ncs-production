@@ -14088,6 +14088,14 @@ function drawHubShipping() {
   drawShipping(hubFieldIds(names), names[0], 'hub');
 }
 
+// Lageret (fat) et anløp laster fra: lageret på innretningen skipet lå ved
+// (fetch_shipping.py finner den for felt med flere lasteinnretninger), ellers
+// feltets eneste lager, ellers det største (innretning ikke funnet ennå).
+function storeBbl(F, fac) {
+  const st = (F.storage || []).filter(x => x.bbl);
+  const at = fac && st.find(x => x.facility === fac);
+  return at ? at.bbl : st.length ? Math.max(...st.map(x => x.bbl)) : 0;
+}
 function drawShipping(ids, name, kind) {
   const Fs = ids.map(id => shippingData.fields[String(id)]).filter(f => f && f.until);
   setChartTitle(name, `Shipping · tanker calls at the ${kind}`);
@@ -14098,10 +14106,11 @@ function drawShipping(ids, name, kind) {
   }
   const hub = kind === 'hub';
   const now = Date.now();
-  let visits = Fs.flatMap(F => F.visits.map(([m, s, e, d, open, from, to, draught, cargo, dest]) => {
+  let visits = Fs.flatMap(F => F.visits.map(([m, s, e, d, open, from, to, draught, cargo, dest, fac]) => {
     const t0 = Date.parse(s), t1 = open ? Math.max(Date.parse(e), Date.parse(F.until)) : Date.parse(e);
     const sh = (F.ships || {})[m] || {};
-    return {m, t0, t1, d, open, from, to, draught, cargo, dest, sh, name: shipName(m, sh), fields: [tc(F.name)]};
+    return {m, t0, t1, d, open, from, to, draught, cargo, dest, sh, name: shipName(m, sh), fields: [tc(F.name)],
+      stores: [storeBbl(F, fac)]};
   }));
   if (Fs.length > 1) {
     const merged = [];
@@ -14111,20 +14120,17 @@ function drawShipping(ids, name, kind) {
         if (v.t1 >= cur.t1) { cur.to = v.to; cur.open = v.open; cur.dest = v.dest; }
         if (v.cargo != null) cur.cargo = Math.max(cur.cargo || 0, v.cargo);
         cur.t1 = Math.max(cur.t1, v.t1);
-        if (!cur.fields.includes(v.fields[0])) cur.fields.push(v.fields[0]);
-      } else merged.push({...v, fields: [...v.fields]});
+        if (!cur.fields.includes(v.fields[0])) { cur.fields.push(v.fields[0]); cur.stores.push(v.stores[0]); }
+      } else merged.push({...v, fields: [...v.fields], stores: [...v.stores]});
     });
     visits = merged;
   }
   // Løftet volum per anløp: skipets lastekapasitet, men ikke mer enn lageret
-  // det lastes fra (største lager på feltet; summert over feltene i et
-  // hubanløp som går innom flere felt). Uten oppgitt lager brukes kapasiteten.
-  const storeOf = {};
-  Fs.forEach(F => { const b = (F.storage || []).map(x => x.bbl || 0); storeOf[tc(F.name)] = b.length ? Math.max(...b) : 0; });
+  // det lastes fra (summert over feltene i et hubanløp som går innom flere
+  // felt). Uten oppgitt lager brukes kapasiteten.
   const liftOf = v => {
     if (!v.sh.cap) return 0;
-    const st = v.fields.reduce((t, f) => t + (storeOf[f] || 0), 0);
-    return v.fields.every(f => storeOf[f]) ? Math.min(v.sh.cap, st) : v.sh.cap;
+    return v.stores.every(b => b) ? Math.min(v.sh.cap, v.stores.reduce((t, b) => t + b, 0)) : v.sh.cap;
   };
   const from = Fs.map(f => f.from).sort()[0], until = Fs.map(f => f.until).sort().pop();
   const radiusKm = Fs[0].radiusKm, nFac = Fs.reduce((t, f) => t + (f.nFacilities || 0), 0);
@@ -14200,7 +14206,7 @@ function drawShipping(ids, name, kind) {
       return `<strong>Storage:</strong> ${st.map(one).join(', ')}; a lifting cannot be larger than the storage it is loaded from &nbsp;|&nbsp; `;
     })() +
     `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
-    (lifted ? `<strong>Lifted volume:</strong> each call counts as one full cargo at the tanker's capacity, in the month it arrived, but no more than the storage it loads from` +
+    (lifted ? `<strong>Lifted volume:</strong> each call counts as one full cargo at the tanker's capacity, in the month it arrived, but no more than the storage on the installation it loaded at (Balder FPU or Jotun FPSO, Åsgard A or C; found from the tanker's AIS positions)` +
       `; reported oil production is Sodir's net oil for ${hub ? 'all fields in the hub, including any exported by pipeline' : 'the field itself, so satellites loaded from its storage are not included (see the hub)'} (Sm³ × ${BBL_PER_SM3}). Part cargoes, condensate and NGL in the tanks, and liftings for several fields make the estimate rough` +
       (noCap ? `; ${noCap} ${noCap === 1 ? 'call has' : 'calls have'} no known capacity and ${noCap === 1 ? 'is' : 'are'} left out` : '') + ' &nbsp;|&nbsp; ' : '') +
     `<strong>Est. cargo:</strong> from the highest draught the tanker reported on AIS after leaving (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Rough, about ±15 %; missing when no draught was sampled before the next call &nbsp;|&nbsp; ` +

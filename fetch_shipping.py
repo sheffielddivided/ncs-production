@@ -674,6 +674,39 @@ def main():
             out_v.append(dict(v))
         st['visits'] = sorted(out_v, key=lambda v: v['s'])
 
+    # 6. Hvilken lasteinnretning skipet lå ved, for felt med flere (Balder:
+    # Balder FPU og Jotun FPSO; Åsgard: A og C). Lagrene er ulike store, og et
+    # løft kan ikke være større enn lageret det lastes fra. Innretningen er den
+    # med flest av skipets posisjoner innenfor radiusen under anløpet.
+    # Gjenbrukes fra forrige kjøring.
+    for st in setups:
+        names = [f['name'] for f in st['load']]
+        old_fac = {} if reroute else {f"{r[0]}|{r[1]}": r[10] for r in st['prev'].get('visits') or [] if len(r) > 10}
+        for v in st['visits']:
+            v['fac'] = names[0] if len(names) == 1 else old_fac.get(f"{v['m']}|{iso(v['s'])}")
+    jobs = [(st, v) for st in setups for v in st['visits'] if v['fac'] is None and not v['open']]
+    if jobs and not rebuild and time.time() < deadline:
+        def which(job):
+            st, v = job
+            if time.time() >= deadline:
+                return
+            try:
+                rows = ship_rows(v['m'], from_minutes(v['s']), from_minutes(v['e']))
+            except Busy as exc:
+                print(f'  ! innretning {v["m"]}: {exc}', file=sys.stderr)
+                return
+            hits = [0] * len(st['load'])
+            for q in rows:
+                d = [km(q[1], q[2], f['lon'], f['lat']) for f in st['load']]
+                i = min(range(len(d)), key=d.__getitem__)
+                if d[i] <= st['radius']:
+                    hits[i] += 1
+            if any(hits):
+                v['fac'] = st['load'][max(range(len(hits)), key=hits.__getitem__)]['name']
+        with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+            list(pool.map(which, jobs))
+        print(f'  innretninger: {len(jobs)} anløp manglet, {sum(1 for _, v in jobs if v["fac"] is None)} mangler fortsatt')
+
     specs = (load_json(SPECS, {}).get('ships') or {})
     obs = load_json(OBS, {'ships': {}})['ships']
     for st in setups:
@@ -687,14 +720,14 @@ def main():
             until = iso(min([v['e'] + TO_DAYS * 1440] + nxt))[:16]
             dr, dest = (None, None) if v['open'] else laden_after(obs.get(v['m'], []), iso(v['e'])[:16], until)
             rows_out.append([v['m'], iso(v['s']), iso(v['e']), v['d'], 1 if v['open'] else 0, v['from'], v['to'],
-                             dr, cargo_bbl(sh, tanker_spec(sh, specs), dr), dest])
+                             dr, cargo_bbl(sh, tanker_spec(sh, specs), dr), dest, v.get('fac')])
         ship_ids = {r[0] for r in rows_out}
         out_fields[st['key']] = {
             'name': fields[st['fid']], 'centre': [round(st['centre'][0], 5), round(st['centre'][1], 5)], 'radiusKm': st['radius'],
             'facilities': [f['name'] for f in st['load']], 'nFacilities': len(st['load']),
             'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'], 'routeDays': ROUTE_DAYS, 'toVersion': TO_VERSION,
             'storage': st['fc'].get('storage') or [],
-            'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest'],
+            'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest', 'facility'],
             'visits': rows_out,
             'joins': sorted(list(j) for j in st['joins'] if j[0] in ship_ids),
             'ships': {m: {**st['ships'][m], **tanker_spec(st['ships'][m], specs)} for m in sorted(ship_ids)},
