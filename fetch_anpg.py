@@ -101,7 +101,8 @@ def bkey(s):
     k = k.replace('NGC', 'NCG')
     k = re.sub(r'^NCG\b.*', 'NCG', k)
     k = re.sub(r'\s*&.*$', '', k)          # «14K & A-IMI» → «14K»
-    return k.replace(' ', '')
+    k = re.sub(r'_(M|G|VF)$', '', k)        # kartlagenes delflater («Bloco 17_M»)
+    return k.replace(' ', '').replace('-', '')
 
 
 def num(s):
@@ -500,6 +501,195 @@ def build():
     }
 
 
+# ---------------------------------------------------------------- kartlag (ArcGIS)
+
+GIS = 'https://gis.anpg.co.ao/hosting/rest/services/Hosted/'
+OUT_GEO = 'data/angola_geo.json'
+
+
+def gis(layer, where='1=1', fields='*', offset_deg=None):
+    """Alle objekter i et kartlag som GeoJSON-features (sider à 1000)."""
+    out, off = [], 0
+    while True:
+        params = {'where': where, 'outFields': fields, 'outSR': 4326, 'f': 'geojson',
+                  'resultOffset': off, 'resultRecordCount': 1000, 'returnGeometry': 'true'}
+        if offset_deg:
+            params['maxAllowableOffset'] = offset_deg
+        for k in range(5):
+            try:
+                r = S.get(f'{GIS}{layer}/FeatureServer/0/query', params=params, timeout=180)
+                r.raise_for_status()
+                d = r.json()
+                break
+            except (requests.RequestException, ValueError) as e:
+                if k == 4:
+                    raise DataError(f'{layer}: {e}')
+                time.sleep(4 * 2 ** k)
+        feats = d.get('features') or []
+        out += feats
+        off += len(feats)
+        if len(feats) < 1000 and not d.get('exceededTransferLimit') and not (d.get('properties') or {}).get('exceededTransferLimit'):
+            return out
+
+
+def clean(v):
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = v.strip()
+        return v if v and v not in ('<Null>', 'Null') else None
+    return v
+
+
+def rnd(c):
+    """Koordinater med tre desimaler (~100 m); ringer og linjer uten gjentatte punkter."""
+    if isinstance(c, (int, float)):
+        return round(c, 3)
+    if c and isinstance(c[0], (int, float)):
+        return [round(c[0], 3), round(c[1], 3)]
+    out = [rnd(x) for x in c]
+    if out and isinstance(out[0], list) and out[0] and isinstance(out[0][0], (int, float)):
+        ded = [out[0]] + [p for i, p in enumerate(out[1:], 1) if p != out[i - 1]]
+        return ded
+    return out
+
+
+def rings_of(g):
+    if not g:
+        return []
+    if g['type'] == 'Polygon':
+        return [rnd(r) for r in g['coordinates']]
+    if g['type'] == 'MultiPolygon':
+        return [rnd(r) for poly in g['coordinates'] for r in poly]
+    return []
+
+
+def lines_of(g):
+    if not g:
+        return []
+    if g['type'] == 'LineString':
+        return [rnd(g['coordinates'])]
+    if g['type'] == 'MultiLineString':
+        return [rnd(x) for x in g['coordinates']]
+    return []
+
+
+def fluid_of(t):
+    k = key(t)
+    if 'CONDENSAD' in k:
+        return 'cond'
+    if 'OLEO' in k and 'GAS' in k:
+        return 'oil+gas'
+    if 'GAS' in k:
+        return 'gas'
+    if 'OLEO' in k:
+        return 'oil'
+    return None
+
+
+def ms_year(v):
+    try:
+        return dt.datetime(1970, 1, 1) + dt.timedelta(milliseconds=int(v))
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def build_geo():
+    log('Kartlag fra gis.anpg.co.ao…')
+    geo = {'source': 'ANPG, Interactive map of petroleum concessions (gis.anpg.co.ao)'}
+    blocks = []
+    for f in gis('AGO_Blocks_All', offset_deg=0.002):
+        p = f.get('properties') or {}
+        rings = rings_of(f.get('geometry'))
+        if not rings:
+            continue
+        blocks.append({'name': clean(p.get('name')), 'block': clean(p.get('bloco')), 'lease': clean(p.get('lease_id')),
+                       'cat': clean(p.get('categoria')), 'sub': clean(p.get('categoria_')), 'status': clean(p.get('status')),
+                       'contract': clean(p.get('contracto')), 'op': clean(p.get('operador')), 'opShare': clean(p.get('operador__')),
+                       'partners': clean(p.get('parceiro')), 'basin': clean(p.get('bacias')), 'area': clean(p.get('basin_area')),
+                       'key': bkey(p.get('name') or p.get('bloco')), 'rings': rings})
+    geo['blocks'] = blocks
+    fields = []
+    for f in gis('AGO_Fields_and_DAs_New', offset_deg=0.001):
+        p = f.get('properties') or {}
+        rings = rings_of(f.get('geometry'))
+        if not rings:
+            continue
+        fields.append({'name': clean(p.get('nome_final')) or clean(p.get('nome')), 'block': clean(p.get('bloco')), 'cat': clean(p.get('categoria')),
+                       'kind': clean(p.get('categoria_')), 'op': clean(p.get('operador')), 'contract': clean(p.get('contracto')),
+                       'km2': clean(p.get('área_km2') or p.get('area_km2')), 'key': bkey(p.get('bloco')), 'rings': rings})
+    geo['fields'] = fields
+    disc = []
+    for f in gis('AGO_Prospects_NEW', offset_deg=0.001):
+        p = f.get('properties') or {}
+        t = key(p.get('type'))
+        if not (t.startswith('CAMPO') or t.startswith('DESCOBERTA')):
+            continue
+        rings = rings_of(f.get('geometry'))
+        if not rings:
+            continue
+        disc.append({'name': clean(p.get('field_name')) or clean(p.get('name')), 'block': clean(p.get('bloco')) or clean(p.get('block')),
+                     'kind': 'field' if t.startswith('CAMPO') else 'discovery', 'fluid': fluid_of(t), 'op': clean(p.get('opr_curr')),
+                     'env': clean(p.get('ons_off')), 'key': bkey(p.get('bloco') or p.get('block')), 'rings': rings})
+    geo['discoveries'] = disc
+    wells = []
+    for f in gis('AGO_Wells', fields='well_name,short_name,operator,current_st,field,block,spud_date,province'):
+        g = f.get('geometry') or {}
+        p = f.get('properties') or {}
+        if g.get('type') != 'Point' or not g.get('coordinates'):
+            continue
+        lon, lat = g['coordinates'][:2]
+        sp = ms_year(p.get('spud_date'))
+        wells.append([clean(p.get('well_name')), round(lon, 4), round(lat, 4), clean(p.get('current_st')), clean(p.get('field')),
+                      clean(p.get('block')), clean(p.get('operator')), sp.strftime('%Y-%m-%d') if sp else None])
+    geo['wellCols'] = ['name', 'lon', 'lat', 'status', 'field', 'block', 'op', 'spud']
+    geo['wells'] = wells
+    fac = []
+    keep = {'FPSO', 'FSO', 'PLATAFORMA DE PRODUCAO', 'PLATAFORMA DE PRODUCAO E PERFURACAO', 'PLATAFORMA FIXA', 'PROCESSING PLATAFORM',
+            'GAS PROCESSING PLATFORM', 'GATHERING STATION PLATFORM', 'COMPRESSION PLATFORM', 'GAS INJECTION PLATFORM', 'WATER INJECTION PLATFORM',
+            'TERMINAL', 'REFINARIA', 'MONOBOIA', 'PLATAFORMA CABECA DE POCO', 'SUB-SEA TEMPLATE', 'MANIFOLD'}
+    for f in gis('AGO_FPSO_FSO'):
+        g = f.get('geometry') or {}
+        p = f.get('properties') or {}
+        t = key(p.get('tipo_de_in'))
+        if g.get('type') != 'Point' or t not in keep:
+            continue
+        lon, lat = g['coordinates'][:2]
+        fac.append([clean(p.get('nome')), t, round(lon, 4), round(lat, 4), clean(p.get('bloco')), clean(p.get('operador')),
+                    clean(p.get('nome_do_ca')) or clean(p.get('field_name')), clean(p.get('operaciona'))])
+    geo['facCols'] = ['name', 'type', 'lon', 'lat', 'block', 'op', 'field', 'operating']
+    geo['facilities'] = fac
+    pipes = []
+    for f in gis('AGO_Pipelines', where='length_pip>=5000', fields='assetname,contents,operatings,length_pip,dateinstal', offset_deg=0.002):
+        p = f.get('properties') or {}
+        for ln in lines_of(f.get('geometry')):
+            if len(ln) >= 2:
+                yr = ms_year(p.get('dateinstal'))
+                pipes.append([clean(p.get('assetname')), clean(p.get('contents')), clean(p.get('operatings')), p.get('length_pip'),
+                              yr.year if yr and yr.year > 1950 else None, ln])
+    geo['pipeCols'] = ['name', 'contents', 'status', 'length', 'installed', 'path']
+    geo['pipelines'] = pipes
+    log(f'  {len(blocks)} blokkflater, {len(fields)} felt/utbyggingsområder, {len(disc)} felt og funn, {len(wells)} brønner, '
+        f'{len(fac)} innretninger, {len(pipes)} rørledninger')
+    if len(blocks) < 50 or len(wells) < 1000:
+        raise DataError('For få blokker eller brønner i kartlagene')
+    return geo
+
+
+def write(path, payload):
+    try:
+        old = json.load(open(path, encoding='utf-8'))
+        if {**old, 'fetched': None} == {**json.loads(json.dumps(payload)), 'fetched': None}:
+            payload['fetched'] = old['fetched']
+    except (OSError, ValueError):
+        pass
+    os.makedirs('data', exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as fh:
+        json.dump(payload, fh, ensure_ascii=False, separators=(',', ':'))
+        fh.write('\n')
+    log(f'Wrote {path} ({os.path.getsize(path) / 1024:.0f} KB)')
+
+
 def main():
     t0 = time.time()
     try:
@@ -507,17 +697,15 @@ def main():
     except DataError as e:
         log(f'FEIL: {e}')
         return 1
+    write(OUT, payload)
+    # Kartlagene er en egen kilde: feiler de, beholdes forrige kartfil
     try:
-        old = json.load(open(OUT, encoding='utf-8'))
-        if {**old, 'fetched': None} == {**json.loads(json.dumps(payload)), 'fetched': None}:
-            payload['fetched'] = old['fetched']
-    except (OSError, ValueError):
-        pass
-    os.makedirs('data', exist_ok=True)
-    with open(OUT, 'w', encoding='utf-8') as fh:
-        json.dump(payload, fh, ensure_ascii=False, separators=(',', ':'))
-        fh.write('\n')
-    log(f'Wrote {OUT} ({os.path.getsize(OUT) / 1024:.0f} KB), {time.time() - t0:.0f} s')
+        geo = build_geo()
+        geo['fetched'] = payload['fetched']
+        write(OUT_GEO, geo)
+    except DataError as e:
+        log(f'  ! kartlagene: {e} — beholder {OUT_GEO}')
+    log(f'Tid: {time.time() - t0:.0f} s')
     return 0
 
 

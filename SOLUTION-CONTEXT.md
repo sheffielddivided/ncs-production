@@ -1363,6 +1363,34 @@ datasett med lisens; dataene er de samme som ANPG viser offentlig på sidene.
   (ingen historikk). Sonangol E&P og SNL P&P samles som Sonangol, SSI-selskapene
   som SSI (Sonangol Sinopec). Dekker 98,7 % av oljen siste 12 måneder.
 
+**Kartlag** (`data/angola_geo.json`, `build_geo` i `fetch_anpg.py`): ANPGs
+«Interactive map of petroleum concessions» (Experience Builder på
+`gis.anpg.co.ao/portal`) bruker offentlige Feature Services under
+`gis.anpg.co.ao/hosting/rest/services/Hosted/`. Lagene leses som GeoJSON
+(`f=geojson`, `outSR=4326`, sider à 1000, `maxAllowableOffset` for forenkling):
+`AGO_Blocks_All`, `AGO_Fields_and_DAs_New`, `AGO_Prospects_NEW` (bare felt og
+funn, ikke prospekter), `AGO_Wells`, `AGO_FPSO_FSO` (FPSO, plattformer,
+terminaler) og `AGO_Pipelines` (fra 5 km). Brønnlagets egne felt `lat_dc` og
+`long_dc` er byttet om; geometrien er riktig og brukes. Kartlagene tegner noen
+blokker under den opprinnelige blokken (3/05 under Bloco 3, 18 finnes ikke), så
+`geoBlocksFor` i siden faller tilbake til hovedblokken.
+
+**Felt (Equinor)** (`build_angola_fields.py`, `data/angola_fields.json`):
+Equinors regneark «Production per field and asset» har ett ark per kvartal med
+Equinors egenandel per felt (1000 boe/d) og eierandelen; feltets produksjon er
+egenandel / eierandel. Arkene har ulik layout og navn gjennom årene
+(«Girassol/Jasmin», «Kiz. Sat. Phase 1», andel som tekst «23.33%»), og fra 2020
+er Marimba regnet inn i Kizomba A og satellittene i Kizomba B. Summen per blokk
+treffer ANPGs blokktall innenfor 1 % (Blokk 17, 31) og 4 % (Blokk 15).
+
+**Historikk per blokk** (`build_angola_history.py`, `data/angola_history.json`):
+tabellene leses med `pdftotext -layout`; raden «Bloco 17» med store tall er
+ankeret, og radene nærmest den hører til tabellen. Kolonnene er splittet på to
+eller flere mellomrom, fordi ANPG bruker mellomrom som tusenskille. Landets
+totaler treffer ANPGs årstall innenfor 0,7 % alle år 2016–2022. For 2023 og
+januar–august 2024 finnes ingen blokktabell som tekst; siden viser landets
+total for de årene.
+
 ### `data/update_log.json` — oppdateringsloggen (`updates.html`)
 
 Hva som er endret i dataene, dag for dag, til `updates.html` (lenke nederst

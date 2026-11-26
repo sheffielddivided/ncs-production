@@ -130,11 +130,11 @@
 const PALETTE = ['#ce0f69', '#f68d2e', '#00b373', '#4993b4', '#d14f4e', '#e8c942', '#7d2248', '#6b7a8f'];
 const OTHER_COLOR = '#b9c0c9';
 const M3_PER_BBL = 0.158987, MCF_PER_BOE = 6;
-const TABS = [['production', 'Production'], ['blocks', 'Blocks'], ['company', 'Company'], ['licensing', 'Licensing'], ['map', 'Map']];
+const TABS = [['production', 'Production'], ['blocks', 'Blocks'], ['company', 'Company'], ['licensing', 'Licensing'], ['wells', 'Wells'], ['map', 'Map']];
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const STATUS = {producing: {label: 'Producing', color: '#ce0f69'}, development: {label: 'Development', color: '#f68d2e'}, exploration: {label: 'Exploration', color: '#00b373'},
   negotiating: {label: 'Under negotiation', color: '#4993b4'}, available: {label: 'Open (available)', color: '#b9c0c9'}};
-const DEFAULTS = {v: 'production', per: 'm', u: 'bbl', g: 'block', st: '', bs: '', q: '', ml: 'blocks', bk: ''};
+const DEFAULTS = {v: 'production', per: 'm', u: 'bbl', g: 'block', st: '', bs: '', q: '', ml: 'fields', bk: '', wr: '', wy: ''};
 let S = {...DEFAULTS}, D = null, COAST = null, B = [];
 const charts = {};
 function readUrl() { const q = new URLSearchParams(location.search); S = {...DEFAULTS}; for (const k of Object.keys(DEFAULTS)) if (q.has(k)) S[k] = q.get(k); if (!TABS.some(t => t[0] === S.v)) S.v = 'production'; }
@@ -192,7 +192,7 @@ function render() {
     `<a class="mode-btn mode-sep" href="index.html" title="Back to the Norwegian Continental Shelf">NCS ↗</a>`;
   if (!D) return;
   Object.entries(charts).forEach(([k, c]) => { if (!k.startsWith('sheet')) { c.destroy(); delete charts[k]; } });
-  ({production: viewProduction, blocks: viewBlocks, company: viewCompany, licensing: viewLicensing, map: viewMap})[S.v]();
+  ({production: viewProduction, blocks: viewBlocks, company: viewCompany, licensing: viewLicensing, wells: viewWells, map: viewMap})[S.v]();
   if (S.bk && blockByKey(S.bk)) openBlock(S.bk, true); else hideSheet();
 }
 const setControls = h => { document.getElementById('controls').innerHTML = h; };
@@ -209,7 +209,7 @@ function annualOf(arr) {   // [[år, snitt per dag, måneder]]
 
 // ── PRODUCTION ──
 function viewProduction() {
-  setControls(pills('g', [['block', 'By block'], ['total', 'Total vs forecast'], ['annual', 'Since 1955']], 'Show') +
+  setControls(pills('g', [['block', 'By block'], ['field', 'By field (Blocks 15, 17, 31)'], ['total', 'Total vs forecast'], ['annual', 'Since 1955']], 'Show') +
     (S.g !== 'annual' ? pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') : '') + unitPills());
   const s = D.series, n = MS.length, last = MS[n - 1];
   const l12 = k => { let a = 0, d = 0; for (let i = n - 12; i < n; i++) if (s[k][i] != null) { a += s[k][i] * daysIn(MS[i]); d += daysIn(MS[i]); } return d ? a / d : null; };
@@ -222,7 +222,10 @@ function viewProduction() {
     <div class="kpi"><span>Facility efficiency</span><strong>${fmt(s.eff[n - 1], 1)} %</strong><small>${ymTxt(last)}${s.effFc[n - 1] ? ` · forecast ${fmt(s.effFc[n - 1], 1)} %` : ''}</small></div>
     ${D.snapshot ? `<div class="kpi"><span>Producing concessions</span><strong>${fmt(D.snapshot.concessions[0])}</strong><small>${fmt(D.snapshot.concessions[1])} offshore, ${fmt(D.snapshot.concessions[2])} onshore</small></div>` : ''}</div>`;
   let main;
-  if (S.g === 'annual') {
+  if (S.g === 'field') {
+    main = chartCard('prodChart', 'Angola · oil production by field, Blocks 15, 17 and 31', `${oilU()}, ${S.per === 'm' ? 'quarterly' : 'annual average'}, whole field (100 %) · from Equinor's production by field, partner in the three blocks · click a field for its block`, {cls: 'tall'}) +
+      `<div class="info-box"><strong>Fields:</strong> Equinor publishes its equity production for each field it holds every quarter (spreadsheet «Production per field and asset» on Equinor's investor pages, from Q4 2007). The field's whole production is Equinor's share divided by its working interest. These blocks give about 60 % of Angola's oil; the sum per block matches ANPG's block figures within 1–4 % where both exist. From 2020 Equinor reports Marimba within Kizomba A and the Kizomba satellites within Kizomba B.</div>`;
+  } else if (S.g === 'annual') {
     main = chartCard('prodChart', 'Angola · oil production since 1955', `${oilU()}, annual average (ANPG)`, {cls: 'tall'});
   } else if (S.g === 'total') {
     main = chartCard('prodChart', 'Angola · oil production and forecast', `${oilU()}, ${S.per === 'm' ? 'monthly' : 'annual average'} · bars: actual, line: the forecast in ANPG's monthly report`, {cls: 'tall'});
@@ -236,7 +239,9 @@ function viewProduction() {
     <div class="grid2">${chartCard('effChart', 'Facility efficiency', 'Per cent, monthly · actual and forecast', {cls: 'short'})}${chartCard('rigChart', 'Drilling activity', 'Rigs active and wells worked on, monthly (as stated in the reports)', {cls: 'short'})}</div>` +
     reportTable());
   const per = S.per === 'm' && S.g !== 'annual';
-  if (S.g === 'annual') {
+  if (S.g === 'field') {
+    loadFields().then(() => S.v === 'production' && S.g === 'field' && drawFieldChart('prodChart', null));
+  } else if (S.g === 'annual') {
     const A = D.annual;
     barChart('prodChart', A.map(a => a[0]), [{label: 'Oil', backgroundColor: '#ce0f69', data: A.map(a => oilF(a[1]))}], oilU(), {ticks: 30, legend: false});
   } else if (S.g === 'total') {
@@ -294,13 +299,15 @@ function viewBlocks() {
   const pb = D.prodBlocks.filter(b => b.l12[0] > 0 || b.l12[1] > 0);
   const W = D.snapshot && D.snapshot.wells ? Object.fromEntries(D.snapshot.wells.map(w => [w.block.replace(/\s+/g, '').toUpperCase(), w])) : {};
   const wOf = b => W[b.name.replace(/\s+/g, '').toUpperCase()] || W[(b.reg || '').replace(/\s+/g, '').toUpperCase()];
-  setView(chartCard('blkChart', 'Producing blocks', `Oil, ${oilU()}, average of the last 12 months · colour = operator · click a block`, {h: 460}) +
+  setView(chartCard('histChart', 'Oil production by block since 2016', `${oilU()}, annual average · 2016–2022 from Sonangol's and ANPG's annual reports and the EITI reports; from 2025 from ANPG's monthly reports · 2023–2024 only as a national total (no block table published as text) · click a block`, {cls: 'tall'}) +
+    chartCard('blkChart', 'Producing blocks', `Oil, ${oilU()}, average of the last 12 months · colour = operator · click a block`, {h: 460}) +
     `<div class="tbl-sec">Producing blocks<small>Production from ANPG's monthly report tables; operator and partners from ANPG's block register (today's shares); wells from the latest structured month</small></div>
     <div class="table-wrap"><table class="res-table"><thead><tr><th>Block</th><th class="l">Operator</th><th class="l">Basin</th><th class="l">Water depth</th><th>Oil (${oilU()})</th><th>Gas (${gasU()})</th><th>Oil wells open</th><th>Oil wells closed</th><th>Injectors open</th></tr></thead><tbody>
     ${pb.map(b => { const r = regOf(b), w = wOf(b); return `<tr class="click" onclick="openBlock(${jsq(b.key)})"><td><button class="row-link">${esc(b.name)}</button></td><td class="l">${esc(r && r.op || '–')}</td><td class="l">${esc(r && r.basin || '–')}</td>
       <td class="l">${esc(r && r.depth || '–')}${r && r.wd ? ` (${fmt(r.wd)} m)` : ''}</td><td>${fmt(oilF(b.l12[0]))}</td><td>${fmt(gasF(b.l12[1]), 1)}</td><td>${w ? fmt(w.oil_open) : '–'}</td><td>${w ? fmt(w.oil_closed) : '–'}</td><td>${w ? fmt((w.water_open || 0) + (w.gas_open || 0)) : '–'}</td></tr>`; }).join('')}</tbody></table></div>` +
-    (D.snapshot && D.snapshot.operatorsOil ? `<div class="grid2">${chartCard('opChart', 'Operators\' share of oil', `${ymTxt(D.snapshot.ym)} · as ANPG reports it`, {cls: 'short'})}${chartCard('depthChart', 'Oil by water depth', `${ymTxt(D.snapshot.ym)} · share of production`, {cls: 'short'})}</div>` : ''));
+    (D.snapshot && D.snapshot.operatorsOil ? `<div class="grid2">${chartCard('opChart', 'Operators\' share of oil', `${ymTxt(D.snapshot.ym)} · as ANPG reports it`, {cls: 'short'})}${(D.snapshot.depthShare || []).some(v => v != null) ? chartCard('depthChart', 'Oil by water depth', `${ymTxt(D.snapshot.ym)} · share of production`, {cls: 'short'}) : ''}</div>` : ''));
   const opOf = b => { const r = regOf(b); return r && r.op ? groupName(r.op) : 'Unknown'; };
+  loadHist().then(() => S.v === 'blocks' && drawHistChart());
   barChart('blkChart', pb.map(b => b.name), [{label: 'Oil', data: pb.map(b => oilF(b.l12[0])), backgroundColor: pb.map(b => coColor(opOf(b)))}], oilU(),
     {horizontal: true, noFooter: true, legend: [...new Set(pb.map(opOf))].map(g => ({label: g, color: coColor(g)})), onClick: i => openBlock(pb[i].key)});
   if (D.snapshot && D.snapshot.operatorsOil) {
@@ -324,6 +331,56 @@ function holdersHtml(r) {
   return `<div class="pf-card"><h3>Contractor group <small>· ANPG block register, today's shares</small></h3><div class="pf-own">${pieSvg(rows.map((x, i) => ({v: x.p, color: col(x.g, i)})))}
     <div class="pf-own-list">${rows.map((x, i) => `<div class="pf-own-row"><span class="pf-own-dot" style="background:${col(x.g, i)}"></span><span class="pf-own-name"><button class="row-link" onclick="closeSheet();set({v:'company',q:${jsq(x.g)}})">${esc(x.n)}</button>${x.op ? '<span class="pf-op-tag">Operator</span>' : ''}</span><span class="pf-own-pct">${fmt(x.p, 2)} %</span></div>`).join('')}</div></div></div>`;
 }
+// Produksjon per blokk før blokktabellene i månedsrapportene (årsrapporter, EITI)
+let HB = null;
+async function loadHist() { if (!HB) HB = await fetch('data/angola_history.json', {cache: 'no-cache'}).then(r => r.json()).catch(() => null); }
+function histYears() {
+  // [år, {blokk: bbl/d} | null, nasjonalt bbl/d, ytd]
+  const out = [];
+  HB.years.forEach((y, i) => { const m = {}; Object.entries(HB.blocks).forEach(([k, b]) => { if (!['TOTAL', 'OFFSHORE', 'ONSHORE'].includes(k) && b.a[i] != null) m[k] = b.a[i]; }); out.push([String(y), m, HB.blocks.TOTAL.a[i], false]); });
+  const last = +HB.years[HB.years.length - 1], bm = D.blockMonths;
+  const lastY = +D.months[1].slice(0, 4);
+  for (let y = last + 1; y <= lastY; y++) {
+    const ms = MS.filter(m => m.startsWith(y)), full = ms.length && ms.every(m => bm.includes(m));
+    const nat = annualOf(D.series.oil).find(a => a[0] === String(y));
+    if (!full) { out.push([String(y), null, nat ? nat[1] : (D.annual.find(a => a[0] === y) || [])[1], ms.length < 12]); continue; }
+    const m = {}, dsum = ms.reduce((s, x) => s + daysIn(x), 0);
+    D.prodBlocks.forEach(b => { const v = ms.reduce((s, x) => s + (b.oil[bm.indexOf(x)] || 0) * daysIn(x), 0) / dsum; if (v) m[b.key] = v; });
+    out.push([String(y), m, nat ? nat[1] : null, ms.length < 12]);
+  }
+  return out;
+}
+function drawHistChart() {
+  if (!HB) return;
+  const Y = histYears(), keys = D.prodBlocks.slice(0, 9).map(b => b.key);
+  Object.keys(HB.blocks).filter(k => !['TOTAL', 'OFFSHORE', 'ONSHORE'].includes(k)).forEach(k => { if (!keys.includes(k) && Math.max(...HB.blocks[k].a.filter(v => v != null)) > 80000) keys.push(k); });
+  const nameOf = k => { const b = blockByKey(k); return b ? b.name : 'Bloco ' + k; };
+  const ds = keys.map(k => ({label: nameOf(k), backgroundColor: blockColor(k), key: k, stack: 's', borderWidth: 1, borderColor: '#fff', data: Y.map(([y, m]) => m ? oilF(m[k] || 0) : null)}));
+  ds.push({label: 'Other blocks', backgroundColor: OTHER_COLOR, stack: 's', borderWidth: 1, borderColor: '#fff', data: Y.map(([y, m, nat]) => m ? oilF(Object.entries(m).filter(([k]) => !keys.includes(k)).reduce((s, [, v]) => s + v, 0)) : null)});
+  ds.push({label: 'National total (no block split)', backgroundColor: '#d9c3cf', stack: 's', data: Y.map(([y, m, nat]) => m ? null : oilF(nat))});
+  barChart('histChart', Y.map(([y, , , ytd]) => ytd ? y + '*' : y), ds, oilU(), {ticks: 20});
+  charts.histChart.options.onClick = e => { const el = charts.histChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0]; const d = el && ds[el.datasetIndex]; if (d && d.key && blockByKey(d.key)) openBlock(d.key); };
+}
+
+// Produksjon per felt (Equinor, kvartalsvis)
+let FL = null;
+async function loadFields() { if (!FL) FL = await fetch('data/angola_fields.json', {cache: 'no-cache'}).then(r => r.json()).catch(() => null); }
+const FIELD_COLORS = {'Dália': '#ce0f69', 'Pazflor': '#f68d2e', 'CLOV': '#00b373', 'Girassol': '#4993b4', 'Rosa': '#e8c942', 'Kizomba A': '#7d2248', 'Kizomba B': '#d14f4e',
+  'Kizomba Satellites': '#e07aa8', 'Marimba': '#b9c0c9', 'Mondo': '#6b7a8f', 'Saxi-Batuque': '#8a96a6', 'PSVM': '#2f6b85'};
+function drawFieldChart(id, block) {
+  if (!FL) { const el = document.getElementById(id); if (el) el.parentElement.innerHTML = '<div class="status">Field data not available.</div>'; return; }
+  const Q = FL.quarters, names = Object.keys(FL.fields).filter(n => !block || FL.fields[n].block === block);
+  const per = S.per === 'm' || block;
+  let lab, idx;
+  if (per) { lab = Q.map(q => `${q.slice(0, 4)} ${q.slice(4)}`); idx = Q.map((q, i) => [i]); }
+  else { const ys = [...new Set(Q.map(q => q.slice(0, 4)))]; lab = ys.map(y => Q.filter(q => q.startsWith(y)).length < 4 ? y + '*' : y); idx = ys.map(y => Q.map((q, i) => q.startsWith(y) ? i : -1).filter(i => i >= 0)); }
+  const ds = names.map(n => ({label: n, backgroundColor: FIELD_COLORS[n] || OTHER_COLOR, stack: 's', borderWidth: per ? 0 : 1, borderColor: '#fff', blk: FL.fields[n].block,
+    data: idx.map(ii => { const v = ii.map(i => FL.fields[n].gross[i]).filter(x => x != null); return v.length ? oilF(v.reduce((a, b) => a + b, 0) / ii.length * 1000) : null; })}));
+  barChart(id, lab, ds, oilU(), {ticks: per ? 20 : 20});
+  if (!block) charts[id].options.onClick = e => { const el = charts[id].getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0]; const d = el && ds[el.datasetIndex];
+    if (d) { const pb = D.prodBlocks.find(b => (b.reg || b.name) === d.blk); if (pb) openBlock(pb.key); } };
+}
+
 function openBlock(k, quiet) {
   const b = blockByKey(k); if (!b) return;
   if (!quiet && S.bk !== k) { S.bk = k; writeUrl(true); }
@@ -334,7 +391,28 @@ function openBlock(k, quiet) {
   document.getElementById('sheetPanel').innerHTML = `<div class="wd-head"><div><h2>${esc(r ? r.name : b.name)}</h2><div class="wd-sub">Angola · ${esc(r && r.basin || '')} basin · ${esc(r && r.op || '')}</div></div><button class="wd-close" onclick="closeSheet()">✕</button></div>
     <div class="pf-card"><div class="pf-facts">${facts.map(([a, v]) => `<div class="pf-fact"><span>${esc(a)}</span><strong>${esc(v)}</strong></div>`).join('')}</div>${r && r.desc ? `<div class="pf-note">${esc(r.desc)}</div>` : ''}</div>
     <div class="pf-card"><h3>Production <small>· monthly, from ANPG's report tables</small></h3><div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div></div>
-    ${holdersHtml(r)}<div class="source-note">Source: ANPG — monthly production reports and block register.</div>`;
+    <div id="sheetHist"></div><div id="sheetFields"></div>
+    ${holdersHtml(r)}<div class="pf-card"><h3>Map <small>· block outline, fields, facilities and wells (ANPG concession map)</small></h3><div class="map-box" style="height:320px" id="sheetMap"></div></div>
+    <div class="source-note">Source: ANPG — monthly production reports, block register and concession map.</div>`;
+  loadHist().then(() => {
+    const box = document.getElementById('sheetHist'); if (!box || S.bk !== k || !HB || !HB.blocks[k]) return;
+    const Y = histYears().filter(([y, m]) => m);
+    box.innerHTML = `<div class="pf-card"><h3>Production history <small>· annual average, ${oilU()} · 2016–2022 from annual reports and EITI, from 2025 from monthly reports</small></h3><div class="chart-container short"><canvas id="sheetHistChart"></canvas></div></div>`;
+    barChart('sheetHistChart', Y.map(([y, , , ytd]) => ytd ? y + '*' : y), [{label: 'Oil', backgroundColor: '#ce0f69', data: Y.map(([y, m]) => oilF(m[k] || 0))}], oilU(), {legend: false});
+  });
+  loadFields().then(() => {
+    const box = document.getElementById('sheetFields'), blk = (r && r.name) || b.reg || b.name;
+    if (!box || S.bk !== k || !FL || !Object.values(FL.fields).some(f => f.block === blk)) return;
+    box.innerHTML = `<div class="pf-card"><h3>Production by field <small>· quarterly from ${FL.quarters[0].slice(0, 4)}, whole field, from Equinor's production by field (partner in the block)</small></h3><div class="chart-container short"><canvas id="sheetFieldChart"></canvas></div><div id="sheetFieldChartLeg"></div></div>`;
+    drawFieldChart('sheetFieldChart', blk);
+  });
+  Promise.all([loadCoast(), loadGeo()]).then(() => {
+    const el = document.getElementById('sheetMap'); if (!el || S.bk !== k) return;
+    const gb = geoBlocksFor(b.reg || b.name); const pts = gb.flatMap(g => g.rings.flat());
+    if (!pts.length) { el.innerHTML = '<div class="status">No outline in ANPG\'s map layers</div>'; return; }
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    drawMap(el, {fit: [Math.min(...xs) - 0.05, Math.min(...ys) - 0.05, Math.max(...xs) + 0.05, Math.max(...ys) + 0.05], onlyKey: regKey(b.reg || b.name), wells: true, noClick: true});
+  });
   barChart('sheetChart', D.blockMonths.map(ymTxt), [{label: 'Oil', backgroundColor: '#ce0f69', data: b.oil.map(oilF)},
     {type: 'line', label: 'Gas', borderColor: '#f68d2e', backgroundColor: '#f68d2e', data: b.gas.map(gasF), yAxisID: 'y2', unit: gasU(), pointRadius: 2, noSum: true, dec: 1}], oilU(), {stacked: false, noFooter: true, ticks: 12, y2: gasU()});
 }
@@ -392,47 +470,133 @@ function drawLic() {
   el.innerHTML = `<div class="tbl-sec">${list.length} blocks</div>${blockTable(list)}`;
 }
 
+// ── KARTLAG (gis.anpg.co.ao) ─────────────────────────────────────────────────
+let G = null;
+async function loadGeo() { if (!G) { G = await fetch('data/angola_geo.json', {cache: 'no-cache'}).then(r => r.json()).catch(() => null);
+  if (G) { G.wellList = G.wells.map(r => Object.fromEntries(G.wellCols.map((k, i) => [k, r[i]]))); G.facList = G.facilities.map(r => Object.fromEntries(G.facCols.map((k, i) => [k, r[i]]))); } } }
+const CAT = {'Produção': {label: 'Production', color: '#ce0f69'}, 'Em Desenvolvimento': {label: 'Development', color: '#f68d2e'}, 'Exploração': {label: 'Exploration', color: '#00b373'},
+  'Oferta Permanente': {label: 'Permanent offer', color: '#4993b4'}, 'Negociação': {label: 'Negotiation', color: '#4993b4'}, 'Aguarda Aprovação': {label: 'Awaiting approval', color: '#4993b4'},
+  'NCG': {label: 'New Gas Consortium', color: '#7d2248'}, 'Livre': {label: 'Open', color: '#b9c0c9'}, 'Em Abandono': {label: 'Being abandoned', color: '#6b7a8f'}};
+const catOf = c => CAT[c] || {label: c || 'Other', color: '#9aa3ad'};
+// Brønnstatus → resultat
+function wellRes(st) { const k = String(st || '').toUpperCase();
+  if (/DRY|SHOW/.test(k)) return 'dry'; if (/OIL&GAS|OIL/.test(k)) return 'oil'; if (/GAS/.test(k)) return 'gas'; if (/INJECT|DISPOSAL|WATER|OBSERV/.test(k)) return 'service'; return 'other'; }
+const WRES = {oil: {label: 'Oil', color: '#ce0f69'}, gas: {label: 'Gas', color: '#f68d2e'}, dry: {label: 'Dry', color: '#9aa3ad'}, service: {label: 'Injection / water / observation', color: '#4993b4'}, other: {label: 'Status not given', color: '#d9dee4'}};
+const regKey = s => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^BLOCO\s*/, '').replace(/\s*(ASSOCIACOES|ASSOCIACAO)$/, '').replace(/\s*&.*$/, '').replace(/_(M|G|VF)$/, '').replace(/[\s-]/g, '');
+// Blokkens omriss i kartlaget: samme nøkkel, ellers hovedblokken (3/05 → 3)
+function geoBlocksFor(name) { if (!G) return []; const k = regKey(name);
+  let hit = G.blocks.filter(b => b.key === k); if (!hit.length) hit = G.blocks.filter(b => b.key === k.split('/')[0]); return hit; }
+
+// ── WELLS ──
+function viewWells() {
+  setControls(pills('wr', [['', 'All wells']].concat(Object.entries(WRES).map(([k, v]) => [k, v.label])), 'Result') +
+    `<div class="ctrl"><span class="ctrl-label">Search</span><input class="year-select" placeholder="Well, field, block or operator" value="${esc(S.q)}" oninput="S.q=this.value;writeUrl();drawWellTable()"></div>`);
+  setView(`<div id="wellsView"><div class="status"><div class="spinner"></div><div>Loading…</div></div></div>`);
+  loadGeo().then(() => {
+    const el = document.getElementById('wellsView'); if (!el || S.v !== 'wells') return;
+    if (!G) { el.innerHTML = '<div class="status">Map layers not available.</div>'; return; }
+    const W = G.wellList.filter(w => w.spud), ys = [...new Set(W.map(w => w.spud.slice(0, 4)))].sort();
+    const years = []; for (let y = +ys[0]; y <= +ys[ys.length - 1]; y++) years.push(String(y));
+    const dec = y => y.slice(0, 3) + '0s';
+    el.innerHTML = `<div class="kpis"><div class="kpi"><span>Wells in ANPG's register</span><strong>${fmt(G.wellList.length)}</strong><small>${fmt(W.length)} with a spud date, ${years[0]}–${years[years.length - 1]}</small></div>
+      ${Object.entries(WRES).slice(0, 3).map(([k, v]) => `<div class="kpi"><span>${v.label}</span><strong>${fmt(G.wellList.filter(w => wellRes(w.status) === k).length)}</strong><small>wells by current status</small></div>`).join('')}</div>` +
+      chartCard('wellChart', 'Wells by spud year', `Coloured by the well's current status in ANPG's register · click a year to list its wells`) + `<div id="wellTable"></div>
+      <div class="info-box"><strong>Source:</strong> ANPG's well layer in the interactive concession map (gis.anpg.co.ao): ${fmt(G.wellList.length)} wells with position, operator, field, block, spud date and current status. Status is today's (e.g. «Oil-Abandoned» counts as oil). The register's coverage of recent years may lag.</div>`;
+    barChart('wellChart', years, Object.entries(WRES).filter(([k]) => !S.wr || k === S.wr).map(([k, v]) => ({label: v.label, backgroundColor: v.color, stack: 's', borderWidth: 0,
+      data: years.map(y => W.filter(w => w.spud.startsWith(y) && wellRes(w.status) === k).length)})), 'wells', {ticks: 24, onClick: i => set({wy: years[i]}, false)});
+    drawWellTable();
+  });
+}
+function drawWellTable() {
+  const el = document.getElementById('wellTable'); if (!el || !G) return;
+  const q = S.q.trim().toLowerCase();
+  let list = G.wellList.filter(w => (!S.wr || wellRes(w.status) === S.wr) && (!q || [w.name, w.field, w.block, w.op].join(' ').toLowerCase().includes(q)));
+  if (S.wy && !q) list = list.filter(w => (w.spud || '').startsWith(S.wy));
+  list = list.sort((a, b) => (b.spud || '').localeCompare(a.spud || '')).slice(0, 500);
+  el.innerHTML = `<div class="tbl-sec">${S.wy && !q ? S.wy + ': ' : ''}${list.length}${list.length === 500 ? '+' : ''} wells<small>${S.wy && !q ? 'Click another year, or search' : 'Newest first'}</small></div>
+    <div class="table-wrap scroll"><table class="res-table"><thead><tr><th>Well</th><th class="l">Spud</th><th class="l">Status</th><th class="l">Field</th><th class="l">Block</th><th class="l">Operator</th></tr></thead><tbody>
+    ${list.map(w => `<tr><td>${esc(w.name)}</td><td class="l">${esc(w.spud || '–')}</td><td class="l"><span class="dot" style="background:${WRES[wellRes(w.status)].color}"></span>${esc(w.status || '–')}</td><td class="l">${esc(w.field || '–')}</td><td class="l">${esc(w.block || '–')}</td><td class="l">${esc(w.op || '–')}</td></tr>`).join('') || '<tr><td colspan="6">None</td></tr>'}</tbody></table></div>`;
+}
+
 // ── MAP ──
 const EXTENT = [7, -19, 25, -3];
+const HOME = [9.5, -14.5, 14.5, -4.5];
 async function loadCoast() { if (!COAST) COAST = await fetch('data/angola_coast.json').then(r => r.json()).catch(() => ({rings: []})); }
 function viewMap() {
-  setControls(pills('ml', [['blocks', 'Blocks'], ['gas', '+ gas infrastructure'], ['seis', '+ seismic surveys']], 'Layers'));
-  setView(`<div class="card"><div class="chart-title">Blocks${S.ml === 'gas' ? ' and gas infrastructure' : S.ml === 'seis' ? ' and seismic surveys' : ''}<span class="ct-sub">Each block at its centre point as ANPG gives it (ANPG publishes no outlines); producing blocks sized by oil output · scroll or use the buttons to zoom, drag to pan</span></div>
-    <div class="map-box map-main" id="mainMap"></div>${legend(Object.values(STATUS).concat(S.ml === 'gas' ? [{label: 'Gas infrastructure', color: '#1a2332'}, {label: 'Gas pipeline', color: '#f68d2e'}] : S.ml === 'seis' ? [{label: '2D / 3D / 4D survey', color: '#4993b4'}] : []))}</div>
-    <div class="info-box">Centre points exist for ${B.filter(b => b.loc).length} of ${B.length} blocks in ANPG's register; the rest are not on the map. ${S.ml === 'gas' ? 'Gas infrastructure from ANPG\'s gas master plan map (Angola Gas Master Plan).' : ''} ${S.ml === 'seis' ? 'Seismic surveys as ANPG lists them, drawn as given.' : ''}</div>`);
-  loadCoast().then(() => S.v === 'map' && drawMap(document.getElementById('mainMap')));
+  setControls(pills('ml', [['fields', 'Blocks and fields'], ['disc', '+ discoveries'], ['wells', '+ wells'], ['infra', '+ pipelines'], ['seis', '+ seismic']], 'Layers'));
+  const leg = Object.values(CAT).filter((v, i, a) => a.findIndex(x => x.label === v.label) === i).slice(0, 6).concat([{label: 'Field / development area', color: '#7d2248'}, {label: 'FPSO / platform', color: '#1a2332'}])
+    .concat(S.ml === 'disc' ? [{label: 'Discovery (oil)', color: '#00b373'}, {label: 'Discovery (gas)', color: '#e8c942'}] : S.ml === 'wells' ? Object.values(WRES).slice(0, 4) : S.ml === 'infra' ? [{label: 'Export / crude line', color: '#f68d2e'}, {label: 'Gas line', color: '#4993b4'}] : []);
+  setView(`<div class="card"><div class="chart-title">Petroleum concessions in Angola<span class="ct-sub">Block outlines coloured by status, fields and development areas, FPSOs and platforms · scroll or use the buttons to zoom, drag to pan · click a producing block</span></div>
+    <div class="map-box map-main" id="mainMap"><div class="status"><div class="spinner"></div></div></div>${legend(leg)}</div>
+    <div class="info-box">Map layers from ANPG's interactive map of petroleum concessions (gis.anpg.co.ao): blocks, fields and development areas, discoveries, ${'wells, FPSOs, platforms and pipelines (5 km and longer)'}. Block outlines are as ANPG draws them; some blocks (e.g. 3/05, 18) appear under their original block.</div>`);
+  Promise.all([loadCoast(), loadGeo()]).then(() => S.v === 'map' && drawMap(document.getElementById('mainMap'), {fit: HOME, layers: S.ml}));
 }
-function drawMap(box) {
+function drawMap(box, o) {
   const [w0, s0, e0, n0] = EXTENT, kx = Math.cos(-11 * Math.PI / 180);
   const Pj = (lon, lat) => [(lon - w0) * kx * 100, (n0 - lat) * 100];
   const Wd = (e0 - w0) * kx * 100, Ht = (n0 - s0) * 100;
+  const path = rings => rings.map(r => 'M' + r.map(([x, y]) => Pj(x, y).map(v => v.toFixed(2)).join(',')).join('L') + 'Z').join('');
+  const line = pts => 'M' + pts.map(([x, y]) => Pj(x, y).map(v => v.toFixed(2)).join(',')).join('L');
   const parts = [`<rect x="-5000" y="-5000" width="20000" height="20000" fill="#eef3f8"/>`,
-    `<path d="${COAST.rings.map(r => 'M' + r.map(([x, y]) => Pj(x, y).map(v => v.toFixed(1)).join(',')).join('L') + 'Z').join('')}" fill="#e3e7ec" stroke="#b8c0ca" vector-effect="non-scaling-stroke"/>`];
-  if (S.ml === 'seis') D.seismic.forEach(([nm, code, yr, ty, op, cov, cu, basin, g]) => {
-    const tip = esc(`<b>${esc(nm)}</b><br>${esc(ty)} · ${esc(yr || '')} · ${esc(op || '')}${cov ? `<br>${fmt(cov)} ${esc(cu || '')}` : ''}`);
-    if (g[0] === 'L') parts.push(`<path d="M${g[1].map(p => Pj(p[0], p[1]).join(',')).join('L')}" fill="none" stroke="#4993b4" stroke-width="1.5" vector-effect="non-scaling-stroke" data-tip="${tip}"/>`);
-    else if (g[0] === 'P') parts.push(`<path d="M${g[1].map(p => Pj(p[0], p[1]).join(',')).join('L')}Z" fill="rgba(73,147,180,0.15)" stroke="#4993b4" vector-effect="non-scaling-stroke" data-tip="${tip}"/>`);
-  });
-  if (S.ml === 'gas') D.gas.pipelines.forEach(([nm, st, path]) => parts.push(`<path d="M${path.map(p => Pj(p[0], p[1]).join(',')).join('L')}" fill="none" stroke="#f68d2e" stroke-width="2.5" ${st === 'dashed' || st === 'planned' ? 'stroke-dasharray="5 3"' : ''} vector-effect="non-scaling-stroke" data-tip="${esc(`<b>${esc(nm)}</b>`)}"/>`));
-  const l12 = Object.fromEntries(D.prodBlocks.map(b => [b.reg, b.l12[0]]));
-  B.filter(b => b.loc).sort((a, b) => (l12[a.name] || 0) - (l12[b.name] || 0)).forEach(b => {
-    const [x, y] = Pj(b.loc[0], b.loc[1]), r = l12[b.name] ? Math.max(3, Math.sqrt(l12[b.name]) / 30) : 2.6;
-    parts.push(`<circle class="pt" data-r="${r}" cx="${x}" cy="${y}" r="${r}" fill="${(STATUS[b.status] || {}).color || OTHER_COLOR}" fill-opacity="0.85" stroke="#fff" stroke-width="0.8" vector-effect="non-scaling-stroke"
-      ${D.prodBlocks.find(p => p.reg === b.name) ? `data-block="${esc(D.prodBlocks.find(p => p.reg === b.name).key)}" style="cursor:pointer"` : ''} data-tip="${esc(`<b>${esc(b.name)}</b> · ${esc((STATUS[b.status] || {}).label || b.status)}<br>${esc(b.basin || '')}${b.op ? ' · ' + esc(b.op) : ''}${l12[b.name] ? `<br>${fmt(l12[b.name])} bbl/day` : ''}`)}"/>`);
-    if (l12[b.name] > 20000) parts.push(`<text class="map-lbl" data-x="${x}" data-y="${y}" x="${x + 6}" y="${y + 3}">${esc(b.name.replace('Bloco ', 'Block '))}</text>`);
-  });
-  if (S.ml === 'gas') D.gas.features.filter(f => f[0] === 'infra').forEach(([k, cat, nm, st, op, lon, lat, desc]) => {
-    const [x, y] = Pj(lon, lat);
-    parts.push(`<rect class="pt sq" data-r="3.5" data-cx="${x}" data-cy="${y}" x="${x - 3.5}" y="${y - 3.5}" width="7" height="7" fill="#1a2332" stroke="#fff" vector-effect="non-scaling-stroke" data-tip="${esc(`<b>${esc(nm)}</b> · ${esc(cat)}<br>${esc(st || '')} ${esc(op || '')}<br>${esc(desc)}`)}"/>`);
-  });
+    `<path d="${path(COAST.rings)}" fill="#e3e7ec" stroke="#b8c0ca" vector-effect="non-scaling-stroke"/>`];
+  const l12 = Object.fromEntries(D.prodBlocks.map(b => [regKey(b.name), b]));
+  const L = o.layers || 'fields', only = o.onlyKey;
+  if (G) {
+    // Blokker (hovedflater først, delflater som tynne linjer)
+    G.blocks.forEach(b => {
+      const sub = /_(M|G|VF)$|^Kizomba/i.test(b.name || '');
+      if (only && !(b.key === only || b.key === only.split('/')[0])) return;
+      const c = catOf(b.cat), pb = l12[b.key] || l12[regKey(b.name)];
+      const tip = `<b>${esc(b.name)}</b>${b.block && b.block !== b.name ? ` (${esc(b.block)})` : ''} · ${esc(c.label)}<br>${esc(b.basin || '')}${b.opShare ? `<br>Operator: ${esc(b.opShare)}` : b.op ? `<br>Operator: ${esc(b.op)}` : ''}${b.partners ? `<br>Partners: ${esc(b.partners)}` : ''}${pb ? `<br><b>${fmt(pb.l12[0])} bbl/day</b> (last 12 months)` : ''}`;
+      parts.push(`<path class="lic" d="${path(b.rings)}" fill="${sub ? 'none' : c.color}" fill-opacity="${b.cat === 'Livre' ? 0.06 : 0.14}" stroke="${c.color}" stroke-width="${sub ? 0.6 : 1}" ${sub ? 'stroke-dasharray="3 2"' : ''} vector-effect="non-scaling-stroke"
+        ${pb ? `data-block="${esc(pb.key)}" style="cursor:pointer"` : ''} data-tip="${esc(tip)}"/>`);
+    });
+    if (L === 'disc') G.discoveries.forEach(d => {
+      if (only && d.key !== only && d.key !== only.split('/')[0]) return;
+      const col = d.kind === 'field' ? '#7d2248' : d.fluid === 'gas' || d.fluid === 'cond' ? '#e8c942' : '#00b373';
+      parts.push(`<path d="${path(d.rings)}" fill="${col}" fill-opacity="0.55" stroke="${col}" vector-effect="non-scaling-stroke" data-tip="${esc(`<b>${esc(d.name)}</b> · ${d.kind === 'field' ? 'field' : 'discovery'}${d.fluid ? ' (' + esc(d.fluid) + ')' : ''}<br>${esc(d.block || '')} · ${esc(d.op || '')}`)}"/>`);
+    });
+    G.fields.forEach(f => {
+      if (only && f.key !== only && f.key !== only.split('/')[0]) return;
+      parts.push(`<path d="${path(f.rings)}" fill="#7d2248" fill-opacity="${f.cat === 'Produção' ? 0.45 : 0.18}" stroke="#7d2248" stroke-width="0.8" vector-effect="non-scaling-stroke"
+        data-tip="${esc(`<b>${esc(f.name)}</b><br>${esc(f.kind || f.cat || '')} · ${esc(f.block || '')}${f.op ? '<br>' + esc(f.op) : ''}${f.km2 ? '<br>' + esc(f.km2) : ''}`)}"/>`);
+    });
+    if (L === 'infra') G.pipelines.forEach(([nm, ct, st, len, yr, p]) => {
+      const gas = /GAS|LPG|NGL/.test(ct || '');
+      parts.push(`<path d="${line(p)}" fill="none" stroke="${gas ? '#4993b4' : '#f68d2e'}" stroke-width="1.6" ${st && !/LIVE|OPERAT/i.test(st) ? 'stroke-dasharray="4 3"' : ''} vector-effect="non-scaling-stroke"
+        data-tip="${esc(`<b>${esc(nm)}</b><br>${esc(ct || '')} · ${esc(st || '')}${len ? ` · ${fmt(len / 1000, 1)} km` : ''}${yr ? ` · ${yr}` : ''}`)}"/>`);
+    });
+    if (L === 'infra') D.gas.pipelines.forEach(([nm, st, p]) => parts.push(`<path d="${line(p)}" fill="none" stroke="#4993b4" stroke-width="2.5" stroke-dasharray="6 3" vector-effect="non-scaling-stroke" data-tip="${esc(`<b>${esc(nm)}</b> (gas master plan)`)}"/>`));
+    if (L === 'seis') D.seismic.forEach(([nm, code, yr, ty, op, cov, cu, basin, g]) => {
+      const tip = esc(`<b>${esc(nm)}</b><br>${esc(ty)} · ${esc(yr || '')} · ${esc(op || '')}`);
+      if (g[0] === 'L') parts.push(`<path d="${line(g[1])}" fill="none" stroke="#4993b4" stroke-width="1.5" vector-effect="non-scaling-stroke" data-tip="${tip}"/>`);
+      else if (g[0] === 'P') parts.push(`<path d="${line(g[1])}Z" fill="rgba(73,147,180,0.15)" stroke="#4993b4" vector-effect="non-scaling-stroke" data-tip="${tip}"/>`);
+    });
+    if (L === 'wells' || o.wells) G.wellList.forEach(w => {
+      if (o.wells && w.block && regKey(w.block) !== only && !(only && regKey(w.block).startsWith(only.split('/')[0]))) return;
+      const [x, y] = Pj(w.lon, w.lat), r = WRES[wellRes(w.status)];
+      parts.push(`<circle class="pt" data-r="1.6" cx="${x}" cy="${y}" r="1.6" fill="${r.color}" stroke="#fff" stroke-width="0.3" vector-effect="non-scaling-stroke" data-tip="${esc(`<b>${esc(w.name)}</b><br>${esc(w.status || '')}${w.spud ? ' · spud ' + esc(w.spud.slice(0, 4)) : ''}<br>${esc(w.field || '')} · ${esc(w.op || '')}`)}"/>`);
+    });
+    G.facList.filter(f => /FPSO|FSO|PRODUCAO|PROCESSING|TERMINAL|REFINARIA|GATHERING/.test(f.type)).forEach(f => {
+      const [x, y] = Pj(f.lon, f.lat), big = /FPSO|FSO/.test(f.type), r = big ? 3.4 : 2.2;
+      parts.push(`<rect class="pt sq" data-r="${r}" data-cx="${x}" data-cy="${y}" x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" fill="#1a2332" stroke="#fff" stroke-width="0.6" vector-effect="non-scaling-stroke"
+        data-tip="${esc(`<b>${esc(f.name)}</b><br>${esc(title2(f.type))} · ${esc(f.block || '')}${f.op ? ' · ' + esc(f.op) : ''}${f.field ? '<br>' + esc(f.field) : ''}`)}"/>`);
+    });
+    // Navn på produserende blokker
+    if (!only) D.prodBlocks.filter(b => b.l12[0] > 20000).forEach(b => {
+      const g = geoBlocksFor(b.name).find(x => !/_(M|G|VF)$/i.test(x.name)); if (!g) return;
+      const r = g.rings[0], cx = r.reduce((s, p) => s + p[0], 0) / r.length, cy = r.reduce((s, p) => s + p[1], 0) / r.length;
+      const [x, y] = Pj(cx, cy); parts.push(`<text class="map-lbl" data-x="${x}" data-y="${y}" x="${x}" y="${y}">${esc(b.name.replace('Bloco ', 'Block '))}</text>`);
+    });
+  }
   box.innerHTML = `<svg viewBox="0 0 ${Wd.toFixed(0)} ${Ht.toFixed(0)}" preserveAspectRatio="xMidYMid meet">${parts.join('')}</svg><div class="map-ctl"><button data-z="0.6">+</button><button data-z="1.6">−</button><button data-z="0" style="font-size:0.8rem">⟲</button></div><div class="map-tip"></div>`;
   const svg = box.querySelector('svg'), tip = box.querySelector('.map-tip');
-  let vb = [0, 0, Wd, Ht];
+  let vb = [0, 0, Wd, Ht], home = null;
   const apply = () => { svg.setAttribute('viewBox', vb.map(v => v.toFixed(2)).join(' ')); const r = svg.getBoundingClientRect(), sc = Math.min(r.width / vb[2], r.height / vb[3]) || 1;
     svg.querySelectorAll('circle.pt').forEach(c => c.setAttribute('r', c.dataset.r / sc));
     svg.querySelectorAll('rect.sq').forEach(q => { const s = q.dataset.r / sc; q.setAttribute('x', q.dataset.cx - s); q.setAttribute('y', q.dataset.cy - s); q.setAttribute('width', 2 * s); q.setAttribute('height', 2 * s); });
-    svg.querySelectorAll('text.map-lbl').forEach(t => { t.style.fontSize = (10 / sc) + 'px'; t.style.strokeWidth = (3 / sc) + 'px'; t.setAttribute('x', +t.dataset.x + 6 / sc); t.setAttribute('y', +t.dataset.y + 3 / sc); }); };
-  const zoom = (f, cx, cy) => { if (!f) { vb = [0, 0, Wd, Ht]; return apply(); } const nw = Math.min(Wd * 1.5, Math.max(Wd / 60, vb[2] * f)), k = nw / vb[2]; vb = [cx - (cx - vb[0]) * k, cy - (cy - vb[1]) * k, nw, vb[3] * k]; apply(); };
+    svg.querySelectorAll('text.map-lbl').forEach(t => { t.style.fontSize = (10 / sc) + 'px'; t.style.strokeWidth = (3 / sc) + 'px'; t.setAttribute('x', +t.dataset.x); t.setAttribute('y', +t.dataset.y); }); };
+  const zoom = (f, cx, cy) => { if (!f) { vb = home ? [...home] : [0, 0, Wd, Ht]; return apply(); } const nw = Math.min(Wd * 1.5, Math.max(Wd / 200, vb[2] * f)), k = nw / vb[2]; vb = [cx - (cx - vb[0]) * k, cy - (cy - vb[1]) * k, nw, vb[3] * k]; apply(); };
   const toMap = (ex, ey) => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb[2], r.height / vb[3]), ox = (r.width - vb[2] * s) / 2, oy = (r.height - vb[3] * s) / 2; return [vb[0] + (ex - r.left - ox) / s, vb[1] + (ey - r.top - oy) / s, s]; };
   box.querySelectorAll('.map-ctl button').forEach(b => b.onclick = () => zoom(+b.dataset.z, vb[0] + vb[2] / 2, vb[1] + vb[3] / 2));
   svg.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = toMap(e.clientX, e.clientY); zoom(e.deltaY > 0 ? 1.25 : 0.8, x, y); }, {passive: false});
@@ -440,11 +604,14 @@ function drawMap(box) {
   svg.addEventListener('pointerdown', e => { drag = {x: e.clientX, y: e.clientY, vb: [...vb]}; moved = false; });
   window.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) { moved = true; tip.style.display = 'none'; } if (!moved) return; const s = toMap(0, 0)[2]; vb = [drag.vb[0] - dx / s, drag.vb[1] - dy / s, vb[2], vb[3]]; apply(); });
   window.addEventListener('pointerup', () => { drag = null; });
-  svg.addEventListener('click', e => { if (moved) return; const el = e.target.closest('[data-block]'); if (el) openBlock(el.dataset.block); });
+  svg.addEventListener('click', e => { if (moved || o.noClick) return; const el = e.target.closest('[data-block]'); if (el) openBlock(el.dataset.block); });
   svg.addEventListener('mousemove', e => { const el = e.target.closest('[data-tip]'); if (!el || (drag && moved)) { tip.style.display = 'none'; return; } tip.innerHTML = el.dataset.tip; tip.style.display = 'block';
     const r = box.getBoundingClientRect(); let x = e.clientX - r.left + 12, y = e.clientY - r.top + 12; if (x + tip.offsetWidth > r.width) x -= tip.offsetWidth + 24; if (y + tip.offsetHeight > r.height) y -= tip.offsetHeight + 24; tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px'; });
+  if (o.fit) { const [a, b] = Pj(o.fit[0], o.fit[3]), [c, d] = Pj(o.fit[2], o.fit[1]); const r = box.getBoundingClientRect(), asp = r.width / r.height || 2;
+    let w = c - a, h = d - b; if (w / h < asp) w = h * asp; else h = w / asp; vb = [(a + c) / 2 - w / 2, (b + d) / 2 - h / 2, w, h]; home = [...vb]; }
   requestAnimationFrame(apply); new ResizeObserver(apply).observe(box);
 }
+const title2 = s => String(s || '').toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()).replace(/\bFpso\b/, 'FPSO').replace(/\bFso\b/, 'FSO');
 
 async function init() {
   readUrl(); render();
