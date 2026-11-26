@@ -1,4 +1,4 @@
-# Engangstest: kan GitHub Actions nå energy.kbak.no over FTPS med
+# Engangstest (DEPLOY_HOST = navnet i FTP-sertifikatet): kan GitHub Actions nå energy.kbak.no over FTPS med
 # DEPLOY_*-secretene? Kjører bare ved push til testgrenen og endrer ingenting
 # på serveren utover en testfil som slettes igjen.
 name: Test FTP-tilgang
