@@ -617,7 +617,10 @@ klikkbart overalt det vises (felt- og funnprofil, lisensprofil, lisenstabellene)
 åpner et faktaark i Licences → Factsheet (`licRenderBaa`, samme `ll`-parameter som
 lisensene; navnene kolliderer ikke). Faktaarket viser type, lisensene, felt og funn,
 eierkake, overdragelser, eierskap over tid og overdragelsene i de underliggende
-lisensene siden første unit-handel. Licences → Transactions har valget
+lisensene siden første unit-handel. CO₂-lagringslisensene (`EXPLORATION LICENCE` og
+`EXPLOITATION LICENCE`, dvs. EXL002 osv. og EL001) er BAA-er hos Sodir og har faktaark,
+men holdes utenfor Units (`BAA_CO2_KINDS`; `baaTransfers` er uten dem,
+`baaTransfersAll` med). Licences → Transactions har valget
 *Licences / Units / Both* (`ta`, standard *Licences*); *Both* teller samme handel to
 ganger når den står på begge nivåer. Selskapenes «Recent transactions» tar med
 unit-andelene i samme pakke som lisensandelene fra samme dag og parter, med grå
@@ -3700,3 +3703,15 @@ holder ikke flat produksjon på fjorårets nivå (N × P < R), beholdes det
 opprinnelige fallet og kurven løftes. Nye felt får høyere platånivå
 (`cfNewField` tar nå platåraten som valgfritt argument). Feltene merkes * i
 felttabellen, og horisonten er 2050.
+
+## Field → Valuation BETA
+
+Samme sjablongmodell og kort som Hubs → Valuation BETA (`hubCashFlowCard`,
+`drawHubCashFlow`, `drawHubProdChart`), kjørt på ett felt alene
+(`drawFieldValuation`). Teksten sier «field» i stedet for «hub» (`noun`-parameteren).
+Feltet regnes uten de andre feltene i huben, så hubens felles fall gjelder ikke.
+Krever ett valgt felt og samme passord som de andre BETA-fanene.
+
+**Kjent svakhet:** fallet regnes fra fjorårets produksjon. For et felt som startet
+i fjor (Verdande, 2025) er den lav, og prognosen blir et langt, flatt forløp til
+reservene er produsert. I hubmodellen skjuler hubens samlede produksjon dette.
