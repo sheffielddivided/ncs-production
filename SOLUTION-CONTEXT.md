@@ -1234,7 +1234,12 @@ Egen side som `gom.html`, med samme stil og hjelpefunksjoner (skjult lenke
 `modeBtnBrazil` i menyen, `noindex`). Dekker hele Brasil, til havs og på land.
 
 Bygges av `fetch_anp.py` (workflow `update-anp.yml`, tirsdag og fredag 07:23
-UTC, med `actions/cache` for nedlastingene, om lag 600 MB første gang). ANP
+UTC, med `actions/cache` for nedlastingene, om lag 600 MB første gang).
+gov.br bryter tilkoblinger fra GitHub Actions sine IP-adresser («Connection
+reset by peer» allerede på første side, også med nettleserhoder). Workflowen
+henter derfor via Cloudflare-Workeren i `cloudflare/anp-proxy/` når secrets
+`ANP_PROXY` og `ANP_PROXY_TOKEN` er satt (`via()` i skriptet); uten dem hentes
+det direkte, slik det virker fra andre steder. ANP
 bytter filnavn fra år til år (`2021_01_producao.zip`, `producao-2022-01.zip`,
 `producao_por_poco_2024.csv`), så alle lenker leses fra datasettsidene på
 gov.br/anp. ANP svarer 403 på HEAD; med `--cache` gjenbrukes derfor bare filer

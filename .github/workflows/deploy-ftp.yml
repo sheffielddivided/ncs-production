@@ -69,6 +69,7 @@ jobs:
               .htaccess) return 0 ;;
               .*|*/.*) return 1 ;;              # .github, .gitignore osv.
               counter/*) return 1 ;;
+              cloudflare/*) return 1 ;;
               data/*-raw/*) return 1 ;;
               *.py|*.md|*.yml|*.yaml) return 1 ;;
             esac

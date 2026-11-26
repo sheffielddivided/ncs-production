@@ -11,6 +11,8 @@
   RewriteRule ^data/[^/]+-raw/ - [F,L]
   # Besøkstelleren kjører på ncs-io.kbak.no, ikke her.
   RewriteRule ^counter/ - [F,L]
+  # Cloudflare-Workeren til ANP-hentingen hører ikke hjemme på nettstedet.
+  RewriteRule ^cloudflare/ - [F,L]
 </IfModule>
 
 # Datafilene oppdateres daglig: nettleseren skal alltid sjekke om det finnes

@@ -67,6 +67,7 @@ import sys
 import tempfile
 import time
 import unicodedata
+import urllib.parse
 import zipfile
 
 import requests
@@ -126,12 +127,26 @@ def log(*a):
 S = requests.Session()
 S.headers['User-Agent'] = UA
 
+# gov.br bryter tilkoblinger fra GitHub Actions sine IP-adresser. Med ANP_PROXY
+# (og ANP_PROXY_TOKEN) går alle forespørsler via Cloudflare-Workeren i
+# cloudflare/anp-proxy/; uten hentes det direkte.
+PROXY = os.environ.get('ANP_PROXY', '').strip().rstrip('/')
+PROXY_TOKEN = os.environ.get('ANP_PROXY_TOKEN', '').strip()
+
+
+def via(url):
+    """(adresse, ekstra hoder) for en forespørsel, direkte eller via proxyen."""
+    if not PROXY:
+        return url, {}
+    return f'{PROXY}/?url={urllib.parse.quote(url, safe="")}', {'Authorization': f'Bearer {PROXY_TOKEN}'}
+
 
 def get(url, binary=False, tries=6):
     last = None
     for k in range(tries):
         try:
-            r = S.get(url, timeout=300)
+            u, h = via(url)
+            r = S.get(u, headers=h, timeout=300)
             if r.status_code == 404:
                 return None
             r.raise_for_status()
@@ -174,7 +189,8 @@ class Store:
         last = None
         for k in range(6):
             try:
-                with S.get(url, timeout=900, stream=True) as r:
+                u, h = via(url)
+                with S.get(u, headers=h, timeout=900, stream=True) as r:
                     if r.status_code == 404:
                         return None
                     r.raise_for_status()
