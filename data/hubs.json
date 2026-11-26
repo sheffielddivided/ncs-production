@@ -175,6 +175,10 @@
       "hub": "ÅSGARD",
       "auto": true
     },
+    "1854729": {
+      "hub": "ÅSGARD",
+      "auto": false
+    },
     "2138816": {
       "hub": "HEIMDAL",
       "auto": true
@@ -208,7 +212,7 @@
       "auto": false
     },
     "3960848": {
-      "hub": "KRISTIN",
+      "hub": "ÅSGARD",
       "auto": false
     },
     "4005142": {
@@ -340,7 +344,7 @@
       "auto": false
     },
     "26465170": {
-      "hub": "KRISTIN",
+      "hub": "ÅSGARD",
       "auto": false
     },
     "28975067": {
