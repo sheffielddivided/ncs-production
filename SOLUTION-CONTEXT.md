@@ -107,7 +107,10 @@ ingen API-nøkkel, ingen rate limiting observert.**
 | 7001 | `discovery_description` | Table | 18 | Sodirs funnbeskrivelser (9 på engelsk) |
 | 7008 | `discovery_reserves` | Table | 105 | Ressursanslag per funn |
 | 3007 | `licence_licensee_hst` | Table | 33 321 | Eierandeler i utvinningstillatelser |
-| 3304 | `bsns_arr_area_licensee_hst` | Table | 5 609 | Eierandeler i forretningsavtaleområder |
+| 3304 | `bsns_arr_area_licensee_hst` | Table | 5 617 | Eierandeler i forretningsavtaleområder (gjeldende i `licence_licensees.json`, hele historikken i `baa.json`) |
+| 3300 | `bsns_arr_area` | Feature Layer | 79 | Forretningsavtaleområdene (BAA) — type, godkjent, gyldighet, operatør (`baa.json`) |
+| 3302 | `bsns_arr_area_operator` | Table | 56 | BAA-operatører over tid (`baa.json`) |
+| 3305 | `bsns_arr_area_transfer_hst` | Table | 2 185 | BAA-overdragelser, FROM/TO-rader (`baa.json`) |
 | 6000 | `facility` | Feature Layer (punkt) | 798 på felt | Innretninger — type, funksjoner, fase, posisjon |
 | 3000 | `licence` | Feature Layer (polygon) | 540 aktive | Utvinningstillatelser — område, fase, gyldighet, operatør |
 | 1200 | `company` | Table | 1 039 | Selskapsfakta — konsern, orgnr., nasjonalitet, roller |
@@ -590,7 +593,35 @@ dato og type. `build_licence_transfers` pares dem, størst mot størst, så appe
 rad per overføring. Typene er Sodirs `prlTransferKind`: `TRANSFER`, `SDFI`,
 `WITHDRAWAL FROM THE JOINT VENTURE`, `MERGER/TAKEOVER`, `CHANGE OF COMPANY NAME` og
 `UNKNOWN`. Navnebytter er en selskapsendring og ikke handel, så de er av som standard i
-Transactions. Forretningsavtaleområder (lag 3305) er ikke med.
+Transactions. Forretningsavtaleområdenes overdragelser ligger i `baa.json` (under).
+
+### `data/baa.json` — forretningsavtaleområder (units m.m.)
+
+Et felt eller funn som eies av en BAA (49 felt og 146 funn per 2026-11-26) har sine
+eierandeler i BAA-en, og de er som regel ulike andelene i lisensene under: Aker BPs
+salg til Japex 1. januar 2025 var 25 % av PL 127 og 44 % av PL 127 DS, men 3,5 % av
+Verdande Unit. `build_baa` samler fire lag:
+
+| Nøkkel | Innhold |
+|---|---|
+| `baas` | `[id, navn, type, godkjent, fra, til, aktiv, operatør]` fra lag 3300 (kolonner i `baaColumns`). Typene er `UNITIZED`, `SLIDING SCALE`, `PARCELL`, `EXPLORATION LICENCE` (CO₂-lagring) og `EXPLOITATION LICENCE` |
+| `shares` | `[id, selskap, fra, til, andel]` — hele historikken fra lag 3304 |
+| `oper` | `[id, selskap, fra, til]` fra lag 3302 |
+| `transfers` | `[dag, id, selger, kjøper, andel, type]` fra lag 3305, parret med samme `_pair_transfers` som lisensoverdragelsene |
+
+Selskaper er indekser i `companies`, typer i `kinds`, datoer dager siden 1970 som i
+lisensfilene. Hvilke lisenser BAA-en består av, står i `licence_baa.json`.
+
+I appen lastes fila sammen med `licence_transfers.json` (`baaBuild`). BAA-navnet er
+klikkbart overalt det vises (felt- og funnprofil, lisensprofil, lisenstabellene) og
+åpner et faktaark i Licences → Factsheet (`licRenderBaa`, samme `ll`-parameter som
+lisensene; navnene kolliderer ikke). Faktaarket viser type, lisensene, felt og funn,
+eierkake, overdragelser, eierskap over tid og overdragelsene i de underliggende
+lisensene siden første unit-handel. Licences → Transactions har valget
+*Licences / Units / Both* (`ta`, standard *Licences*); *Both* teller samme handel to
+ganger når den står på begge nivåer. Selskapenes «Recent transactions» tar med
+unit-andelene i samme pakke som lisensandelene fra samme dag og parter, med grå
+type-brikke.
 
 **Konsern.** Juridiske enheter skifter navn og slås sammen, så Transactions og Map
 følger konsern (`group` i `companies.json`) som standard, med `LIC_GROUP_ALIAS` for

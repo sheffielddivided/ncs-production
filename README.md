@@ -101,6 +101,7 @@ som statiske JSON-filer i dette repoet.
 | `data/licence_history.json` | Eierandeler og operatører med full historikk (lag 3007/3008) — til Rounds, Map og lisensprofilen. Lastes lazy |
 | `data/licence_transfers.json` | Overdragelser (lag 3003), parret selger→kjøper — til Transactions, Map og lisensprofilen. Lastes lazy |
 | `data/licence_areas.json` | Lisensenes areal og omriss over tid (lag 3002) — til Rounds, Map og lisensprofilen. Lastes lazy |
+| `data/baa.json` | Forretningsavtaleområder (units m.m.): fakta, eierandeler over tid, operatører og overdragelser (lag 3300/3304/3302/3305) — til unit-faktaarket, Transactions og selskapenes transaksjonskort. Lastes lazy |
 | `data/companies.json` | Selskapsfakta (lag 1200) — konsern, orgnr., roller |
 | `data/coastline.json` | Kystlinje til profilkartet — Natural Earth, bygget én gang |
 | `make_coastline.py` | Engangsscript som bygger `data/coastline.json`; med `--box` og `--out` også andre utsnitt (`data/canada_nl_coast.json`) |
