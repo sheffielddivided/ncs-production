@@ -80,10 +80,7 @@ try:
 except ImportError:          # pragma: no cover
     shapefile = None
 
-# gov.br brøt tilkoblingen fra GitHub Actions med en egen User-Agent; vanlige
-# nettleserhoder brukes derfor. Dataene er åpne (dekret 8.777/2016, fri bruk
-# med kreditering av ANP som kilde).
-UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+UA = 'Mozilla/5.0 (compatible; ncs-insight data fetch)'
 DA = 'https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/'
 PAGES = {
     'dp': DA + 'fase-de-desenvolvimento-e-producao',
@@ -127,11 +124,7 @@ def log(*a):
 # ---------------------------------------------------------------- nett
 
 S = requests.Session()
-S.headers.update({
-    'User-Agent': UA,
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-})
+S.headers['User-Agent'] = UA
 
 
 def get(url, binary=False, tries=6):
