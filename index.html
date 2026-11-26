@@ -1355,6 +1355,43 @@
   };
 }
 
+// Stablede søyler: 2 px mellomrom i kortets bakgrunnsfarge mellom segmentene,
+// i alle grafer (også de som lager sin egen Chart). Mellomrommet ligger på
+// enden av hvert segment bort fra nullinjen: oppe for positive verdier, nede
+// for negative, til høyre/venstre i liggende søyler. Gjelder bare stabler med
+// minst to søyleserier; serier med eget omriss (borderWidth > 0) eller
+// gjennomsiktig fyll (usynlige hjelpesøyler i fossefall) beholdes som de er.
+{
+  const SEG_GAP = 2, SURFACE = '#fff';
+  const clear = c => typeof c === 'string' && (c === 'transparent' || /rgba\([^)]*,\s*0(\.0+)?\s*\)$/.test(c));
+  Chart.register({
+    id: 'stackGap',
+    beforeUpdate(chart) {
+      const o = chart.options || {}, sc = o.scales || {};
+      const horiz = o.indexAxis === 'y', vAxis = horiz ? 'x' : 'y';
+      if (!(sc[vAxis] && sc[vAxis].stacked)) return;
+      const bars = chart.data.datasets.filter(d => (d.type || chart.config.type) === 'bar');
+      const n = {};
+      bars.forEach(d => { const k = d.stack ?? '_'; n[k] = (n[k] || 0) + 1; });
+      bars.forEach(d => {
+        if (n[d.stack ?? '_'] < 2 || clear(d.backgroundColor)) return;
+        if (!d._stackGap && d.borderWidth != null && d.borderWidth !== 0) return;
+        d._stackGap = true;
+        d.borderColor = SURFACE;
+        d.borderSkipped = false;
+        d.borderWidth = ctx => {
+          const p = ctx.parsed;
+          if (!p) return 0;
+          const v = p._custom ? p._custom.barEnd - p._custom.barStart : p[vAxis];
+          const neg = v < 0;
+          return horiz ? {top: 0, bottom: 0, left: neg ? SEG_GAP : 0, right: neg ? 0 : SEG_GAP}
+                       : {left: 0, right: 0, top: neg ? 0 : SEG_GAP, bottom: neg ? SEG_GAP : 0};
+        };
+      });
+    },
+  });
+}
+
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const BASE       = 'https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer';
 const FIELD_LAYER = 7100;
