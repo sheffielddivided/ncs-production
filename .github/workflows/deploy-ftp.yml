@@ -1,0 +1,127 @@
+# Reserve-publisering til energy.kbak.no over FTPS.
+#
+# Normalt henter Plesks Git-utvidelse repoet til nettstedet via webhook. Faller
+# den ut (slik den gjorde 2026-11-26), kjøres denne manuelt fra Actions-fanen:
+# Actions → «Publiser via FTP (reserve)» → Run workflow.
+#
+# Den laster opp filene som er endret siden forrige FTP-publisering og sletter
+# filer som er fjernet fra repoet. Hvilken commit som sist ble publisert, står i
+# .deploy-commit på serveren (dotfiler sperres av .htaccess). Finnes ikke fila,
+# eller «full» er krysset av, lastes alt opp (ca. 30 MB).
+#
+# Bare det nettstedet trenger lastes opp: skript, dokumentasjon, workflows,
+# besøkstelleren og rådata (data/*-raw/) holdes utenfor.
+#
+# Secrets: DEPLOY_HOST (må være navnet i FTP-sertifikatet, plesk1.lg.dynavee.net),
+# DEPLOY_USER, DEPLOY_PASSWORD, DEPLOY_PATH (/ = FTP-brukerens hjemmemappe).
+name: Publiser via FTP (reserve)
+
+on:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Last opp alle filer, ikke bare de endrede
+        type: boolean
+        default: false
+      dry_run:
+        description: Bare vis hva som ville blitt lastet opp og slettet
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-ftp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HOST: ${{ secrets.DEPLOY_HOST }}
+      USER: ${{ secrets.DEPLOY_USER }}
+      PASS: ${{ secrets.DEPLOY_PASSWORD }}
+      DIR:  ${{ secrets.DEPLOY_PATH }}
+      FULL: ${{ inputs.full }}
+      DRY:  ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Installer lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Finn hva som skal publiseres
+        run: |
+          set -euo pipefail
+          for v in HOST USER PASS DIR; do
+            [ -n "${!v}" ] || { echo "::error::Secret for $v mangler"; exit 1; }
+          done
+
+          ftp() {
+            lftp -u "$USER","$PASS" "$HOST" -e "set cmd:fail-exit true; set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true; set net:timeout 20; set net:max-retries 2; cd \"$DIR\"; $1; bye"
+          }
+
+          # Det nettstedet trenger. Alt annet i repoet holdes utenfor.
+          keep() {
+            case "$1" in
+              .htaccess) return 0 ;;
+              .*|*/.*) return 1 ;;              # .github, .gitignore osv.
+              counter/*) return 1 ;;
+              data/*-raw/*) return 1 ;;
+              *.py|*.md|*.yml|*.yaml) return 1 ;;
+            esac
+            return 0
+          }
+
+          PREV=$(ftp "cat .deploy-commit" 2>/dev/null | tr -dc '0-9a-f' || true)
+          HEAD=$(git rev-parse HEAD)
+          echo "Sist publisert via FTP: ${PREV:-ingen}"
+          echo "Publiserer nå:          $HEAD"
+
+          : > upload.txt; : > delete.txt
+          if [ "$FULL" = "true" ] || [ -z "$PREV" ] || ! git cat-file -e "$PREV^{commit}" 2>/dev/null; then
+            echo "Modus: full opplasting"
+            git ls-files > all.txt
+            while IFS= read -r f; do keep "$f" && echo "$f" >> upload.txt || true; done < all.txt
+          else
+            echo "Modus: endringer siden $PREV"
+            git diff --name-status --no-renames "$PREV" "$HEAD" > diff.txt
+            while IFS=$'\t' read -r st f; do
+              keep "$f" || continue
+              if [ "$st" = "D" ]; then echo "$f" >> delete.txt; else echo "$f" >> upload.txt; fi
+            done < diff.txt
+          fi
+
+          # HTML til slutt, så sidene ikke peker på data som ikke er lastet opp ennå.
+          { grep -v '\.html$' upload.txt || true; grep '\.html$' upload.txt || true; } > upload.sorted
+          mv upload.sorted upload.txt
+
+          echo "Laster opp $(wc -l < upload.txt) filer, sletter $(wc -l < delete.txt)."
+          { echo "### FTP-publisering"; echo; echo "Commit: \`$HEAD\` (forrige: \`${PREV:-ingen}\`)"; echo;
+            echo "Opplasting: $(wc -l < upload.txt) filer · sletting: $(wc -l < delete.txt) filer";
+            echo; echo '```'; sed 's/^/+ /' upload.txt; sed 's/^/- /' delete.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+          # lftp-skript: opprett mapper, last opp, slett, og lagre til sist commit.
+          {
+            echo "set cmd:fail-exit true; set ftp:ssl-force true; set ftp:ssl-protect-data true"
+            echo "set ssl:verify-certificate true; set net:timeout 20; set net:max-retries 3"
+            echo "cd \"$DIR\""
+            while IFS= read -r f; do dirname "$f"; done < upload.txt | sort -u | grep -vx '\.' \
+              | while IFS= read -r d; do echo "mkdir -p -f \"$d\""; done || true
+            while IFS= read -r f; do echo "put -O \"$(dirname "$f")\" \"$f\""; done < upload.txt
+            while IFS= read -r f; do echo "rm -f \"$f\""; done < delete.txt
+            echo "put .deploy-commit -o .deploy-commit"
+          } > deploy.lftp
+          echo "$HEAD" > .deploy-commit
+
+      - name: Last opp
+        if: inputs.dry_run != true
+        run: |
+          lftp -u "$USER","$PASS" "$HOST" -f deploy.lftp
+          echo "Publisert $(git rev-parse --short HEAD) til energy.kbak.no via FTP."
+
+      - name: Tørrkjøring – ingenting lastet opp
+        if: inputs.dry_run == true
+        run: echo "Tørrkjøring. Se oppsummeringen for listen over filer."
