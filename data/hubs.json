@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-11",
+  "updated": "2026-11-26",
   "note": "Felt som ikke star her er sin egen hub. auto=true betyr maskinelt forslag fra Sodirs Transport-beskrivelse og bor kvalitetssikres; auto=false er bekreftet av et menneske.",
   "assignments": {
     "43437": {
@@ -440,7 +440,7 @@
       "auto": false
     },
     "42002481": {
-      "hub": "Other",
+      "hub": "NORNE",
       "auto": false
     },
     "42002482": {
