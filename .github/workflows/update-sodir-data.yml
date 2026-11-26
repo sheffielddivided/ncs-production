@@ -30,8 +30,23 @@ jobs:
       - name: Installer avhengigheter
         run: pip install requests openpyxl
 
+      # Feiler Sodir (f.eks. vedlikehold), skal de andre kildene likevel
+      # hentes og committes. Jobben markeres som feilet til slutt (siste steg),
+      # så feilen ikke går upåaktet hen.
       - name: Hent data fra Sodir
+        id: sodir
+        continue-on-error: true
         run: python fetch_sodir.py
+
+      # fetch_sodir.py skriver datasettene ett for ett og kan ha skrevet noen
+      # før feilen. Rull tilbake til forrige commit, så Sodir-dataene enten
+      # oppdateres samlet eller ikke i det hele tatt. Ingen andre steg har
+      # kjørt ennå, så dette rører bare Sodir-filene.
+      - name: Rull tilbake delvise Sodir-data
+        if: steps.sodir.outcome == 'failure'
+        run: |
+          git checkout HEAD -- data/
+          git clean -fdq data/
 
       # Daglig Brent spotpris fra EIA til skjøten av Datert Brent i Prices.
       # Uten nøkkel, eller hvis EIA ikke svarer, brukes FRED (samme serie).
@@ -206,3 +221,11 @@ jobs:
             git pull --rebase origin main
             git push
           fi
+
+      # Gjør jobben rød hvis Sodir-hentingen feilet, etter at de øvrige
+      # dataene er committet.
+      - name: Rapporter feil i Sodir-hentingen
+        if: steps.sodir.outcome == 'failure'
+        run: |
+          echo "::error::Henting fra Sodir feilet. Øvrige data er oppdatert; Sodir-dataene er uendret og hentes på nytt ved neste kjøring."
+          exit 1
