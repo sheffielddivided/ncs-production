@@ -14239,7 +14239,7 @@ function drawShipping(ids, name, kind) {
       return `<strong>Storage:</strong> ${st.map(one).join(', ')}; a lifting cannot be larger than the storage it is loaded from &nbsp;|&nbsp; `;
     })() +
     `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
-    (lifted ? `<strong>Lifted volume:</strong> each call counts as the cargo estimated from the tanker's draught after leaving where it was sampled (from 23 Nov 2026), otherwise a full cargo at the tanker's capacity times the field's fill factor, in the month it arrived; never more than the storage on the installation it loaded at (Balder FPU or Jotun FPSO, Åsgard A or C; found from the tanker's AIS positions)` +
+    (lifted ? `<strong>Estimated lifted volume:</strong> each call counts as the cargo estimated from the tanker's draught after leaving where it was sampled (from 23 Nov 2026), otherwise a full cargo at the tanker's capacity times the field's fill factor, in the month it arrived; never more than the storage on the installation it loaded at (Balder FPU or Jotun FPSO, Åsgard A or C; found from the tanker's AIS positions)` +
       `; reported oil production is Sodir's net oil for all fields in the ${oilHub ? esc(tc(oilHub)) + ' ' : ''}hub, since satellites are loaded from the host's storage${oilIds.length > 1 ? ', including any exported by pipeline' : ''} (Sm³ × ${BBL_PER_SM3}). Part cargoes, condensate and NGL in the tanks, and liftings for several fields make the estimate rough` +
       `. <strong>Fill factor:</strong> ${Object.entries(fill).map(([fid, f]) => `${esc(tc(fieldNameOf(+fid)))} ${f.k.toFixed(2)}` +
         (f.months ? ` (${fmtShort(f.months[0] + '-01').replace(/^1 /, '')} – ${fmtShort(f.months[f.months.length - 1] + '-01').replace(/^1 /, '')}, ${f.n} calls)` : ' (too little data)')).join(', ')}` +
@@ -14253,9 +14253,10 @@ function drawShipping(ids, name, kind) {
   else renderChart(months, datasets.concat(oilDs ? [oilDs] : []),
     datasets.map(d => ({label: d.label, color: d.backgroundColor})).concat(oilDs ? [{label: oilDs.label + ' (line)', color: oilDs.borderColor}] : []),
     shipMeasure === 'calls' ? 'calls' : lifted ? 'million bbl' : 'tanker-days', {xTitle: 'Month', dec: shipDec, allTicks: months.length <= 24});
-  const pill = (k, lbl) => `<button class="grp-btn${shipMeasure === k ? ' active' : ''}" onclick="shipSetMeasure('${k}')">${lbl}</button>`;
-  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start"><div class="grp-row">${
-    pill('calls', 'Calls per month')}${pill('days', `Days at ${kind}`)}${pill('lifted', 'Lifted volume')}</div></div>`);
+  // Samme veksler som de andre grafene (pill-group / pill-btn).
+  const pill = (k, lbl) => `<button class="pill-btn${shipMeasure === k ? ' active' : ''}" onclick="shipSetMeasure('${k}')">${lbl}</button>`;
+  ncsToggleAbove(`<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${
+    pill('calls', 'Calls per month')}${pill('days', `Days at ${kind}`)}${pill('lifted', 'Estimated lifted volume')}</div>`);
 
   // Oppsummering per skip og tabell over anløpene, nyeste først.
   const d30 = now - 30 * 864e5;
