@@ -3712,6 +3712,13 @@ Samme sjablongmodell og kort som Hubs → Valuation BETA (`hubCashFlowCard`,
 Feltet regnes uten de andre feltene i huben, så hubens felles fall gjelder ikke.
 Krever ett valgt felt og samme passord som de andre BETA-fanene.
 
-**Kjent svakhet:** fallet regnes fra fjorårets produksjon. For et felt som startet
-i fjor (Verdande, 2025) er den lav, og prognosen blir et langt, flatt forløp til
-reservene er produsert. I hubmodellen skjuler hubens samlede produksjon dette.
+**Unge felt** (første produksjonsår i år, i fjor eller året før, `CF_YOUNG_YEARS`)
+faller ikke fra fjorårets produksjon, som da ofte bare er noen måneder med
+opptrapping (Verdande: 2 mill. fat i 2025 ga flat produksjon til 2065). De følger
+`cfYoungField`: platå på det høyeste av 12 % av de opprinnelige reservene
+(gjenværende + produsert), fjorårets produksjon og årstakten hittil i år, til en
+tredjedel av de opprinnelige reservene er produsert, så det vanlige fallet. Regelen
+ligger i `cfHubForecast`, som Field, Hub, Company og Analytics bygger på, og i
+`dcsValFields` for Danmark, så alle verdsettelsene følger samme prinsipp. Effekt
+2026-11-27 (USD 80, NPV10 etter skatt): Verdande 0,11 → 0,51 mrd. USD, Johan
+Castberg 4,14 → 5,90, Norne-huben 0,80 → 1,05, Equinor (NPV7) 43,80 → 44,68.

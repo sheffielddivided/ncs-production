@@ -6075,7 +6075,17 @@ function dcsValFields() {
     for (let y = ry; y < y0; y++) R -= merged(f.slug).reduce((t, s) => t + prodIn(s, y), 0);
     R = Math.max(0, R);
     const last = merged(f.slug).reduce((t, s) => t + prodIn(s, y0 - 1), 0);
-    const base = R <= 0 ? [] : last > 0 ? cfDecline(last, R, y0) : cfNewField(R, y0 + 1);
+    // Unge felt som i Norge (cfYoungField): første år, produsert hittil og årstakten i år.
+    const yrs = merged(f.slug).flatMap(s => (P[s] || []).filter(x => (x[1] || 0) + (x[2] || 0) > 0).map(x => +x[0]));
+    const first = yrs.length ? Math.min(...yrs) : null;
+    let cum = 0;
+    yrs.filter(y => y < y0).forEach(y => { cum += merged(f.slug).reduce((t, s) => t + prodIn(s, y), 0); });
+    const months = merged(f.slug).flatMap(s => (dcsData.production.monthly[s] || []).filter(m => +String(m[0]).slice(0, 4) === y0));
+    const nm = new Set(months.map(m => m[0])).size;
+    const ytd = nm ? months.reduce((t, m) => t + ((m[1] || 0) + (m[2] || 0)) * 1e6 * BBL_PER_SM3, 0) * 12 / nm : 0;
+    const young = R > 0 && cfIsYoung(first);
+    const base = R <= 0 ? [] : young ? cfYoungField(R, cum, Math.max(last, ytd), y0)
+      : last > 0 ? cfDecline(last, R, y0) : cfNewField(R, y0 + 1);
     const {rows, fitted, origEnd} = dcsFitEnd(base, R, last, y0);
     const hist = {};
     for (let y = y0 - 12; y < y0; y++) hist[y] = merged(f.slug).reduce((t, s) => t + prodIn(s, y), 0);
@@ -6184,7 +6194,7 @@ function drawDcsValuation() {
         ${v.npv.map(x => `<td>${n2(x * tax)}</td>`).join('')}<td>${perBoe(v.npv[0] * tax, v.reserves)}</td></tr></tfoot></table>`;
   const A = [
     ['Reserves', `ENS remaining reserves per 1 January ${ry}`, 'Fields in production and approved developments; ENS rounds each field to whole million m³ oil / bn Nm³ gas, so small fields count as zero'],
-    ['Production', `Decline from ${y0 - 1} production`, `Per field, ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year until the reserves R are produced; a field with reserves but no production last year starts next year with ramp-up and plateau. Tyra Southeast is counted with Tyra`],
+    ['Production', `Decline from ${y0 - 1} production`, `Per field, ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year until the reserves R are produced; a field with reserves but no production last year starts next year with ramp-up and plateau. A field that started ${y0 - CF_YOUNG_YEARS} or later stays on a plateau (the highest of ${Math.round(CF_PLATEAU_RATE * 100)} % of original reserves, last year's production and this year's rate so far) until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced, as in the Norwegian valuation. Tyra Southeast is counted with Tyra`],
     ['End of production', `${DCS_LAST_YEAR} at the latest`, `Denmark has decided that oil and gas production ends in ${DCS_LAST_YEAR}, so all reserves are produced by then. A field whose decline would run past ${DCS_LAST_YEAR} is front-loaded: it starts from last year's production with a slower decline, so the reserves are produced out exactly in ${DCS_LAST_YEAR}; if not even flat production at last year's level would be enough, the original decline is kept and the whole profile raised. New fields get a higher plateau. Marked * in the field table`],
     ['Oil price', `USD ${CF_PRICES.join(' / ')} per boe in ${OPEX_BASE} money`, 'All boe, including gas, at the oil price; escalated with inflation'],
     ['Inflation', `${(CF_INFL * 100).toFixed(1)} % a year`, 'On prices and operating cost'],
@@ -12360,7 +12370,7 @@ function drawCompanyValuation() {
       <div class="chart-container" style="height:300px"><canvas id="valProdCanvas"></canvas></div>
       <div class="legend-row" id="valProdLegend"></div>
       <div class="pf-map-note">${esc(cmp)}'s share of production, boe/day. Hatched from ${y0}: the simulated profile (producing fields
-        decline together per hub; fields under development come on top with ramp-up, plateau and decline; nothing outlives its hub).</div></div>`;
+        decline together per hub; fields under development and fields that started in the last ${CF_YOUNG_YEARS} years come on top with plateau and decline; nothing outlives its hub).</div></div>`;
 
   // Antakelser.
   const A = [
@@ -12369,6 +12379,7 @@ function drawCompanyValuation() {
     ['Operating cost', `USD ${OPEX_USD} per boe in ${OPEX_BASE} money`, 'History deflated with the US CPI'],
     ['Production, producing fields', `Decline ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year`, `Per hub, from last year's production P until the reserves R are produced; ends at ${Math.round(CF_CUTOFF * 100)} % of the first forecast year`],
     ['Production, fields under development', `Plateau ${Math.round(CF_PLATEAU_RATE * 100)} % of reserves a year`, `Half a plateau year first, plateau until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced, then the decline above; start-up from Sodir`],
+    ['Production, new fields', `Started ${y0 - CF_YOUNG_YEARS} or later`, `Plateau at the highest of ${Math.round(CF_PLATEAU_RATE * 100)} % of original reserves, last year's production and this year's rate so far, until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced, then the decline above`],
     ['Remaining capex', `Sodir's expected future investments, ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} %`, `Over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length}; amounts before ${y0} are sunk`],
     ['Abandonment', `${Math.round(CF_ABEX * 100)} % of historical capex`, 'The year after the hub\'s last production year'],
     ['Tax', `${Math.round(CF_TAX * 100)} % flat`, 'On all cash flows, including losses'],
@@ -15184,14 +15195,41 @@ function cfNewField(R, start, plateauRate = CF_PLATEAU_RATE) {
   return out.concat(cfDecline(p, rem, y));
 }
 
+// Unge felt: første produksjonsår i år, i fjor eller året før. De er fortsatt i
+// opptrapping eller på platå, og fjorårets produksjon (ofte bare noen måneder)
+// gir et altfor svakt fall: Verdande startet i 2025 med 2 mill. fat og fikk
+// flat produksjon til 2065. Slike felt følger derfor nyfeltprofilen fra der de
+// står, med platå på det høyeste av CF_PLATEAU_RATE av de opprinnelige
+// reservene (R + produsert), fjorårets produksjon og årstakten hittil i år, til
+// CF_PLATEAU_SHARE av de opprinnelige reservene er produsert; så samme fall som
+// ellers. Regelen gjelder overalt der profilene lages (hub, felt, selskap,
+// Analytics og DCS), så verdsettelsene bygger på de samme prinsippene.
+const CF_YOUNG_YEARS = 2;
+const cfIsYoung = first => first != null && first >= currentYear - CF_YOUNG_YEARS;
+function cfYoungField(R, cum, rate, y) {
+  const Rtot = R + cum, p = Math.max(CF_PLATEAU_RATE * Rtot, rate), out = [];
+  let rem = R;
+  while (rem > 0 && cum < CF_PLATEAU_SHARE * Rtot && y < currentYear + CF_HORIZON) {
+    const q = Math.min(p, rem);
+    out.push([y++, q]); rem -= q; cum += q;
+  }
+  return out.concat(cfDecline(p, rem, y));
+}
+
 function cfHubForecast(ids) {
   const y0 = currentYear;
   let P = 0, Rb = 0, R0 = 0;
   const fields = ids.map(id => {
-    let boe = 0, liq = 0;
-    annualProduction(id).annual.forEach(a => {
+    let boe = 0, liq = 0, first = null, cum = 0, ytd = 0;
+    const ap = annualProduction(id);
+    ap.annual.forEach(a => {
+      const oe = a.prfPrdOeNetMillSm3 || 0;
+      if (oe > 0 && first == null) first = a.prfYear;
+      if (a.prfYear < y0) cum += oe * 1e6 * BBL_PER_SM3;
+      // Årstakt hittil i år (bare månedene Sodir har publisert).
+      if (a.prfYear === y0 && oe > 0) ytd = oe * 1e6 * BBL_PER_SM3 * daysInYear(y0) / ap.daysOf(a);
       if (a.prfYear !== y0 - 1) return;
-      const oe = a.prfPrdOeNetMillSm3 || 0, gas = a.prfPrdGasNetBillSm3 || 0;
+      const gas = a.prfPrdGasNetBillSm3 || 0;
       boe = oe * 1e6 * BBL_PER_SM3; liq = Math.max(0, oe - gas) * 1e6 * BBL_PER_SM3;
     });
     const res = (fieldReserves && fieldReserves[id]) || [];
@@ -15199,10 +15237,11 @@ function cfHubForecast(ids) {
     const R = cur ? Math.max(0, cur.remainingOE || 0) * 1e6 * BBL_PER_SM3 : 0;
     const liqShare = boe > 0 ? liq / boe
       : cur && cur.remainingOE > 0 ? Math.max(0, cur.remainingOE - cur.remainingGas) / cur.remainingOE : 1;
-    const isNew = !(boe > 0) && R > 0;
-    if (!isNew) { P += boe; Rb += R; }
+    const young = R > 0 && cfIsYoung(first);
+    const isNew = !young && !(boe > 0) && R > 0;
+    if (!isNew && !young) { P += boe; Rb += R; }
     R0 += R;
-    return {id, R, liqShare, isNew};
+    return {id, R, liqShare, isNew, young, cum, rate: Math.max(boe, ytd)};
   });
   // Hubens produserende felt, og hubens levetid med alle reservene.
   const base = P > 0 ? cfDecline(P, Rb, y0) : [];
@@ -15210,7 +15249,9 @@ function cfHubForecast(ids) {
   const perField = {}, starts = {};
   fields.forEach(f => {
     let rows = [];
-    if (f.isNew) {
+    if (f.young) {
+      rows = cfYoungField(f.R, f.cum, f.rate, y0);
+    } else if (f.isNew) {
       starts[f.id] = cfStartYear(f.id);
       rows = cfNewField(f.R, starts[f.id]);
     } else if (Rb > 0 && f.R > 0) {
@@ -15357,7 +15398,10 @@ function hubCashFlowCard(ids, noun = 'hub') {
       ${noun === 'hub' ? 'split between them by their share of the reserves. Fields under development come on top' : 'A field under development starts'} from ${noun === 'hub' ? 'their' : 'its'} start-up
       year (production this year, otherwise Sodir's planned start-up, otherwise ${y0 + 3}): half a plateau year, then a
       plateau of ${Math.round(CF_PLATEAU_RATE * 100)} % of ${noun === 'hub' ? 'their' : 'its'} reserves a year until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced,
-      then the same decline.${noun === 'hub' ? ` Everything stops at the latest when the hub would have produced all its reserves with
+      then the same decline. ${noun === 'hub' ? 'Fields that started production' : 'A field that started production'} in the last ${CF_YOUNG_YEARS} years or this year
+      ${noun === 'hub' ? 'are' : 'is'} still ramping up, so instead of declining from last year ${noun === 'hub' ? 'they continue' : 'it continues'} on a plateau at the highest of
+      ${Math.round(CF_PLATEAU_RATE * 100)} % of the original reserves, last year's production and this year's production so far (annualised),
+      until ${Math.round(CF_PLATEAU_SHARE * 100)} % of the original reserves is produced, then the same decline.${noun === 'hub' ? ` Everything stops at the latest when the hub would have produced all its reserves with
       that decline, so the hub's life governs the fields'.` : ''} All boe, gas and NGL included, sold at the
       scenario oil price in ${OPEX_BASE} dollars. Opex as in the history. Sodir's expected future investments spread
       ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} % over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length},
