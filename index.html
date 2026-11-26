@@ -6768,7 +6768,7 @@ const UK_AREA = {NNS: 'Northern North Sea', CNS: 'Central North Sea', SNS: 'Sout
 
 function loadUk() {
   if (ukData) return Promise.resolve();
-  if (!ukLoading) ukLoading = Promise.all([fetchBundle('ukcs'), fetchBundle('ukcs_outlines'), fetchBundle('ukcs_licences')]).then(([d, o, l]) => {
+  if (!ukLoading) ukLoading = Promise.all([fetchBundle('ukcs'), fetchBundle('ukcs_outlines'), fetchBundle('ukcs_licences'), fetchBundle('ukcs_companies')]).then(([d, o, l, c]) => {
     if (!d || !d.production || !Array.isArray(d.fields)) { ukData = {}; ukLoading = null; return; }
     // Kompakt form [første måned, [olje…], [gass…], [vann…]] i 1000 Sm³ /
     // mill Sm³ / 1000 m³ → månedsrader [måned, mill Sm³, mrd Sm³, mill m³] som i DCS.
@@ -6783,7 +6783,8 @@ function loadUk() {
       });
     });
     ukData = {...d, monthly, months: [...months].sort(), outlines: (o && o.fields) || {},
-              licences: (l && l.licences) || {}, subareas: (l && l.subareas) || {}};
+              licences: (l && l.licences) || {}, subareas: (l && l.subareas) || {},
+              corp: (c && c.groups) ? c : {groups: {}, entities: {}}};
     ukData.bySlug = Object.fromEntries(d.fields.map(f => [f.slug, f]));
     ukData.shareCache = {};
     // Lenker kan peke på felt eller selskaper som ikke finnes lenger.
@@ -7231,6 +7232,7 @@ function ukCompanyCards(cmp) {
     <div class="pf-card pf-wide"><h3>${esc(cmp)} on the UKCS</h3>
       <div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${k}</span><strong>${esc(v)}</strong></div>`).join('')}</div>
       <div class="pf-map-note">Net production is the average over the last 12 months with data. Fields and licences are today's holdings (${esc(today)}).</div></div>
+    ${ukCorpCards(cmp)}
     <div class="pf-card pf-wide"><h3>Field and licence portfolio</h3>${map}</div>
     ${fRows.length ? `<div class="pf-card pf-wide"><h3>Fields</h3><div class="pf-scroll"><table class="res-table">
       <caption>${fRows.length} fields with equity today · click a field for its factsheet</caption>
@@ -7243,6 +7245,99 @@ function ukCompanyCards(cmp) {
       <div class="pf-map-note">Extant production licences on the UKCS where the company's group holds equity in at least one sub-area.
         Share is the group's equity in the licence's sub-areas, as a range where it differs between them. The last column names the
         fields whose sub-area carries their name, then the other sub-areas. Source: NSTA, licence sub-areas by equity group holder.</div></div>`;
+}
+
+// Selskapsfakta fra data/ukcs_companies.json (fetch_uk_companies.py):
+// juridiske enheter med Companies House-profil og eiere (PSC), LEI og øverste
+// morselskap fra GLEIF, og brønnbanene konsernet er ansvarlig for (NSTA).
+const UK_SIC = {'06100': 'Crude petroleum extraction', '06200': 'Natural gas extraction',
+  '09100': 'Petroleum and gas support services', '19201': 'Mineral oil refining', '35210': 'Gas manufacture',
+  '43130': 'Test drilling and boring', '46711': 'Petroleum products wholesale', '47300': 'Fuel retail',
+  '64201': 'Holding company (agricultural)', '64202': 'Holding company (production)', '64203': 'Holding company (construction)',
+  '64204': 'Holding company (distribution)', '64205': 'Holding company (financial)', '64209': 'Holding company',
+  '70100': 'Head office activities', '70229': 'Management consultancy', '74909': 'Other professional services',
+  '82990': 'Other business support services', '99999': 'Dormant company'};
+const UK_ROLE = {operator: 'Operator', administrator: 'Licence administrator', licensee: 'Licensee'};
+function ukCorpCards(cmp) {
+  const C = ukData.corp, G = C.groups[cmp];
+  if (!G) return '';
+  const E = G.entities.map(no => [no, C.entities[no]]).filter(([, e]) => e)
+    .sort((a, b) => b[1].licences - a[1].licences || a[1].name.localeCompare(b[1].name));
+  const day = s => s ? new Date(s + 'T00:00:00Z').toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'}) : '—';
+  const chUrl = no => `https://find-and-update.company-information.service.gov.uk/company/${encodeURIComponent(no)}`;
+  const leiUrl = lei => `https://search.gleif.org/#/record/${encodeURIComponent(lei)}`;
+  const ext = (url, txt, title) => `<a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(title || '')}">${txt}</a>`;
+  const W = G.wells;
+  const up = G.ultimateParent;
+  const owners = [...new Set(E.flatMap(([, e]) => ((e.ch || {}).psc || []).filter(p => p.kind.startsWith('corporate') || p.kind.startsWith('legal'))
+    .map(p => p.name)).filter(n => !E.some(([, e]) => e.name.toUpperCase() === String(n).toUpperCase())))];
+  const oldest = E.map(([, e]) => (e.ch || {}).created).filter(Boolean).sort()[0];
+  const facts = [
+    ['Ultimate parent (GLEIF)', up ? `${up[0]}${up[1] ? ` (${up[1]})` : ''}` : '—'],
+    ['Legal entities with licences', E.length],
+    ['Oldest entity incorporated', oldest ? oldest.slice(0, 4) : '—'],
+    ['Licences incl. relinquished', G.licencesEver || '—'],
+    ['Wellbores responsible for', W ? W.total.toLocaleString('en') : '—'],
+    ['… not yet decommissioned', W ? W.open.toLocaleString('en') : '—'],
+  ];
+  // Brønnbaner spuddet per år (de siste 15 årene), etter opprinnelig boremål.
+  let drill = '';
+  if (W && W.spud) {
+    const y1 = new Date().getUTCFullYear(), years = [...Array(15)].map((_, i) => String(y1 - 14 + i));
+    const rows = years.map(y => [y, W.spud[y] || [0, 0, 0]]);
+    const max = Math.max(1, ...rows.map(([, v]) => v[0] + v[1] + v[2]));
+    if (rows.some(([, v]) => v[0] + v[1] + v[2])) {
+      const COL = ['#ce0f69', '#f59e0b', '#4993b4'];
+      drill = `<div class="pf-card pf-wide"><h3>Wellbores spudded per year</h3>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:130px;margin:8px 0 4px">${rows.map(([y, v]) => {
+          const n = v[0] + v[1] + v[2];
+          return `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%" title="${y}: ${v[0]} exploration, ${v[1]} appraisal, ${v[2]} development">
+            <div style="font-size:10px;text-align:center;color:var(--muted)">${n || ''}</div>
+            ${[2, 1, 0].map(i => v[i] ? `<div style="height:${(v[i] / max * 100).toFixed(1)}px;background:${COL[i]}"></div>` : '').join('')}</div>`;
+        }).join('')}</div>
+        <div style="display:flex;gap:4px">${rows.map(([y]) => `<div style="flex:1;font-size:10px;text-align:center">${y.slice(2)}</div>`).join('')}</div>
+        <div class="pf-map-note">${['Exploration', 'Appraisal', 'Development'].map((t, i) => `<span class="ex-dot" style="background:${COL[i]}"></span>${t}`).join(' · ')}.
+          Wellbores (incl. sidetracks) where an entity in the group is the responsible operator today, by spud year and original intent; ${new Date().getUTCFullYear()} to date.
+          Wells drilled by earlier owners of the same licences count here when responsibility has passed to the group. Source: NSTA, offshore wellbores.</div></div>`;
+    }
+  }
+  const sic = e => ((e.ch || {}).sic || []).map(c => `<span title="SIC ${esc(c)}">${esc(UK_SIC[c] || 'SIC ' + c)}</span>`).join('<br>') || '—';
+  const psc = e => {
+    const p = (e.ch || {}).psc;
+    if (!p) return '—';
+    if (!p.length) return '<span title="No active person with significant control registered">—</span>';
+    return p.map(x => `<span title="${esc((x.control || []).join(', ').replace(/-/g, ' '))}">${esc(x.name)}</span>`).join('<br>');
+  };
+  const prev = e => {
+    const names = [...((e.ch || {}).prev || []).map(p => `${p[0]} (${(p[1] || '').slice(0, 4)}–${(p[2] || '').slice(0, 4)})`), ...(e.nstaNames || [])];
+    const first = names[0] && names[0].length > 34 ? names[0].slice(0, 32) + '…' : names[0];
+    return names.length ? `<span title="${esc(names.join('\n'))}">${esc(first)}${names.length > 1 ? ` +${names.length - 1}` : ''}</span>` : '—';
+  };
+  const status = e => { const c = e.ch || {}; return c.status ? `<span title="Last accounts made up to ${esc(day(c.accounts))}${c.accountsType ? ` (${esc(c.accountsType)})` : ''}">` +
+    esc(c.status[0].toUpperCase() + c.status.slice(1)) + '</span>' + (c.insolvency ? ' <span title="Has insolvency history at Companies House">⚠</span>' : '') : '—'; };
+  const office = e => esc(((e.ch || {}).office || '—').replace(/, (England|Scotland|Wales|United Kingdom)$/, ''));
+  const roles = e => (e.roles.includes('operator') ? 'Operator' : e.roles.includes('administrator') ? 'Licence administrator' : 'Licensee');
+  const table = `<div class="pf-scroll"><table class="res-table">
+    <caption>${E.length} legal ${E.length === 1 ? 'entity' : 'entities'} holding UK licences today · company number links to Companies House</caption>
+    <thead><tr><th style="text-align:left">Entity</th><th>Company no.</th><th>Licences</th><th>Status</th>
+      <th>Incorporated</th><th style="text-align:left">Registered office</th><th style="text-align:left">Activity (SIC)</th>
+      <th style="text-align:left">Owned by (PSC)</th><th style="text-align:left">Previous names</th><th>LEI</th></tr></thead>
+    <tbody>${E.map(([no, e]) => `<tr><td style="text-align:left;min-width:190px">${esc(e.name)}<br><span style="font-size:0.85em;color:var(--muted)">${roles(e)}</span></td>
+      <td>${ext(chUrl(no), esc(no), 'Open in Companies House')}</td>
+      <td>${e.licences}</td><td>${status(e)}</td><td style="white-space:nowrap">${day((e.ch || {}).created)}</td>
+      <td style="text-align:left">${office(e)}</td><td style="text-align:left">${sic(e)}</td><td style="text-align:left">${psc(e)}</td>
+      <td style="text-align:left">${prev(e)}</td>
+      <td>${e.lei ? ext(leiUrl(e.lei.lei), 'LEI', e.lei.lei + (e.lei.parent ? ` · ultimate parent ${e.lei.parent[0]}` : '')) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+  return `
+    <div class="pf-card pf-wide"><h3>Corporate information</h3>
+      <div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${k}</span><strong>${esc(String(v))}</strong></div>`).join('')}</div>
+      ${owners.length ? `<div class="pf-map-note">Direct corporate owners of the licence-holding entities (Companies House PSC register): ${owners.map(esc).join(', ')}.</div>` : ''}</div>
+    ${drill}
+    <div class="pf-card pf-wide"><h3>Legal entities</h3>${table}
+      <div class="pf-map-note">Entities listed as licensees in today's UKCS licence data, with the company number NSTA records.
+        Profile, owners and previous names from Companies House; LEI and ultimate parent from GLEIF, where the entity has an LEI
+        (${E.filter(([, e]) => e.lei).length} of ${E.length}). Licences incl. relinquished counts licences where an entity in the group is the
+        last recorded licensee (NSTA licence blocks history). Hover a cell for details.</div></div>`;
 }
 
 // ── UKCS: FIELDS ──

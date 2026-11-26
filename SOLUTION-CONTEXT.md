@@ -1015,6 +1015,36 @@ netto produksjon per konsern), Fields (rangering etter produksjon siste 12
 måneder eller produsert til nå; klikk åpner faktaarket) og Map.
 Lenkeparametre: `up`, `uf`, `uc`, `ul`, `us`.
 
+### `data/ukcs_companies.json` — selskapsfakta for UKCS → Company
+
+Bygges av `fetch_uk_companies.py` (workflow `update-uk-companies.yml`,
+tirsdag 04:23 UTC). Konsernnavnene lages med funksjonene i `fetch_nsta.py`
+(importeres), så de treffer selskapsvelgeren.
+
+| Kilde | Brukes til |
+|---|---|
+| NSTA licence subareas (`40c65d96…`), `LICORG`/`OPORG`/`ADMORG` | Dagens juridiske enheter med Companies House-nummer («NAVN (00140141)»), konsern og rolle |
+| NSTA licence blocks history (`855237fb…`) | Lisenser der enheten står som (siste) lisensinnehaver, også tilbakeleverte; andre navn på samme nummer |
+| NSTA offshore wellbores top holes (`b5752e9f…`) | Brønnbaner per ansvarlig operatør i dag (`RESWOP`): antall, ikke ferdig plugget, spuddet per år etter boremål |
+| Companies House, via `companies-house-proxy` i `sheffielddivided/convert` | Status, stiftet, forretningsadresse, SIC, tidligere navn, siste regnskap, eiere (PSC) |
+| GLEIF | LEI (søk på registreringsnummer) og øverste morselskap |
+
+- `groups[konsern]`: `entities` (nummer), `licencesEver`, `ultimateParent`
+  `[navn, land, LEI]` (vanligste blant enhetene), `wells`
+  `{total, open, spud: {år: [E, A, D]}}`.
+- `entities[nummer]`: `name`, `group`, `roles`, `licences` (i dag),
+  `licencesEver`, `nstaNames`, `ch` {…}, `lei` {lei, leiStatus, parent}.
+- Lisensens startdato brukes ikke som «første lisens»: den sier når lisensen
+  ble tildelt (ofte 1964), ikke når selskapet kom inn.
+- Brønnene telles hos den som er ansvarlig i dag, så brønner boret av
+  tidligere eiere følger lisensen.
+- Feiler Companies House eller GLEIF, beholdes forrige verdi per enhet; NSTA
+  er påkrevd. Konsern uten enheter med registreringsnummer (for eksempel bare
+  historiske feltandeler) får ikke kortet.
+
+Frontend: `ukCorpCards` i `index.html` — kortene Corporate information,
+Wellbores spudded per year og Legal entities i Company-fanen.
+
 ### `data/canada_nl.json`, `data/canada_nl_outlines.json`, `data/canada_nl_coast.json` — Canada, Newfoundland and Labrador (`canada.html`)
 
 Egen side, ikke en seksjon i `index.html`. Lenken i menyen (`modeBtnCanada`)
