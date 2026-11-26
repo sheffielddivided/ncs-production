@@ -3775,7 +3775,7 @@ async function refreshFields() {
   if (fieldSubView === 'map') { drawChart(); return; }
   if (fieldSubView === 'havtil') { await loadHavtil(); drawChart(); return; }
   if (fieldSubView === 'downtime') { await loadGassco(); drawChart(); return; }
-  if (fieldSubView === 'shipping') { await Promise.all([loadShipping(), loadProdForFields(ids)]); drawChart(); return; }
+  if (fieldSubView === 'shipping') { await Promise.all([loadShipping(), loadProdForFields([...new Set(ids.flatMap(id => hubFieldIds([hubOfField[id] || fieldNameOf(id)])))])]); drawChart(); return; }
   await loadProdForFields(ids);
   if (fieldSubView === 'oe_per_company') await loadLicForFields(ids);
   drawChart();
@@ -14098,6 +14098,7 @@ function storeBbl(F, fac) {
 }
 function drawShipping(ids, name, kind) {
   const Fs = ids.map(id => shippingData.fields[String(id)]).filter(f => f && f.until);
+  const fidOf = new Map(ids.filter(id => shippingData.fields[String(id)]?.until).map(id => [shippingData.fields[String(id)], id]));
   setChartTitle(name, `Shipping · tanker calls at the ${kind}`);
   if (!Fs.length) {
     setChartEmpty(`No tanker data for ${esc(tc(name))}. ${shipTrackedNote()}`);
@@ -14110,7 +14111,7 @@ function drawShipping(ids, name, kind) {
     const t0 = Date.parse(s), t1 = open ? Math.max(Date.parse(e), Date.parse(F.until)) : Date.parse(e);
     const sh = (F.ships || {})[m] || {};
     return {m, t0, t1, d, open, from, to, draught, cargo, dest, sh, name: shipName(m, sh), fields: [tc(F.name)],
-      stores: [storeBbl(F, fac)]};
+      stores: [storeBbl(F, fac)], facs: fac ? [fac] : [], fid: fidOf.get(F)};
   }));
   if (Fs.length > 1) {
     const merged = [];
@@ -14121,16 +14122,47 @@ function drawShipping(ids, name, kind) {
         if (v.cargo != null) cur.cargo = Math.max(cur.cargo || 0, v.cargo);
         cur.t1 = Math.max(cur.t1, v.t1);
         if (!cur.fields.includes(v.fields[0])) { cur.fields.push(v.fields[0]); cur.stores.push(v.stores[0]); }
-      } else merged.push({...v, fields: [...v.fields], stores: [...v.stores]});
+        v.facs.forEach(x => { if (!cur.facs.includes(x)) cur.facs.push(x); });
+      } else merged.push({...v, fields: [...v.fields], stores: [...v.stores], facs: [...v.facs]});
     });
     visits = merged;
   }
-  // Løftet volum per anløp: skipets lastekapasitet, men ikke mer enn lageret
-  // det lastes fra (summert over feltene i et hubanløp som går innom flere
-  // felt). Uten oppgitt lager brukes kapasiteten.
+  // Løftet volum per anløp: lasten anslått fra dypgangen etter avgang der den
+  // finnes (målt, fanger opp at skipet ikke ble fylt), ellers skipets
+  // lastekapasitet × feltets fyllingsgrad. Aldri mer enn lageret det lastes
+  // fra (summert over feltene i et hubanløp som går innom flere felt). Uten
+  // oppgitt lager brukes tallet som det er.
+  const storeCap = (v, x) => v.stores.every(b => b) ? Math.min(x, v.stores.reduce((t, b) => t + b, 0)) : x;
+  const fullOf = v => v.sh.cap ? storeCap(v, v.sh.cap) : 0;
+  // Fyllingsgrad per felt med anløp: rapportert olje for huben feltet hører
+  // til (satellittene lastes fra vertsfeltets lager) delt på full last for
+  // anløpene i de samme månedene, høyst 1. Skipene lastes sjelden fulle når
+  // feltet produserer mindre mellom løftene enn lageret rommer (Norne, Njord).
+  // Under 1 fordi anløp mangler (hullete AIS-dekning) gir ingen oppjustering.
+  // Krever minst tre måneder og fem anløp; ellers 1.
+  const fill = {};
+  const oilByMonth = fids => {
+    const o = {};
+    fids.forEach(id => (fieldProdCache[id] || []).forEach(({attributes: a}) => {
+      if (!a.prfMonth) return;
+      const k = `${a.prfYear}-${String(a.prfMonth).padStart(2, '0')}`;
+      o[k] = (o[k] || 0) + (a.prfPrdOilNetMillSm3 || 0) * BBL_PER_SM3 * 1e6;
+    }));
+    return o;
+  };
+  [...new Set(visits.map(v => v.fid))].forEach(fid => {
+    const oil = oilByMonth(hubFieldIds([hubOfField[fid] || fieldNameOf(fid)]));
+    const F = shippingData.fields[String(fid)];
+    const ms = Object.keys(oil).filter(k => oil[k] > 0 && k >= F.from.slice(0, 7));
+    const cs = visits.filter(v => v.fid === fid && ms.includes(monthKey(v.t0)));
+    const full = cs.reduce((t, v) => t + fullOf(v), 0);
+    const o = ms.reduce((t, k) => t + oil[k], 0);
+    fill[fid] = ms.length >= 3 && cs.length >= 5 && full > 0
+      ? {k: Math.min(1, o / full), months: ms.sort(), n: cs.length} : {k: 1};
+  });
   const liftOf = v => {
-    if (!v.sh.cap) return 0;
-    return v.stores.every(b => b) ? Math.min(v.sh.cap, v.stores.reduce((t, b) => t + b, 0)) : v.sh.cap;
+    if (v.cargo != null) return storeCap(v, v.cargo);
+    return fullOf(v) * (fill[v.fid] ? fill[v.fid].k : 1);
   };
   const from = Fs.map(f => f.from).sort()[0], until = Fs.map(f => f.until).sort().pop();
   const radiusKm = Fs[0].radiusKm, nFac = Fs.reduce((t, f) => t + (f.nFacilities || 0), 0);
@@ -14174,20 +14206,18 @@ function drawShipping(ids, name, kind) {
   const shipDec = shipMeasure === 'calls' ? 0 : lifted ? 2 : 1;
   const datasets = keys.map(k => ({label: label(k), data: val[k].map(x => +x.toFixed(shipDec)),
     backgroundColor: color(k), borderWidth: 0, stack: 's', order: 1})).filter(d => d.data.some(x => x));
-  // Rapportert oljeproduksjon fra Sodir (mill. Sm³ → mill. fat), som linje
-  // over søylene. For en hub alle medlemsfeltene, siden satellitter lastes via
-  // vertsfeltets lager. Tom etter siste rapporterte måned.
-  const noCap = visits.filter(v => !v.sh.cap).length;
+  // Rapportert oljeproduksjon fra Sodir (mill. fat), som linje over søylene:
+  // alle feltene i huben, også i feltvisningen, siden satellitter lastes fra
+  // vertsfeltets lager (samme grunnlag som fyllingsgraden). Tom etter siste
+  // rapporterte måned.
+  const noCap = visits.filter(v => !v.sh.cap && v.cargo == null).length;
+  const oilIds = [...new Set(ids.flatMap(id => hubFieldIds([hubOfField[id] || fieldNameOf(id)])))];
+  const oilHub = !hub && oilIds.length > 1 ? (hubOfField[ids[0]] || fieldNameOf(ids[0])) : null;
   let oilDs = null;
   if (lifted && datasets.length) {
-    const oil = {};
-    ids.forEach(id => (fieldProdCache[id] || []).forEach(({attributes: a}) => {
-      if (!a.prfMonth) return;
-      const k = `${a.prfYear}-${String(a.prfMonth).padStart(2, '0')}`;
-      oil[k] = (oil[k] || 0) + (a.prfPrdOilNetMillSm3 || 0);
-    }));
-    const data = months.map(mo => oil[mo] != null ? +(oil[mo] * BBL_PER_SM3).toFixed(2) : null);
-    if (data.some(x => x != null)) oilDs = {type: 'line', label: 'Reported oil production (Sodir)', data, stack: 'oil', _noTotal: true,
+    const oil = oilByMonth(oilIds);
+    const data = months.map(mo => oil[mo] != null ? +(oil[mo] / 1e6).toFixed(2) : null);
+    if (data.some(x => x != null)) oilDs = {type: 'line', label: oilHub ? `Reported oil production, ${tc(oilHub)} hub (Sodir)` : 'Reported oil production (Sodir)', data, stack: 'oil', _noTotal: true,
       borderColor: '#1a2332', backgroundColor: '#1a2332', borderWidth: 2, pointRadius: 2, tension: 0, spanGaps: false, order: 0};
   }
   const missing = hub ? ids.filter(id => !Fs.includes(shippingData.fields[String(id)])).map(id => tc(fieldNameOf(id))) : [];
@@ -14206,8 +14236,12 @@ function drawShipping(ids, name, kind) {
       return `<strong>Storage:</strong> ${st.map(one).join(', ')}; a lifting cannot be larger than the storage it is loaded from &nbsp;|&nbsp; `;
     })() +
     `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
-    (lifted ? `<strong>Lifted volume:</strong> each call counts as one full cargo at the tanker's capacity, in the month it arrived, but no more than the storage on the installation it loaded at (Balder FPU or Jotun FPSO, Åsgard A or C; found from the tanker's AIS positions)` +
-      `; reported oil production is Sodir's net oil for ${hub ? 'all fields in the hub, including any exported by pipeline' : 'the field itself, so satellites loaded from its storage are not included (see the hub)'} (Sm³ × ${BBL_PER_SM3}). Part cargoes, condensate and NGL in the tanks, and liftings for several fields make the estimate rough` +
+    (lifted ? `<strong>Lifted volume:</strong> each call counts as the cargo estimated from the tanker's draught after leaving where it was sampled (from 23 Nov 2026), otherwise a full cargo at the tanker's capacity times the field's fill factor, in the month it arrived; never more than the storage on the installation it loaded at (Balder FPU or Jotun FPSO, Åsgard A or C; found from the tanker's AIS positions)` +
+      `; reported oil production is Sodir's net oil for all fields in the ${oilHub ? esc(tc(oilHub)) + ' ' : ''}hub, since satellites are loaded from the host's storage${oilIds.length > 1 ? ', including any exported by pipeline' : ''} (Sm³ × ${BBL_PER_SM3}). Part cargoes, condensate and NGL in the tanks, and liftings for several fields make the estimate rough` +
+      `. <strong>Fill factor:</strong> ${Object.entries(fill).map(([fid, f]) => `${esc(tc(fieldNameOf(+fid)))} ${f.k.toFixed(2)}` +
+        (f.months ? ` (${fmtShort(f.months[0] + '-01').replace(/^1 /, '')} – ${fmtShort(f.months[f.months.length - 1] + '-01').replace(/^1 /, '')}, ${f.n} calls)` : ' (too little data)')).join(', ')}` +
+      `: reported oil for the field's hub divided by full cargoes for the calls in the same months, at most 1. Tankers are seldom filled where the field produces less between liftings than its storage holds; calls missed in patchy AIS coverage would make it too low, so it is never raised above 1. ` +
+      `Where the factor is below 1, lifted volume therefore matches reported oil over the months used by construction; it matters for months not yet reported and for the timing of liftings` +
       (noCap ? `; ${noCap} ${noCap === 1 ? 'call has' : 'calls have'} no known capacity and ${noCap === 1 ? 'is' : 'are'} left out` : '') + ' &nbsp;|&nbsp; ' : '') +
     `<strong>Est. cargo:</strong> from the highest draught the tanker reported on AIS after leaving (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Rough, about ±15 %; missing when no draught was sampled before the next call &nbsp;|&nbsp; ` +
     `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within seven days before and ten days after. Norwegian AIS (Kystverket) covers Norwegian waters only, so a tanker bound for a foreign terminal usually leaves coverage before it stops: «To» then shows where and in which direction it left (↗), and the AIS destination is shown from 23 Nov 2026 &nbsp;|&nbsp; ` +
@@ -14223,6 +14257,12 @@ function drawShipping(ids, name, kind) {
   // Oppsummering per skip og tabell over anløpene, nyeste først.
   const d30 = now - 30 * 864e5;
   const list = [...visits].sort((a, b) => b.t0 - a.t0);
+  // Innretningen skipet lastet ved, når et felt har flere lagre (Balder FPU /
+  // Jotun FPSO, Åsgard A / C).
+  const multiStore = new Set(Fs.filter(F => (F.storage || []).length > 1).flatMap(F => F.storage.map(x => x.facility)));
+  const showFac = multiStore.size > 0;
+  const facName = x => esc(tc(x).replace(/\b(Fpso|Fpu|Fsu|Fso|Stl)\b/g, w => w.toUpperCase()));
+  const facCell = v => { const f = v.facs.filter(x => multiStore.has(x)); return f.length ? f.map(facName).join(' → ') : '<span class="muted">—</span>'; };
   const n30 = m => visits.filter(v => v.m === m && v.t0 >= d30).length;
   const dot = m => `<span class="ex-dot" style="background:${color(serKey(m))}"></span>`;
   const fmtT = t => `${fmtShort(new Date(t).toISOString().slice(0, 10))} ${new Date(t).toISOString().slice(11, 16)}`;
@@ -14235,9 +14275,9 @@ function drawShipping(ids, name, kind) {
     </table>
     <table class="res-table">
       <caption>Calls, newest first · times in UTC</caption>
-      <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}<th>Est. cargo, bbl</th><th>From</th><th>To</th></tr></thead>
+      <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}${showFac ? '<th>Installation</th>' : ''}<th>Est. cargo, bbl</th><th>From</th><th>To</th></tr></thead>
       <tbody>${list.slice(0, shipShown).map(v => `<tr><td>${fmtT(v.t0)}</td><td>${v.open ? `<em>at the ${kind}</em>` : fmtT(v.t1)}</td><td>${fmtStay((v.t1 - v.t0) / 36e5)}</td>
-          <td>${dot(v.m)}${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}<td>${v.cargo != null ? '≈ ' + Math.round(v.cargo / 1000).toLocaleString('en') + 'k' : '<span class="muted">—</span>'}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
+          <td>${dot(v.m)}${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}${showFac ? `<td>${facCell(v)}</td>` : ''}<td>${v.cargo != null ? '≈ ' + Math.round(v.cargo / 1000).toLocaleString('en') + 'k' : '<span class="muted">—</span>'}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
     </table>
     ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`);
 }

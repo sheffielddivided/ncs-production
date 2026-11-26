@@ -30,7 +30,8 @@ STOP_KNOTS) eller vært der minst LONG_VISIT_MIN minutter. Skip som bare passere
 besøk. Opphold med hull under GAP_HOURS slås sammen, og det samme skipets
 anløp med under SAME_SHIP_HOURS imellom er ett anløp. Det er de også når
 skipet lå og ventet til sjøs under WAIT_NEAR_KM fra feltet mellom dem (under
-WAIT_DAYS). Opphold under MIN_LOAD_HOURS er ikke lasting og tas ikke med.
+WAIT_DAYS). Opphold under MIN_LOAD_HOURS er ikke lasting og tas ikke med,
+unntatt når skipet var nærmere enn LOAD_NEAR_KM fra lasteinnretningen.
 """
 
 import json
@@ -65,6 +66,12 @@ SAME_SHIP_HOURS = 72   # anløp av samme skip på samme felt med kortere mellomr
 WAIT_DAYS = 7          # ventet skipet til sjøs nær feltet mellom to anløp, er de ett anløp så lenge
 WAIT_NEAR_KM = 40      # så nær feltet ligger skipet når det venter
 MIN_LOAD_HOURS = 6     # kortere opphold er ikke lasting (skipet venter eller går inn mens et annet laster)
+# Så nær lasteinnretningen ligger tankskipet når det laster (antennen ca. 0,45–0,55
+# km fra innretningens posisjon, innenfor sikkerhetssonen); skip som venter,
+# ligger lenger unna. Slike opphold er lasting selv om de er korte: på
+# Haltenbanken (Åsgard, Heidrun) er AIS-dekningen hullete, så lastingen ofte
+# bare blir et par timer med posisjoner.
+LOAD_NEAR_KM = 0.7
 # Kapasitet og last. Dødvekt anslås som DWT_K × lengde × bredde × største
 # dypgang (AIS-registeret) når tanker_specs.json ikke har oppgitt tall;
 # DWT_K er kalibrert mot AETs oppgitte tall for Eagle Balder, Blane og Bergen
@@ -594,7 +601,7 @@ def main():
             v['open'] = st['until_min'] - v['e'] < 60   # skipet er (trolig) der ennå
         # Korte opphold er ikke lasting: tankskipet går inn i radiusen mens et
         # annet laster, eller passerer sakte. Pågående opphold beholdes.
-        st['visits'] = [v for v in st['visits'] if v['open'] or v['e'] - v['s'] >= MIN_LOAD_HOURS * 60]
+        st['visits'] = [v for v in st['visits'] if v['open'] or v['e'] - v['s'] >= MIN_LOAD_HOURS * 60 or v['d'] <= LOAD_NEAR_KM]
         prev_rows = [] if reroute else st['prev'].get('visits') or []
         # Anløp som tidligere er slått sammen fordi skipet ventet nær feltet.
         st['joins'] = set() if reroute else {tuple(j) for j in st['prev'].get('joins') or []}
