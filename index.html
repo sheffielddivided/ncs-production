@@ -14110,7 +14110,7 @@ function drawShipping(ids, name, kind) {
     const t0 = Date.parse(s), t1 = open ? Math.max(Date.parse(e), Date.parse(F.until)) : Date.parse(e);
     const sh = (F.ships || {})[m] || {};
     return {m, t0, t1, d, open, from, to, draught, cargo, dest, sh, name: shipName(m, sh), fields: [tc(F.name)],
-      stores: [storeBbl(F, fac)]};
+      stores: [storeBbl(F, fac)], facs: fac ? [fac] : []};
   }));
   if (Fs.length > 1) {
     const merged = [];
@@ -14121,7 +14121,8 @@ function drawShipping(ids, name, kind) {
         if (v.cargo != null) cur.cargo = Math.max(cur.cargo || 0, v.cargo);
         cur.t1 = Math.max(cur.t1, v.t1);
         if (!cur.fields.includes(v.fields[0])) { cur.fields.push(v.fields[0]); cur.stores.push(v.stores[0]); }
-      } else merged.push({...v, fields: [...v.fields], stores: [...v.stores]});
+        v.facs.forEach(x => { if (!cur.facs.includes(x)) cur.facs.push(x); });
+      } else merged.push({...v, fields: [...v.fields], stores: [...v.stores], facs: [...v.facs]});
     });
     visits = merged;
   }
@@ -14223,6 +14224,12 @@ function drawShipping(ids, name, kind) {
   // Oppsummering per skip og tabell over anløpene, nyeste først.
   const d30 = now - 30 * 864e5;
   const list = [...visits].sort((a, b) => b.t0 - a.t0);
+  // Innretningen skipet lastet ved, når et felt har flere lagre (Balder FPU /
+  // Jotun FPSO, Åsgard A / C).
+  const multiStore = new Set(Fs.filter(F => (F.storage || []).length > 1).flatMap(F => F.storage.map(x => x.facility)));
+  const showFac = multiStore.size > 0;
+  const facName = x => esc(tc(x).replace(/\b(Fpso|Fpu|Fsu|Fso|Stl)\b/g, w => w.toUpperCase()));
+  const facCell = v => { const f = v.facs.filter(x => multiStore.has(x)); return f.length ? f.map(facName).join(' → ') : '<span class="muted">—</span>'; };
   const n30 = m => visits.filter(v => v.m === m && v.t0 >= d30).length;
   const dot = m => `<span class="ex-dot" style="background:${color(serKey(m))}"></span>`;
   const fmtT = t => `${fmtShort(new Date(t).toISOString().slice(0, 10))} ${new Date(t).toISOString().slice(11, 16)}`;
@@ -14235,9 +14242,9 @@ function drawShipping(ids, name, kind) {
     </table>
     <table class="res-table">
       <caption>Calls, newest first · times in UTC</caption>
-      <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}<th>Est. cargo, bbl</th><th>From</th><th>To</th></tr></thead>
+      <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}${showFac ? '<th>Installation</th>' : ''}<th>Est. cargo, bbl</th><th>From</th><th>To</th></tr></thead>
       <tbody>${list.slice(0, shipShown).map(v => `<tr><td>${fmtT(v.t0)}</td><td>${v.open ? `<em>at the ${kind}</em>` : fmtT(v.t1)}</td><td>${fmtStay((v.t1 - v.t0) / 36e5)}</td>
-          <td>${dot(v.m)}${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}<td>${v.cargo != null ? '≈ ' + Math.round(v.cargo / 1000).toLocaleString('en') + 'k' : '<span class="muted">—</span>'}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
+          <td>${dot(v.m)}${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}${showFac ? `<td>${facCell(v)}</td>` : ''}<td>${v.cargo != null ? '≈ ' + Math.round(v.cargo / 1000).toLocaleString('en') + 'k' : '<span class="muted">—</span>'}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
     </table>
     ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`);
 }
