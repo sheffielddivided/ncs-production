@@ -156,6 +156,15 @@ komprimering. GitHub Pages er slått av.
 Redigering i appen (huber, feeder, brønnavn) skriver fortsatt til GitHub, og
 endringen når energy.kbak.no via samme webhook.
 
+**Reserve hvis Git i Plesk faller ut:** Actions → *Publiser via FTP (reserve)* →
+*Run workflow* (`.github/workflows/deploy-ftp.yml`). Den laster opp over FTPS
+det som er endret siden forrige FTP-publisering (commiten står i
+`.deploy-commit` på serveren), eller alt ved første kjøring eller med *full*
+krysset av. Skript, dokumentasjon, workflows, `counter/` og `data/*-raw/` holdes
+utenfor. *dry_run* viser fillisten uten å laste opp. Secrets: `DEPLOY_HOST`
+(`plesk1.lg.dynavee.net`, navnet i FTP-sertifikatet), `DEPLOY_USER`,
+`DEPLOY_PASSWORD` og `DEPLOY_PATH` (`/`, FTP-brukerens hjemmemappe).
+
 ## Passord for Valuation BETA
 
 Fanene **Valuation BETA** under Company og Hub krever passord. Passordet ligger
