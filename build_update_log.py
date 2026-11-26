@@ -127,6 +127,7 @@ FILES = {
     'brazil_wells': ('shelves', None),
     'brazil_incidents': ('shelves', None),
     'brazil_outlines': ('shelves', None),
+    'angola': ('shelves', 'Angola (ANPG)'),
     'hubs': ('edits', 'Hub settings'),
     'hub_connections': ('edits', 'Hub connections'),
     'exploration_name_overrides': ('edits', 'Well names'),
@@ -143,6 +144,7 @@ FILES = {
     'canada_nl_coast': (None, None),
     'gom_coast': (None, None),
     'brazil_coast': (None, None),
+    'angola_coast': (None, None),
     'brazil_aliases': ('edits', 'Brazil field links'),
     'update_log': (None, None),
 }
@@ -411,6 +413,7 @@ SUMMARY = {
     'dcs': s_dcs,
     'gom': s_gom,
     'brazil': s_brazil,
+    'angola': s_gom,
     'canada_nl': s_canada,
     'steo': s_steo,
 }

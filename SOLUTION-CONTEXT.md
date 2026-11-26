@@ -1331,6 +1331,38 @@ Map (feltomriss, blokker, innretninger, brønner). Faktaark for felt
 `per`, `u`, `from`, `rk`, `env`, `bs`, `q`, `cx`, `c`, `b`, `rp`, `ey`, `lt`,
 `mw`, `ml`, `fs`, `is`, `sp`, `ip`.
 
+### `data/angola.json` — Angola (`angola.html`)
+
+Egen side som `brazil.html` (skjult lenke `modeBtnAngola`, `noindex`). Bygges
+av `fetch_anpg.py` (workflow `update-anpg.yml`, mandag og torsdag 08:41 UTC).
+
+Kilden er JSON-API-et bak ANPGs eget nettsted, `https://www.anpg.co.ao/api/`
+(samlingene leses med `?limit=500&offset=…`). Det er ikke et formelt åpent
+datasett med lisens; dataene er de samme som ANPG viser offentlig på sidene.
+
+| Samling | Brukes til |
+|---|---|
+| `production-reports` | Månedsrapportene jan. 2020– (HTML). Tallene leses ut av teksten med regulære uttrykk (`parse_report`); ordlyden varierer fra år til år. Fra september 2024 har rapportene en HTML-tabell med olje og gass per blokk (`block_table`, celle for celle) |
+| `production-monthly` | Strukturerte månedstall fra juni 2026: brukes foran teksten, til kontroll, og siste måned gir operatørenes andel, vanndyp og brønner per blokk (`snapshot`) |
+| `production-historical` | Årlig olje 1955– |
+| `blocks` | Blokkregisteret: status, operatør, konsortium (Python-literal som tekst, `lit`), basseng, vanndyp, areal, midtpunkt (54 av 211) |
+| `exploration-seismic-campaigns`, `gas-map-*` | Seismikk (koordinatene står delvis som [bredde, lengde] og snus), gassinfrastruktur og rørledninger |
+
+- **Ikke brukt:** samlingen `production` (per blokk og år 2018–2025). Tallene
+  er runde og glatte, og summen per år er opptil det dobbelte av landets
+  produksjon; de ser ut som plassholdere.
+- **Kontroller** (exit 1): minst 60 lesbare månedsrapporter uten hull; olje
+  fra teksten innenfor 0,5 % av de strukturerte tallene; blokktabellen innenfor
+  1 % av TOTAL-raden og landets produksjon; årssnittet fra månedene innenfor
+  2 % av ANPGs årstall.
+- **Olje per dag** regnes som månedens fat delt på dager, ikke tallet i teksten
+  (rekkefølgen på faktisk og prognose varierer i teksten).
+- **Blokknavn** (`bkey`): «Bloco 3/05 A» = «Bloco 3/05A», «FS» = «FS
+  Associações», «14K» = «14K & A-IMI», «NGC» = «NCG».
+- **Egenandel:** olje per blokk × dagens andeler i registeret, alle måneder
+  (ingen historikk). Sonangol E&P og SNL P&P samles som Sonangol, SSI-selskapene
+  som SSI (Sonangol Sinopec). Dekker 98,7 % av oljen siste 12 måneder.
+
 ### `data/update_log.json` — oppdateringsloggen (`updates.html`)
 
 Hva som er endret i dataene, dag for dag, til `updates.html` (lenke nederst

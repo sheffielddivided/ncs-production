@@ -15,6 +15,7 @@ on:
       - Oppdater Canada (C-NLOER)
       - Oppdater US Gulf of Mexico (BOEM)
       - Oppdater Brasil (ANP)
+      - Oppdater Angola (ANPG)
     types: [completed]
   schedule:
     - cron: '52 23 * * *'

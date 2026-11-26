@@ -1,0 +1,50 @@
+name: Oppdater Angola (ANPG)
+
+# angola.html: produksjon, blokker, selskaper, lisenser og gassinfrastruktur fra
+# ANPGs nettsted (fetch_anpg.py). ANPG legger ut månedsrapporten rundt midten av
+# måneden etter; to kjøringer i uka holder. Kontrollene i skriptet stopper
+# jobben uten å skrive noe ved avvik.
+on:
+  schedule:
+    - cron: '41 8 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: anpg
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: pip install requests
+
+      - name: Hent data fra ANPG
+        run: python fetch_anpg.py
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/angola.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Oppdater Angola/ANPG ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1
