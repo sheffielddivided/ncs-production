@@ -851,7 +851,13 @@ def main():
                         rows = None
                     if rows:   # uten posisjoner vet vi ikke, og anløpene holdes adskilt (slås opp igjen)
                         far = max(km(r[1], r[2], *st['centre']) for r in rows)
-                        (st['joins'] if far <= WAIT_FAR_KM else st['apart']).add(key)
+                        # Et hull i sporet der skipet var i fart før hullet, er trolig en
+                        # utseiling av dekningen (Maran Scott fra Balder vestover mot
+                        # britisk sektor): hvor langt det gikk, vet vi ikke.
+                        left = any(b[0] - a[0] > EXIT_GAP_MIN and (a[3] or 0) >= STOP_KNOTS
+                                   for a, b in zip(rows, rows[1:])) or \
+                            (rows[-1][3] or 0) >= STOP_KNOTS and v['s'] - rows[-1][0] > EXIT_GAP_MIN
+                        (st['joins'] if far <= WAIT_FAR_KM and not left else st['apart']).add(key)
                 if key in st['joins'] or (waiting(cur['to']) and waiting(v['from'])):
                     st['joins'].add(key)
                     cur.update(e=v['e'], d=min(cur['d'], v['d']), open=v['open'], to=v['to'])

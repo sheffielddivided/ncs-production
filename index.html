@@ -14457,7 +14457,7 @@ function drawShipping(ids, name, kind) {
     const oil = oilByMonth(hubFieldIds([hubOfField[fid] || fieldNameOf(fid)]));
     const F = shippingData.fields[String(fid)];
     const ms = Object.keys(oil).filter(k => oil[k] > 0 && k >= F.from.slice(0, 7));
-    const cs = visits.filter(v => v.fid === fid && ms.includes(monthKey(v.t0)));
+    const cs = visits.filter(v => v.fid === fid && ms.includes(monthKey(v.t1)));
     const full = cs.reduce((t, v) => t + fullOf(v), 0);
     const o = ms.reduce((t, k) => t + oil[k], 0);
     fill[fid] = ms.length >= 3 && cs.length >= 5 && full > 0
@@ -14482,11 +14482,12 @@ function drawShipping(ids, name, kind) {
   const months = [];
   for (let d = new Date(from.slice(0, 7) + '-01T00:00:00Z'); d.getTime() <= Date.parse(until); d.setUTCMonth(d.getUTCMonth() + 1))
     months.push(d.toISOString().slice(0, 7));
-  // Løftet volum per anløp (mill. fat) i måneden skipet kom, én blokk per
+  // Løftet volum per anløp (mill. fat) i måneden skipet dro (lasten er løftet
+  // da; et skip som ligger der nå, i inneværende måned), én blokk per
   // anløp: serie k er det k-te anløpet i hver måned, i tidsrekkefølge.
   const byMonth = months.map(() => []);
-  [...visits].sort((a, b) => a.t0 - b.t0).forEach(v => {
-    const i = months.indexOf(monthKey(v.t0));
+  [...visits].sort((a, b) => a.t1 - b.t1).forEach(v => {
+    const i = months.indexOf(monthKey(v.t1));
     if (i >= 0 && liftOf(v) > 0) byMonth[i].push(v);
   });
   const nMax = Math.max(0, ...byMonth.map(l => l.length));
@@ -14498,7 +14499,7 @@ function drawShipping(ids, name, kind) {
   const callTip = c => {
     const v = c.dataset._calls && c.dataset._calls[c.dataIndex];
     if (!v) return ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)} million bbl`;
-    return ` ${v.name}, ${fmtShort(new Date(v.t0).toISOString().slice(0, 10))}: ${c.parsed.y.toFixed(2)} million bbl${v.cargo != null ? ' (from draught)' : ' (estimated)'}`;
+    return ` ${v.name}, ${v.open ? 'loading now' : 'left ' + fmtShort(new Date(v.t1).toISOString().slice(0, 10))}: ${c.parsed.y.toFixed(2)} million bbl${v.cargo != null ? ' (from draught)' : ' (estimated)'}`;
   };
   // Rapportert oljeproduksjon fra Sodir (mill. fat), som linje over søylene:
   // alle feltene i huben, også i feltvisningen, siden satellitter lastes fra
@@ -14534,7 +14535,7 @@ function drawShipping(ids, name, kind) {
       return `<strong>Storage:</strong> ${st.map(one).join(', ')}; a lifting cannot be larger than the storage it is loaded from &nbsp;|&nbsp; `;
     })() +
     `<strong>Capacity:</strong> cargo capacity from deadweight (95 % cargo, crude at 0.87 t/m³). Deadweight is the owner's figure where known (AET), otherwise estimated from length × beam × maximum draught in the AIS register (≈, calibrated on the stated figures, roughly ±5 %) &nbsp;|&nbsp; ` +
-    (lifted ? `<strong>Estimated lifted volume:</strong> each call counts as the cargo estimated from the tanker's draught after leaving where it was sampled (from 23 Nov 2026), otherwise a full cargo at the tanker's capacity times the field's fill factor, in the month it arrived; never more than the storage on the installation it loaded at (Balder FPU or Jotun FPSO, Åsgard A or C; found from the tanker's AIS positions)` +
+    (lifted ? `<strong>Estimated lifted volume:</strong> each call counts as the cargo estimated from the tanker's draught after leaving where it was sampled (from 23 Nov 2026), otherwise a full cargo at the tanker's capacity times the field's fill factor, in the month it left the field (a tanker still there counts in the current month); never more than the storage on the installation it loaded at (Balder FPU or Jotun FPSO, Åsgard A or C; found from the tanker's AIS positions)` +
       `; reported oil production is Sodir's net oil for all fields in the ${oilHub ? esc(tc(oilHub)) + ' ' : ''}hub, since satellites are loaded from the host's storage${oilIds.length > 1 ? ', including any exported by pipeline' : ''} (Sm³ × ${BBL_PER_SM3}). Part cargoes, condensate and NGL in the tanks, and liftings for several fields make the estimate rough` +
       `. <strong>Fill factor:</strong> ${Object.entries(fill).map(([fid, f]) => `${esc(tc(fieldNameOf(+fid)))} ${f.k.toFixed(2)}` +
         (f.months ? ` (${fmtShort(f.months[0] + '-01').replace(/^1 /, '')} – ${fmtShort(f.months[f.months.length - 1] + '-01').replace(/^1 /, '')}, ${f.n} calls)` : ' (too little data)')).join(', ')}` +
