@@ -444,7 +444,8 @@ function viewProduction() {
   if (S.g === 'total') {
     datasets = [{label: {oil: 'Oil', gas: 'Gas', boe: 'Oil + gas', water: 'Water'}[S.p], data: perDay(i => pick(D.total, i, S.p), ps, S.p), backgroundColor: {oil: '#ce0f69', gas: '#f68d2e', boe: '#7d2248', water: '#4993b4'}[S.p]}];
   } else if (S.g === 'salt') {
-    datasets = Object.keys(SALT).filter(k => D.bySalt[k]).map(k => ({label: SALT[k].label, backgroundColor: SALT[k].color, data: perDay(i => pick(D.bySalt[k], i, S.p), ps, S.p)}));
+    // Stablet nedenfra: onshore, post-salt, pre-salt øverst.
+    datasets = Object.keys(SALT).reverse().filter(k => D.bySalt[k]).map(k => ({label: SALT[k].label, backgroundColor: SALT[k].color, data: perDay(i => pick(D.bySalt[k], i, S.p), ps, S.p)}));
     note = ` <b>Pre-salt</b> is production from wells ANP lists as pre-salt in its well archive (2005–${D.presalArchive.slice(0, 4)}); wells drilled since then follow their field's split in ${D.presalArchive.slice(0, 4)}, and new fields in the Santos basin count as pre-salt.`;
   } else if (S.g === 'basin' || S.g === 'state') {
     const src = S.g === 'basin' ? D.byBasin : D.byState;
