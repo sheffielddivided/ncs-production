@@ -50,6 +50,8 @@ UA = 'Mozilla/5.0 (compatible; ncs-insight data fetch)'
 OUT = 'data/gom.json'
 OUT_PROD = 'data/gom_prod.json'
 OUT_WELLS = 'data/gom_wells.json'
+OUT_CMP = 'data/gom_company.json'   # selskap × felt per år, til Company med ett selskap valgt
+CMP_FIELD_MIN = 1000        # felt med minst så mye (tusen fat o.e.) for selskapet siden 1985 får egen serie
 
 MCF_PER_BOE = 5.62          # BOEMs omregning: 5 620 kubikkfot gass per fat o.e.
 DEEP_FT = 1000              # BOEM: dypvann fra 1 000 fot
@@ -255,8 +257,12 @@ def read_ogor(store):
             if int(y) >= RECENT_FROM:
                 keys.append(('X', f + '\t' + op))     # felt × operatør, til feltoperatøren
                 keys.append(('Y', lease + '\t' + f))  # lease × felt, til egenandel per felt
+            if int(y) >= OPS_FROM:
+                # Per år (ikke måned), til selskap × felt: lease × felt og felt × operatør
+                keys.append(('Z', lease + '\t' + f, y))
+                keys.append(('W', f + '\t' + op, y))
             for key in keys:
-                a = agg[y][(key[0], key[1], ym)]
+                a = agg[y][(key[0], key[1], key[2] if len(key) > 2 else ym)]
                 a[0] += o
                 a[1] += g
                 a[2] += w
@@ -272,13 +278,15 @@ def read_ogor(store):
     lease = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     fxo = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     ylf = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
+    lfy = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
+    foy = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     tot = collections.defaultdict(lambda: [0.0, 0.0, 0.0])
     rows = 0
     for y, rel in sorted(best.items()):
         cnt, agg = per_file[rel]
         rows += cnt[y]
         for (kind, key, ym), v in agg[y].items():
-            tgt = {'F': fld, 'O': opr, 'L': lease, 'X': fxo, 'Y': ylf}[kind]
+            tgt = {'F': fld, 'O': opr, 'L': lease, 'X': fxo, 'Y': ylf, 'Z': lfy, 'W': foy}[kind]
             a = tgt[(key, ym)]
             for k in range(3):
                 a[k] += v[k]
@@ -293,7 +301,7 @@ def read_ogor(store):
     if missing:
         raise DataError(f'production years missing: {missing}')
     print(f'  {rows:,} rows, {years[0]}–{years[-1]}')
-    return fld, opr, lease, fxo, ylf, tot, opname
+    return fld, opr, lease, fxo, ylf, lfy, foy, tot, opname
 
 
 def ym_add(ym, n):
@@ -617,7 +625,7 @@ def main():
         print(f'  {len(names)} companies')
 
         print('Production (OGOR-A)')
-        fld, opr, lease, fxo, ylf, tot, opname = read_ogor(store)
+        fld, opr, lease, fxo, ylf, lfy, foy, tot, opname = read_ogor(store)
         names.update({k: v for k, v in opname.items() if k not in names})
         first, last = last_complete(tot)
         months = ym_range(first, last)
@@ -827,7 +835,74 @@ def main():
     field_eq = {f: [[g, round(v / ftot[f] * 100, 1)] for g, v in c.most_common() if v / ftot[f] >= 0.005]
                 for f, c in fshare.items() if ftot[f] > 0}
 
+    # ---- selskap × felt per år fra 1985, til Company med ett selskap valgt.
+    # Egenandel: leasens månedsproduksjon × eierandelene den måneden, fordelt
+    # på feltene i leasen etter feltenes andel av leasens olje og gass det året.
+    # Opererte: produksjonen fra kompletteringene konsernet opererte, per felt.
+    y0, y1 = OPS_FROM, int(last[:4])
+    ny = y1 - y0 + 1
+    lf_frac = collections.defaultdict(dict)       # (lease, år) → {felt: (andel olje, andel gass)}
+    lf_tot = collections.defaultdict(lambda: [0.0, 0.0])
+    for (key, y), v in lfy.items():
+        ls, f = key.split('\t')
+        lf_tot[(ls, y)][0] += v[0]
+        lf_tot[(ls, y)][1] += v[1]
+    for (key, y), v in lfy.items():
+        ls, f = key.split('\t')
+        t = lf_tot[(ls, y)]
+        if f and f != 'WILD' and (v[0] or v[1]):
+            lf_frac[(ls, y)][f] = (v[0] / t[0] if t[0] else 0.0, v[1] / t[1] if t[1] else 0.0)
+    new = lambda: [[0.0] * ny, [0.0] * ny]
+    cf_eq = collections.defaultdict(lambda: collections.defaultdict(new))
+    for (ls, ym), v in lease.items():
+        if ym > last or int(ym[:4]) < y0:
+            continue
+        fr = lf_frac.get((ls, ym[:4]))
+        tl = owners.get(ls)
+        if not fr or not tl:
+            continue
+        sh = shares_at(tl, ym)
+        if not sh:
+            continue
+        j = int(ym[:4]) - y0
+        for comp, frac in sh.items():
+            g = gname.get(comp) or gname.setdefault(comp, group_of(names.get(comp, comp)))
+            if g not in eq_keep:
+                continue
+            for f, (fo, fg) in fr.items():
+                a = cf_eq[g][f]
+                a[0][j] += v[0] * frac * fo
+                a[1][j] += v[1] * frac * fg
+    cf_op = collections.defaultdict(lambda: collections.defaultdict(new))
+    for (key, y), v in foy.items():
+        f, op = key.split('\t')
+        if not f or f == 'WILD' or int(y) > y1:
+            continue
+        g = group_of(names.get(op, op))
+        if g not in keep:
+            continue
+        a = cf_op[g][f]
+        a[0][int(y) - y0] += v[0]
+        a[1][int(y) - y0] += v[1]
+
+    def cmp_out(cf):
+        # [første årindeks, [olje…], [gass…]] uten nuller i endene; små felt utelates
+        out = {}
+        for g, fs in cf.items():
+            o = {}
+            for f, (oil, gas) in fs.items():
+                if sum(oil) + sum(gas) / MCF_PER_BOE < CMP_FIELD_MIN:
+                    continue
+                nz = [i for i in range(ny) if oil[i] or gas[i]]
+                a, b = nz[0], nz[-1] + 1
+                o[f] = [a, [r1(x) for x in oil[a:b]], [r1(x) for x in gas[a:b]]]
+            out[g] = o
+        return out
+    cmp_payload = {'from': y0, 'last': last, 'units': 'thousand bbl / MMcf per year',
+                   'equity': cmp_out(cf_eq), 'operated': cmp_out(cf_op)}
+
     fetched = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+    cmp_payload['fetched'] = fetched
     # Feltene som rader (kolonnene i FIELD_COLS) for å holde filen liten
     FIELD_COLS = ['code', 'name', 'disc', 'wd', 'dc', 'type', 'rank', 'orig', 'cumR', 'rem', 'first', 'last', 'cum', 'l12', 'loc', 'op', 'opLegal']
     fields_rows = [[fo.get(k) for k in FIELD_COLS] for fo in fields_out]
@@ -867,7 +942,7 @@ def main():
                      'status': WELL_STATUS, 'wells': wells['list']}
 
     # Uendret innhold gir ingen commit
-    for path, obj in ((OUT, payload), (OUT_PROD, prod_payload), (OUT_WELLS, wells_payload)):
+    for path, obj in ((OUT, payload), (OUT_PROD, prod_payload), (OUT_WELLS, wells_payload), (OUT_CMP, cmp_payload)):
         try:
             old = json.load(open(path, encoding='utf-8'))
             if {**old, 'fetched': None} == {**obj, 'fetched': None}:

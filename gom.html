@@ -232,7 +232,7 @@ const TOP_FIELDS = 8, TOP_OPS = 8;     // som paletten: flere ville fått samme 
 // ── TILSTAND ─────────────────────────────────────────────────────────────────
 // Lenkeparametre. fs = felt i faktaarket.
 const DEFAULTS = {v: 'production', g: 'depth', p: 'boe', per: 'a', u: 'bbl', from: '1990', rk: 'l12', dc: '', q: '',
-                  c: '', b: 'eq', rp: 'boe', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
+                  c: '', cf: '2008', b: 'eq', rp: 'boe', rpd: 'yes', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
 let S = {...DEFAULTS};
 let D = null, P = null, W = null, COAST = null;
 let F = [];                    // feltene som objekter
@@ -390,6 +390,12 @@ async function loadProd() {
   if (P) return;
   P = await fetch('data/gom_prod.json', {cache: 'no-cache'}).then(r => r.json());
 }
+// Selskap × felt per år (data/gom_company.json), lastes når et selskap velges.
+let CMPD = null;
+async function loadCmp() {
+  if (CMPD) return;
+  CMPD = await fetch('data/gom_company.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : {equity: {}, operated: {}}).catch(() => ({equity: {}, operated: {}}));
+}
 async function loadWells() {
   if (W) return;
   W = await fetch('data/gom_wells.json', {cache: 'no-cache'}).then(r => r.json());
@@ -511,9 +517,14 @@ function drawFieldTable() {
 
 // ── RESERVES ──
 function viewReserves() {
-  setControls(pills('rp', [['boe', 'Oil + gas (boe)'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product'));
+  setControls(pills('rp', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
+    pills('rpd', [['yes', 'Show'], ['no', 'Hide']], 'Produced'));
+  const showProd = S.rpd !== 'no';
   const A = D.reserves.area;   // [år, felt, opp. olje, gass, boe, akk. olje, gass, boe, gjenv. olje, gass, boe]
-  const k = {oil: 0, gas: 1, boe: 2}[S.rp], unit = S.rp === 'gas' ? 'Tcf' : S.rp === 'oil' ? 'billion bbl' : 'billion boe';
+  // Alle volumer i boe: olje i fat, gass (Tcf) omregnet med BOEMs Mcf per fat.
+  const k = {oil: 0, gas: 1, boe: 2}[S.rp], unit = 'billion boe';
+  const TCF_BOE = 1000 / MCF_PER_BOE;   // mill. boe per Tcf: 1 Tcf = 1e9 Mcf = 1e9 / 5,62 boe ≈ 178 mill. boe
+  const toBoe = (r, base) => r[base + k] * (S.rp === 'gas' ? TCF_BOE / 1000 : 1);
   const byDc = {};
   F.forEach(f => { if (f.rem) { const c = f.dc || 'unknown'; byDc[c] = (byDc[c] || 0) + f.rem[3]; } });
   const topRem = F.filter(f => f.rem && f.rem[3] > 0).sort((a, b) => b.rem[3] - a.rem[3]).slice(0, 20);
@@ -521,15 +532,15 @@ function viewReserves() {
   setView(`<div class="kpis">
       <div class="kpi"><span>Original reserves</span><strong>${fmt(last[4], 1)}</strong><small>billion boe, ${last[1]} fields</small></div>
       <div class="kpi"><span>Produced</span><strong>${fmt(last[7], 1)}</strong><small>billion boe to 31 Dec ${last[0]}</small></div>
-      <div class="kpi"><span>Remaining reserves</span><strong>${fmt(last[10], 2)}</strong><small>billion boe (${fmt(last[8], 2)} bn bbl oil, ${fmt(last[9], 1)} Tcf gas)</small></div>
+      <div class="kpi"><span>Remaining reserves</span><strong>${fmt(last[10], 2)}</strong><small>billion boe (${fmt(last[8], 2)} oil, ${fmt(last[9] * TCF_BOE / 1000, 2)} gas)</small></div>
       <div class="kpi"><span>Remaining in deep water</span><strong>${fmt(((byDc.deep || 0) + (byDc.ultra || 0)) / Object.values(byDc).reduce((a, b) => a + b, 0) * 100)} %</strong><small>of remaining boe, mean estimate</small></div></div>` +
-    chartCard('areaRes', 'Reserves over time', `${{boe: 'Oil + gas', oil: 'Oil', gas: 'Gas'}[S.rp]} · ${unit} · remaining reserves (bottom) and produced (top) as estimated each 31 December (BOEM)`) +
+    chartCard('areaRes', 'Reserves over time', `${{boe: 'Oil + gas', oil: 'Oil', gas: 'Gas'}[S.rp]} · ${unit} · ${showProd ? 'remaining reserves (bottom) and produced (top)' : 'remaining reserves'} as estimated each 31 December (BOEM)`) +
     `<div class="grid2">${chartCard('remTop', 'Largest remaining reserves', 'Mean estimate · MMboe · click a field', {h: 470})}${chartCard('remDepth', 'Remaining reserves by water depth', 'Mean estimate · MMboe', {cls: 'short'})}</div>
     <div class="info-box"><strong>Source:</strong> BOEM, «Estimated Oil and Gas Reserves, Gulf of America OCS Region, December 31, ${D.reserves.year}» (tables 4 and 9). BOEM estimates reserves for each field from reservoir data; P10/P50/P90 are shown in the factsheets, the mean here. Before 2015 the series is every five years, and BOEM published no estimates for 2020–2022.</div>`);
   barChart('areaRes', A.map(r => r[0]), [
-    {label: 'Remaining reserves', data: A.map(r => r[8 + k]), backgroundColor: REMAINING_COLOR, borderWidth: 1, borderColor: '#fff'},
-    {label: 'Produced', data: A.map(r => r[5 + k]), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'},
-  ], unit, {dec: 1, ticks: 30});
+    {label: 'Remaining reserves', data: A.map(r => toBoe(r, 8)), backgroundColor: REMAINING_COLOR, borderWidth: 1, borderColor: '#fff'},
+  ].concat(showProd ? [{label: 'Produced', data: A.map(r => toBoe(r, 5)), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'}] : []),
+  unit, {dec: 1, ticks: 30});
   barChart('remTop', topRem.map(fname), [{label: 'Remaining (mean)', data: topRem.map(f => f.rem[3]), backgroundColor: topRem.map(f => DEPTH[f.dc || 'unknown'].color), borderWidth: 0}],
     'MMboe', {horizontal: true, noFooter: true, legend: false, onClick: i => openSheet(topRem[i].code)});
   const dcs = Object.keys(DEPTH).filter(c => byDc[c]);
@@ -549,10 +560,16 @@ function viewCompany() {
   setControls(pills('b', [['eq', 'Equity (net)'], ['op', 'Operated']], 'Basis') +
     select('c', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company') +
     pills('p', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
-    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period'));
-  // Som Production: alt i boe/dag; olje + gass for ett selskap fordelt på olje og gass.
+    pills('per', [['m', 'Monthly', !!S.c], ['a', 'Annual']], 'Period') +
+    select('cf', Array.from({length: +lastYM().slice(0, 4) - +SRC.start.slice(0, 4) + 1}, (_, k) => {
+      const y = String(+SRC.start.slice(0, 4) + k); return [y, y]; }), 'From'));
+  // Som Production: alt i boe/dag. Ett selskap: fordelt per felt, årlig
+  // (feltfordelingen finnes bare per år).
   if (!['oil', 'gas', 'boe'].includes(S.p)) S.p = 'boe';
-  const ps = periods(S.per, SRC.start.slice(0, 4) > S.from ? SRC.start.slice(0, 4) : S.from), unit = 'boe/day', fb = factorBoe(S.p);
+  if (S.c && !CMPD) { setView(loading()); loadCmp().then(() => S.v === 'company' && render()); return; }
+  if (S.c && S.per !== 'a') { S.per = 'a'; writeUrl(); return render(); }
+  // Startår: standard 2008, kan overstyres (cf); ikke før dataene begynner.
+  const ps = periods(S.per, SRC.start.slice(0, 4) > S.cf ? SRC.start.slice(0, 4) : S.cf), unit = 'boe/day', fb = factorBoe(S.p);
   const getIn = (GG, o, p = S.p) => g => i => { const j = i - o; return j < 0 || !GG[g] ? 0 : pick(GG[g], j, p); };
   const get = getIn(G, off), getOp = getIn(OG, ooff), getEq = getIn(EG, eoff);
   const word = eqMode ? 'equity' : 'operated';
@@ -561,9 +578,20 @@ function viewCompany() {
     const shown = order.filter(g => G[g]).slice(0, TOP_OPS);
     datasets = shown.map(g => ({label: g, backgroundColor: opColor(g), data: perDay(get(g), ps, S.p, fb)}));
     datasets.push({label: 'Other companies', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - shown.reduce((t, g) => t + get(g)(i), 0)), ps, S.p, fb)});
-  } else if (S.p === 'boe') {
-    datasets = [['oil', 'Oil (incl. condensate)', '#ce0f69'], ['gas', 'Gas', '#f68d2e']].map(([k, label, col]) => ({label: `${label} (${word})`, backgroundColor: col,
-      data: perDay(getIn(G, off, k)(S.c), ps, k, factorBoe(k))}));
+  } else if ((eqMode ? CMPD.equity : CMPD.operated)[S.c]) {
+    // De største feltene for selskapet i perioden hver for seg, resten samlet.
+    const FS = (eqMode ? CMPD.equity : CMPD.operated)[S.c];
+    const val = (code, p) => {
+      const [a, oil, gas] = FS[code], j = +p.key - CMPD.from - a;
+      if (j < 0 || j >= oil.length) return 0;
+      const v = S.p === 'oil' ? oil[j] : S.p === 'gas' ? gas[j] / MCF_PER_BOE : oil[j] + gas[j] / MCF_PER_BOE;
+      return v * 1000 / p.days;
+    };
+    const top = Object.keys(FS).map(c => [c, ps.reduce((t, p) => t + val(c, p), 0)]).filter(x => x[1] > 0)
+      .sort((a, b) => b[1] - a[1]).slice(0, PALETTE.length).map(x => x[0]);
+    datasets = top.map((c, i) => { const f = fieldBy(c); return {label: f ? fname(f) : c, code: c, backgroundColor: PALETTE[i], data: ps.map(p => val(c, p))}; });
+    const total = perDay(get(S.c), ps, S.p, fb);
+    datasets.push({label: 'Other fields', backgroundColor: OTHER_COLOR, data: total.map((t, k) => Math.max(0, t - top.reduce((s2, c) => s2 + val(c, ps[k]), 0)))});
   } else {
     datasets = [{label: `${S.c} (${word})`, backgroundColor: opColor(S.c) === OTHER_COLOR ? '#7d2248' : opColor(S.c), data: perDay(get(S.c), ps, S.p, fb)}];
   }
@@ -605,10 +633,14 @@ function viewCompany() {
   const info = eqMode
     ? `<strong>Equity production</strong> is each lease's monthly production multiplied by the ownership shares in force that month, from BOEM's lease ownership records (assignments with their effective dates). It covers ${fmt(Math.min(...cov) * 100, 1)}–${fmt(Math.max(...cov) * 100, 1)} % of production each year since ${D.equity.start.slice(0, 4)}. Leases split by depth or area into several owner groups are averaged across the groups, and unitised production is credited to the lease it is reported on, so field shares can differ somewhat from unit agreements.`
     : `<strong>Operated volumes</strong> are historical: each month's production is credited to the operator that reported it, so past operators keep their history.`;
-  setView(chartCard('cmpChart', S.c ? `${esc(S.c)} · ${word} production` : `${eqMode ? 'Equity' : 'Operated'} production by company`,
-      `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit} · ${eqMode ? 'share by lease ownership at the time' : 'production from the completions each company operated at the time'}`, {cls: 'tall'}) +
-    `<div class="info-box">${info} Companies are grouped by today's parent where the lineage is clear (e.g. Texaco, Unocal, Noble and Hess under Chevron; Amoco under bp; Anadarko under Oxy; Stone, EnVen and QuarterNorth under Talos); other owners keep their registered name.</div>` + table);
+  setView(chartCard('cmpChart', S.c ? `${esc(S.c)} · ${word} production by field` : `${eqMode ? 'Equity' : 'Operated'} production by company`,
+      `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit}${S.c ? ', annual average' : ''} · ${eqMode ? 'share by lease ownership at the time' : 'production from the completions each company operated at the time'}${S.c ? ' · click a field for its factsheet' : ''}`, {cls: 'tall'}) +
+    `<div class="info-box">${info}${S.c ? ` <strong>By field:</strong> annual, from ${CMPD.from}; ${eqMode ? "a lease's equity production is split between the fields in it by each field's share of the lease's oil and gas that year" : 'production from the completions the company operated, by field'}. The ${PALETTE.length} largest fields for the company in the period have their own series; the rest, and fields with less than 1 MMboe for the company since ${CMPD.from}, are in «Other fields».` : ''} Companies are grouped by today's parent where the lineage is clear (e.g. Texaco, Unocal, Noble and Hess under Chevron; Amoco under bp; Anadarko under Oxy; Stone, EnVen and QuarterNorth under Talos); other owners keep their registered name.</div>` + table);
   barChart('cmpChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: 0, noAnim: t.labels.length > 300});
+  if (S.c) charts.cmpChart.options.onClick = (e) => {
+    const el = charts.cmpChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0];
+    const code = el && t.datasets[el.datasetIndex].code; if (code) openSheet(code);
+  };
 }
 
 // ── DRILLING ──
