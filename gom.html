@@ -232,7 +232,7 @@ const TOP_FIELDS = 8, TOP_OPS = 8;     // som paletten: flere ville fått samme 
 // ── TILSTAND ─────────────────────────────────────────────────────────────────
 // Lenkeparametre. fs = felt i faktaarket.
 const DEFAULTS = {v: 'production', g: 'depth', p: 'boe', per: 'a', u: 'bbl', from: '1990', rk: 'l12', dc: '', q: '',
-                  c: '', b: 'eq', rp: 'boe', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
+                  c: '', b: 'eq', rp: 'boe', rpd: 'yes', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
 let S = {...DEFAULTS};
 let D = null, P = null, W = null, COAST = null;
 let F = [];                    // feltene som objekter
@@ -511,7 +511,9 @@ function drawFieldTable() {
 
 // ── RESERVES ──
 function viewReserves() {
-  setControls(pills('rp', [['boe', 'Oil + gas (boe)'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product'));
+  setControls(pills('rp', [['boe', 'Oil + gas (boe)'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
+    pills('rpd', [['yes', 'Show'], ['no', 'Hide']], 'Produced'));
+  const showProd = S.rpd !== 'no';
   const A = D.reserves.area;   // [år, felt, opp. olje, gass, boe, akk. olje, gass, boe, gjenv. olje, gass, boe]
   const k = {oil: 0, gas: 1, boe: 2}[S.rp], unit = S.rp === 'gas' ? 'Tcf' : S.rp === 'oil' ? 'billion bbl' : 'billion boe';
   const byDc = {};
@@ -523,13 +525,13 @@ function viewReserves() {
       <div class="kpi"><span>Produced</span><strong>${fmt(last[7], 1)}</strong><small>billion boe to 31 Dec ${last[0]}</small></div>
       <div class="kpi"><span>Remaining reserves</span><strong>${fmt(last[10], 2)}</strong><small>billion boe (${fmt(last[8], 2)} bn bbl oil, ${fmt(last[9], 1)} Tcf gas)</small></div>
       <div class="kpi"><span>Remaining in deep water</span><strong>${fmt(((byDc.deep || 0) + (byDc.ultra || 0)) / Object.values(byDc).reduce((a, b) => a + b, 0) * 100)} %</strong><small>of remaining boe, mean estimate</small></div></div>` +
-    chartCard('areaRes', 'Reserves over time', `${{boe: 'Oil + gas', oil: 'Oil', gas: 'Gas'}[S.rp]} · ${unit} · remaining reserves (bottom) and produced (top) as estimated each 31 December (BOEM)`) +
+    chartCard('areaRes', 'Reserves over time', `${{boe: 'Oil + gas', oil: 'Oil', gas: 'Gas'}[S.rp]} · ${unit} · ${showProd ? 'remaining reserves (bottom) and produced (top)' : 'remaining reserves'} as estimated each 31 December (BOEM)`) +
     `<div class="grid2">${chartCard('remTop', 'Largest remaining reserves', 'Mean estimate · MMboe · click a field', {h: 470})}${chartCard('remDepth', 'Remaining reserves by water depth', 'Mean estimate · MMboe', {cls: 'short'})}</div>
     <div class="info-box"><strong>Source:</strong> BOEM, «Estimated Oil and Gas Reserves, Gulf of America OCS Region, December 31, ${D.reserves.year}» (tables 4 and 9). BOEM estimates reserves for each field from reservoir data; P10/P50/P90 are shown in the factsheets, the mean here. Before 2015 the series is every five years, and BOEM published no estimates for 2020–2022.</div>`);
   barChart('areaRes', A.map(r => r[0]), [
     {label: 'Remaining reserves', data: A.map(r => r[8 + k]), backgroundColor: REMAINING_COLOR, borderWidth: 1, borderColor: '#fff'},
-    {label: 'Produced', data: A.map(r => r[5 + k]), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'},
-  ], unit, {dec: 1, ticks: 30});
+  ].concat(showProd ? [{label: 'Produced', data: A.map(r => r[5 + k]), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'}] : []),
+  unit, {dec: 1, ticks: 30});
   barChart('remTop', topRem.map(fname), [{label: 'Remaining (mean)', data: topRem.map(f => f.rem[3]), backgroundColor: topRem.map(f => DEPTH[f.dc || 'unknown'].color), borderWidth: 0}],
     'MMboe', {horizontal: true, noFooter: true, legend: false, onClick: i => openSheet(topRem[i].code)});
   const dcs = Object.keys(DEPTH).filter(c => byDc[c]);
