@@ -40,6 +40,7 @@ sporene til de kjente tankskipene leses for anløp boksen ikke så (gap_calls).
 
 import json
 import math
+import re
 import os
 import sys
 import time
@@ -95,6 +96,11 @@ BBL_PER_M3 = 6.2898
 WP_K = 0.88
 SEAWATER = 1.025
 OBS_DAYS = 120         # så lenge dypgangsobservasjonene beholdes
+# Lasten leses av dypgangen like etter avgang: fra Alvheim er skipet ved
+# Mongstad etter om lag ti timer, og dypgangen etter lossing (ballast, på vei
+# tilbake for å laste) må ikke tas for en liten last. Dypgang meldt etter
+# LADEN_HOURS, eller med et felt som destinasjon, brukes ikke.
+LADEN_HOURS = 24
 ROUTE_DAYS = 7         # hvor langt før besøket det letes etter forrige stopp
 TO_DAYS = 10           # hvor langt etter besøket det letes etter neste stopp
 TO_VERSION = 3         # øk når regelen for «to» endres, så alle slås opp på nytt
@@ -561,10 +567,38 @@ def realtime(log, cfg):
     print(f'  sanntid: {len(want)} tankskip følges, {changed} nye observasjoner')
 
 
-def laden_after(obs_rows, end, until):
-    """Største dypgang og første destinasjon observert etter avgang (end) og
-    før neste anløp eller TO_DAYS (until), som 'YYYY-MM-DDTHH:MM'."""
-    rows = [r for r in obs_rows if end <= r[0] <= until]
+# Lastesteder utenfor Sodirs feltliste som tankskipene melder som destinasjon,
+# og ord som betyr felt eller lagerskip.
+FOREIGN_FIELDS = {'MARINER', 'PENGUINS', 'CLAIR', 'SCHIEHALLION', 'FOINAVEN', 'CAPTAIN', 'GRYPHON', 'ALBA', 'KRAKEN'}
+FIELD_WORDS = {'FPSO', 'FSO', 'FPU', 'FSU', 'FIELD', 'OF'}
+
+
+def dest_words(text):
+    """Store bokstaver, æ/ø/å skrevet om (ÅSGARD = AASGARD), og bare ord."""
+    t = (text or '').upper().replace('Å', 'AA').replace('Ø', 'O').replace('Æ', 'AE')
+    return ' ' + re.sub(r'[^A-Z0-9]+', ' ', t).strip() + ' '
+
+
+def loading_dest(dest, names):
+    """Destinasjonen er et felt eller lastested (skipet er på vei for å laste):
+    et feltnavn fra Sodir som eget ord (ALVHEIM, NO AASGARD, JOTUN / BALDER),
+    et utenlandsk lastefelt (MARINER), et ord som FPSO eller OF (DRAUGEN OF),
+    eller en offshorekode som begynner på XZ (XZBAL). names: dest_words(feltnavn)."""
+    d = dest_words(dest)
+    return d.strip().startswith('XZ') or any(n in d for n in names) \
+        or any(f' {w} ' in d for w in FOREIGN_FIELDS | FIELD_WORDS)
+
+
+def laden_after(obs_rows, arrived, left, until, names):
+    """Dypgang og destinasjon like etter avgang, som 'YYYY-MM-DDTHH:MM':
+    dypgangen som gjaldt ved avgang (meldt etter ankomst) og den som ble meldt
+    innen LADEN_HOURS etter avgang og før neste anløp (until). Den største
+    gjelder; meldinger med et felt som destinasjon regnes ikke (se
+    loading_dest). (None, None) når ingen passer."""
+    stop = min(until, iso(minutes(parse_iso(left + 'Z')) + LADEN_HOURS * 60)[:16])
+    before = [r for r in obs_rows if arrived <= r[0] <= left]
+    rows = before[-1:] + [r for r in obs_rows if left < r[0] <= stop]
+    rows = [r for r in rows if not loading_dest(r[2], names)]
     if not rows:
         return None, None
     best = max(rows, key=lambda r: r[1])
@@ -904,6 +938,8 @@ def main():
 
     specs = (load_json(SPECS, {}).get('ships') or {})
     obs = load_json(OBS, {'ships': {}})['ships']
+    # Feltnavn som ord, for å kjenne igjen destinasjoner som er lastesteder.
+    field_words = {dest_words(n) for n in fields.values() if n and len(n) >= 4}
     for st in setups:
         rows_out = []
         by_ship = {}
@@ -913,7 +949,10 @@ def main():
             sh = st['ships'].get(v['m']) or {}
             nxt = [w['s'] for w in by_ship[v['m']] if w['s'] > v['e']]
             until = iso(min([v['e'] + TO_DAYS * 1440] + nxt))[:16]
-            dr, dest = (None, None) if v['open'] else laden_after(obs.get(v['m'], []), iso(v['e'])[:16], until)
+            arrived = v['arr'] if v.get('arr') not in (None, '?') else iso(v['s'])
+            left = v['dep'] if v.get('dep') not in (None, '?') else iso(v['e'])
+            dr, dest = (None, None) if v['open'] else \
+                laden_after(obs.get(v['m'], []), arrived[:16], left[:16], until, field_words)
             rows_out.append([v['m'], iso(v['s']), iso(v['e']), v['d'], 1 if v['open'] else 0, v['from'], v['to'],
                              dr, cargo_bbl(sh, tanker_spec(sh, specs), dr), dest, v.get('fac'),
                              None if v.get('arr') == '?' else v.get('arr'), None if v.get('dep') == '?' else v.get('dep')])
