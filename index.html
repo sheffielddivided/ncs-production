@@ -118,7 +118,7 @@
     /* ── Startsiden (topMode 'home') ── */
     #homeBox{display:none;margin:12px;}
     body.home #homeBox{display:block;}
-    body.home .chart-wrap, body.home #chartTable, body.home .profile-wrap, body.home .info-box, body.home .dl-row,
+    body.home .chart-wrap, body.home #chartTable, body.home #chartTableBottom, body.home .profile-wrap, body.home .info-box, body.home .dl-row,
     body.home .select-fab, body.home #pickRow, body.home #tabsRow{display:none !important;}
     @media (min-width: 1148px) { #homeBox{max-width:var(--cw);margin-left:auto;margin-right:auto;} }
     .hm-hero{background:linear-gradient(135deg,#7d2248 0%,#a3195b 55%,#ce0f69 100%);color:#fff;border-radius:14px;
@@ -179,9 +179,9 @@
     #explBox{display:none;}
     body.expl #explBox, body.lic #licBox{display:block;}
     #licBox{display:none;}
-    body.lic .chart-wrap, body.lic #chartTable, body.lic .profile-wrap, body.lic .info-box,
+    body.lic .chart-wrap, body.lic #chartTable, body.lic #chartTableBottom, body.lic .profile-wrap, body.lic .info-box,
     body.lic .select-fab, body.lic #downloadBtn, body.lic #pptBtn, body.lic #pptAddBtn{display:none !important;}
-    body.expl .chart-wrap, body.expl #chartTable, body.expl .profile-wrap, body.expl .info-box,
+    body.expl .chart-wrap, body.expl #chartTable, body.expl #chartTableBottom, body.expl .profile-wrap, body.expl .info-box,
     body.expl .select-fab, body.expl #downloadBtn, body.expl #pptBtn, body.expl #pptAddBtn{display:none !important;}
     /* Exploration → Activity bruker det felles grafkortet. */
     body.expl.expl-chart .chart-wrap, body.expl.expl-chart #chartTable, body.expl.expl-chart .info-box{display:block !important;}
@@ -1196,6 +1196,8 @@
 <div class="profile-wrap" id="profileBox"></div>
 
 <div class="info-box" id="infoBox"></div>
+
+<div class="res-table-wrap" id="chartTableBottom"></div>
 
 <div class="dl-row">
   <button class="dl-btn share-btn" id="shareBtn" onclick="copyViewLink()">
@@ -3945,11 +3947,13 @@ function setProfile(html) {
   document.getElementById('profileBox').innerHTML = html;
 }
 
-function setChartTable(html) {
+function setChartTable(html, bottom = '') {
   // Tømmes tabellen, forsvinner også grupperingsveksleren. Da skal det ikke
   // ligge igjen et datasett den kunne tegnet om.
   if (!html) lastHubReserve = null;
   document.getElementById('chartTable').innerHTML = html;
+  // bottom: tabell nederst på siden, under infoboksen (Shipping: tankskipene).
+  document.getElementById('chartTableBottom').innerHTML = bottom;
 }
 
 function setChartEmpty(msg) {
@@ -14569,20 +14573,21 @@ function drawShipping(ids, name, kind) {
     const x = liftOf(v);
     return x ? `<span class="muted" title="No draught reported: the tanker's capacity × the field's fill factor, at most the storage">≈ ${kbbl(x)}*</span>` : '<span class="muted">—</span>';
   };
+  // Anløpene rett under grafen; tankskipene nederst på siden, under infoboksen.
   setChartTable(`
-    <table class="res-table">
-      <caption>Tankers · ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))}</caption>
-      <thead><tr><th>Tanker</th><th>Length</th><th>Deadweight</th><th>Capacity, bbl</th><th>Calls</th><th>Last 30 days</th><th>Days at ${kind}</th><th>Last call</th></tr></thead>
-      <tbody>${ranked.map(o => `<tr><td>${esc(o.name)}</td><td>${o.len ? o.len + ' m' : '—'}</td><td>${o.dwt ? (o.est ? '≈ ' : '') + Math.round(o.dwt).toLocaleString('en') + ' t' : '—'}</td><td>${o.cap ? (o.est ? '≈ ' : '') + Math.round(o.cap / 1000).toLocaleString('en') + 'k' : '—'}</td><td>${o.n}</td><td>${n30(o.m)}</td><td>${o.days.toFixed(1)}</td><td>${fmtShort(new Date(o.last).toISOString().slice(0, 10))}</td></tr>`).join('')}</tbody>
-      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td>${visits.length}</td><td>${visits.filter(v => v.t0 >= d30).length}</td><td>${ranked.reduce((t, o) => t + o.days, 0).toFixed(1)}</td><td></td></tr></tfoot>
-    </table>
     <table class="res-table">
       <caption>Calls, newest first · times in UTC</caption>
       <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}${showFac ? '<th>Installation</th>' : ''}<th>Est. cargo, bbl</th><th>From</th><th>To</th></tr></thead>
       <tbody>${list.slice(0, shipShown).map(v => `<tr><td>${fmtT(v.t0)}</td><td>${v.open ? `<em>at the ${kind}</em>` : fmtT(v.t1)}</td><td>${fmtStay((v.t1 - v.t0) / 36e5)}</td>
           <td>${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}${showFac ? `<td>${facCell(v)}</td>` : ''}<td>${cargoCell(v)}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
     </table>
-    ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`);
+    ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`, `
+    <table class="res-table">
+      <caption>Tankers · ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))}</caption>
+      <thead><tr><th>Tanker</th><th>Length</th><th>Deadweight</th><th>Capacity, bbl</th><th>Calls</th><th>Last 30 days</th><th>Days at ${kind}</th><th>Last call</th></tr></thead>
+      <tbody>${ranked.map(o => `<tr><td>${esc(o.name)}</td><td>${o.len ? o.len + ' m' : '—'}</td><td>${o.dwt ? (o.est ? '≈ ' : '') + Math.round(o.dwt).toLocaleString('en') + ' t' : '—'}</td><td>${o.cap ? (o.est ? '≈ ' : '') + Math.round(o.cap / 1000).toLocaleString('en') + 'k' : '—'}</td><td>${o.n}</td><td>${n30(o.m)}</td><td>${o.days.toFixed(1)}</td><td>${fmtShort(new Date(o.last).toISOString().slice(0, 10))}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td>${visits.length}</td><td>${visits.filter(v => v.t0 >= d30).length}</td><td>${ranked.reduce((t, o) => t + o.days, 0).toFixed(1)}</td><td></td></tr></tfoot>
+    </table>`);
 }
 
 // ── GASSCO: NEDETID ──────────────────────────────────────────────────────────
