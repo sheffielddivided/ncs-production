@@ -2266,7 +2266,7 @@ function renderViewTabs() {
     setSideMap('');   // settes av drawFieldProfile og drawHubProfile
   }
   const curTab = isProdView(cur) ? 'production' : cur;
-  document.getElementById('viewTabs').innerHTML = tabs.map(t =>
+  document.getElementById('viewTabs').innerHTML = tabs.filter(t => t.id !== 'shipping' || shipTabVisible(cur)).map(t =>
     `<button class="view-tab${curTab===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
@@ -2452,11 +2452,11 @@ function renderPicker(noun, nounP) {
   const prodOf = ids => ids.reduce((t, id) => t + ((lp[id] || {}).v || 0), 0);
   let items, value, pick;
   if (topMode === 'fields') {
-    items = allFields.map(f => ({v: f.name, sub: fmt(prodOf([f.id]))}));
+    items = allFields.filter(f => !shipPickMode() || fieldHasShip(f.id)).map(f => ({v: f.name, sub: fmt(prodOf([f.id]))}));
     value = (allFields.find(f => selectedFieldIds.has(f.id)) || {}).name;
     pick = v => { const f = allFields.find(x => x.name === v); if (f) pickOne(() => { selectedFieldIds = new Set([f.id]); }); };
   } else if (topMode === 'hubs') {
-    items = allHubs.map(h => ({v: h.name, sub: fmt(prodOf(h.fieldIds))}));
+    items = allHubs.filter(h => !shipPickMode() || hubHasShip(h.name)).map(h => ({v: h.name, sub: fmt(prodOf(h.fieldIds))}));
     value = (allHubs.find(h => selectedHubNames.has(h.name)) || {}).name;
     pick = v => pickOne(() => { selectedHubNames = new Set([v]); });
   } else if (topMode === 'discoveries') {
@@ -2566,7 +2566,7 @@ function renderHubList() {
   if (!filteredHubs.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
   const single = hubSingleMode();
-  filteredHubs.forEach(h => {
+  filteredHubs.filter(h => !shipPickMode() || hubHasShip(h.name)).forEach(h => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedHubNames.has(h.name) ? ' checked' : '');
     const cb = document.createElement('input');
@@ -2610,7 +2610,7 @@ function renderFieldList() {
   if (!filteredFields.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
   const single = fieldSingleMode();
-  filteredFields.forEach(f => {
+  filteredFields.filter(f => !shipPickMode() || fieldHasShip(f.id)).forEach(f => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedFieldIds.has(f.id) ? ' checked' : '');
     const cb = document.createElement('input');
@@ -3747,6 +3747,8 @@ async function refresh() {
   try { await refreshView(); } finally { releaseHeight(); }
 }
 async function refreshView() {
+  // Shipping-fanen avhenger av utvalget (felt/huber med tankskipdata).
+  if ((topMode === 'fields' || topMode === 'hubs') && SHIP_IDS) renderViewTabs();
   syncUrl();
   syncTitle();
   ioView();
@@ -14340,6 +14342,27 @@ function drawFieldHavtil() {
 // posisjon på sjøen), innenfor sju dager.
 let shippingData = null, shippingLoading = null;
 let shipShown = 50;
+// Hvilke felt som har tankskipdata (data/shipping_fields.json, liten fil som
+// lastes ved oppstart). Shipping-fanen vises bare for felt og huber med data,
+// og i Shipping tilbyr velgeren bare dem.
+let SHIP_IDS = null;
+function loadShipIds() {
+  return fetchBundle('shipping_fields').then(c => {
+    const want = new Set(((c && c.fields) || []).map(x => String(x.name).toUpperCase()));
+    SHIP_IDS = new Set(allFields.filter(f => want.has(String(f.name).toUpperCase())).map(f => f.id));
+  }).catch(() => { SHIP_IDS = new Set(); });
+}
+const fieldHasShip = id => !!(SHIP_IDS && SHIP_IDS.has(id));
+const hubHasShip = name => { const h = allHubs.find(x => x.name === name); return !!(h && h.fieldIds.some(fieldHasShip)); };
+// I Shipping tilbyr velgeren bare felt og huber med data.
+const shipPickMode = () => !!SHIP_IDS && ((topMode === 'fields' && fieldSubView === 'shipping') || (topMode === 'hubs' && hubSubView === 'shipping'));
+// Shipping-fanen vises når utvalget har data (og alltid når den er åpen).
+function shipTabVisible(cur) {
+  if (cur === 'shipping') return true;
+  if (topMode === 'fields') return [...selectedFieldIds].some(fieldHasShip);
+  if (topMode === 'hubs') return [...selectedHubNames].some(hubHasShip);
+  return true;
+}
 function loadShipping() {
   if (shippingData) return Promise.resolve();
   if (!shippingLoading) shippingLoading = fetchBundle('shipping')
@@ -25723,6 +25746,8 @@ async function init() {
   await loadFields();
   buildHubs();
   selectDefaultHub();
+  // Shipping-fanen og velgeren i Shipping avhenger av hvilke felt som har data.
+  loadShipIds().then(() => { renderViewTabs(); updateFab(); if (sheetOpen) renderList(); });
 
   // ── Phase 2: Render initial chart for Aker BP immediately after licensees
   //    arrive — no need to wait for reserves (only used for sorting the list)
