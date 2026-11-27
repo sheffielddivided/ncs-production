@@ -46,6 +46,11 @@
     .topbar a{color:#fff;text-decoration:none;}
     .topbar-title{font-size:1rem;font-weight:700;letter-spacing:-0.01em;white-space:nowrap;}
     .topbar-sub{font-size:0.78rem;opacity:0.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    /* Som hovedsiden: tittelen i samme spalte som innholdet på brede skjermer,
+       og regionen rett etter tittelen (der hovedsiden har søket til høyre). */
+    .topbar-brand{display:flex;align-items:baseline;gap:10px;min-width:0;}
+    @media (min-width:1148px){.topbar{padding-left:calc((100% - var(--cw)) / 2);padding-right:calc((100% - var(--cw)) / 2);}}
+    @media (min-width:1700px){:root{--cw:1560px;}}
 
     .mode-bar{position:sticky;top:var(--topbar-h);z-index:49;background:var(--card);border-bottom:1px solid var(--border);padding:8px 12px;}
     .mode-switcher{display:flex;flex-wrap:nowrap;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none;
@@ -174,8 +179,7 @@
 <body>
 
 <div class="topbar">
-  <a class="topbar-title" href="index.html" title="NCS Insight">NCS Insight</a>
-  <span class="topbar-sub">Brazil · offshore and onshore</span>
+  <div class="topbar-brand"><a class="topbar-title" href="index.html" title="NCS Insight">NCS Insight</a><span class="topbar-sub">Brazil · offshore and onshore</span></div>
 </div>
 
 <nav class="mode-bar" aria-label="Sections">
