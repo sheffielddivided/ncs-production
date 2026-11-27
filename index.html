@@ -22399,7 +22399,7 @@ function explRenderRigs() {
   const nAisOnly = inWin.filter(w => w.kind === 'ais').length;
   document.getElementById('explBody').innerHTML = `
     <div class="pf-card"><h3 class="cn-head"><span>Rig schedule</span>
-      <button class="cn-gear" style="margin-right:62px" onclick="openRigDataInfo()" title="Where the rig contracts come from, when each was last updated and how to update them">${GEAR_SVG}Data sources</button></h3><div class="ex-slot"></div>
+      <button class="wd-gear" style="margin-right:62px" onclick="openRigDataInfo()" aria-label="Data sources" title="Data sources: where the rig contracts come from, when each was last updated and how to update them">${GEAR_SVG}</button></h3><div class="ex-slot"></div>
       <div class="ex-sum"><strong>${out.length}</strong> rigs · <strong>${out.filter(r => r.now).length}</strong> drilling now
       · <strong>${out.filter(r => r.next).length}</strong> with a planned well${nDev ? ` · <strong>${nDev}</strong> development wellbores` : ''}${
         showCon ? ` · <strong>${out.filter(r => r.cs.length).length}</strong> with contract data` : ''}</div>
