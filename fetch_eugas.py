@@ -30,6 +30,10 @@ og EIA-delen), til disse filene:
   oljebalanse: produksjon, forbruk, lagertrekk og OECD-lagre; månedlig,
   kvartalsvis og årlig, historikk og prognose). Kopieres uendret fra
   data/eia/steo.json i eia-repoet, til Oil market-fanen i Macro.
+- data/steo_vintages.json: tidligere STEO-utgaver (siste to år) med de samme
+  seriene, fra EIAs arkiv over STEO-arbeidsbøkene. Kopieres uendret fra
+  data/eia/steo_vintages.json i eia-repoet, til endringsmodusen («Δ vs.
+  earlier STEO») i Oil market.
 
 Feiler en henting, beholdes forrige fil for den. Steget i arbeidsflyten er
 continue-on-error.
@@ -160,6 +164,16 @@ def steo():
     print(f'eugas: STEO {src.get("release")}, historikk til {src["lastHistMonth"]}, {len(src.get("meta") or {})} serier')
 
 
+def steo_vintages():
+    src = get('eia/steo_vintages.json')
+    vs = (src or {}).get('vintages') or []
+    if not vs or not all(v.get('release') and (v.get('data') or {}).get('quarterly') for v in vs):
+        print('eugas: ingen tidligere STEO-utgaver i kilden; beholder forrige fil', file=sys.stderr)
+        return
+    write('steo_vintages.json', src)
+    print(f'eugas: tidligere STEO-utgaver {vs[-1]["release"]}–{vs[0]["release"]} ({len(vs)})')
+
+
 # Grupperingen fra gassimport.html i eia-repoet. LNG er egen serie i kilden.
 FLOW_GROUPS = {'NO': ['NO'], 'RU': ['RU_NS', 'RU_UA', 'RU_YA', 'RU_TS', 'RU_BALT'],
                'DZ': ['DZ'], 'AZ': ['AZ'], 'OTH': ['UK', 'LY']}
@@ -207,3 +221,4 @@ if __name__ == '__main__':
     refining()
     gas_flows()
     steo()
+    steo_vintages()

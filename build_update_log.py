@@ -101,6 +101,7 @@ FILES = {
     'eu_gas_flows': ('markets', 'EU gas flows'),
     'eu_lng': ('markets', 'EU LNG'),
     'steo': ('markets', 'EIA STEO'),
+    'steo_vintages': ('markets', 'EIA STEO archive'),
     'us_supply': ('markets', 'US supply'),
     'refining': ('markets', 'Refining'),
     'fx': ('markets', 'Exchange rates'),
@@ -390,6 +391,12 @@ def s_steo(o, n, names):
     return f'release {b}' if b and b != a else None
 
 
+def s_steo_vintages(o, n, names):
+    ok = {v.get('release') for v in o.get('vintages') or []}
+    new = sorted(v.get('release') for v in n.get('vintages') or [] if v.get('release') not in ok)
+    return f'release {", ".join(new)} archived' if new else None
+
+
 SUMMARY = {
     'production': s_production,
     'reserves_field': s_by_field('Field reserves'),
@@ -419,6 +426,7 @@ SUMMARY = {
     'angola': s_gom,
     'canada_nl': s_canada,
     'steo': s_steo,
+    'steo_vintages': s_steo_vintages,
 }
 
 
