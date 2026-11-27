@@ -14352,7 +14352,7 @@ function loadShipping() {
 const SHIP_FILL = '#9aa5b1';   // nøytral grå (samme som «Other» i de andre grafene)
 const SHIP_OIL = '#ce0f69';
 const SHIP_FILL_PART = '#d5dae0';  // inneværende måned (ikke ferdig): lysere grå
-const SHIP_BAR_MAX = 32;           // søylebredde i px; resten av månedsfeltet er luft
+const SHIP_BAR_MAX = 64;           // søylene fyller 60 % av månedsfeltet, høyst så mange px
 const SHIP_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];    // sidens magenta (--blue) for produksjonslinjen
 const monthKey = t => new Date(t).toISOString().slice(0, 7);
 function fmtStay(h) { return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1)} days`; }
@@ -14509,7 +14509,7 @@ function drawShipping(ids, name, kind) {
     // 2 px hvitt mellomrom over hver blokk (ikke kant rundt), smale søyler.
     backgroundColor: months.map((_, i) => i === partIdx ? SHIP_FILL_PART : SHIP_FILL),
     borderColor: '#fff', borderWidth: {top: 2, right: 0, bottom: 0, left: 0}, borderSkipped: false,
-    maxBarThickness: SHIP_BAR_MAX, stack: 's', order: 1}));
+    barPercentage: 1, categoryPercentage: 0.6, maxBarThickness: SHIP_BAR_MAX, stack: 's', order: 1}));
   // Månedsnavn, med året under januar og første måned.
   const tickLabel = (mo, i) => {
     const [y, m] = mo.split('-'), name = SHIP_MON[+m - 1];
