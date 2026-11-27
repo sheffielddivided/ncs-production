@@ -1393,7 +1393,9 @@ januar–august 2024 finnes ingen blokktabell som tekst. Siden rekonstruerer de
 Equinors felt (brutto) per blokk, snitt av årets fire kvartaler; Blokk 3/05
 (inkl. 3/05A) er Afentras bruttotall (`partners` i `angola_history.json`,
 lagt inn for hånd i `PARTNERS`); resten av landets total vises som «Other
-blocks». Kontroll 2016–2022: Equinor brutto mot ANPG per år 99,4–101,0 %
+blocks». Samme serie (`drawHistChart(id, fra)`) er hovedgrafen i Production,
+forlenget bakover med ANPGs årstall fra 1955 og startår i `fy`; Blocks viser
+den fra 2016. Siden har bare boe/dag (ingen enhetsvelger). Kontroll 2016–2022: Equinor brutto mot ANPG per år 99,4–101,0 %
 (Blokk 17), 100,0–100,7 % (15), 100,0–100,1 % (31); per kvartal stort sett
 innenfor 1 % (avvik 2017 Q2/Q3 og 2020 Q2 på 2–3,5 %). Afentra mot ANPG:
 2022 100,4 %, H1 2025 og Q1 2026 innenfor 0,1 %. Galp (bare netto for

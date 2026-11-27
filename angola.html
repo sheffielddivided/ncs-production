@@ -134,7 +134,7 @@ const TABS = [['production', 'Production'], ['blocks', 'Blocks'], ['company', 'C
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const STATUS = {producing: {label: 'Producing', color: '#ce0f69'}, development: {label: 'Development', color: '#f68d2e'}, exploration: {label: 'Exploration', color: '#00b373'},
   negotiating: {label: 'Under negotiation', color: '#4993b4'}, available: {label: 'Open (available)', color: '#b9c0c9'}};
-const DEFAULTS = {v: 'production', per: 'm', u: 'bbl', g: 'block', st: '', bs: '', q: '', ml: 'fields', bk: '', wr: '', wy: ''};
+const DEFAULTS = {v: 'production', fy: '', st: '', bs: '', q: '', ml: 'fields', bk: '', wr: '', wy: ''};
 let S = {...DEFAULTS}, D = null, COAST = null, B = [];
 const charts = {};
 function readUrl() { const q = new URLSearchParams(location.search); S = {...DEFAULTS}; for (const k of Object.keys(DEFAULTS)) if (q.has(k)) S[k] = q.get(k); if (!TABS.some(t => t[0] === S.v)) S.v = 'production'; }
@@ -148,10 +148,10 @@ const jsq = s => esc(JSON.stringify(String(s)));
 const fmt = (v, d = 0) => v == null || isNaN(v) ? '–' : Number(v).toLocaleString('en', {minimumFractionDigits: d, maximumFractionDigits: d});
 const ymTxt = ym => ym ? `${MONTH_ABBR[+ym.slice(-2) - 1]} ${ym.slice(0, 4)}` : '–';
 const daysIn = ym => new Date(+ym.slice(0, 4), +ym.slice(4), 0).getDate();
-const oilU = () => S.u === 'm3' ? 'm³/day' : 'bbl/day';
-const oilF = v => v == null ? null : S.u === 'm3' ? v * M3_PER_BBL : v;
-const gasU = () => S.u === 'm3' ? 'million m³/day' : 'MMscf/day';
-const gasF = v => v == null ? null : S.u === 'm3' ? v * 0.0283168 : v;
+const oilU = () => 'boe/day';
+const oilF = v => v == null ? null : v;
+const gasU = () => 'MMscf/day';
+const gasF = v => v == null ? null : v;
 function pills(key, opts, label) { return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<div class="pill-group">${opts.map(([v, t]) =>
   `<button class="pill-btn${S[key] === v ? ' active' : ''}" onclick="set({${key}:${jsq(v)}})">${t}</button>`).join('')}</div></div>`; }
 function select(key, opts, label) { return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<select class="year-select" onchange="set({${key}:this.value})">${opts.map(([v, t]) =>
@@ -197,7 +197,6 @@ function render() {
 }
 const setControls = h => { document.getElementById('controls').innerHTML = h; };
 const setView = h => { document.getElementById('view').innerHTML = h; };
-const unitPills = () => pills('u', [['bbl', 'Barrels / cf'], ['m3', 'Cubic metres']], 'Unit');
 
 // Månedsakse for rapportene
 let MS = [];
@@ -209,75 +208,35 @@ function annualOf(arr) {   // [[år, snitt per dag, måneder]]
 
 // ── PRODUCTION ──
 function viewProduction() {
-  setControls(pills('g', [['block', 'By block'], ['field', 'By field (Blocks 15, 17, 31)'], ['total', 'Total vs forecast'], ['annual', 'Since 1955']], 'Show') +
-    (S.g !== 'annual' ? pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') : '') + unitPills());
+  const yrs = D.annual.map(a => a[0]), fy = +S.fy || yrs[0];
+  setControls(select('fy', yrs.filter(y => y < yrs[yrs.length - 1]).map(y => [y === yrs[0] ? '' : String(y), String(y)]), 'From'));
   const s = D.series, n = MS.length, last = MS[n - 1];
   const l12 = k => { let a = 0, d = 0; for (let i = n - 12; i < n; i++) if (s[k][i] != null) { a += s[k][i] * daysIn(MS[i]); d += daysIn(MS[i]); } return d ? a / d : null; };
   const fcDev = s.oil[n - 1] / s.oilFc[n - 1] - 1;
   const kpis = `<div class="kpis">
     <div class="kpi"><span>Oil · ${ymTxt(last)}</span><strong>${fmt(oilF(s.oil[n - 1]))}</strong><small>${oilU()} · ${fcDev >= 0 ? '+' : ''}${fmt(fcDev * 100, 1)} % vs forecast</small></div>
     <div class="kpi"><span>Oil · last 12 months</span><strong>${fmt(oilF(l12('oil')))}</strong><small>${oilU()}, average</small></div>
-    <div class="kpi"><span>Gas · last 12 months</span><strong>${fmt(gasF(l12('gas')), S.u === 'm3' ? 1 : 0)}</strong><small>${gasU()} produced (mostly associated)</small></div>
+    <div class="kpi"><span>Gas · last 12 months</span><strong>${fmt(gasF(l12('gas')))}</strong><small>${gasU()} produced (mostly associated)</small></div>
     <div class="kpi"><span>Angola LNG · last 12 months</span><strong>${fmt(l12('alng'))}</strong><small>boe/day (LNG, LPG, condensate)</small></div>
     <div class="kpi"><span>Facility efficiency</span><strong>${fmt(s.eff[n - 1], 1)} %</strong><small>${ymTxt(last)}${s.effFc[n - 1] ? ` · forecast ${fmt(s.effFc[n - 1], 1)} %` : ''}</small></div>
     ${D.snapshot ? `<div class="kpi"><span>Producing concessions</span><strong>${fmt(D.snapshot.concessions[0])}</strong><small>${fmt(D.snapshot.concessions[1])} offshore, ${fmt(D.snapshot.concessions[2])} onshore</small></div>` : ''}</div>`;
-  let main;
-  if (S.g === 'field') {
-    main = chartCard('prodChart', 'Angola · oil production by field, Blocks 15, 17 and 31', `${oilU()}, ${S.per === 'm' ? 'quarterly' : 'annual average'}, whole field (100 %) · from Equinor's production by field, partner in the three blocks · click a field for its block`, {cls: 'tall'}) +
-      `<div class="info-box"><strong>Fields:</strong> Equinor publishes its equity production for each field it holds every quarter (spreadsheet «Production per field and asset» on Equinor's investor pages, from Q4 2007). The field's whole production is Equinor's share divided by its working interest. These blocks give about 60 % of Angola's oil; the sum per block matches ANPG's block figures within 1–4 % where both exist. From 2020 Equinor reports Marimba within Kizomba A and the Kizomba satellites within Kizomba B.</div>`;
-  } else if (S.g === 'annual') {
-    main = chartCard('prodChart', 'Angola · oil production since 1955', `${oilU()}, annual average (ANPG)`, {cls: 'tall'});
-  } else if (S.g === 'total') {
-    main = chartCard('prodChart', 'Angola · oil production and forecast', `${oilU()}, ${S.per === 'm' ? 'monthly' : 'annual average'} · bars: actual, line: the forecast in ANPG's monthly report`, {cls: 'tall'});
-  } else {
-    main = chartCard('prodChart', 'Angola · oil production by block', `${oilU()}, ${S.per === 'm' ? 'monthly' : 'annual average'} · from ${ymTxt(D.blockMonths[0])}, when ANPG's reports started listing blocks; national total before · click a block`, {cls: 'tall'});
-  }
+  const main = chartCard('prodChart', `Angola · oil production by block since ${fy}`, `${oilU()}, annual average · ${fy < 2016 ? 'national total from ANPG before 2016; ' : ''}by block from 2016: Sonangol's and ANPG's annual reports and EITI (2016–2022), reconstructed (ᵉ) for 2023–2024, ANPG's monthly reports from 2025 · * = year to date · click a block`, {cls: 'tall'});
   setView(kpis + main +
-    `<div class="info-box"><strong>Source:</strong> ANPG's monthly production summaries (<i>Resumo mensal sobre a produção petrolífera</i>), ${ymTxt(D.months[0])}–${ymTxt(D.months[1])}, read from the text; production by block from the reports' tables (from ${ymTxt(D.blockMonths[0])}); annual production since 1955 from ANPG. Oil is crude oil as ANPG reports it (excluding LNG plant condensate and LPG). The monthly figures sum to ANPG's annual figures within 2 %, and the block tables to the national total within 1 %.</div>` +
-    `<div class="grid2">${chartCard('gasChart', 'Associated gas: where it goes', `${gasU()}, ${S.per === 'm' ? 'monthly' : 'annual average'} · reinjected, sent to Angola LNG, used for power; the rest is used in operations or flared`)}
+    `<div class="info-box"><strong>By block, 2023–2024 (ᵉ):</strong> no block table has been published as text for these years. Blocks 15, 17 and 31 are Equinor's production by field (quarterly spreadsheet on Equinor's investor pages) divided by Equinor's working interest; for 2016–2022 this matches ANPG's block figures within 1 % every year. Block 3/05 (with 3/05A) is the gross figure reported by partner Afentra. The rest of ANPG's national total is shown as other blocks.</div>` +
+    `<div class="info-box"><strong>Source:</strong> annual production since 1955 from ANPG; production by block from Sonangol's annual reports (2016–2018), ANPG's annual reports (2019–2020), the EITI reports (2021–2022) and ANPG's monthly production summaries (<i>Resumo mensal sobre a produção petrolífera</i>, ${ymTxt(D.months[0])}–${ymTxt(D.months[1])}; block tables from ${ymTxt(D.blockMonths[0])}). Oil is crude oil as ANPG reports it (excluding LNG plant condensate and LPG). The monthly figures sum to ANPG's annual figures within 2 %, and the block tables to the national total within 1 %.</div>` +
+    `<div class="grid2">${chartCard('gasChart', 'Associated gas: where it goes', `${gasU()}, monthly · reinjected, sent to Angola LNG, used for power; the rest is used in operations or flared`)}
       ${chartCard('alngChart', 'Angola LNG plant (Soyo)', 'boe/day, monthly · LNG, LPG and condensate together')}</div>
     <div class="grid2">${chartCard('effChart', 'Facility efficiency', 'Per cent, monthly · actual and forecast', {cls: 'short'})}${chartCard('rigChart', 'Drilling activity', 'Rigs active and wells worked on, monthly (as stated in the reports)', {cls: 'short'})}</div>` +
     reportTable());
-  const per = S.per === 'm' && S.g !== 'annual';
-  if (S.g === 'field') {
-    loadFields().then(() => S.v === 'production' && S.g === 'field' && drawFieldChart('prodChart', null));
-  } else if (S.g === 'annual') {
-    const A = D.annual;
-    barChart('prodChart', A.map(a => a[0]), [{label: 'Oil', backgroundColor: '#ce0f69', data: A.map(a => oilF(a[1]))}], oilU(), {ticks: 30, legend: false});
-  } else if (S.g === 'total') {
-    const lab = per ? MS.map(ymTxt) : annualOf(D.series.oil).map(a => a[2] < 12 ? a[0] + '*' : a[0]);
-    const act = per ? s.oil.map(oilF) : annualOf(s.oil).map(a => oilF(a[1])), fc = per ? s.oilFc.map(oilF) : annualOf(s.oilFc).map(a => oilF(a[1]));
-    barChart('prodChart', lab, [{label: 'Actual', backgroundColor: '#ce0f69', data: act}, {type: 'line', label: 'Forecast', borderColor: '#7d2248', backgroundColor: '#7d2248', data: fc, pointRadius: per ? 0 : 3, borderWidth: 2, noSum: true}],
-      oilU(), {stacked: false, zero: false, noFooter: true, ticks: per ? 14 : 10});
-  } else {
-    const bm = D.blockMonths, off = MS.indexOf(bm[0]);
-    const top = D.prodBlocks.slice(0, 8);
-    let lab, ds;
-    if (per) {
-      lab = MS.map(ymTxt);
-      ds = top.map(b => ({label: b.name, backgroundColor: blockColor(b.key), key: b.key, data: MS.map((ym, i) => i < off ? null : oilF(b.oil[i - off]))}));
-      ds.push({label: 'Other blocks', backgroundColor: OTHER_COLOR, data: MS.map((ym, i) => i < off ? null : oilF(s.oil[i] - top.reduce((t, b) => t + (b.oil[i - off] || 0), 0)))});
-      ds.push({label: 'National total (before block data)', backgroundColor: '#d9c3cf', data: MS.map((ym, i) => i < off ? oilF(s.oil[i]) : null)});
-    } else {
-      const ys = annualOf(s.oil);
-      lab = ys.map(a => a[2] < 12 ? a[0] + '*' : a[0]);
-      const yb = (b, y) => { let a = 0, d = 0; bm.forEach((ym, j) => { if (ym.startsWith(y) && b.oil[j] != null) { a += b.oil[j] * daysIn(ym); d += daysIn(ym); } }); return d ? a / d : null; };
-      const full = y => bm.filter(ym => ym.startsWith(y)).length === MS.filter(ym => ym.startsWith(y)).length;
-      ds = top.map(b => ({label: b.name, backgroundColor: blockColor(b.key), key: b.key, data: ys.map(([y]) => full(y) ? oilF(yb(b, y)) : null)}));
-      ds.push({label: 'Other blocks', backgroundColor: OTHER_COLOR, data: ys.map(([y, v]) => full(y) ? oilF(v - top.reduce((t, b) => t + (yb(b, y) || 0), 0)) : null)});
-      ds.push({label: 'National total (before block data)', backgroundColor: '#d9c3cf', data: ys.map(([y, v]) => full(y) ? null : oilF(v))});
-    }
-    ds = ds.map(d => ({...d, stack: 's', borderWidth: per ? 0 : 1, borderColor: '#fff'}));
-    barChart('prodChart', lab, ds, oilU(), {ticks: per ? 14 : 10});
-    charts.prodChart.options.onClick = e => { const el = charts.prodChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0]; const d = el && ds[el.datasetIndex]; if (d && d.key) openBlock(d.key); };
-  }
+  const per = true;
+  loadHist().then(() => S.v === 'production' && drawHistChart('prodChart', fy));
   // Gass
   const gl = per ? MS.map(ymTxt) : annualOf(s.gas).map(a => a[2] < 12 ? a[0] + '*' : a[0]);
   const gs = k => per ? s[k].map(gasF) : annualOf(s[k]).map(a => gasF(a[1]));
   barChart('gasChart', gl, [
     {label: 'Reinjected', backgroundColor: '#7d2248', data: gs('gasInj'), stack: 's'}, {label: 'To Angola LNG', backgroundColor: '#4993b4', data: gs('gasAlng'), stack: 's'},
     {label: 'Power generation', backgroundColor: '#e8c942', data: gs('gasPower'), stack: 's'},
-    {type: 'line', label: 'Produced', borderColor: '#f68d2e', backgroundColor: '#f68d2e', data: gs('gas'), pointRadius: per ? 0 : 2, borderWidth: 2, noSum: true}], gasU(), {ticks: per ? 12 : 10, dec: S.u === 'm3' ? 1 : 0});
+    {type: 'line', label: 'Produced', borderColor: '#f68d2e', backgroundColor: '#f68d2e', data: gs('gas'), pointRadius: per ? 0 : 2, borderWidth: 2, noSum: true}], gasU(), {ticks: per ? 12 : 10, dec: 0});
   barChart('alngChart', MS.map(ymTxt), [{label: 'Angola LNG', backgroundColor: '#4993b4', data: s.alng}], 'boe/day', {ticks: 12, legend: false});
   barChart('effChart', MS.map(ymTxt), [{type: 'line', label: 'Actual', borderColor: '#ce0f69', backgroundColor: '#ce0f69', data: s.eff, pointRadius: 0, borderWidth: 2},
     {type: 'line', label: 'Forecast', borderColor: '#b9c0c9', backgroundColor: '#b9c0c9', data: s.effFc, pointRadius: 0, borderWidth: 2, borderDash: [4, 3]}], '%', {stacked: false, zero: false, noFooter: true, ticks: 12, dec: 1});
@@ -289,13 +248,13 @@ function reportTable() {
   return `<div class="tbl-sec">Monthly reports<small>ANPG's monthly summaries; click the month to open the report on anpg.co.ao</small></div>
     <div class="table-wrap scroll" style="max-height:420px"><table class="res-table"><thead><tr><th>Month</th><th>Oil (${oilU()})</th><th>Forecast</th><th>Country share</th><th>Gas (${gasU()})</th><th>Reinjected</th><th>Flared</th><th>Angola LNG (boe/d)</th><th>Efficiency</th><th>Liftings (bbl/d)</th></tr></thead><tbody>
     ${rows.map(({ym, i}) => { const r = D.reports[i]; return `<tr><td>${r && r[2] ? `<a class="row-link" href="https://www.anpg.co.ao/producao/relatorios/${encodeURIComponent(r[2])}" target="_blank" rel="noopener">${ymTxt(ym)}</a>` : ymTxt(ym)}</td>
-      <td>${fmt(oilF(s.oil[i]))}</td><td>${fmt(oilF(s.oilFc[i]))}</td><td>${fmt(oilF(s.share[i]))}</td><td>${fmt(gasF(s.gas[i]), S.u === 'm3' ? 1 : 0)}</td><td>${fmt(gasF(s.gasInj[i]), S.u === 'm3' ? 1 : 0)}</td><td>${fmt(gasF(s.flare[i]), S.u === 'm3' ? 1 : 0)}</td>
+      <td>${fmt(oilF(s.oil[i]))}</td><td>${fmt(oilF(s.oilFc[i]))}</td><td>${fmt(oilF(s.share[i]))}</td><td>${fmt(gasF(s.gas[i]))}</td><td>${fmt(gasF(s.gasInj[i]))}</td><td>${fmt(gasF(s.flare[i]))}</td>
       <td>${fmt(s.alng[i])}</td><td>${s.eff[i] != null ? fmt(s.eff[i], 1) + ' %' : '–'}</td><td>${fmt(oilF(s.liftD[i]))}</td></tr>`; }).join('')}</tbody></table></div>`;
 }
 
 // ── BLOCKS ──
 function viewBlocks() {
-  setControls(unitPills());
+  setControls('');
   const pb = D.prodBlocks.filter(b => b.l12[0] > 0 || b.l12[1] > 0);
   const W = D.snapshot && D.snapshot.wells ? Object.fromEntries(D.snapshot.wells.map(w => [w.block.replace(/\s+/g, '').toUpperCase(), w])) : {};
   const wOf = b => W[b.name.replace(/\s+/g, '').toUpperCase()] || W[(b.reg || '').replace(/\s+/g, '').toUpperCase()];
@@ -366,16 +325,18 @@ function histYears() {
   }
   return out;
 }
-function drawHistChart() {
-  if (!HB) return;
-  const Y = histYears(), keys = D.prodBlocks.slice(0, 9).map(b => b.key);
+function drawHistChart(id = 'histChart', from = null) {
+  if (!HB || !document.getElementById(id)) return;
+  let Y = histYears();
+  if (from != null) { const first = +Y[0][0]; Y = D.annual.filter(a => a[0] >= from && a[0] < first).map(a => [String(a[0]), null, a[1], false]).concat(Y.filter(a => +a[0] >= from)); }
+  const keys = D.prodBlocks.slice(0, 9).map(b => b.key);
   Object.keys(HB.blocks).filter(k => !['TOTAL', 'OFFSHORE', 'ONSHORE'].includes(k)).forEach(k => { if (!keys.includes(k) && Math.max(...HB.blocks[k].a.filter(v => v != null)) > 80000) keys.push(k); });
   const nameOf = k => { const b = blockByKey(k); return b ? b.name : 'Bloco ' + k; };
   const ds = keys.map(k => ({label: nameOf(k), backgroundColor: blockColor(k), key: k, stack: 's', borderWidth: 1, borderColor: '#fff', data: Y.map(([y, m, , , est]) => m && !(est && m[k] == null) ? oilF(m[k] || 0) : null)}));
   ds.push({label: 'Other blocks', backgroundColor: OTHER_COLOR, stack: 's', borderWidth: 1, borderColor: '#fff', data: Y.map(([y, m, nat]) => m ? oilF(Object.entries(m).filter(([k]) => !keys.includes(k)).reduce((s, [, v]) => s + v, 0)) : null)});
   ds.push({label: 'National total (no block split)', backgroundColor: '#d9c3cf', stack: 's', data: Y.map(([y, m, nat]) => m ? null : oilF(nat))});
-  barChart('histChart', Y.map(([y, , , ytd, est]) => (ytd ? y + '*' : y) + (est ? ' ᵉ' : '')), ds, oilU(), {ticks: 20});
-  charts.histChart.options.onClick = e => { const el = charts.histChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0]; const d = el && ds[el.datasetIndex]; if (d && d.key && blockByKey(d.key)) openBlock(d.key); };
+  barChart(id, Y.map(([y, , , ytd, est]) => (ytd ? y + '*' : y) + (est ? ' ᵉ' : '')), ds, oilU(), {ticks: from != null && Y.length > 40 ? 36 : 20});
+  charts[id].options.onClick = e => { const el = charts[id].getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0]; const d = el && ds[el.datasetIndex]; if (d && d.key && blockByKey(d.key)) openBlock(d.key); };
 }
 
 // Produksjon per felt (Equinor, kvartalsvis)
@@ -440,7 +401,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.bk) clos
 // ── COMPANY ──
 function viewCompany() {
   const E = D.equity, names = Object.keys(E.groups);
-  setControls(select('q', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company') + unitPills());
+  setControls(select('q', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company'));
   const bm = D.blockMonths, n = bm.length;
   const avg12 = arr => { let a = 0, d = 0; for (let i = Math.max(0, n - 12); i < n; i++) if (arr[i] != null) { a += arr[i] * daysIn(bm[i]); d += daysIn(bm[i]); } return d ? a / d : 0; };
   const rows = names.map(g => ({g, v: avg12(E.groups[g]), blocks: (E.blocks[g] || []).length})).sort((a, b) => b.v - a.v);
