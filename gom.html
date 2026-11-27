@@ -231,7 +231,7 @@ const TOP_FIELDS = 8, TOP_OPS = 8;     // som paletten: flere ville fått samme 
 
 // ── TILSTAND ─────────────────────────────────────────────────────────────────
 // Lenkeparametre. fs = felt i faktaarket.
-const DEFAULTS = {v: 'production', g: 'depth', p: 'oil', per: 'a', u: 'bbl', from: '1990', rk: 'l12', dc: '', q: '',
+const DEFAULTS = {v: 'production', g: 'depth', p: 'boe', per: 'a', u: 'bbl', from: '1990', rk: 'l12', dc: '', q: '',
                   c: '', b: 'eq', rp: 'boe', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
 let S = {...DEFAULTS};
 let D = null, P = null, W = null, COAST = null;
@@ -427,16 +427,21 @@ const fromOpts = () => [['1947', 'Since 1947'], ['1990', 'Since 1990'], ['2010',
 
 // ── PRODUCTION ──
 function viewProduction() {
-  // Bare fordelt på vanndyp, olje, gass eller begge, alt i boe/dag.
-  if (!['oil', 'gas', 'boe'].includes(S.p)) S.p = 'oil';
+  // Olje + gass (første visning) fordelt på olje og gass; olje eller gass
+  // alene fordelt på vanndyp. Alt i boe/dag.
+  if (!['oil', 'gas', 'boe'].includes(S.p)) S.p = 'boe';
   setControls(
-    pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['boe', 'Oil + gas']], 'Product') +
+    pills('p', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
     pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') +
     select('from', fromOpts(), 'From'));
   const ps = periods(S.per, S.from), unit = 'boe/day';
-  let datasets = Object.keys(DEPTH).filter(c => D.byDepth[c]).map(c => ({label: DEPTH[c].label, backgroundColor: DEPTH[c].color,
-    data: perDay(i => pick(D.byDepth[c], i, S.p), ps, S.p, factorBoe(S.p))}));
-  const note = ' Water depth by field from BOEM\'s reserve tables.';
+  const split = S.p === 'boe' ? 'product' : 'depth';
+  let datasets = split === 'product'
+    ? [['oil', 'Oil (incl. condensate)', '#ce0f69'], ['gas', 'Gas', '#f68d2e']].map(([k, label, col]) => ({label, backgroundColor: col,
+        data: perDay(i => pick(D.total, i, k), ps, k, factorBoe(k))}))
+    : Object.keys(DEPTH).filter(c => D.byDepth[c]).map(c => ({label: DEPTH[c].label, backgroundColor: DEPTH[c].color,
+        data: perDay(i => pick(D.byDepth[c], i, S.p), ps, S.p, factorBoe(S.p))}));
+  const note = split === 'depth' ? ' Water depth by field from BOEM\'s reserve tables.' : '';
   datasets = datasets.filter(d => d.data.some(v => v)).map(d => ({...d, borderWidth: S.per === 'a' ? 1 : 0, borderColor: '#fff', stack: 's'}));
   const t = trimLead(ps.map(p => p.label), datasets);
   // Nøkkeltall
@@ -453,7 +458,7 @@ function viewProduction() {
     <div class="kpi"><span>From deepwater</span><strong>${fmt(deep12 / all12 * 100, 0)} %</strong><small>of oil + gas, last 12 months</small></div>
     <div class="kpi"><span>Producing fields</span><strong>${F.filter(live).length}</strong><small>last 12 months, of ${fmt(F.length)} fields</small></div>
   </div>`;
-  setView(kpis + chartCard('prodChart', 'US Gulf of Mexico · Production by water depth', `${{oil: 'Oil (incl. condensate)', gas: 'Natural gas', boe: 'Oil + gas'}[S.p]} · ${unit}, ${S.per === 'm' ? 'monthly' : 'annual average'}`, {cls: 'tall'}) +
+  setView(kpis + chartCard('prodChart', `US Gulf of Mexico · ${split === 'product' ? 'Oil and gas production' : 'Production by water depth'}`, `${{oil: 'Oil (incl. condensate)', gas: 'Natural gas', boe: 'Oil + gas'}[S.p]} · ${unit}, ${S.per === 'm' ? 'monthly' : 'annual average'}`, {cls: 'tall'}) +
     `<div class="info-box"><strong>Source:</strong> BOEM OGOR-A well production reports, federal waters (Outer Continental Shelf) only — state waters close to shore are not included. Monthly from ${ymTxt(D.months[0])} to ${ymTxt(lastYM())}; later months are left out until reporting is complete (operators report with a lag). Oil includes condensate; gas is gross gas as reported, converted to boe with BOEM's ${MCF_PER_BOE} Mcf per barrel.${note}${S.per === 'a' && ps.some(p => p.ytd) ? ` <strong>${lastYM().slice(0, 4)}*</strong> is the year to date.` : ''}</div>` +
     fieldTable());
   barChart('prodChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: 0, noAnim: S.per === 'm' && t.labels.length > 400,
