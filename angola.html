@@ -417,9 +417,10 @@ function viewCompany() {
     const top = rows.slice(0, 8).map(r => r.g);
     ds = top.map(g => ({label: g, backgroundColor: coColor(g), data: EQ[g].tot, stack: 's'}));
     ds.push({label: 'Other companies', backgroundColor: OTHER_COLOR, stack: 's', data: bm.map((ym, i) => noGas[i] ? null : names.filter(g => !top.includes(g)).reduce((t, g) => t + (EQ[g].tot[i] || 0), 0))});
-  } else ds = EQ[S.q] ? [{label: 'Oil', backgroundColor: '#ce0f69', data: EQ[S.q].oil, stack: 's'}, {label: 'Gas', backgroundColor: '#f68d2e', data: EQ[S.q].gas, stack: 's'}] : [];
+  } else ds = (E.blocks[S.q] || []).map(([k, sh]) => { const b = PB[k], o = blockByKey(k);   // netto per blokk: (olje + gass) × andel
+    return {label: o ? o.name : k, key: k, backgroundColor: blockColor(k), stack: 's', data: bm.map((ym, i) => noGas[i] || !b ? null : ((b.oil[i] || 0) + (gasBoe(b.gas[i]) || 0)) * sh / 100)}; });
   const held = S.q ? B.filter(b => b.holders.some(h => groupName(h[0]) === S.q)) : [];
-  setView(chartCard('cmpChart', S.q ? `${esc(S.q)} · equity production` : 'Equity production by company', `${oilU()}, oil and gas (6,000 scf per boe), monthly from ${ymTxt(bm[0])} · each block's production × today's shares in ANPG's block register${S.q ? '' : gapTxt}`, {cls: 'tall'}) +
+  setView(chartCard('cmpChart', S.q ? `${esc(S.q)} · equity production by block` : 'Equity production by company', `${oilU()}, oil and gas (6,000 scf per boe), monthly from ${ymTxt(bm[0])} · each block's production × today's shares in ANPG's block register${gapTxt}${S.q ? ' · click a block' : ''}`, {cls: 'tall'}) +
     `<div class="info-box"><strong>Equity production</strong> is each block's oil and gas (from ANPG's report tables; gas converted at 6,000 scf per boe) multiplied by the contractor shares in ANPG's block register today; the register has no history, so earlier months use today's partners. Shares cover ${fmt(E.coverage * 100, 1)} % of the oil over the last 12 months. Sonangol E&amp;P and SNL P&amp;P are shown as Sonangol; Azule Energy is the bp–Eni joint venture.</div>` +
     (!S.q ? `<div class="tbl-sec">Companies<small>Equity production, ${oilU()}, average of the last 12 months</small></div><div class="table-wrap"><table class="res-table"><thead><tr><th>Company</th><th>Oil</th><th>Gas</th><th>Total</th><th>Producing blocks</th><th>Blocks in register</th></tr></thead><tbody>
       ${rows.map(r => `<tr class="click" onclick="set({q:${jsq(r.g)}})"><td><span class="dot" style="background:${coColor(r.g)}"></span><button class="row-link">${esc(r.g)}</button></td><td>${fmt(r.o)}</td><td>${fmt(r.gs)}</td><td><strong>${fmt(r.v)}</strong></td><td>${r.blocks}</td><td>${B.filter(b => b.holders.some(h => groupName(h[0]) === r.g)).length}</td></tr>`).join('')}</tbody></table></div>`
@@ -427,6 +428,7 @@ function viewCompany() {
       ${(E.blocks[S.q] || []).map(([k, sh, v]) => { const b = blockByKey(k), gv = b ? avg12(b.gas.map(x => x == null ? null : gasBoe(x) * sh / 100)) : 0; return `<tr class="click" onclick="openBlock(${jsq(k)})"><td><button class="row-link">${esc(b ? b.name : k)}</button></td><td>${fmt(sh, 2)} %</td><td>${fmt(v)}</td><td>${fmt(gv)}</td><td><strong>${fmt(v + gv)}</strong></td></tr>`; }).join('')}</tbody></table></div>
       <div class="tbl-sec">All blocks in the register<small>${held.length} blocks with ${esc(S.q)} in the contractor group</small></div>${blockTable(held)}`));
   barChart('cmpChart', bm.map(ymTxt), ds, oilU(), {ticks: 12});
+  if (S.q) charts.cmpChart.options.onClick = e => { const el = charts.cmpChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0]; const d = el && ds[el.datasetIndex]; if (d && d.key) openBlock(d.key); };
 }
 
 // ── LICENSING ──
