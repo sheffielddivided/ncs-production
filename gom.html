@@ -232,7 +232,7 @@ const TOP_FIELDS = 8, TOP_OPS = 8;     // som paletten: flere ville fått samme 
 // ── TILSTAND ─────────────────────────────────────────────────────────────────
 // Lenkeparametre. fs = felt i faktaarket.
 const DEFAULTS = {v: 'production', g: 'depth', p: 'boe', per: 'a', u: 'bbl', from: '1990', rk: 'l12', dc: '', q: '',
-                  c: '', cf: '2008', b: 'eq', rp: 'boe', rpd: 'yes', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
+                  c: '', cf: '2008', b: 'eq', rp: 'boe', rpd: 'yes', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'boe'};
 let S = {...DEFAULTS};
 let D = null, P = null, W = null, COAST = null;
 let F = [];                    // feltene som objekter
@@ -328,18 +328,10 @@ function pick(arrs, i, p) {
   if (p === 'boe') return (arrs[0][i] || 0) + (arrs[1][i] || 0) / MCF_PER_BOE;
   return arrs[PIDX[p]] ? arrs[PIDX[p]][i] || 0 : 0;
 }
-// Enhet per dag. Grunnlag: 1000 bbl (olje, vann, boe) eller MMcf (gass) per måned.
-function unitOf(p) {
-  if (S.u === 'm3') return p === 'gas' ? 'million m³/day' : 'm³/day';
-  return p === 'gas' ? 'MMcf/day' : p === 'boe' ? 'boe/day' : 'bbl/day';
-}
-// Production-visningen viser alt i boe/dag (gass omregnet med BOEMs
-// 5,62 Mcf per fat), uten valg av enhet.
+// Alle volumer i boe/dag. Grunnlag: 1000 bbl (olje, boe) eller MMcf (gass)
+// per måned; gass omregnet med BOEMs 5,62 Mcf per fat.
 const factorBoe = p => p === 'gas' ? 1000 / MCF_PER_BOE : 1000;
-function factor(p) {
-  if (S.u === 'm3') return p === 'gas' ? M3_PER_MCF / 1000 : 1000 * M3_PER_BBL;
-  return p === 'gas' ? 1 : 1000;
-}
+const factor = factorBoe;
 const lastYM = () => D.months[1];
 function periods(per, from) {
   const ms = MONTHS.map((ym, i) => ({ym, i})).filter(x => x.ym.slice(0, 4) >= from);
@@ -810,8 +802,8 @@ async function openSheet(code, quiet) {
     ['Field code', f.code], ['Operator', f.op ? `${f.op}${f.opLegal ? ` (${titleCase(f.opLegal)})` : ''}` : '–'], ['Discovered', f.disc || '–'],
     ['Water depth', f.wd ? `${fmt(f.wd)} ft (${fmt(f.wd * 0.3048)} m) · ${DEPTH[f.dc].short}` : '–'], ['Type', f.type === 'O' ? 'Oil field' : f.type === 'G' ? 'Gas field' : '–'],
     ['First production', f.first ? ymTxt(f.first) : '–'], ['Latest production', f.last ? ymTxt(f.last) : '–'],
-    ['Oil, last 12 months', `${fmt(f.l12[0])} bbl/day`], ['Gas, last 12 months', `${fmt(f.l12[1] / 1000, 1)} MMcf/day`],
-    ['Produced to date', `${fmt(f.cum[0], 1)} MMbbl oil · ${fmt(f.cum[1], 0)} Bcf gas`],
+    ['Oil, last 12 months', `${fmt(f.l12[0])} boe/day`], ['Gas, last 12 months', `${fmt(f.l12[1] / MCF_PER_BOE)} boe/day`],
+    ['Produced to date', `${fmt(f.cum[0], 1)} MMboe oil · ${fmt(f.cum[1] / MCF_PER_BOE, 1)} MMboe gas`],
     ['BOEM size rank', f.rank ? `#${f.rank} of ${D.reserves.fieldCount || '1,342'}` : '–'], ['Standing platforms', String(plats.length)],
   ];
   const resRows = f.orig ? `<div class="table-wrap"><table class="res-table"><thead><tr><th>MMboe</th><th>Low (P10 column)</th><th>P50</th><th>High (P90 column)</th><th>Mean</th></tr></thead><tbody>
@@ -823,8 +815,8 @@ async function openSheet(code, quiet) {
     <div class="wd-head"><div><h2>${esc(fname(f))}</h2><div class="wd-sub">${esc(f.code)} · ${f.type === 'G' ? 'Gas' : 'Oil'} field · US Gulf of Mexico, federal waters · ${esc(f.op || '')}</div></div>
       <button class="wd-close" onclick="closeSheet()" aria-label="Close">✕</button></div>
     <div class="pf-card"><div class="pf-facts">${facts.map(([k, v]) => `<div class="pf-fact"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div></div>
-    <div class="pf-card"><h3>Production <small>· ${P.fields[code] && P.fields[code][0].length === 6 ? 'annual average' : 'annual average (field no longer producing)'}, ${esc(unitOf(S.sp))}</small></h3>
-      <div class="pill-group" style="margin-bottom:8px">${[['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']].map(([v, t]) => `<button class="pill-btn${S.sp === v ? ' active' : ''}" onclick="S.sp='${v}';writeUrl();openSheet('${code}',true)">${t}</button>`).join('')}</div>
+    <div class="pf-card"><h3>Production <small>· ${P.fields[code] && P.fields[code][0].length === 6 ? 'annual average' : 'annual average (field no longer producing)'}, boe/day</small></h3>
+      <div class="pill-group" style="margin-bottom:8px">${[['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']].map(([v, t]) => `<button class="pill-btn${S.sp === v ? ' active' : ''}" onclick="S.sp='${v}';writeUrl();openSheet('${code}',true)">${t}</button>`).join('')}</div>
       ${P.fields[code] ? `<div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div>` : '<div class="pf-note">No production since 1990 in the field series.</div>'}</div>
     <div class="pf-card"><h3>Reserves <small>· BOEM estimate per 31 Dec ${D.reserves.year}</small></h3>
       ${f.orig ? `<div class="bar-track"><span style="width:${Math.max(0, 100 - share * 100)}%;background:${REMAINING_COLOR}"></span><span style="flex:1;background:${PRODUCED_COLOR}"></span></div>
@@ -846,9 +838,12 @@ async function openSheet(code, quiet) {
   if (P.fields[code]) {
     const ps = periods('a', '1990');
     const s = fieldSeries(code);
-    const t = trimLead(ps.map(p => p.label), [{label: {oil: 'Oil', gas: 'Gas', water: 'Water'}[S.sp], data: perDay(i => pick(s, i, S.sp), ps, S.sp),
-      backgroundColor: {oil: '#ce0f69', gas: '#f68d2e', water: '#4993b4'}[S.sp], borderWidth: 1, borderColor: '#fff'}]);
-    barChart('sheetChart', t.labels, t.datasets, unitOf(S.sp), {ticks: 30, dec: S.sp === 'gas' ? 1 : 0, legend: false});
+    // Alt i boe/dag; olje + gass stablet som olje og gass.
+    if (!['oil', 'gas', 'boe'].includes(S.sp)) S.sp = 'boe';
+    const prods = S.sp === 'boe' ? ['oil', 'gas'] : [S.sp];
+    const t = trimLead(ps.map(p => p.label), prods.map(k => ({label: {oil: 'Oil', gas: 'Gas'}[k], data: perDay(i => pick(s, i, k), ps, k, factorBoe(k)),
+      backgroundColor: {oil: '#ce0f69', gas: '#f68d2e'}[k], borderWidth: 1, borderColor: '#fff', stack: 's'})));
+    barChart('sheetChart', t.labels, t.datasets, 'boe/day', {ticks: 30, dec: 0, ...(prods.length > 1 ? {} : {legend: false})});
   }
   const h = P.resHist[code];
   if (h) {
