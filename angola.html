@@ -152,6 +152,7 @@ const oilU = () => 'boe/day';
 const oilF = v => v == null ? null : v;
 const gasU = () => 'MMscf/day';
 const gasF = v => v == null ? null : v;
+const gasBoe = v => v == null ? null : v * 1000 / MCF_PER_BOE;   // MMscf/d → boe/d (6 000 scf per boe)
 function pills(key, opts, label) { return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<div class="pill-group">${opts.map(([v, t]) =>
   `<button class="pill-btn${S[key] === v ? ' active' : ''}" onclick="set({${key}:${jsq(v)}})">${t}</button>`).join('')}</div></div>`; }
 function select(key, opts, label) { return `<div class="ctrl">${label ? `<span class="ctrl-label">${label}</span>` : ''}<select class="year-select" onchange="set({${key}:this.value})">${opts.map(([v, t]) =>
@@ -261,9 +262,9 @@ function viewBlocks() {
   setView(chartCard('histChart', 'Oil production by block since 2016', `${oilU()}, annual average · 2016–2022 from Sonangol's and ANPG's annual reports and the EITI reports; from 2025 from ANPG's monthly reports · 2023–2024 (ᵉ) reconstructed: Blocks 15, 17 and 31 from Equinor's production by field grossed up by its equity share, Block 3/05 from Afentra, the rest of the national total as other blocks · click a block`, {cls: 'tall'}) +
     chartCard('blkChart', 'Producing blocks', `Oil, ${oilU()}, average of the last 12 months · colour = operator · click a block`, {h: 460}) +
     `<div class="tbl-sec">Producing blocks<small>Production from ANPG's monthly report tables; operator and partners from ANPG's block register (today's shares); wells from the latest structured month</small></div>
-    <div class="table-wrap"><table class="res-table"><thead><tr><th>Block</th><th class="l">Operator</th><th class="l">Basin</th><th class="l">Water depth</th><th>Oil (${oilU()})</th><th>Gas (${gasU()})</th><th>Oil wells open</th><th>Oil wells closed</th><th>Injectors open</th></tr></thead><tbody>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Block</th><th class="l">Operator</th><th class="l">Basin</th><th class="l">Water depth</th><th>Oil (${oilU()})</th><th>Gas (${oilU()})</th><th>Oil wells open</th><th>Oil wells closed</th><th>Injectors open</th></tr></thead><tbody>
     ${pb.map(b => { const r = regOf(b), w = wOf(b); return `<tr class="click" onclick="openBlock(${jsq(b.key)})"><td><button class="row-link">${esc(b.name)}</button></td><td class="l">${esc(r && r.op || '–')}</td><td class="l">${esc(r && r.basin || '–')}</td>
-      <td class="l">${esc(r && r.depth || '–')}${r && r.wd ? ` (${fmt(r.wd)} m)` : ''}</td><td>${fmt(oilF(b.l12[0]))}</td><td>${fmt(gasF(b.l12[1]), 1)}</td><td>${w ? fmt(w.oil_open) : '–'}</td><td>${w ? fmt(w.oil_closed) : '–'}</td><td>${w ? fmt((w.water_open || 0) + (w.gas_open || 0)) : '–'}</td></tr>`; }).join('')}</tbody></table></div>` +
+      <td class="l">${esc(r && r.depth || '–')}${r && r.wd ? ` (${fmt(r.wd)} m)` : ''}</td><td>${fmt(oilF(b.l12[0]))}</td><td>${fmt(gasBoe(b.l12[1]))}</td><td>${w ? fmt(w.oil_open) : '–'}</td><td>${w ? fmt(w.oil_closed) : '–'}</td><td>${w ? fmt((w.water_open || 0) + (w.gas_open || 0)) : '–'}</td></tr>`; }).join('')}</tbody></table></div>` +
     (D.snapshot && D.snapshot.operatorsOil ? `<div class="grid2">${chartCard('opChart', 'Operators\' share of oil', `${ymTxt(D.snapshot.ym)} · as ANPG reports it`, {cls: 'short'})}${(D.snapshot.depthShare || []).some(v => v != null) ? chartCard('depthChart', 'Oil by water depth', `${ymTxt(D.snapshot.ym)} · share of production`, {cls: 'short'}) : ''}</div>` : ''));
   const opOf = b => { const r = regOf(b); return r && r.op ? groupName(r.op) : 'Unknown'; };
   loadHist().then(() => S.v === 'blocks' && drawHistChart());
@@ -364,7 +365,7 @@ function openBlock(k, quiet) {
   document.getElementById('sheet').classList.add('open'); document.body.classList.add('sheet-open');
   const r = regOf(b);
   const facts = [['Operator', r && r.op || '–'], ['Basin', r && r.basin || '–'], ['Water depth', r ? `${r.depth || '–'}${r.wd ? ` · ${fmt(r.wd)} m` : ''}` : '–'], ['Area', r && r.area ? fmt(r.area) + ' km²' : '–'],
-    ['Oil, last 12 months', `${fmt(oilF(b.l12[0]))} ${oilU()}`], ['Gas, last 12 months', `${fmt(gasF(b.l12[1]), 1)} ${gasU()}`], ['Award', r && r.offer ? (r.offer === 'tender' ? 'Licensing round' : 'Permanent offer') : '–'], ['FPSO', r && r.fpso || '–']];
+    ['Oil, last 12 months', `${fmt(oilF(b.l12[0]))} ${oilU()}`], ['Gas, last 12 months', `${fmt(gasBoe(b.l12[1]))} ${oilU()}`], ['Award', r && r.offer ? (r.offer === 'tender' ? 'Licensing round' : 'Permanent offer') : '–'], ['FPSO', r && r.fpso || '–']];
   document.getElementById('sheetPanel').innerHTML = `<div class="wd-head"><div><h2>${esc(r ? r.name : b.name)}</h2><div class="wd-sub">Angola · ${esc(r && r.basin || '')} basin · ${esc(r && r.op || '')}</div></div><button class="wd-close" onclick="closeSheet()">✕</button></div>
     <div class="pf-card"><div class="pf-facts">${facts.map(([a, v]) => `<div class="pf-fact"><span>${esc(a)}</span><strong>${esc(v)}</strong></div>`).join('')}</div>${r && r.desc ? `<div class="pf-note">${esc(r.desc)}</div>` : ''}</div>
     <div class="pf-card"><h3>Production <small>· monthly, boe/day, from ANPG's report tables · gas converted at 6,000 scf per boe</small></h3><div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div></div>
@@ -391,7 +392,6 @@ function openBlock(k, quiet) {
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
     drawMap(el, {fit: [Math.min(...xs) - 0.05, Math.min(...ys) - 0.05, Math.max(...xs) + 0.05, Math.max(...ys) + 0.05], onlyKey: regKey(b.reg || b.name), wells: true, noClick: true});
   });
-  const gasBoe = v => v == null ? null : v * 1000 / MCF_PER_BOE;   // MMscf/d → boe/d (6 000 scf per boe)
   barChart('sheetChart', D.blockMonths.map(ymTxt), [{label: 'Oil', backgroundColor: '#ce0f69', data: b.oil.map(oilF), stack: 's'},
     {label: 'Gas', backgroundColor: '#f68d2e', data: b.gas.map(gasBoe), stack: 's'}], oilU(), {ticks: 12});
 }
@@ -405,20 +405,26 @@ function viewCompany() {
   setControls(select('q', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company'));
   const bm = D.blockMonths, n = bm.length;
   const avg12 = arr => { let a = 0, d = 0; for (let i = Math.max(0, n - 12); i < n; i++) if (arr[i] != null) { a += arr[i] * daysIn(bm[i]); d += daysIn(bm[i]); } return d ? a / d : 0; };
-  const rows = names.map(g => ({g, v: avg12(E.groups[g]), blocks: (E.blocks[g] || []).length})).sort((a, b) => b.v - a.v);
+  // Egenproduksjon i boe: olje + gass (6 000 scf per boe), blokkenes produksjon × dagens andeler
+  const PB = Object.fromEntries(D.prodBlocks.map(b => [b.key, b]));
+  const noGas = bm.map((ym, i) => D.prodBlocks.every(b => b.gas[i] == null));   // måneder uten gasstabell
+  const gasOf = g => bm.map((ym, i) => noGas[i] ? null : (E.blocks[g] || []).reduce((t, [k, sh]) => t + sh / 100 * (gasBoe(PB[k] && PB[k].gas[i]) || 0), 0));
+  const EQ = Object.fromEntries(names.map(g => { const gs = gasOf(g); return [g, {oil: E.groups[g], gas: gs, tot: E.groups[g].map((v, i) => v == null || gs[i] == null ? null : v + gs[i])}]; }));
+  const gapTxt = noGas.some(x => x) ? ` · no gas in ANPG's block tables for ${bm.filter((ym, i) => noGas[i]).map(ymTxt).join(', ')}` : '';
+  const rows = names.map(g => { const o = avg12(EQ[g].oil), gs = avg12(EQ[g].gas); return {g, v: o + gs, o, gs, blocks: (E.blocks[g] || []).length}; }).sort((a, b) => b.v - a.v);
   let ds;
   if (!S.q) {
     const top = rows.slice(0, 8).map(r => r.g);
-    ds = top.map(g => ({label: g, backgroundColor: coColor(g), data: E.groups[g].map(oilF), stack: 's'}));
-    ds.push({label: 'Other companies', backgroundColor: OTHER_COLOR, stack: 's', data: bm.map((ym, i) => oilF(names.filter(g => !top.includes(g)).reduce((t, g) => t + (E.groups[g][i] || 0), 0)))});
-  } else ds = [{label: S.q, backgroundColor: coColor(S.q) === OTHER_COLOR ? '#7d2248' : coColor(S.q), data: (E.groups[S.q] || []).map(oilF)}];
+    ds = top.map(g => ({label: g, backgroundColor: coColor(g), data: EQ[g].tot, stack: 's'}));
+    ds.push({label: 'Other companies', backgroundColor: OTHER_COLOR, stack: 's', data: bm.map((ym, i) => noGas[i] ? null : names.filter(g => !top.includes(g)).reduce((t, g) => t + (EQ[g].tot[i] || 0), 0))});
+  } else ds = EQ[S.q] ? [{label: 'Oil', backgroundColor: '#ce0f69', data: EQ[S.q].oil, stack: 's'}, {label: 'Gas', backgroundColor: '#f68d2e', data: EQ[S.q].gas, stack: 's'}] : [];
   const held = S.q ? B.filter(b => b.holders.some(h => groupName(h[0]) === S.q)) : [];
-  setView(chartCard('cmpChart', S.q ? `${esc(S.q)} · equity oil` : 'Equity oil by company', `${oilU()}, monthly from ${ymTxt(bm[0])} · each block's production × today's shares in ANPG's block register`, {cls: 'tall'}) +
-    `<div class="info-box"><strong>Equity production</strong> is each block's oil (from ANPG's report tables) multiplied by the contractor shares in ANPG's block register today; the register has no history, so earlier months use today's partners. Shares cover ${fmt(E.coverage * 100, 1)} % of oil over the last 12 months. Sonangol E&amp;P and SNL P&amp;P are shown as Sonangol; Azule Energy is the bp–Eni joint venture.</div>` +
-    (!S.q ? `<div class="tbl-sec">Companies<small>Equity oil, ${oilU()}, average of the last 12 months</small></div><div class="table-wrap"><table class="res-table"><thead><tr><th>Company</th><th>Equity oil</th><th>Producing blocks</th><th>Blocks in register</th></tr></thead><tbody>
-      ${rows.map(r => `<tr class="click" onclick="set({q:${jsq(r.g)}})"><td><span class="dot" style="background:${coColor(r.g)}"></span><button class="row-link">${esc(r.g)}</button></td><td>${fmt(oilF(r.v))}</td><td>${r.blocks}</td><td>${B.filter(b => b.holders.some(h => groupName(h[0]) === r.g)).length}</td></tr>`).join('')}</tbody></table></div>`
-    : `<div class="tbl-sec">Producing blocks<small>${esc(S.q)}'s share and net oil, last 12 months</small></div><div class="table-wrap"><table class="res-table"><thead><tr><th>Block</th><th>Share</th><th>Net oil (${oilU()})</th></tr></thead><tbody>
-      ${(E.blocks[S.q] || []).map(([k, sh, v]) => { const b = blockByKey(k); return `<tr class="click" onclick="openBlock(${jsq(k)})"><td><button class="row-link">${esc(b ? b.name : k)}</button></td><td>${fmt(sh, 2)} %</td><td>${fmt(oilF(v))}</td></tr>`; }).join('')}</tbody></table></div>
+  setView(chartCard('cmpChart', S.q ? `${esc(S.q)} · equity production` : 'Equity production by company', `${oilU()}, oil and gas (6,000 scf per boe), monthly from ${ymTxt(bm[0])} · each block's production × today's shares in ANPG's block register${S.q ? '' : gapTxt}`, {cls: 'tall'}) +
+    `<div class="info-box"><strong>Equity production</strong> is each block's oil and gas (from ANPG's report tables; gas converted at 6,000 scf per boe) multiplied by the contractor shares in ANPG's block register today; the register has no history, so earlier months use today's partners. Shares cover ${fmt(E.coverage * 100, 1)} % of the oil over the last 12 months. Sonangol E&amp;P and SNL P&amp;P are shown as Sonangol; Azule Energy is the bp–Eni joint venture.</div>` +
+    (!S.q ? `<div class="tbl-sec">Companies<small>Equity production, ${oilU()}, average of the last 12 months</small></div><div class="table-wrap"><table class="res-table"><thead><tr><th>Company</th><th>Oil</th><th>Gas</th><th>Total</th><th>Producing blocks</th><th>Blocks in register</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="click" onclick="set({q:${jsq(r.g)}})"><td><span class="dot" style="background:${coColor(r.g)}"></span><button class="row-link">${esc(r.g)}</button></td><td>${fmt(r.o)}</td><td>${fmt(r.gs)}</td><td><strong>${fmt(r.v)}</strong></td><td>${r.blocks}</td><td>${B.filter(b => b.holders.some(h => groupName(h[0]) === r.g)).length}</td></tr>`).join('')}</tbody></table></div>`
+    : `<div class="tbl-sec">Producing blocks<small>${esc(S.q)}'s share and net production, ${oilU()}, last 12 months</small></div><div class="table-wrap"><table class="res-table"><thead><tr><th>Block</th><th>Share</th><th>Net oil</th><th>Net gas</th><th>Net total</th></tr></thead><tbody>
+      ${(E.blocks[S.q] || []).map(([k, sh, v]) => { const b = blockByKey(k), gv = b ? avg12(b.gas.map(x => x == null ? null : gasBoe(x) * sh / 100)) : 0; return `<tr class="click" onclick="openBlock(${jsq(k)})"><td><button class="row-link">${esc(b ? b.name : k)}</button></td><td>${fmt(sh, 2)} %</td><td>${fmt(v)}</td><td>${fmt(gv)}</td><td><strong>${fmt(v + gv)}</strong></td></tr>`; }).join('')}</tbody></table></div>
       <div class="tbl-sec">All blocks in the register<small>${held.length} blocks with ${esc(S.q)} in the contractor group</small></div>${blockTable(held)}`));
   barChart('cmpChart', bm.map(ymTxt), ds, oilU(), {ticks: 12});
 }
@@ -597,6 +603,10 @@ async function init() {
   try { D = await fetch('data/angola.json', {cache: 'no-cache'}).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
   catch (e) { setView(`<div class="status">Could not load data/angola.json (${esc(e.message)}).</div>`); return; }
   B = D.blocks;
+  // Måneder der rapporttabellen mangler gass for alle blokker (oppgitt som 0): behandles som manglende
+  D.blockMonths.forEach((ym, i) => { if (!D.prodBlocks.some(b => b.gas[i])) D.prodBlocks.forEach(b => { b.gas[i] = null; }); });
+  { const bm = D.blockMonths, n = bm.length;   // gass siste 12 mnd uten de manglende månedene
+    D.prodBlocks.forEach(b => { let a = 0, d = 0; for (let i = Math.max(0, n - 12); i < n; i++) if (b.gas[i] != null) { a += b.gas[i] * daysIn(bm[i]); d += daysIn(bm[i]); } b.l12[1] = d ? a / d : 0; }); }
   let [y, m] = [+D.months[0].slice(0, 4), +D.months[0].slice(4)];
   while (`${y}${String(m).padStart(2, '0')}` <= D.months[1]) { MS.push(`${y}${String(m).padStart(2, '0')}`); if (++m > 12) { m = 1; y++; } }
   CO_ORDER = Object.keys(D.equity.groups);
