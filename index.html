@@ -2270,9 +2270,10 @@ function renderViewTabs() {
     : topMode === 'ncs' ? cur === 'production' && ncsF.prod === 'product' && !ncsF.tot
     : topMode === 'dcs' ? cur === 'production' && dcsF.prod === 'product'
     : topMode === 'ukcs' ? cur === 'production' && ukF.prod === 'product' : false;
-  document.getElementById('settingsBtn').style.display =
-    topMode === 'hubs' || (topMode === 'companies' && cur === 'news') || (topMode === 'prices' && cur === 'brent') ? '' : 'none';
-  document.getElementById('settingsBtn').title = topMode === 'hubs' ? 'Edit hubs' : topMode === 'prices' ? 'Upload normpris files' : 'Company news feeds';
+  // Tannhjulet i tittellinjen: innstillingene for visningen som er åpen.
+  const gear = settingsTarget(cur);
+  document.getElementById('settingsBtn').style.display = gear ? '' : 'none';
+  if (gear) { document.getElementById('settingsBtn').title = gear.title; document.getElementById('settingsBtn').setAttribute('aria-label', gear.title); }
   document.getElementById('waterRow').style.display = showWaterRow ? '' : 'none';
   // Reservevisningen har ingen tidsakse — ett estimat per felt — så periode og
   // årsutvalg gjelder ikke der.
@@ -15425,7 +15426,6 @@ function companyNewsItems(name) {
 
 function setCnType(t) { cnType = t; cnShown = 40; drawCompanyNews(); }
 
-const GEAR_SVG = document.querySelector('#settingsBtn svg') ? document.querySelector('#settingsBtn svg').outerHTML : '';
 
 function drawCompanyNews() {
   const names = [...selectedCompanyNames];
@@ -15459,8 +15459,7 @@ function drawCompanyNews() {
 
   setProfile(`
     <div class="pf-card pf-wide">
-      <h3 class="cn-head"><span>Latest news</span>
-        <button class="wd-gear" onclick="openFeedSettings()" aria-label="Company news feeds${myFeeds.length ? ` (${myFeeds.length} added)` : ''}" title="Company news feeds${myFeeds.length ? ` (${myFeeds.length} added)` : ''}">${GEAR_SVG}</button></h3>
+      <h3 class="cn-head"><span>Latest news</span></h3>
       <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}${chip('deals', 'Deals', n('deals'))}${chip('havtil', 'Havtil', n('havtil'))}</div>
       ${rows || empty}
       ${list.length > cnShown ? `<button class="grp-btn ex-more" onclick="cnShown+=60;drawCompanyNews()">Show more (${list.length - cnShown} older)</button>` : ''}
@@ -19722,10 +19721,18 @@ async function saveHubs() {
   }
 }
 
+// Hva tannhjulet i tittellinjen gjør i visningen som er åpen, eller null.
+function settingsTarget(cur = currentSubView()) {
+  if (topMode === 'hubs') return {title: 'Edit hubs', open: openHubSettings};
+  if (topMode === 'companies' && cur === 'news') return {title: 'Company news feeds', open: openFeedSettings};
+  if (topMode === 'prices' && cur === 'brent') return {title: 'Upload normpris files', open: openNpUpload};
+  if (topMode === 'exploration' && cur === 'wells') return {title: "Company plans: planned wells announced by the companies but not yet in Sodir's data", open: openPlanPanel};
+  if (topMode === 'drilling' && cur === 'rigs') return {title: 'Data sources: where the rig contracts come from, when each was last updated and how to update them', open: openRigDataInfo};
+  return null;
+}
 function openSettings() {
-  if (topMode === 'companies') openFeedSettings();
-  else if (topMode === 'prices') openNpUpload();
-  else openHubSettings();
+  const t = settingsTarget();
+  if (t) t.open();
 }
 
 // ── NYHETSFEEDER PER SELSKAP ─────────────────────────────────────────────────
@@ -21354,8 +21361,7 @@ function explRenderList() {
   const more = list.length > explLimit
     ? `<button class="grp-btn ex-more" onclick="explLimit+=200;explRenderList()">Show more (${list.length - explLimit} remaining)</button>` : '';
   document.getElementById('explBody').innerHTML = `
-    <div class="pf-card"><h3 class="cn-head"><span>Exploration wells</span>
-      <button class="wd-gear" style="margin-right:62px" onclick="openPlanPanel()" aria-label="Company plans" title="Company plans: planned wells announced by the companies but not yet in Sodir's data">${GEAR_SVG}</button></h3><div class="ex-slot"></div>
+    <div class="pf-card"><h3 class="cn-head"><span>Exploration wells</span></h3><div class="ex-slot"></div>
     <div class="ex-sum">${explSummary(list) || 'No wells match the filters'}</div>
     ${list.length ? `<div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       ${th('name', 'Well / discovery', 'ex-l')}${th('result', 'Result', 'ex-l')}${th('licence', 'Licence', 'ex-l')}
@@ -22418,8 +22424,7 @@ function explRenderRigs() {
   const nDev = inWin.filter(w => w.kind === 'dev').reduce((t, b) => t + b.items.length, 0);
   const nAisOnly = inWin.filter(w => w.kind === 'ais').length;
   document.getElementById('explBody').innerHTML = `
-    <div class="pf-card"><h3 class="cn-head"><span>Rig schedule</span>
-      <button class="wd-gear" style="margin-right:62px" onclick="openRigDataInfo()" aria-label="Data sources" title="Data sources: where the rig contracts come from, when each was last updated and how to update them">${GEAR_SVG}</button></h3><div class="ex-slot"></div>
+    <div class="pf-card"><h3 class="cn-head"><span>Rig schedule</span></h3><div class="ex-slot"></div>
       <div class="ex-sum"><strong>${out.length}</strong> rigs · <strong>${out.filter(r => r.now).length}</strong> drilling now
       · <strong>${out.filter(r => r.next).length}</strong> with a planned well${nDev ? ` · <strong>${nDev}</strong> development wellbores` : ''}${
         showCon ? ` · <strong>${out.filter(r => r.cs.length).length}</strong> with contract data` : ''}</div>
