@@ -367,7 +367,7 @@ function openBlock(k, quiet) {
     ['Oil, last 12 months', `${fmt(oilF(b.l12[0]))} ${oilU()}`], ['Gas, last 12 months', `${fmt(gasF(b.l12[1]), 1)} ${gasU()}`], ['Award', r && r.offer ? (r.offer === 'tender' ? 'Licensing round' : 'Permanent offer') : '–'], ['FPSO', r && r.fpso || '–']];
   document.getElementById('sheetPanel').innerHTML = `<div class="wd-head"><div><h2>${esc(r ? r.name : b.name)}</h2><div class="wd-sub">Angola · ${esc(r && r.basin || '')} basin · ${esc(r && r.op || '')}</div></div><button class="wd-close" onclick="closeSheet()">✕</button></div>
     <div class="pf-card"><div class="pf-facts">${facts.map(([a, v]) => `<div class="pf-fact"><span>${esc(a)}</span><strong>${esc(v)}</strong></div>`).join('')}</div>${r && r.desc ? `<div class="pf-note">${esc(r.desc)}</div>` : ''}</div>
-    <div class="pf-card"><h3>Production <small>· monthly, from ANPG's report tables</small></h3><div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div></div>
+    <div class="pf-card"><h3>Production <small>· monthly, boe/day, from ANPG's report tables · gas converted at 6,000 scf per boe</small></h3><div class="chart-container short"><canvas id="sheetChart"></canvas></div><div id="sheetChartLeg"></div></div>
     <div id="sheetHist"></div><div id="sheetFields"></div>
     ${holdersHtml(r)}<div class="pf-card"><h3>Map <small>· block outline, fields, facilities and wells (ANPG concession map)</small></h3><div class="map-box" style="height:320px" id="sheetMap"></div></div>
     <div class="source-note">Source: ANPG — monthly production reports, block register and concession map.</div>`;
@@ -391,8 +391,9 @@ function openBlock(k, quiet) {
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
     drawMap(el, {fit: [Math.min(...xs) - 0.05, Math.min(...ys) - 0.05, Math.max(...xs) + 0.05, Math.max(...ys) + 0.05], onlyKey: regKey(b.reg || b.name), wells: true, noClick: true});
   });
-  barChart('sheetChart', D.blockMonths.map(ymTxt), [{label: 'Oil', backgroundColor: '#ce0f69', data: b.oil.map(oilF)},
-    {type: 'line', label: 'Gas', borderColor: '#f68d2e', backgroundColor: '#f68d2e', data: b.gas.map(gasF), yAxisID: 'y2', unit: gasU(), pointRadius: 2, noSum: true, dec: 1}], oilU(), {stacked: false, noFooter: true, ticks: 12, y2: gasU()});
+  const gasBoe = v => v == null ? null : v * 1000 / MCF_PER_BOE;   // MMscf/d → boe/d (6 000 scf per boe)
+  barChart('sheetChart', D.blockMonths.map(ymTxt), [{label: 'Oil', backgroundColor: '#ce0f69', data: b.oil.map(oilF), stack: 's'},
+    {label: 'Gas', backgroundColor: '#f68d2e', data: b.gas.map(gasBoe), stack: 's'}], oilU(), {ticks: 12});
 }
 function hideSheet() { document.getElementById('sheet').classList.remove('open'); document.body.classList.remove('sheet-open'); Object.keys(charts).filter(k => k.startsWith('sheet')).forEach(k => { charts[k].destroy(); delete charts[k]; }); }
 function closeSheet() { hideSheet(); if (S.bk) { S.bk = ''; writeUrl(true); } }
