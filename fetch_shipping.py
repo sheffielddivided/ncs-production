@@ -69,6 +69,11 @@ GAP_HOURS = 6
 SAME_SHIP_HOURS = 72   # anløp av samme skip på samme felt med kortere mellomrom er ett anløp
 WAIT_DAYS = 7          # ventet skipet til sjøs nær feltet mellom to anløp, er de ett anløp så lenge
 WAIT_NEAR_KM = 40      # så nær feltet ligger skipet når det venter
+# Var skipet aldri lenger enn dette fra feltet mellom to anløp (skipets spor),
+# losset det ikke imellom, og det er ett anløp: lastingen ble avbrutt (vær),
+# og skipet lå i le eller ventet lenger unna enn WAIT_NEAR_KM (Aurora Spirit
+# på Norne 2.–6. januar 2026, 95 km unna inne ved kysten).
+WAIT_FAR_KM = 120
 MIN_LOAD_HOURS = 6     # kortere opphold er ikke lasting (skipet venter eller går inn mens et annet laster)
 # Så nær lasteinnretningen ligger tankskipet når det laster (antennen ca. 0,45–0,55
 # km fra innretningens posisjon, innenfor sikkerhetssonen); skip som venter,
@@ -730,6 +735,8 @@ def main():
         prev_rows = [] if reroute else st['prev'].get('visits') or []
         # Anløp som tidligere er slått sammen fordi skipet ventet nær feltet.
         st['joins'] = set() if reroute else {tuple(j) for j in st['prev'].get('joins') or []}
+        # Par som er sjekket mot sporet og ikke slått sammen (skipet losset imellom).
+        st['apart'] = set() if reroute else {tuple(j) for j in st['prev'].get('apart') or []}
         # Tomme fra/til funnet med et kortere vindu slås opp på nytt.
         retry = (st['prev'].get('routeDays') or 4) < ROUTE_DAYS
         keep = lambda p: p if not (retry and p and not p[1]) else None
@@ -785,8 +792,10 @@ def main():
 
     # 5. Lå skipet og ventet til sjøs nær feltet mellom to anløp (forrige
     # anløps «to» og nesteanløps «from» er stopp til sjøs under WAIT_NEAR_KM
-    # fra feltet), er det ett anløp: skipet gikk til side, eller AIS-sporet
-    # falt ut en stund. Sammenslåtte par huskes i shipping.json → joins.
+    # fra feltet), eller var det aldri lenger enn WAIT_FAR_KM unna ifølge
+    # sporet, er det ett anløp: skipet gikk til side eller lå i le, eller
+    # AIS-sporet falt ut en stund. Sammenslåtte par huskes i shipping.json →
+    # joins, par som er sjekket og holdt adskilt i → apart.
     for st in setups:
         def waiting(p):
             if not p or p[0] != 'sea':
@@ -799,6 +808,16 @@ def main():
             cur = out_v[-1] if out_v else None
             if cur and cur['m'] == v['m'] and v['s'] - cur['e'] <= WAIT_DAYS * 1440:
                 key = (v['m'], iso(cur['e']), iso(v['s']))
+                if key not in st['joins'] and key not in st['apart'] and not (waiting(cur['to']) and waiting(v['from'])) \
+                        and not rebuild and time.time() < deadline:
+                    try:
+                        rows = ship_rows(v['m'], from_minutes(cur['e']), from_minutes(v['s']))
+                    except Busy as exc:
+                        print(f'  ! mellom anløp {v["m"]}: {exc}', file=sys.stderr)
+                        rows = None
+                    if rows:   # uten posisjoner vet vi ikke, og anløpene holdes adskilt (slås opp igjen)
+                        far = max(km(r[1], r[2], *st['centre']) for r in rows)
+                        (st['joins'] if far <= WAIT_FAR_KM else st['apart']).add(key)
                 if key in st['joins'] or (waiting(cur['to']) and waiting(v['from'])):
                     st['joins'].add(key)
                     cur.update(e=v['e'], d=min(cur['d'], v['d']), open=v['open'], to=v['to'])
@@ -907,6 +926,7 @@ def main():
             'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest', 'facility', 'arrived', 'left'],
             'visits': rows_out,
             'joins': sorted(list(j) for j in st['joins'] if j[0] in ship_ids),
+            'apart': sorted(list(j) for j in st['apart'] if j[0] in ship_ids),
             'ships': {m: {**st['ships'][m], **tanker_spec(st['ships'][m], specs)} for m in sorted(ship_ids)},
         }
         print(f'  {st["fc"]["name"]}: {len(rows_out)} besøk, {len(ship_ids)} skip, data til {st["flog"]["until"]}')
