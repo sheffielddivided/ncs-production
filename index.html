@@ -49,6 +49,20 @@
     .mode-sep{position:relative;margin-left:7px;}
     .mode-sep::before{content:"";position:absolute;left:-5px;top:3px;bottom:3px;width:1px;background:rgba(125,34,72,0.18);pointer-events:none;}
     @media (hover:hover){ .mode-ext:hover{color:var(--blue);} }
+    /* «Other regions»: nedtrekksmeny med fast posisjon (regionsOpen() plasserer den under knappen). */
+    .mode-dd-caret{font-size:0.7em;margin-left:2px;display:inline-block;transition:transform 0.15s;}
+    .mode-dd-btn[aria-expanded="true"] .mode-dd-caret{transform:rotate(180deg);}
+    .mode-dd-btn[aria-expanded="true"]:not(.active){color:var(--blue);}
+    .mode-dd-menu{position:fixed;z-index:60;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:8px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.12);padding:4px;display:flex;flex-direction:column;gap:1px;}
+    .mode-dd-menu[hidden]{display:none;}
+    .mode-dd-item{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:7px 10px;border:0;border-radius:6px;background:none;
+      font:inherit;font-size:0.8rem;font-weight:700;color:var(--navy);text-align:left;text-decoration:none;cursor:pointer;white-space:nowrap;}
+    .mode-dd-item small{font-size:0.7rem;font-weight:400;color:var(--muted);}
+    .mode-dd-item:hover,.mode-dd-item:focus-visible{background:var(--light);outline:none;}
+    .mode-dd-item.active{background:var(--blue);color:#fff;}
+    .mode-dd-item.active small{color:rgba(255,255,255,0.8);}
+    @media (pointer: coarse){ .mode-dd-item{min-height:40px;align-items:center;} }
 
     .controls-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
     .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
@@ -1095,19 +1109,21 @@
       <button class="mode-btn" id="modeBtnExploration" onclick="switchMode('exploration')">Exploration</button>
       <button class="mode-btn" id="modeBtnDrilling" onclick="switchMode('drilling')">Drilling</button>
       <button class="mode-btn mode-sep" id="modeBtnPrices" onclick="switchMode('prices')">Macro</button>
-      <button class="mode-btn" id="modeBtnDcs" onclick="switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS</button>
-      <button class="mode-btn" id="modeBtnUkcs" onclick="switchMode('ukcs')" title="UK Continental Shelf (data from the North Sea Transition Authority)">UKCS</button>
-      <!-- Canada (Newfoundland and Labrador) er en egen side under arbeid. Skjult
-           til den er klar: fjern style="display:none" for å vise lenken. -->
-      <a class="mode-btn" id="modeBtnCanada" href="canada.html" style="display:none" title="Newfoundland and Labrador offshore (data from C-NLOER)">Canada</a>
-      <!-- US Gulf of Mexico (BOEM), egen side under arbeid. Skjult som Canada. -->
-      <a class="mode-btn" id="modeBtnGom" href="gom.html" style="display:none" title="US Gulf of Mexico, federal waters (data from BOEM)">GoM</a>
-      <!-- Brasil (ANP), egen side under arbeid. Skjult som Canada. -->
-      <a class="mode-btn" id="modeBtnBrazil" href="brazil.html" style="display:none" title="Brazil, offshore and onshore (data from ANP)">Brazil</a>
-      <!-- Angola (ANPG), egen side under arbeid. Skjult som Canada. -->
-      <a class="mode-btn" id="modeBtnAngola" href="angola.html" style="display:none" title="Angola, offshore and onshore (data from ANPG)">Angola</a>
+      <!-- Andre regioner: DCS og UKCS er moduser på denne siden; Canada, GoM, Brasil
+           og Angola er egne sider. Menyen åpnes ved mouseover (og klikk/trykk) og ligger
+           utenfor .mode-switcher (som scroller sideveis og ville klippet den). -->
+      <button class="mode-btn mode-sep mode-dd-btn" id="modeBtnRegions" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="regionsMenu"
+        onclick="regionsToggle()" onmouseenter="regionsHover(true)" onmouseleave="regionsHover(false)">Other regions <span class="mode-dd-caret" aria-hidden="true">▾</span></button>
       <!-- Mapmaker er en egen app (sheffielddivided/mapmaker) og åpnes i ny fane. -->
       <a class="mode-btn mode-ext mode-sep" href="https://map.kbak.no/" target="_blank" rel="noopener" title="NCS Mapmaker: custom maps for presentations (opens in a new tab)">Mapmaker <span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="mode-dd-menu" id="regionsMenu" role="menu" aria-label="Other regions" hidden onmouseenter="regionsHover(true)" onmouseleave="regionsHover(false)">
+      <button class="mode-dd-item" id="modeBtnDcs" role="menuitem" type="button" onclick="regionsClose();switchMode('dcs')" title="Danish Continental Shelf (data from the Danish Energy Agency)">DCS<small>Denmark</small></button>
+      <button class="mode-dd-item" id="modeBtnUkcs" role="menuitem" type="button" onclick="regionsClose();switchMode('ukcs')" title="UK Continental Shelf (data from the North Sea Transition Authority)">UKCS<small>United Kingdom</small></button>
+      <a class="mode-dd-item" role="menuitem" href="gom.html" title="US Gulf of Mexico, federal waters (data from BOEM)">GoM<small>US Gulf of Mexico</small></a>
+      <a class="mode-dd-item" role="menuitem" href="canada.html" title="Newfoundland and Labrador offshore (data from C-NLOER)">Canada<small>Newfoundland and Labrador</small></a>
+      <a class="mode-dd-item" role="menuitem" href="brazil.html" title="Brazil, offshore and onshore (data from ANP)">Brazil<small>Offshore and onshore</small></a>
+      <a class="mode-dd-item" role="menuitem" href="angola.html" title="Angola, offshore and onshore (data from ANPG)">Angola<small>Offshore and onshore</small></a>
     </div>
 </nav>
 
@@ -23727,7 +23743,42 @@ function rigZoomRig() {
 function syncModeButtons() {
   ['ncs', 'hubs', 'fields', 'companies', 'discoveries', 'exploration', 'drilling', 'licences', 'prices', 'dcs', 'ukcs'].forEach(m =>
     document.getElementById('modeBtn' + m[0].toUpperCase() + m.slice(1)).classList.toggle('active', topMode === m));
+  document.getElementById('modeBtnRegions').classList.toggle('active', topMode === 'dcs' || topMode === 'ukcs');
 }
+
+// ── «Other regions»-menyen ───────────────────────────────────────────────────
+// Åpnes ved mouseover (med en kort forsinkelse før den lukkes, så pekeren rekker
+// å gå fra knappen ned i menyen) og ved klikk/trykk. Menyen har fast posisjon
+// og plasseres under knappen hver gang den åpnes.
+let regionsTimer = null;
+function regionsOpen() {
+  const btn = document.getElementById('modeBtnRegions'), menu = document.getElementById('regionsMenu');
+  clearTimeout(regionsTimer);
+  menu.hidden = false;
+  const r = btn.getBoundingClientRect(), w = menu.offsetWidth;
+  menu.style.top = Math.round(r.bottom + 4) + 'px';
+  menu.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - w - 8))) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+}
+function regionsClose() {
+  clearTimeout(regionsTimer);
+  document.getElementById('regionsMenu').hidden = true;
+  document.getElementById('modeBtnRegions').setAttribute('aria-expanded', 'false');
+}
+function regionsToggle() {
+  if (document.getElementById('regionsMenu').hidden) regionsOpen(); else regionsClose();
+}
+function regionsHover(on) {
+  if (!matchMedia('(hover: hover)').matches) return;
+  clearTimeout(regionsTimer);
+  if (on) regionsOpen(); else regionsTimer = setTimeout(regionsClose, 180);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#modeBtnRegions, #regionsMenu')) regionsClose();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') regionsClose(); });
+window.addEventListener('resize', regionsClose);
+document.addEventListener('scroll', e => { if (!e.target.closest || !e.target.closest('#regionsMenu')) regionsClose(); }, true);
 
 const explOpenDiscovery = id => openDiscoveryProfile(id);
 const explOpenCompany = name => openCompanyProfile(name);
