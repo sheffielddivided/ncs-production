@@ -309,7 +309,10 @@ def build():
             rc['share'] = sb * days_in(int(ym[:4]), int(ym[4:]))
         pb = lit(r.get('production_by_block')) or []
         if pb:
-            rc['blocks'] = [[x.get('block'), num(x.get('oil_bopd')), num(x.get('gas_mmscfd'))] for x in pb]
+            # Gass mangler i noen strukturerte måneder (juli–august 2026); hent den fra rapportens tabell
+            txt_gas = {key(n): g for n, o, g in rc.get('blocks') or [] if g is not None}
+            rc['blocks'] = [[x.get('block'), num(x.get('oil_bopd')),
+                             num(x.get('gas_mmscfd')) if num(x.get('gas_mmscfd')) is not None else txt_gas.get(key(x.get('block')))] for x in pb]
 
     # Blokktabellene: sum = TOTAL-rad = landets produksjon
     bad = []
