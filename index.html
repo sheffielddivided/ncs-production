@@ -3530,6 +3530,9 @@ function applyHash() {
     if (['mboe', 'scatter'].includes(q.get('nd'))) ncsF.chg = q.get('nd');
     if (['investments', 'survey', 'share'].includes(q.get('ne'))) ncsF.ec = q.get('ne');
     if (q.get('ni') === 'real') ncsF.inv = 'real';
+    if (q.get('nz') === 'sm3') ncsF.fu = 'sm3';
+    if (q.get('n2') === '2050') ncsF.fh = '2050';
+    if (/^[\d,]*$/.test(q.get('nb') || 'x')) ncsF.fv = q.get('nb');
   }
   if (topMode === 'dcs') {
     // Felt og selskap valideres når dataene er lastet (loadDcs).
@@ -4047,8 +4050,8 @@ function drawChartView() {
 }
 
 // ── PASSORD FOR VALUATION BETA ───────────────────────────────────────────────
-// Valuation BETA (felt, hub og selskap) og Company → Analytics BETA vises først når
-// passordet er tastet inn.
+// Valuation BETA (felt, hub og selskap), Company → Analytics BETA og NCS → Forecasts
+// BETA vises først når passordet er tastet inn.
 // Passordet ligger bare i GitHub-secreten BETA_PASSWORD. Workflowen
 // beta-password.yml (kjøres for hånd) skriver en saltet PBKDF2-SHA256-hash av
 // det til data/beta_gate.json; her regnes det inntastede passordet om på samme
@@ -10241,6 +10244,7 @@ const NCS_TABS = [
   {id:'investments', label:'Investments'},
   {id:'outage',      label:'Gas exports'},
   {id:'economy',     label:'Economy'},
+  {id:'forecasts',   label:'Forecasts BETA'},
 ];
 let ncsSubView = 'production';
 // prod: 'product' | 'area' | 'operator' · gx: Gas exports → 'outages' | 'infra' · grp: lisenshavere telles per konsern · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen · rf: startår i reservegrafen
@@ -10249,11 +10253,15 @@ let ncsSubView = 'production';
 // · chg: 'pct' | 'mboe' | 'scatter' (reserveendringen i prosent, i mill fat o.e. eller som boblediagram over tid)
 // · ec: 'employment' | 'investments' | 'survey' | 'share'
 // · inv: 'nom' | 'real' (investeringer i faste kroner)
+// · fu: 'boed' | 'sm3' (enhet i Forecasts BETA) · fh: '2035' | '2050' (horisont) · fv: årgangene som vises, kommaseparert
+const NCS_FC_DEFAULT = '2003,2009,2014,2022,2026';
 const ncsDefaults = () => ({prod: 'product', tot: false, grp: false, gx: 'outages', sc: false, res: 'oe', cum: false, vol: false, from: '2000', rf: '2001', year: '', rank: 'res', all: false,
-                            cr: 'curve', crArea: false, fl: 'rank', hb: 'rank', chg: 'pct', ec: 'employment', inv: 'nom'});
+                            cr: 'curve', crArea: false, fl: 'rank', hb: 'rank', chg: 'pct', ec: 'employment', inv: 'nom',
+                            fu: 'boed', fh: '2035', fv: NCS_FC_DEFAULT});
 let ncsF = ncsDefaults();   // vol: letegrafen viser påvist volum i stedet for antall brønner
 const NCS_PARAMS = [['prod', 'np'], ['tot', 'nt'], ['grp', 'ng'], ['gx', 'nx'], ['sc', 'ns'], ['res', 'nr'], ['cum', 'nu'], ['vol', 'nv'], ['from', 'n0'], ['rf', 'n1'], ['year', 'ny'], ['rank', 'nk'],
-                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['hb', 'nh'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni']];
+                    ['cr', 'nc'], ['crArea', 'na'], ['fl', 'nf'], ['hb', 'nh'], ['chg', 'nd'], ['ec', 'ne'], ['inv', 'ni'],
+                    ['fu', 'nz'], ['fh', 'n2'], ['fv', 'nb']];
 const NCS_RES = [['oe', 'Total OE'], ['liq', 'Liquids'], ['gas', 'Gas']];
 
 // Havområdene, i samme farger som i Licences. Felt uten område i
@@ -10305,6 +10313,7 @@ async function refreshNcs() {
   else if (v === 'companies' && ncsF.rank === 'count') await ncsLoadLicHist();
   else if (v === 'companies') await Promise.all([loadFieldReserves(), loadAllLicensees(), loadDiscoveries(), loadProdForFields(ncsFieldIds())]);
   else if (v === 'outage') await (ncsF.gx === 'infra' ? ncsLoadPipelines() : loadGassco());
+  else if (v === 'forecasts') await Promise.all([loadProdForFields(ncsFieldIds()), ncsLoadForecasts()]);
   drawChart();
 }
 
@@ -10318,6 +10327,7 @@ function drawNcs() {
   else if (v === 'fields' || v === 'hubs') drawNcsFields();
   else if (v === 'economy') drawNcsEconomy();
   else if (v === 'outage') drawNcsOutage();
+  else if (v === 'forecasts') betaGate(drawNcsForecasts, 'Forecasts BETA');
   else drawNcsProduction();
 }
 
@@ -10570,6 +10580,123 @@ function drawNcsProduction() {
     sc ? {xTitle: 'Year'} : {});
   ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('prod', [['product', 'Oil & Gas'], ['area', 'By sea area'], ['operator', 'By operator']])}${
     ncsPills('sc', [[false, 'Actual'], [true, 'With Sodir scenarios']])}${ncsNewsLink()}</div>`);
+}
+
+// ── NCS: FORECASTS BETA ──
+// Sodirs (Oljedirektoratets) prognoser for samlet produksjon på norsk sokkel
+// fra ressursrapportene 2003–2026, mot faktisk produksjon. Samme idé som
+// Equinors graf over Wood Mackenzies prognoser, men med Sodirs totalprognoser
+// for hele sokkelen. Tallene ligger i data/sodir_forecasts.json, i mill Sm³
+// o.e. per år, og er Sodirs forventede totalproduksjon inkludert uoppdagede
+// ressurser. 2003–2016 er lest ut av vektorgrafikken i rapportenes PDF-er
+// (eksakte koordinater, ikke piksler), 2019–2024 er Sodirs egne bakgrunnstall
+// (Excel), 2024 og 2026 er basisscenarioet, og 2026 er lest av pikslene i
+// figuren (som SODIR_SCENARIOS). Faktisk produksjon er summen av felt-
+// produksjonen i produksjonsbundelen, hele år.
+let ncsFc = null;
+async function ncsLoadForecasts() {
+  if (!ncsFc) ncsFc = await fetchBundle('sodir_forecasts');
+}
+const NCS_FC_ACTUAL = '#d0213d';
+// Eldre årganger lysere, nyere mørkere, som i Equinors graf.
+const ncsFcColor = (i, n) => {
+  const t = n > 1 ? i / (n - 1) : 1;
+  const mix = (a, b) => Math.round(a + (b - a) * t);
+  return `rgb(${mix(170, 20)},${mix(190, 42)},${mix(222, 92)})`;
+};
+const NCS_FC_METHOD = {vector: 'read from the vector graphics in the report PDF (exact coordinates)',
+  data: "Sodir's background data for the report (Excel)", pixels: "read off the pixels of Sodir's chart (about ±2 million Sm³ o.e.)"};
+function ncsFcToggle(id) {
+  const on = new Set(ncsF.fv ? ncsF.fv.split(',') : []);
+  on.has(id) ? on.delete(id) : on.add(id);
+  ncsF.fv = (ncsFc ? ncsFc.vintages.map(v => v.id) : [...on]).filter(x => on.has(x)).join(',');
+  syncUrl(); drawChart();
+}
+function ncsFcAll(all) {
+  ncsF.fv = all ? ncsFc.vintages.map(v => v.id).join(',') : NCS_FC_DEFAULT;
+  syncUrl(); drawChart();
+}
+
+function drawNcsForecasts() {
+  if (!ncsFc || !Array.isArray(ncsFc.vintages)) { setChartTitle('NCS · Forecasts BETA', ''); setChartEmpty('Could not load the forecast data.'); return; }
+  const sm3 = ncsF.fu === 'sm3', end = +ncsF.fh, start = 2000;
+  const unit = sm3 ? 'million Sm³ o.e./year' : 'million boe/day';
+  const conv = (v, y) => v == null ? null : sm3 ? +v.toFixed(1) : +(oeBoed(v, daysInYear(y)) / 1e6).toFixed(3);
+  // Faktisk produksjon: årsradene i produksjonsbundelen, bare hele år.
+  const act = {};
+  ncsFieldIds().forEach(id => (fieldProdCache[id] || []).forEach(r => {
+    const a = r.attributes;
+    if (a.prfMonth === 0 && a.prfYear < currentYear) act[a.prfYear] = (act[a.prfYear] || 0) + (a.prfPrdOeNetMillSm3 || 0);
+  }));
+  const actYears = Object.keys(act).map(Number).filter(y => act[y] > 0);
+  const lastAct = actYears.length ? Math.max(...actYears) : null;
+  const years = []; for (let y = start; y <= end; y++) years.push(y);
+  const vint = ncsFc.vintages, on = new Set(ncsF.fv ? ncsF.fv.split(',') : []);
+  const fcAt = (v, y) => { const i = y - v.from; return i >= 0 && i < v.values.length ? v.values[i] : null; };
+  const datasets = [{label: 'Actual production', data: years.map(y => y <= lastAct && act[y] ? conv(act[y], y) : null),
+    borderColor: NCS_FC_ACTUAL, backgroundColor: NCS_FC_ACTUAL, borderWidth: 3, pointRadius: 0, pointHoverRadius: 3, tension: 0.25, order: -1}];
+  const legend = [];
+  vint.forEach((v, i) => {
+    const color = ncsFcColor(i, vint.length);
+    legend.push({id: v.id, label: `Sodir ${v.id}`, color, on: on.has(v.id)});
+    if (!on.has(v.id)) return;
+    datasets.push({label: `Sodir ${v.id}`, data: years.map(y => conv(fcAt(v, y), y)), borderColor: color, backgroundColor: color,
+      borderWidth: 2, borderDash: v.method === 'pixels' ? [6, 3] : [], pointRadius: 0, pointHoverRadius: 3, tension: 0.25, spanGaps: false});
+  });
+  setChartTitle('Norwegian Continental Shelf · Sodir forecasts vs actual',
+    `Total NCS production, Sodir's forecasts from the resource reports ${vint[0].id}–${vint[vint.length - 1].id} · ${unit}`);
+  setChartTable(''); setProfile('');
+  document.getElementById('chartArea').innerHTML = `
+    <div class="chart-container"><canvas id="prodChart"></canvas></div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:${NCS_FC_ACTUAL}"></div>Actual production</div>
+      ${legend.map(l => `<button type="button" class="legend-item" onclick="ncsFcToggle('${l.id}')" title="${l.on ? 'Hide' : 'Show'} the ${l.id} forecast"
+        style="border:0;background:none;padding:0;cursor:pointer;font-family:inherit;${l.on ? '' : 'opacity:.4;text-decoration:line-through'}">
+        <div class="legend-dot" style="background:${l.color}"></div>${esc(l.label)}</button>`).join('')}
+    </div>`;
+  if (chartInstance) chartInstance.destroy();
+  const dec = sm3 ? 0 : 2;
+  chartInstance = new Chart(document.getElementById('prodChart').getContext('2d'), {
+    type: 'line', data: {labels: years.map(String), datasets},
+    options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false},
+        tooltip: {filter: i => i.parsed.y != null,
+          callbacks: {label: c => ` ${c.dataset.label}: ${c.parsed.y.toLocaleString('en', {minimumFractionDigits: dec, maximumFractionDigits: dec})}`}}},
+      scales: {x: {ticks: {maxTicksLimit: 12, font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.04)'}},
+        y: {beginAtZero: true, title: {display: true, text: unit, color: '#4a5568', font: {size: 10}},
+          ticks: {font: {size: 9}, callback: v => v.toLocaleString('en', {minimumFractionDigits: sm3 ? 0 : 1, maximumFractionDigits: sm3 ? 0 : 1})},
+          grid: {color: 'rgba(0,0,0,0.05)'}}}},
+  });
+  lastLabels = years.map(String); lastXTitle = 'Year';
+  lastDatasets = datasets.map(d => ({label: d.label, data: d.data}));
+  document.getElementById('downloadBtn').disabled = false;
+
+  // Tabellen: hver årgang mot faktisk produksjon i siste hele år og i
+  // prognosens første år, og hva den ventet i 2030 og 2035.
+  const ref = lastAct;
+  const f = v => v == null ? '–' : sm3 ? v.toFixed(0) : v.toFixed(2);
+  const dev = (fc, a) => fc == null || !a ? '–' : `${fc >= a ? '+' : ''}${((fc / a - 1) * 100).toFixed(0)} %`;
+  setChartTable(`
+    <table class="res-table">
+      <caption>Sodir's forecasts for total NCS production · ${unit}</caption>
+      <thead><tr><th>Forecast</th><th>Period</th><th>Forecast for ${ref}</th><th>Actual ${ref}</th><th>Deviation</th><th>2030</th><th>2035</th><th>Source</th></tr></thead>
+      <tbody>${vint.map((v, i) => {
+        const fr = fcAt(v, ref);
+        return `<tr><td><span class="ex-dot" style="background:${ncsFcColor(i, vint.length)}"></span>Sodir ${v.id}</td>
+          <td>${v.from}–${v.from + v.values.length - 1}</td><td>${f(conv(fr, ref))}</td><td>${f(conv(act[ref], ref))}</td>
+          <td>${fr == null ? '–' : dev(fr, act[ref])}</td><td>${f(conv(fcAt(v, 2030), 2030))}</td><td>${f(conv(fcAt(v, 2035), 2035))}</td>
+          <td><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.report)}</a>, ${esc(v.figure)}</td></tr>`;
+      }).join('')}</tbody>
+    </table>`);
+  setInfo(`<strong>Forecasts:</strong> the Norwegian Offshore Directorate's (Sodir, formerly the NPD) forecasts for total petroleum production on the whole NCS, as published in its resource reports. Each line is Sodir's expected total, including production from resources not yet discovered at the time; it is labelled by the year of the report. ` +
+    `The ${vint.filter(v => v.method === 'vector').map(v => v.id).join(', ')} forecasts are ${NCS_FC_METHOD.vector}; ${vint.filter(v => v.method === 'data').map(v => v.id).join(', ')} are ${NCS_FC_METHOD.data}; ${vint.filter(v => v.method === 'pixels').map(v => v.id).join(', ')} is ${NCS_FC_METHOD.pixels} and drawn dashed. ` +
+    `2019 is a five-year forecast; 2024 and 2026 are Sodir's base scenario, which Sodir uses instead of a single forecast beyond the next few years &nbsp;|&nbsp; ` +
+    `<strong>Actual:</strong> sum of field production reported to Sodir (net OE), complete years to ${lastAct || '–'}. It runs about 1 % above Sodir's sales figures, which the forecasts are stated in &nbsp;|&nbsp; ` +
+    `<strong>Unit:</strong> ${sm3 ? 'million Sm³ o.e. per year, as in the reports' : 'million boe per day, converted from million Sm³ o.e. per year (1 Sm³ = 6.29 bbl)'} &nbsp;|&nbsp; Click a forecast in the legend to show or hide it`);
+  const allOn = vint.every(v => on.has(v.id));
+  ncsToggleAbove(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${ncsPills('fu', [['boed', 'Million boe/day'], ['sm3', 'Million Sm³ o.e./year']])}${
+    ncsPills('fh', [['2035', 'To 2035'], ['2050', 'To 2050']])}${
+    pillRow([['key', 'Selected forecasts'], ['all', 'All forecasts']], allOn ? 'all' : 'key', v => `ncsFcAll(${v === 'all'})`)}</div>`);
 }
 
 // Lenke til Sodirs siste månedlige produksjonsmelding (data/sodir_news.json,

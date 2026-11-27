@@ -30,6 +30,7 @@ som statiske JSON-filer i dette repoet.
 | `data/reserves_field.json` | Reserver per felt per år (2004→), fra Sodir lag 7113 |
 | `data/hubs.json` | Hub-tilhørighet per felt — brukerstyrt, ikke fra Sodir |
 | `data/hub_connections.json` | Fysiske koblinger per hub (rørledninger, broer, brønner fra plattform, historiske) til hub- og feltkartet. Redigeres for hånd; en hub som står her, tegnes etter modellen i stedet for de automatiske koblingene fra feltbeskrivelsene. Foreløpig Sleipner area og Alvheim area. Skiller bekreftede koblinger fra skjematiske (prikket) |
+| `data/sodir_forecasts.json` | Sodirs prognoser for samlet produksjon på sokkelen fra ressursrapportene 2003–2026 (mill Sm³ o.e. per år, inkl. uoppdagede ressurser), til NCS → Forecasts BETA. Satt sammen for hånd: 2003–2016 lest ut av vektorgrafikken i rapportenes PDF-er, 2019–2024 fra Sodirs bakgrunnstall (Excel), 2026 fra figuren. Kilde, figur og metode står per årgang |
 | `data/discoveries.json` | Funn (lag 7000) — navn, status, funnår, eier, operatør |
 | `data/discovery_resources.json` | Ressursanslag per funn (lag 7008) |
 | `data/discovery_descriptions.json` | Sodirs funnbeskrivelser (lag 7001) |
@@ -189,7 +190,7 @@ utenfor. *dry_run* viser fillisten uten å laste opp. Secrets: `DEPLOY_HOST`
 
 ## Passord for Valuation BETA
 
-Fanene **Valuation BETA** under Company, Hub og Field krever passord. Passordet ligger
+Fanene **Valuation BETA** under Company, Hub og Field, **Analytics BETA** under Company og **Forecasts BETA** under NCS krever passord. Passordet ligger
 bare i GitHub-secreten `BETA_PASSWORD`. Workflowen
 `.github/workflows/beta-password.yml` skriver en saltet PBKDF2-SHA256-hash av det
 til `data/beta_gate.json`, og appen sjekker det inntastede passordet mot hashen.
