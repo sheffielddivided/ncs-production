@@ -21335,7 +21335,7 @@ function explRenderList() {
     ? `<button class="grp-btn ex-more" onclick="explLimit+=200;explRenderList()">Show more (${list.length - explLimit} remaining)</button>` : '';
   document.getElementById('explBody').innerHTML = `
     <div class="pf-card"><h3 class="cn-head"><span>Exploration wells</span>
-      <button class="cn-gear" style="margin-right:62px" onclick="openPlanPanel()" title="Planned wells announced by the companies but not yet in Sodir's data">${GEAR_SVG}Company plans</button></h3><div class="ex-slot"></div>
+      <button class="wd-gear" style="margin-right:62px" onclick="openPlanPanel()" aria-label="Company plans" title="Company plans: planned wells announced by the companies but not yet in Sodir's data">${GEAR_SVG}</button></h3><div class="ex-slot"></div>
     <div class="ex-sum">${explSummary(list) || 'No wells match the filters'}</div>
     ${list.length ? `<div class="res-table-wrap ex-wrap"><table class="res-table ex-table"><thead><tr>
       ${th('name', 'Well / discovery', 'ex-l')}${th('result', 'Result', 'ex-l')}${th('licence', 'Licence', 'ex-l')}
