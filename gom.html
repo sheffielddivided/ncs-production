@@ -232,7 +232,7 @@ const TOP_FIELDS = 8, TOP_OPS = 8;     // som paletten: flere ville fått samme 
 // ── TILSTAND ─────────────────────────────────────────────────────────────────
 // Lenkeparametre. fs = felt i faktaarket.
 const DEFAULTS = {v: 'production', g: 'depth', p: 'boe', per: 'a', u: 'bbl', from: '1990', rk: 'l12', dc: '', q: '',
-                  c: '', b: 'eq', rp: 'boe', rpd: 'yes', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
+                  c: '', cf: '2008', b: 'eq', rp: 'boe', rpd: 'yes', wt: '', wd: '', dy: '', mw: '', fs: '', sp: 'oil'};
 let S = {...DEFAULTS};
 let D = null, P = null, W = null, COAST = null;
 let F = [];                    // feltene som objekter
@@ -560,13 +560,16 @@ function viewCompany() {
   setControls(pills('b', [['eq', 'Equity (net)'], ['op', 'Operated']], 'Basis') +
     select('c', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company') +
     pills('p', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
-    pills('per', [['m', 'Monthly', !!S.c], ['a', 'Annual']], 'Period'));
+    pills('per', [['m', 'Monthly', !!S.c], ['a', 'Annual']], 'Period') +
+    select('cf', Array.from({length: +lastYM().slice(0, 4) - +SRC.start.slice(0, 4) + 1}, (_, k) => {
+      const y = String(+SRC.start.slice(0, 4) + k); return [y, y]; }), 'From'));
   // Som Production: alt i boe/dag. Ett selskap: fordelt per felt, årlig
   // (feltfordelingen finnes bare per år).
   if (!['oil', 'gas', 'boe'].includes(S.p)) S.p = 'boe';
   if (S.c && !CMPD) { setView(loading()); loadCmp().then(() => S.v === 'company' && render()); return; }
   if (S.c && S.per !== 'a') { S.per = 'a'; writeUrl(); return render(); }
-  const ps = periods(S.per, SRC.start.slice(0, 4) > S.from ? SRC.start.slice(0, 4) : S.from), unit = 'boe/day', fb = factorBoe(S.p);
+  // Startår: standard 2008, kan overstyres (cf); ikke før dataene begynner.
+  const ps = periods(S.per, SRC.start.slice(0, 4) > S.cf ? SRC.start.slice(0, 4) : S.cf), unit = 'boe/day', fb = factorBoe(S.p);
   const getIn = (GG, o, p = S.p) => g => i => { const j = i - o; return j < 0 || !GG[g] ? 0 : pick(GG[g], j, p); };
   const get = getIn(G, off), getOp = getIn(OG, ooff), getEq = getIn(EG, eoff);
   const word = eqMode ? 'equity' : 'operated';
