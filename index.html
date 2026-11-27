@@ -7583,7 +7583,7 @@ function drawUkMap() {
 // Feltfavorittene lagres i nettleseren under samme nøkkel som den gamle
 // siden brukte, så lagrede favoritter følger med.
 const PRICE_TABS = [
-  {id: 'brent',   label: 'Brent'},
+  {id: 'brent',   label: 'Oil'},   // id beholdes for gamle lenker
   {id: 'gas',     label: 'Gas'},
   {id: 'oilgas',  label: 'Oil vs gas'},
   {id: 'oilmarket', label: 'Oil market'},
@@ -19695,7 +19695,7 @@ async function saveFeeds() {
 }
 
 // ── NORMPRIS: OPPLASTING ─────────────────────────────────────────────────────
-// Tannhjulet i Macro → Brent laster opp nye normpris-xlsx-filer til
+// Tannhjulet i Macro → Oil laster opp nye normpris-xlsx-filer til
 // data/normpris-raw/. regjeringen.no ligger bak Cloudflare, så filene må lastes
 // ned for hånd; før måtte de også pushes for hånd.
 //

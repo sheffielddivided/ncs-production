@@ -2179,9 +2179,9 @@ PowerPoint-tabell (`kind: 'table'`) med cellefargene blandet mot hvitt og
 skrift som krymper med antall selskaper. Kurven lagres i localStorage og lastes ned som én fil
 med ett lysbilde per element, i den rekkefølgen panelet viser.
 
-#### Macro → Brent: opplasting av normpris-filer
+#### Macro → Oil: opplasting av normpris-filer
 
-Tannhjulet i Macro → Brent (`openNpUpload`) laster opp normpris-xlsx til
+Tannhjulet i Macro → Oil (`openNpUpload`) laster opp normpris-xlsx til
 `data/normpris-raw/`, som ellers måtte pushes for hånd (regjeringen.no ligger
 bak Cloudflare).
 

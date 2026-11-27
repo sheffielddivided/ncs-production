@@ -659,8 +659,8 @@ function viewReserves() {
   ], unit, {dec: 2});
   const HS = H.filter(h => h[k + 2]);
   barChart('resSalt', HS.map(h => h[0]), [
-    {label: 'Pre-salt', backgroundColor: SALT.pre.color, data: HS.map(h => h[k + 2][1] / 1000), borderWidth: 1, borderColor: '#fff'},
     {label: 'Post-salt', backgroundColor: SALT.post.color, data: HS.map(h => h[k + 2][0] / 1000), borderWidth: 1, borderColor: '#fff'},
+    {label: 'Pre-salt', backgroundColor: SALT.pre.color, data: HS.map(h => h[k + 2][1] / 1000), borderWidth: 1, borderColor: '#fff'},
   ], unit, {dec: 2});
   const bb = basins.slice(0, 10);
   barChart('resBasin', bb.map(x => x.b), [
