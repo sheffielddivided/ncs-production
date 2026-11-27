@@ -1081,9 +1081,18 @@ Wellbores spudded per year og Legal entities i Company-fanen.
 
 ### `data/canada_nl.json`, `data/canada_nl_outlines.json`, `data/canada_nl_coast.json` — Canada, Newfoundland and Labrador (`canada.html`)
 
-Egen side, ikke en seksjon i `index.html`. Lenken i menyen (`modeBtnCanada`)
-står med `style="display:none"` til siden er klar (`hidden` virker ikke, fordi
-`a.mode-btn` har `display:inline-flex`). Siden har `noindex`.
+Egen side, ikke en seksjon i `index.html`. Lenkes fra menyen «Other regions»
+i `index.html` (se under). Siden har `noindex`.
+
+**Menyen «Other regions» (`index.html`).** Knappen `modeBtnRegions` i menylinjen
+åpner nedtrekksmenyen `regionsMenu` ved mouseover (bare på enheter med hover;
+lukkes 180 ms etter at pekeren forlater knapp og meny) og ved klikk/trykk. Den
+inneholder DCS og UKCS (moduser på samme side, `modeBtnDcs`/`modeBtnUkcs`, som
+`syncModeButtons` markerer; knappen markeres da også) og lenker til `gom.html`,
+`canada.html`, `brazil.html` og `angola.html`. Menyen ligger utenfor
+`.mode-switcher`, som scroller sideveis og har maske, og har `position:fixed`;
+`regionsOpen()` plasserer den under knappen. Escape, klikk utenfor, scrolling
+og endret vindusstørrelse lukker den.
 
 Bygges av `fetch_cnloer.py` (workflow `update-cnloer.yml`, mandag og torsdag
 05:41 UTC). Kilden er C-NLOER (tidligere C-NLOPB):
@@ -1162,8 +1171,8 @@ faste per formasjon (`RES_COLORS`). Lenkeparametre: `v` (fane), `g`, `f`, `p`,
 
 ### `data/gom.json`, `data/gom_prod.json`, `data/gom_wells.json`, `data/gom_coast.json` — US Gulf of Mexico (`gom.html`)
 
-Egen side som `canada.html`, med samme stil og hjelpefunksjoner (skjult lenke
-`modeBtnGom` i menyen, `noindex`). Bare føderalt område (BOEM «Gulf of
+Egen side som `canada.html`, med samme stil og hjelpefunksjoner (lenke i
+menyen «Other regions», `noindex`). Bare føderalt område (BOEM «Gulf of
 America OCS Region»); delstatsfarvann nær land er ikke med.
 
 Bygges av `fetch_boem.py` (workflow `update-boem.yml`, lørdag 06:17 UTC, med
@@ -1230,8 +1239,8 @@ feltkode) og brønner. Lenkeparametre: `v`, `g`, `p`, `per`, `u`, `from`, `rk`,
 
 ### `data/brazil*.json` — Brasil, hav og land (`brazil.html`)
 
-Egen side som `gom.html`, med samme stil og hjelpefunksjoner (skjult lenke
-`modeBtnBrazil` i menyen, `noindex`). Dekker hele Brasil, til havs og på land.
+Egen side som `gom.html`, med samme stil og hjelpefunksjoner (lenke i
+menyen «Other regions», `noindex`). Dekker hele Brasil, til havs og på land.
 
 Bygges av `fetch_anp.py` (workflow `update-anp.yml`, tirsdag og fredag 07:23
 UTC, med `actions/cache` for nedlastingene, om lag 600 MB første gang).
@@ -1333,7 +1342,7 @@ Map (feltomriss, blokker, innretninger, brønner). Faktaark for felt
 
 ### `data/angola.json` — Angola (`angola.html`)
 
-Egen side som `brazil.html` (skjult lenke `modeBtnAngola`, `noindex`). Bygges
+Egen side som `brazil.html` (lenke i menyen «Other regions», `noindex`). Bygges
 av `fetch_anpg.py` (workflow `update-anpg.yml`, mandag og torsdag 08:41 UTC).
 
 Kilden er JSON-API-et bak ANPGs eget nettsted, `https://www.anpg.co.ao/api/`
