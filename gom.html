@@ -333,6 +333,9 @@ function unitOf(p) {
   if (S.u === 'm3') return p === 'gas' ? 'million m³/day' : 'm³/day';
   return p === 'gas' ? 'MMcf/day' : p === 'boe' ? 'boe/day' : 'bbl/day';
 }
+// Production-visningen viser alt i boe/dag (gass omregnet med BOEMs
+// 5,62 Mcf per fat), uten valg av enhet.
+const factorBoe = p => p === 'gas' ? 1000 / MCF_PER_BOE : 1000;
 function factor(p) {
   if (S.u === 'm3') return p === 'gas' ? M3_PER_MCF / 1000 : 1000 * M3_PER_BBL;
   return p === 'gas' ? 1 : 1000;
@@ -350,8 +353,7 @@ function periods(per, from) {
   return Object.values(by).map(p => { p.ytd = p.months < 12; p.label = p.ytd ? p.key + '*' : p.key; return p; });
 }
 // Serier (månedlig, på MONTHS-aksen) → per dag i valgt periode og enhet
-function perDay(getter, ps, p) {
-  const f = factor(p);
+function perDay(getter, ps, p, f = factor(p)) {
   return ps.map(x => x.idx.reduce((t, i) => t + getter(i), 0) * f / x.days);
 }
 function trimLead(labels, datasets) {
@@ -425,76 +427,49 @@ const fromOpts = () => [['1947', 'Since 1947'], ['1990', 'Since 1990'], ['2010',
 
 // ── PRODUCTION ──
 function viewProduction() {
+  // Bare fordelt på vanndyp, olje, gass eller begge, alt i boe/dag.
+  if (!['oil', 'gas', 'boe'].includes(S.p)) S.p = 'oil';
   setControls(
-    pills('g', [['depth', 'By water depth'], ['field', 'By field'], ['total', 'Total']], 'Show') +
-    pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['boe', 'Oil + gas (boe)'], ['water', 'Water']], 'Product') +
+    pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['boe', 'Oil + gas']], 'Product') +
     pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') +
-    select('from', fromOpts(), 'From') +
-    pills('u', [['bbl', 'Barrels / cf'], ['m3', 'Cubic metres']], 'Unit'));
-  if (S.g === 'field' && !P) { setView(loading()); loadProd().then(() => S.v === 'production' && render()); return; }
-  const from = S.g === 'field' && S.from < '1990' ? '1990' : S.from;
-  const ps = periods(S.per, from), unit = unitOf(S.p);
-  let datasets = [], note = '';
-  if (S.g === 'total') {
-    const col = {oil: '#ce0f69', gas: '#f68d2e', boe: '#7d2248', water: '#4993b4'}[S.p];
-    datasets = [{label: {oil: 'Oil', gas: 'Gas', boe: 'Oil + gas', water: 'Water'}[S.p], data: perDay(i => pick(D.total, i, S.p), ps, S.p), backgroundColor: col}];
-  } else if (S.g === 'depth') {
-    if (S.p === 'water') { S.p = 'oil'; writeUrl(); }
-    datasets = Object.keys(DEPTH).filter(c => D.byDepth[c]).map(c => ({label: DEPTH[c].label, backgroundColor: DEPTH[c].color,
-      data: perDay(i => pick(D.byDepth[c], i, S.p), ps, S.p)}));
-    note = ' Water depth by field from BOEM\'s reserve tables; water is not split by depth.';
-  } else {
-    // De største feltene i perioden hver for seg, resten samlet
-    const idxAll = ps.flatMap(p => p.idx);
-    const codes = Object.keys(P.fields);
-    const size = codes.map(c => { const s = fieldSeries(c); return [c, idxAll.reduce((t, i) => t + pick(s, i, S.p), 0)]; })
-      .sort((a, b) => b[1] - a[1]);
-    const top = size.slice(0, TOP_FIELDS).map(x => x[0]);
-    datasets = top.map(c => { const f = fieldBy(c); return {label: f ? fname(f) : c, backgroundColor: fieldColor(c),
-      data: perDay(i => pick(fieldSeries(c), i, S.p), ps, S.p), code: c}; });
-    const topSum = i => top.reduce((t, c) => t + pick(fieldSeries(c), i, S.p), 0);
-    datasets.push({label: 'Other fields', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - topSum(i)), ps, S.p)});
-    note = ` The ${TOP_FIELDS} largest fields in the period shown; field series start in 1990.`;
-  }
+    select('from', fromOpts(), 'From'));
+  const ps = periods(S.per, S.from), unit = 'boe/day';
+  let datasets = Object.keys(DEPTH).filter(c => D.byDepth[c]).map(c => ({label: DEPTH[c].label, backgroundColor: DEPTH[c].color,
+    data: perDay(i => pick(D.byDepth[c], i, S.p), ps, S.p, factorBoe(S.p))}));
+  const note = ' Water depth by field from BOEM\'s reserve tables.';
   datasets = datasets.filter(d => d.data.some(v => v)).map(d => ({...d, borderWidth: S.per === 'a' ? 1 : 0, borderColor: '#fff', stack: 's'}));
   const t = trimLead(ps.map(p => p.label), datasets);
   // Nøkkeltall
   const n = MONTHS.length, last12 = [...Array(12)].map((_, k) => n - 12 + k);
   const days12 = last12.reduce((t, i) => t + daysIn(+MONTHS[i].slice(0, 4), +MONTHS[i].slice(4)), 0);
-  const avg = (p, idx, days) => idx.reduce((t, i) => t + pick(D.total, i, p), 0) * factor(p) / days;
+  const avg = (p, idx, days) => idx.reduce((t, i) => t + pick(D.total, i, p), 0) * factorBoe(p) / days;
   const lastDays = daysIn(+lastYM().slice(0, 4), +lastYM().slice(4));
   const deep12 = ['deep', 'ultra'].reduce((t, c) => t + (D.byDepth[c] ? last12.reduce((s, i) => s + pick(D.byDepth[c], i, 'boe'), 0) : 0), 0);
   const all12 = last12.reduce((s, i) => s + pick(D.total, i, 'boe'), 0);
-  const ou = unitOf('oil'), gu = unitOf('gas');
   const kpis = `<div class="kpis">
-    <div class="kpi"><span>Oil · ${ymTxt(lastYM())}</span><strong>${fmt(avg('oil', [n - 1], lastDays))}</strong><small>${ou}</small></div>
-    <div class="kpi"><span>Oil · last 12 months</span><strong>${fmt(avg('oil', last12, days12))}</strong><small>${ou}, average</small></div>
-    <div class="kpi"><span>Gas · last 12 months</span><strong>${fmt(avg('gas', last12, days12), 1)}</strong><small>${gu}, average</small></div>
+    <div class="kpi"><span>Oil · ${ymTxt(lastYM())}</span><strong>${fmt(avg('oil', [n - 1], lastDays))}</strong><small>boe/day</small></div>
+    <div class="kpi"><span>Oil · last 12 months</span><strong>${fmt(avg('oil', last12, days12))}</strong><small>boe/day, average</small></div>
+    <div class="kpi"><span>Gas · last 12 months</span><strong>${fmt(avg('gas', last12, days12))}</strong><small>boe/day, average</small></div>
     <div class="kpi"><span>From deepwater</span><strong>${fmt(deep12 / all12 * 100, 0)} %</strong><small>of oil + gas, last 12 months</small></div>
     <div class="kpi"><span>Producing fields</span><strong>${F.filter(live).length}</strong><small>last 12 months, of ${fmt(F.length)} fields</small></div>
   </div>`;
-  const title = {total: 'Production', depth: 'Production by water depth', field: 'Production by field'}[S.g];
-  setView(kpis + chartCard('prodChart', `US Gulf of Mexico · ${title}`, `${{oil: 'Oil (incl. condensate)', gas: 'Natural gas', boe: 'Oil + gas', water: 'Produced water'}[S.p]} · ${unit}, ${S.per === 'm' ? 'monthly' : 'annual average'}${S.g === 'field' ? ' · click a field for its factsheet' : ''}`, {cls: 'tall'}) +
-    `<div class="info-box"><strong>Source:</strong> BOEM OGOR-A well production reports, federal waters (Outer Continental Shelf) only — state waters close to shore are not included. Monthly from ${ymTxt(D.months[0])} to ${ymTxt(lastYM())}; later months are left out until reporting is complete (operators report with a lag). Oil includes condensate; gas is gross gas as reported, in cubic feet; boe uses BOEM's ${MCF_PER_BOE} Mcf per barrel.${note}${S.per === 'a' && ps.some(p => p.ytd) ? ` <strong>${lastYM().slice(0, 4)}*</strong> is the year to date.` : ''}</div>` +
-    fieldTable(S.p === 'water' ? 'oil' : S.p));
-  barChart('prodChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: S.p === 'gas' ? 1 : 0, noAnim: S.per === 'm' && t.labels.length > 400,
+  setView(kpis + chartCard('prodChart', 'US Gulf of Mexico · Production by water depth', `${{oil: 'Oil (incl. condensate)', gas: 'Natural gas', boe: 'Oil + gas'}[S.p]} · ${unit}, ${S.per === 'm' ? 'monthly' : 'annual average'}`, {cls: 'tall'}) +
+    `<div class="info-box"><strong>Source:</strong> BOEM OGOR-A well production reports, federal waters (Outer Continental Shelf) only — state waters close to shore are not included. Monthly from ${ymTxt(D.months[0])} to ${ymTxt(lastYM())}; later months are left out until reporting is complete (operators report with a lag). Oil includes condensate; gas is gross gas as reported, converted to boe with BOEM's ${MCF_PER_BOE} Mcf per barrel.${note}${S.per === 'a' && ps.some(p => p.ytd) ? ` <strong>${lastYM().slice(0, 4)}*</strong> is the year to date.` : ''}</div>` +
+    fieldTable());
+  barChart('prodChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: 0, noAnim: S.per === 'm' && t.labels.length > 400,
     titleFn: S.per === 'm' ? i => ymTxt(t.labels[i].replace('-', '')) : undefined,
   });
-  if (S.g === 'field') charts.prodChart.options.onClick = (e) => {
-    const el = charts.prodChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0];
-    const code = el && t.datasets[el.datasetIndex].code; if (code) openSheet(code);
-  };
 }
 // De største produserende feltene siste 12 måneder
-function fieldTable(p) {
+function fieldTable() {
   const rows = F.filter(live).sort((a, b) => l12boe(b) - l12boe(a)).slice(0, 25);
-  // l12: bbl/d og Mcf/d → valgt enhet (bbl/d eller m³/d; MMcf/d eller mill. m³/d)
-  const fo = factor('oil') / 1000, fg = factor('gas') / 1000;
+  // l12: bbl/d og Mcf/d → boe/d
+  const fo = 1, fg = 1 / MCF_PER_BOE;
   return `<div class="tbl-sec">Largest producing fields<small>Average over the last 12 months; reserves per 31 Dec ${D.reserves.year} (BOEM mean estimate)</small></div>
-    <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Operator</th><th class="l">Water depth</th><th>Discovered</th><th>Oil (${unitOf('oil')})</th><th>Gas (${unitOf('gas')})</th><th>Remaining (MMboe)</th></tr></thead><tbody>
+    <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Operator</th><th class="l">Water depth</th><th>Discovered</th><th>Oil (boe/d)</th><th>Gas (boe/d)</th><th>Remaining (MMboe)</th></tr></thead><tbody>
     ${rows.map(f => `<tr class="click" onclick="openSheet('${f.code}')"><td><button class="row-link">${esc(fname(f))}</button>${f.name ? ` <span class="tag">${esc(f.code)}</span>` : ''}</td>
       <td class="l">${esc(f.op || '–')}</td><td class="l"><span class="dot" style="background:${DEPTH[f.dc || 'unknown'].color}"></span>${f.wd ? fmt(f.wd) + ' ft' : '–'}</td><td>${f.disc || '–'}</td>
-      <td>${fmt(f.l12[0] * fo)}</td><td>${fmt(f.l12[1] * fg, 1)}</td><td>${f.rem ? fmt(f.rem[3], 0) : '–'}</td></tr>`).join('')}
+      <td>${fmt(f.l12[0] * fo)}</td><td>${fmt(f.l12[1] * fg)}</td><td>${f.rem ? fmt(f.rem[3], 0) : '–'}</td></tr>`).join('')}
     </tbody></table></div>`;
 }
 
