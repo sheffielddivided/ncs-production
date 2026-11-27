@@ -14335,7 +14335,7 @@ function drawFieldHavtil() {
 // siste stopp før og første stopp etter anløpet (havn, annet felt eller
 // posisjon på sjøen), innenfor sju dager.
 let shippingData = null, shippingLoading = null;
-let shipMeasure = 'calls', shipShown = 50;
+let shipShown = 50;
 function loadShipping() {
   if (shippingData) return Promise.resolve();
   if (!shippingLoading) shippingLoading = fetchBundle('shipping')
@@ -14343,13 +14343,10 @@ function loadShipping() {
     .catch(() => { shippingLoading = null; shippingData = {fields: {}}; });
   return shippingLoading;
 }
-// De SHIP_TOP skipene med flest anløp får egen farge i grafen; resten samles.
-const SHIP_TOP = 8;
-// Fast rekkefølge, validert for fargeblinde (dataviz-skillens referansepalett:
-// nabopar i stabelen ΔE ≥ 11,8 ved CVD, ≥ 20,5 normalt). Ingen mørk marineblå,
-// så produksjonslinjen (#1a2332) ikke forveksles med et skip.
-const SHIP_COLORS = ['#257de0', '#f47230', '#00b894', '#f2a600', '#ee7fac', '#008a17', '#6a4ce2', '#ec4647'];
-const SHIP_OTHER = '~other';
+// Grafen: én blokk per anløp, alle i samme farge med hvit kant, så antallet
+// laster i måneden vises. Hvilket skip som lastet, står i tabellen.
+const SHIP_FILL = '#9aa5b1';   // nøytral grå (samme som «Other» i de andre grafene)
+const SHIP_OIL = '#ce0f69';    // sidens magenta (--blue) for produksjonslinjen
 const monthKey = t => new Date(t).toISOString().slice(0, 7);
 function fmtStay(h) { return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1)} days`; }
 function shipPlace(p) {
@@ -14403,7 +14400,7 @@ function storeBbl(F, fac) {
 function drawShipping(ids, name, kind) {
   const Fs = ids.map(id => shippingData.fields[String(id)]).filter(f => f && f.until);
   const fidOf = new Map(ids.filter(id => shippingData.fields[String(id)]?.until).map(id => [shippingData.fields[String(id)], id]));
-  setChartTitle(name, `Shipping · tanker calls at the ${kind}`);
+  setChartTitle(name, `Shipping · estimated lifted volume per tanker call · million bbl`);
   if (!Fs.length) {
     setChartEmpty(`No tanker data for ${esc(tc(name))}. ${shipTrackedNote()}`);
     setInfo('<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), AIS. Fields are added in data/shipping_fields.json');
@@ -14480,38 +14477,29 @@ function drawShipping(ids, name, kind) {
     o.n++; o.days += (v.t1 - v.t0) / 864e5; o.last = Math.max(o.last, v.t0);
   });
   const ranked = Object.values(byShip).sort((a, b) => b.n - a.n || b.days - a.days);
-  const top = ranked.slice(0, SHIP_TOP);
-  const colorOf = {};
-  top.forEach((o, i) => { colorOf[o.m] = SHIP_COLORS[i]; });
-  const serKey = m => colorOf[m] ? m : SHIP_OTHER;
 
   // Månedene fra første til siste måned med data.
   const months = [];
   for (let d = new Date(from.slice(0, 7) + '-01T00:00:00Z'); d.getTime() <= Date.parse(until); d.setUTCMonth(d.getUTCMonth() + 1))
     months.push(d.toISOString().slice(0, 7));
-  const val = {};
-  const keys = top.map(o => o.m).concat(ranked.length > SHIP_TOP ? [SHIP_OTHER] : []);
-  keys.forEach(k => { val[k] = months.map(() => 0); });
-  visits.forEach(v => {
-    const k = serKey(v.m);
-    if (shipMeasure === 'calls' || shipMeasure === 'lifted') {
-      // Løftet volum regnes til måneden skipet kom (mill. fat).
-      const i = months.indexOf(monthKey(v.t0));
-      if (i >= 0) val[k][i] += shipMeasure === 'calls' ? 1 : liftOf(v) / 1e6;
-    } else {
-      months.forEach((mo, i) => {
-        const m0 = Date.parse(mo + '-01T00:00:00Z'), d1 = new Date(m0); d1.setUTCMonth(d1.getUTCMonth() + 1);
-        const h = (Math.min(v.t1, d1.getTime()) - Math.max(v.t0, m0)) / 36e5;
-        if (h > 0) val[k][i] += h / 24;
-      });
-    }
+  // Løftet volum per anløp (mill. fat) i måneden skipet kom, én blokk per
+  // anløp: serie k er det k-te anløpet i hver måned, i tidsrekkefølge.
+  const byMonth = months.map(() => []);
+  [...visits].sort((a, b) => a.t0 - b.t0).forEach(v => {
+    const i = months.indexOf(monthKey(v.t0));
+    if (i >= 0 && liftOf(v) > 0) byMonth[i].push(v);
   });
-  const label = k => k === SHIP_OTHER ? 'Other tankers' : byShip[k].name;
-  const color = k => k === SHIP_OTHER ? '#9aa5b1' : colorOf[k];
-  const lifted = shipMeasure === 'lifted';
-  const shipDec = shipMeasure === 'calls' ? 0 : lifted ? 2 : 1;
-  const datasets = keys.map(k => ({label: label(k), data: val[k].map(x => +x.toFixed(shipDec)),
-    backgroundColor: color(k), borderWidth: 0, stack: 's', order: 1})).filter(d => d.data.some(x => x));
+  const nMax = Math.max(0, ...byMonth.map(l => l.length));
+  const lifted = true, shipDec = 2;
+  const datasets = Array.from({length: nMax}, (_, k) => ({
+    label: `Call ${k + 1} in the month`, _calls: byMonth.map(l => l[k] || null),
+    data: byMonth.map(l => l[k] ? +(liftOf(l[k]) / 1e6).toFixed(2) : null),
+    backgroundColor: SHIP_FILL, borderColor: '#fff', borderWidth: 1.5, borderSkipped: false, stack: 's', order: 1}));
+  const callTip = c => {
+    const v = c.dataset._calls && c.dataset._calls[c.dataIndex];
+    if (!v) return ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)} million bbl`;
+    return ` ${v.name}, ${fmtShort(new Date(v.t0).toISOString().slice(0, 10))}: ${c.parsed.y.toFixed(2)} million bbl${v.cargo != null ? ' (from draught)' : ' (estimated)'}`;
+  };
   // Rapportert oljeproduksjon fra Sodir (mill. fat), som linje over søylene:
   // alle feltene i huben, også i feltvisningen, siden satellitter lastes fra
   // vertsfeltets lager (samme grunnlag som fyllingsgraden). Tom etter siste
@@ -14524,7 +14512,7 @@ function drawShipping(ids, name, kind) {
     const oil = oilByMonth(oilIds);
     const data = months.map(mo => oil[mo] != null ? +(oil[mo] / 1e6).toFixed(2) : null);
     if (data.some(x => x != null)) oilDs = {type: 'line', label: oilHub ? `Reported oil production, ${tc(oilHub)} hub (Sodir)` : 'Reported oil production (Sodir)', data, stack: 'oil', _noTotal: true,
-      borderColor: '#1a2332', backgroundColor: '#1a2332', borderWidth: 2, pointRadius: 4, pointHoverRadius: 5, pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0, spanGaps: false, order: 0};
+      borderColor: SHIP_OIL, backgroundColor: SHIP_OIL, borderWidth: 3.5, pointRadius: 5, pointHoverRadius: 6, pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0, spanGaps: false, order: 0};
   }
   // Huben: tankskipene lastes ved feltene i shipping_fields.json (lastefeltene);
   // de andre feltene i huben har ikke egen lasting her, men oljen deres er med
@@ -14553,17 +14541,13 @@ function drawShipping(ids, name, kind) {
       `: reported oil for the field's hub divided by full cargoes for the calls in the same months, at most 1. Tankers are seldom filled where the field produces less between liftings than its storage holds; calls missed in patchy AIS coverage would make it too low, so it is never raised above 1. ` +
       `Where the factor is below 1, lifted volume therefore matches reported oil over the months used by construction; it matters for months not yet reported and for the timing of liftings` +
       (noCap ? `; ${noCap} ${noCap === 1 ? 'call has' : 'calls have'} no known capacity and ${noCap === 1 ? 'is' : 'are'} left out` : '') + ' &nbsp;|&nbsp; ' : '') +
-    `<strong>Est. cargo:</strong> from the draught the tanker reported on AIS when it left or within 24 hours after (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Later reports are not used, since the tanker may already have discharged, and nor are reports with a field as destination (in ballast, on its way to load). Rough, about ±15 %; missing for calls before 23 Nov 2026 and when no draught was reported in time &nbsp;|&nbsp; ` +
+    `<strong>Est. cargo:</strong> from the draught the tanker reported on AIS when it left or within 24 hours after (sampled every three hours from 23 Nov 2026), as full cargo less what the ship floats above its maximum draught. Later reports are not used, since the tanker may already have discharged, and nor are reports with a field as destination (in ballast, on its way to load). Rough, about ±15 %. Where no draught was reported in time (all calls before 23 Nov 2026), the column shows the same estimate as the lifted-volume chart, marked *: the tanker's capacity × the field's fill factor, at most the storage it loads from &nbsp;|&nbsp; ` +
     `<strong>From / To:</strong> the tanker's last stop before and first stop after the call (Norwegian port, another field or a position at sea), within seven days before and ten days after. Norwegian AIS (Kystverket) covers Norwegian waters only, so a tanker bound for a foreign terminal usually leaves coverage before it stops: «To» then shows where and in which direction it left (↗), and the AIS destination is shown from 23 Nov 2026 &nbsp;|&nbsp; ` +
     `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
   if (!datasets.length) setChartEmpty('No tanker calls in the period.');
   else renderChart(months, datasets.concat(oilDs ? [oilDs] : []),
-    datasets.map(d => ({label: d.label, color: d.backgroundColor})).concat(oilDs ? [{label: oilDs.label + ' (line)', color: oilDs.borderColor}] : []),
-    shipMeasure === 'calls' ? 'calls' : lifted ? 'million bbl' : 'tanker-days', {xTitle: 'Month', dec: shipDec, allTicks: months.length <= 24});
-  // Samme veksler som de andre grafene (pill-group / pill-btn).
-  const pill = (k, lbl) => `<button class="pill-btn${shipMeasure === k ? ' active' : ''}" onclick="shipSetMeasure('${k}')">${lbl}</button>`;
-  ncsToggleAbove(`<div class="pill-group" style="margin-bottom:10px;width:max-content;max-width:100%">${
-    pill('calls', 'Calls per month')}${pill('days', `Days at ${kind}`)}${pill('lifted', 'Estimated lifted volume')}</div>`);
+    [{label: 'Tanker call, estimated lifted volume (one block per call)', color: SHIP_FILL}].concat(oilDs ? [{label: oilDs.label + ' (line)', color: oilDs.borderColor}] : []),
+    'million bbl', {xTitle: 'Month', dec: shipDec, allTicks: months.length <= 24, tooltipLabel: callTip, skipNull: true, footerDec: 2});
 
   // Oppsummering per skip og tabell over anløpene, nyeste først.
   const d30 = now - 30 * 864e5;
@@ -14575,24 +14559,30 @@ function drawShipping(ids, name, kind) {
   const facName = x => esc(tc(x).replace(/\b(Fpso|Fpu|Fsu|Fso|Stl)\b/g, w => w.toUpperCase()));
   const facCell = v => { const f = v.facs.filter(x => multiStore.has(x)); return f.length ? f.map(facName).join(' → ') : '<span class="muted">—</span>'; };
   const n30 = m => visits.filter(v => v.m === m && v.t0 >= d30).length;
-  const dot = m => `<span class="ex-dot" style="background:${color(serKey(m))}"></span>`;
   const fmtT = t => `${fmtShort(new Date(t).toISOString().slice(0, 10))} ${new Date(t).toISOString().slice(11, 16)}`;
+  // Lasten: målt fra dypgangen der den finnes, ellers samme anslag som i
+  // grafen (kapasitet × fyllingsgrad, høyst lageret), merket med *.
+  const kbbl = x => Math.round(x / 1000).toLocaleString('en') + 'k';
+  const cargoCell = v => {
+    if (v.cargo != null) return `<span title="From the tanker's draught after leaving">≈ ${kbbl(v.cargo)}</span>`;
+    const x = liftOf(v);
+    return x ? `<span class="muted" title="No draught reported: the tanker's capacity × the field's fill factor, at most the storage">≈ ${kbbl(x)}*</span>` : '<span class="muted">—</span>';
+  };
   setChartTable(`
     <table class="res-table">
       <caption>Tankers · ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))}</caption>
       <thead><tr><th>Tanker</th><th>Length</th><th>Deadweight</th><th>Capacity, bbl</th><th>Calls</th><th>Last 30 days</th><th>Days at ${kind}</th><th>Last call</th></tr></thead>
-      <tbody>${ranked.map(o => `<tr><td>${dot(o.m)}${esc(o.name)}</td><td>${o.len ? o.len + ' m' : '—'}</td><td>${o.dwt ? (o.est ? '≈ ' : '') + Math.round(o.dwt).toLocaleString('en') + ' t' : '—'}</td><td>${o.cap ? (o.est ? '≈ ' : '') + Math.round(o.cap / 1000).toLocaleString('en') + 'k' : '—'}</td><td>${o.n}</td><td>${n30(o.m)}</td><td>${o.days.toFixed(1)}</td><td>${fmtShort(new Date(o.last).toISOString().slice(0, 10))}</td></tr>`).join('')}</tbody>
+      <tbody>${ranked.map(o => `<tr><td>${esc(o.name)}</td><td>${o.len ? o.len + ' m' : '—'}</td><td>${o.dwt ? (o.est ? '≈ ' : '') + Math.round(o.dwt).toLocaleString('en') + ' t' : '—'}</td><td>${o.cap ? (o.est ? '≈ ' : '') + Math.round(o.cap / 1000).toLocaleString('en') + 'k' : '—'}</td><td>${o.n}</td><td>${n30(o.m)}</td><td>${o.days.toFixed(1)}</td><td>${fmtShort(new Date(o.last).toISOString().slice(0, 10))}</td></tr>`).join('')}</tbody>
       <tfoot><tr class="total-row"><td>Total</td><td></td><td></td><td></td><td>${visits.length}</td><td>${visits.filter(v => v.t0 >= d30).length}</td><td>${ranked.reduce((t, o) => t + o.days, 0).toFixed(1)}</td><td></td></tr></tfoot>
     </table>
     <table class="res-table">
       <caption>Calls, newest first · times in UTC</caption>
       <thead><tr><th>Arrived</th><th>Left</th><th>Time at ${kind}</th><th>Tanker</th>${hub ? '<th>Fields</th>' : ''}${showFac ? '<th>Installation</th>' : ''}<th>Est. cargo, bbl</th><th>From</th><th>To</th></tr></thead>
       <tbody>${list.slice(0, shipShown).map(v => `<tr><td>${fmtT(v.t0)}</td><td>${v.open ? `<em>at the ${kind}</em>` : fmtT(v.t1)}</td><td>${fmtStay((v.t1 - v.t0) / 36e5)}</td>
-          <td>${dot(v.m)}${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}${showFac ? `<td>${facCell(v)}</td>` : ''}<td>${v.cargo != null ? '≈ ' + Math.round(v.cargo / 1000).toLocaleString('en') + 'k' : '<span class="muted">—</span>'}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
+          <td>${esc(v.name)}</td>${hub ? `<td>${v.fields.map(esc).join(' → ')}</td>` : ''}${showFac ? `<td>${facCell(v)}</td>` : ''}<td>${cargoCell(v)}</td><td>${shipPlace(v.from)}</td><td>${v.open ? '' : shipPlace(v.to)}${v.dest ? ` <span class="muted">(AIS: ${esc(v.dest)})</span>` : ''}</td></tr>`).join('')}</tbody>
     </table>
     ${list.length > shipShown ? `<button class="grp-btn ex-more" style="margin:0 12px 12px" onclick="shipShown+=100;drawChart()">Show more (${list.length - shipShown} older)</button>` : ''}`);
 }
-function shipSetMeasure(k) { shipMeasure = k; drawChart(); }
 
 // ── GASSCO: NEDETID ──────────────────────────────────────────────────────────
 // Dager med tapt produksjon per felt og måned, regnet ut av Gasscos hendelser
@@ -18543,12 +18533,12 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{
-          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en', {minimumFractionDigits: opts.dec || 0, maximumFractionDigits: opts.dec || 0})} ${yTitle}`,
+        tooltip:{...(opts.skipNull ? {filter: c => c.parsed.y != null} : {}), callbacks:{
+          label: opts.tooltipLabel || (ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en', {minimumFractionDigits: opts.dec || 0, maximumFractionDigits: opts.dec || 0})} ${yTitle}`),
           footer: items => {
             if (opts.noFooter) return '';
             const tot = items.filter(i => !i.dataset._noTotal).reduce((s,i)=>s+i.parsed.y,0);
-            return `Total: ${Math.round(tot).toLocaleString('en')} ${yTitle}`;
+            return `Total: ${tot.toLocaleString('en', {minimumFractionDigits: opts.footerDec || 0, maximumFractionDigits: opts.footerDec || 0})} ${yTitle}`;
           }
         }}
       },
