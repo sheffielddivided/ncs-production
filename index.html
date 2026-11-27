@@ -223,6 +223,10 @@
     table.om tr.l3 td:first-child{padding-left:42px;color:#4a5568;}
     table.om tr.l2 td,table.om tr.l3 td{color:#4a5568;}
     table.om tr.hl td{background:#fdf2f7;}
+    /* Endringsmodus: prognose i den tidligere utgaven, historikk nå. */
+    table.om td.nh{background:#fdf5cf;}
+    table.om tbody tr:hover td.nh{background:#f8ecb4;}
+    table.om td.z{color:#b0b8c4;}
     table.om tr.hidden{display:none;}
     table.om .tw{cursor:pointer;user-select:none;}
     table.om .tw::before{content:'▸';display:inline-block;width:12px;color:var(--blue);transition:transform 0.15s;}
@@ -3164,6 +3168,8 @@ function stateToHash() {
     if (prF.pe === 'ore') q.set('pe', 'ore');
     if (prF.lk && prF.lk !== 'eu') q.set('pl', prF.lk);
     US_PARAMS.forEach(([k, p, d]) => { if (prF[k] != null && prF[k] !== d) q.set(p, prF[k]); });
+    // Oil market, endringsmodus: tidligere STEO-utgave valgt i nedtrekksmenyen.
+    if (prF.omm === 'rev' && prF.omv) q.set('ov', prF.omv);
     if (prF.real) q.set('pr', '1');
     if (prF.avg) q.set('pa', '1');
     if (prF.og === 'grid') q.set('po', 'grid');
@@ -3473,6 +3479,7 @@ function applyHash() {
     prF.pe = q.get('pe') === 'ore' ? 'ore' : 'eur';
     prF.lk = ['es', 'fr', 'it', 'nl'].includes(q.get('pl')) ? q.get('pl') : 'eu';
     US_PARAMS.forEach(([k, p, d, ok]) => { prF[k] = ok.includes(q.get(p)) ? q.get(p) : d; });
+    prF.omv = /^\d{4}-\d{2}$/.test(q.get('ov') || '') ? q.get('ov') : '';
     prF.real = q.get('pr') === '1';
     prF.avg = q.get('pa') === '1';
     prF.og = q.get('po') === 'grid' ? 'grid' : 'scatter';
@@ -8928,7 +8935,7 @@ const US_PARAMS = [['uc', 'uc', 'WCRSTUS1', US_CRUDE.map(x => x[0])], ['ucy', 'u
                    ['rfy', 'kp', '2', ['1', '2', '5', '10', '20', 'all']],
                    // Oil market-fanen: frekvens, periode og nivå / endring.
                    ['omf', 'of', 'quarterly', ['quarterly', 'monthly', 'annual']], ['omr', 'or', '3', ['3', '5', '10', 'all']],
-                   ['omm', 'om', 'level', ['level', 'yoy']],
+                   ['omm', 'om', 'level', ['level', 'yoy', 'rev']],
                    // EU gas-fanen: gass inn i EU etter opprinnelse — oppløsning, periode og enhet.
                    ['qa', 'qa', 'w', ['d', 'w', 'm']], ['qr', 'qr', 'all', ['1', '2', 'all']], ['qu', 'qu', 'gwh', ['gwh', 'mcm']]];
 let usCharts = [];
@@ -9280,13 +9287,58 @@ function omValue(S, row, freq, p) {
   const v = row.calc ? row.calc(get) : get(row.id);
   return v == null ? null : v;
 }
-function omCell(S, r, c, yoy) {
-  let v = omValue(S, r, c.freq, c.p);
-  if (yoy && v != null) { const pv = omValue(S, r, c.freq, omPrev(c)); v = pv == null ? null : v - pv; }
-  return v;
+// Celleverdi etter modus: level = nivå, yoy = endring mot samme periode året
+// før, rev = nåværende utgave minus den tidligere utgaven R for samme periode.
+function omCell(S, r, c, mode, R) {
+  const v = omValue(S, r, c.freq, c.p);
+  if (v == null || mode === 'level') return v;
+  const pv = mode === 'rev' ? (R ? omValue(R, r, c.freq, c.p) : null) : omValue(S, r, c.freq, omPrev(c));
+  return pv == null ? null : v - pv;
+}
+// Om kolonnen (eller grafpunktet) er prognose gitt siste historiske måned.
+const omIsFc = (c, lastHist) => c.freq === 'annual' ? `${c.p}-12` > lastHist
+  : c.freq === 'quarterly' ? `${c.p.slice(0, 4)}-${String(+c.p.slice(-1) * 3).padStart(2, '0')}` > lastHist : c.p > lastHist;
+
+// Tidligere STEO-utgaver til endringsmodus («Δ vs. earlier STEO»):
+// data/steo_vintages.json, bygget av eia-repoet fra EIAs arkiv over hele
+// STEO-arbeidsboken (API-et har bare gjeldende utgave). Samme serier som
+// steo.json, månedlig fra fire år før utgaveåret, med kvartal og år regnet
+// som i API-et. Hver serie er lagret kompakt som [første periode, verdier];
+// omRef pakker ut den valgte utgaven første gang den brukes. Filen lastes
+// først når endringsmodus velges.
+let omVint, omVintLoading = null;   // undefined = ikke lastet, false = feilet
+const omRelLabel = rel => `${STORAGE_MON[+rel.slice(5, 7) - 1]} ${rel.slice(0, 4)}`;
+function omNextPeriod(p) {
+  if (p.length === 4) return String(+p + 1);
+  const y = +p.slice(0, 4);
+  if (p[5] === 'Q') { const q = +p.slice(-1); return q === 4 ? `${y + 1}-Q1` : `${y}-Q${q + 1}`; }
+  const m = +p.slice(5, 7);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+// Utgavene før den gjeldende, nyeste først.
+const omVintList = S => omVint ? omVint.vintages.filter(v => v.release < S.release) : [];
+function omRef(S) {
+  const list = omVintList(S);
+  if (!list.length) return null;
+  const v = list.find(x => x.release === prF.omv) || list[0];
+  if (!v._x) {
+    const data = {};
+    Object.entries(v.data).forEach(([freq, ser]) => {
+      data[freq] = {};
+      Object.entries(ser).forEach(([id, [p0, vals]]) => {
+        const o = data[freq][id] = {};
+        let p = p0;
+        vals.forEach(x => { if (x != null) o[p] = x; p = omNextPeriod(p); });
+      });
+    });
+    v._x = {release: v.release, lastHistMonth: v.lastHistMonth, data};
+  }
+  return v._x;
 }
 function omFmt(v, dec, signed) {
   if (v == null) return '–';
+  // Avrundet til null: uten fortegn (ikke «+0.00» eller «-0.00»).
+  if (Math.abs(v) < 0.5 * 10 ** -dec) v = 0;
   const s = v.toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec});
   return signed && v > 0 ? '+' + s : s;
 }
@@ -9305,13 +9357,34 @@ function omToggle(key) { omOpen.has(key) ? omOpen.delete(key) : omOpen.add(key);
 function omExpandAll(open) { OM_ROWS.forEach(r => { if (r.tw) open ? omOpen.add(r.tw) : omOpen.delete(r.tw); }); drawChart(); }
 
 // Nøkkeltall: inneværende kvartal (kvartalet etter siste historiske måned) og neste år.
-function omFacts(S) {
+// Med R (endringsmodus): de samme tallene som endring mot den tidligere utgaven.
+function omFacts(S, R) {
   const [ly, lm] = S.lastHistMonth.split('-').map(Number);
   const cy = lm === 12 ? ly + 1 : ly, cq = lm === 12 ? 1 : Math.ceil((lm + 1) / 3);
   const qp = `${cy}-Q${cq}`, qpPrev = `${cy - 1}-Q${cq}`;
   const Q = (id, p) => S.data.quarterly?.[id]?.[p], A = (id, y) => S.data.annual?.[id]?.[String(y)];
   const sgn = (v, d = 2) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : '') + v.toFixed(d);
   const tone = v => v == null ? '' : v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+  if (R) {
+    const k = X => {
+      const q = id => X.data.quarterly?.[id]?.[qp], a = (id, y) => X.data.annual?.[id]?.[String(y)];
+      const df = (x, y) => x == null || y == null ? null : x - y;
+      return {prod: q('PAPR_WORLD'), cons: q('PATC_WORLD'), bal: df(q('PAPR_WORLD'), q('PATC_WORLD')), opp: q('PAPR_OPECPLUS'),
+              stocks: q('PASC_OECD_T3'), dDem: df(a('PATC_WORLD', cy + 1), a('PATC_WORLD', cy)), balNext: df(a('PAPR_WORLD', cy + 1), a('PATC_WORLD', cy + 1))};
+    };
+    const a = k(S), b = k(R), rl = omRelLabel(R.release), ql = `Q${cq} ${cy}`;
+    const dd = key => a[key] == null || b[key] == null ? null : a[key] - b[key];
+    const num = (v, d = 2, sg) => v == null ? '–' : sg ? sgn(v, d) : v.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
+    const fact = (label, key, unit, sub, d = 2, sg) => [label, `${sgn(dd(key), d)} ${unit}`, `${sub} · ${num(a[key], d, sg)} vs. ${num(b[key], d, sg)} in ${rl}`, tone(dd(key))];
+    return [
+      fact('World production', 'prod', 'mb/d', ql),
+      fact('World consumption', 'cons', 'mb/d', ql),
+      fact('Market balance', 'bal', 'mb/d', ql, 2, true),
+      fact('OPEC+ production', 'opp', 'mb/d', ql),
+      fact('OECD comm. stocks', 'stocks', 'mb', `end ${ql}`, 0),
+      fact(`Demand growth ${cy + 1}`, 'dDem', 'mb/d', 'y/y', 2, true),
+    ];
+  }
   const prod = Q('PAPR_WORLD', qp), cons = Q('PATC_WORLD', qp);
   const bal = prod != null && cons != null ? prod - cons : null;
   const balNext = A('PAPR_WORLD', cy + 1) != null && A('PATC_WORLD', cy + 1) != null ? A('PAPR_WORLD', cy + 1) - A('PATC_WORLD', cy + 1) : null;
@@ -9359,46 +9432,56 @@ function omChartsHtml() {
   return `<div class="om-charts">${OM_CH.map((c, i) => `<div class="om-chart"><h4>${c.title}</h4><div class="om-csub">${sub[i]}</div>
     <div class="chart-container"><canvas id="${c.id}"></canvas></div></div>`).join('')}</div>`;
 }
-function omDrawCharts(S, cols) {
+// Med R (endringsmodus) får hver graf den tidligere utgaven som grå serie ved siden av.
+function omDrawCharts(S, cols, R) {
   cols = cols.filter(c => !c.ann);
   const labels = cols.map(c => c.freq === 'annual' ? c.p : c.freq === 'quarterly' ? `Q${c.label.slice(1)} ${c.year}` : `${c.label} ${c.year}`);
   const sgn = v => (v > 0 ? '+' : '') + v.toFixed(2);
+  const curName = `STEO ${omRelLabel(S.release)}`, refName = R ? `STEO ${omRelLabel(R.release)}` : '';
+  const isFc = (it, col) => it.datasetIndex === 1 && R ? omIsFc(col, R.lastHistMonth) : col.fc;
   const opts = (fmt, isLine) => ({responsive: true, maintainAspectRatio: false, animation: false, interaction: {mode: 'index', intersect: false},
-    plugins: {legend: {display: false}, tooltip: {filter: it => it.parsed.y != null, callbacks: {
-      label: it => ` ${fmt(it.parsed.y)} mb/d${cols[it.dataIndex].fc ? ' (forecast)' : ''}`}}},
+    plugins: {legend: {display: !!R, position: 'bottom', labels: {boxWidth: 10, boxHeight: 10, font: {size: 9}}},
+      tooltip: {filter: it => it.parsed.y != null, callbacks: {
+      label: it => ` ${R ? it.dataset.label + ': ' : ''}${fmt(it.parsed.y)} mb/d${isFc(it, cols[it.dataIndex]) ? ' (forecast)' : ''}`}}},
     scales: {x: {ticks: {maxRotation: 0, autoSkipPadding: 14, font: {size: 9},
                callback: function (v) { const l = this.getLabelForValue(v); return cols[0].freq === 'annual' ? l : l.replace(/^(\S+) (\d{4})$/, (_, a, y) => cols[0].freq === 'quarterly' && a !== 'Q1' ? a : `${a} ${y}`); }},
                grid: {display: false}},
              y: {beginAtZero: !isLine, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}}}});
+  const growth = (X, id) => cols.map(col => { const v = omValue(X, {id}, col.freq, col.p), pv = omValue(X, {id}, col.freq, omPrev(col));
+    return v == null || pv == null ? null : +(v - pv).toFixed(3); });
   OM_CH.slice(0, 2).forEach(c => {
-    const vals = cols.map(col => { const v = omValue(S, {id: c.series}, col.freq, col.p), pv = omValue(S, {id: c.series}, col.freq, omPrev(col));
-      return v == null || pv == null ? null : +(v - pv).toFixed(3); });
+    const ds = [{label: R ? curName : c.title, data: growth(S, c.series), borderWidth: 0, maxBarThickness: 28,
+      backgroundColor: cols.map(col => `rgba(${c.color},${col.fc ? 0.35 : 0.9})`)}];
+    if (R) ds.push({label: refName, data: growth(R, c.series), borderWidth: 0, maxBarThickness: 28,
+      backgroundColor: cols.map(col => `rgba(128,138,155,${omIsFc(col, R.lastHistMonth) ? 0.3 : 0.65})`)});
     usCharts.push(new Chart(document.getElementById(c.id).getContext('2d'), {type: 'bar',
-      data: {labels, datasets: [{label: c.title, data: vals, borderWidth: 0, maxBarThickness: 28,
-        backgroundColor: cols.map(col => `rgba(${c.color},${col.fc ? 0.35 : 0.9})`)}]},
-      options: opts(sgn, false)}));
+      data: {labels, datasets: ds}, options: opts(sgn, false)}));
   });
-  const ma = omCallMa(S), c = OM_CH[2];
+  const c = OM_CH[2];
   const endMonth = col => col.freq === 'monthly' ? col.p : col.freq === 'quarterly' ? `${col.year}-${String(+col.p.slice(-1) * 3).padStart(2, '0')}` : `${col.p}-12`;
-  const vals = cols.map(col => { const v = ma[endMonth(col)]; return v == null ? null : +v.toFixed(3); });
-  const call = new Chart(document.getElementById(c.id).getContext('2d'), {type: 'line',
-    data: {labels, datasets: [{label: c.title, data: vals, borderColor: `rgb(${c.color})`, backgroundColor: `rgba(${c.color},0.08)`, fill: 'start',
+  const maVals = X => { const ma = omCallMa(X); return cols.map(col => { const v = ma[endMonth(col)]; return v == null ? null : +v.toFixed(3); }); };
+  const lineDs = [{label: R ? curName : c.title, data: maVals(S), borderColor: `rgb(${c.color})`, backgroundColor: `rgba(${c.color},0.08)`, fill: R ? false : 'start',
       borderWidth: 2, pointRadius: cols.length > 40 ? 0 : 2, pointHoverRadius: 4, tension: cols[0].freq === 'monthly' ? 0.2 : 0, spanGaps: true,
-      segment: {borderDash: ctx => cols[ctx.p1DataIndex].fc ? [5, 4] : undefined}}]},
-    options: opts(v => v.toFixed(2), true)});
+      segment: {borderDash: ctx => cols[ctx.p1DataIndex].fc ? [5, 4] : undefined}}];
+  if (R) lineDs.push({label: refName, data: maVals(R), borderColor: 'rgb(128,138,155)', backgroundColor: 'rgba(128,138,155,0.1)', fill: false,
+      borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3, tension: cols[0].freq === 'monthly' ? 0.2 : 0, spanGaps: true,
+      segment: {borderDash: ctx => omIsFc(cols[ctx.p1DataIndex], R.lastHistMonth) ? [5, 4] : undefined}});
+  const call = new Chart(document.getElementById(c.id).getContext('2d'), {type: 'line',
+    data: {labels, datasets: lineDs}, options: opts(v => v.toFixed(2), true)});
   usCharts.push(call);
-  return {charts: usCharts.slice(-3), cols};
+  return {charts: usCharts.slice(-3), cols, R};
 }
 
 // PPT: de tre grafene som hvert sitt lysbilde. Prognosestolpene blir blekere
 // av seg selv (pptEstimatePoints); linjen deles i historikk og stiplet prognose.
-function omPpt(S, {charts, cols}) {
+function omPpt(S, {charts, cols, R}) {
   const freqName = {quarterly: 'quarterly', monthly: 'monthly', annual: 'annual'}[cols[0].freq];
   const span = `${freqName}, ${cols[0].year === 'Annual' ? cols[0].p : cols[0].year}–${cols[cols.length - 1].year === 'Annual' ? cols[cols.length - 1].p : cols[cols.length - 1].year}`;
   const fcNote = `forecast after ${omMonthLabel(S.lastHistMonth)}`;
   const rel = `${STORAGE_MON[+S.release.slice(5, 7) - 1]} ${S.release.slice(0, 4)}`;
   const source = `Source: U.S. Energy Information Administration (EIA), Short-Term Energy Outlook ${rel}`;
   const specs = charts.map(pptSpecFromChart);
+  const vsRef = R ? ` · grey: STEO ${omRelLabel(R.release)}` : '';
   const line = specs[2].series[0];
   if (line) {
     const firstFc = cols.findIndex(c => c.fc);
@@ -9409,18 +9492,22 @@ function omPpt(S, {charts, cols}) {
     }
   }
   const meta = [
-    {title: 'Global oil demand growth, y/y', subtitle: `Million b/d, change vs. same period last year · ${span} · pale bars: ${fcNote}`, source},
-    {title: 'Non-OPEC supply growth, y/y', subtitle: `Million b/d, change vs. same period last year · ${span} · pale bars: ${fcNote}`, source},
-    {title: 'Call on OPEC, 12-month moving average', subtitle: `Million b/d, global demand minus non-OPEC supply · ${span} · dashed: ${fcNote}`, source},
+    {title: 'Global oil demand growth, y/y', subtitle: `Million b/d, change vs. same period last year · ${span} · pale bars: ${fcNote}${vsRef}`, source},
+    {title: 'Non-OPEC supply growth, y/y', subtitle: `Million b/d, change vs. same period last year · ${span} · pale bars: ${fcNote}${vsRef}`, source},
+    {title: 'Call on OPEC, 12-month moving average', subtitle: `Million b/d, global demand minus non-OPEC supply · ${span} · dashed: ${fcNote}${vsRef}`, source},
   ];
   pptSpec = specs[0]; pptMainMeta = meta[0];
   // Excel: grafdataene i eget ark, én rad per periode.
-  const val = (ch, i) => { const v = ch.data.datasets[0].data[i]; return v == null ? '' : v; };
+  // Endringsmodus: den tidligere utgaven i tre kolonner til.
+  const val = (ch, i, k = 0) => { const v = ch.data.datasets[k]?.data[i]; return v == null ? '' : v; };
+  const refH = R ? [` (STEO ${omRelLabel(R.release)})`] : [];
   xlsExtra = [{name: 'Charts',
     header: ['Period', 'Forecast', 'Global demand growth y/y, million b/d', 'Non-OPEC supply growth y/y, million b/d',
-             'Call on OPEC (global demand − non-OPEC supply), 12-month moving average, million b/d'],
-    widths: [12, 10, 22, 22, 30],
-    rows: charts[0].data.labels.map((l, i) => [l, cols[i].fc ? 'yes' : '', val(charts[0], i), val(charts[1], i), val(charts[2], i)])}];
+             'Call on OPEC (global demand − non-OPEC supply), 12-month moving average, million b/d',
+             ...refH.flatMap(h => ['Global demand growth y/y' + h, 'Non-OPEC supply growth y/y' + h, 'Call on OPEC, 12-month MA' + h])],
+    widths: [12, 10, 22, 22, 30, ...(R ? [22, 22, 22] : [])],
+    rows: charts[0].data.labels.map((l, i) => [l, cols[i].fc ? 'yes' : '', val(charts[0], i), val(charts[1], i), val(charts[2], i),
+      ...(R ? [val(charts[0], i, 1), val(charts[1], i, 1), val(charts[2], i, 1)] : [])])}];
   pptExtra = [{id: 'omsup', spec: specs[1], meta: meta[1]}, {id: 'omcall', spec: specs[2], meta: meta[2]}];
 }
 
@@ -9429,7 +9516,25 @@ function drawPriceOilMarket() {
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   const S = priceData.steo;
   if (!S || !S.data || !S.lastHistMonth) { setChartTitle('', ''); setChartEmpty('Could not load the STEO data.'); setInfo(''); return; }
-  const freq = prF.omf, yoy = prF.omm === 'yoy', cols = omColumns(S, freq, prF.omr);
+  // Endringsmodus: tidligere utgaver lastes først nå.
+  if (prF.omm === 'rev' && omVint === undefined) {
+    document.getElementById('chartArea').innerHTML = '<div class="status"><div class="spinner"></div><div>Loading earlier STEO releases…</div></div>';
+    omVintLoading = omVintLoading || fetchBundle('steo_vintages').then(d => { omVint = d && d.vintages && d.vintages.length ? d : false; });
+    omVintLoading.then(() => { if (topMode === 'prices' && priceSubView === 'oilmarket') drawChart(); });
+    return;
+  }
+  const R = prF.omm === 'rev' ? omRef(S) : null;
+  // Uten tidligere utgaver (lasting feilet): vis nivå, med beskjed i verktøylinjen.
+  const mode = prF.omm === 'rev' && !R ? 'level' : prF.omm, yoy = mode === 'yoy', rev = mode === 'rev', chg = mode !== 'level';
+  const freq = prF.omf;
+  let cols = omColumns(S, freq, prF.omr);
+  // Bare perioder den tidligere utgaven har tall for: arkivutgavene begynner
+  // fire år før utgaveåret, og eldre utgaver slutter tidligere.
+  if (rev) {
+    const kept = cols.filter(c => omValue(R, {id: 'PAPR_WORLD'}, c.freq, c.p) != null);
+    if (kept.length) cols = kept;
+  }
+  const relCur = omRelLabel(S.release), relRef = rev ? omRelLabel(R.release) : '';
 
   const yearSpans = [];
   cols.forEach(c => {
@@ -9438,7 +9543,7 @@ function drawPriceOilMarket() {
   });
   let html = '<table class="om"><thead><tr class="yr"><th></th>' + yearSpans.map((sp, i) =>
     `<th colspan="${sp.n}" class="${sp.ann ? 'ann' : (i ? 'ys' : '')}" style="text-align:center">${sp.key}</th>`).join('') + '</tr>';
-  html += `<tr><th>${yoy ? 'Change vs. same period last year' : ''}</th>` + cols.map((c, i) =>
+  html += `<tr><th>${yoy ? 'Change vs. same period last year' : rev ? `Change vs. STEO ${relRef}` : ''}</th>` + cols.map((c, i) =>
     `<th class="${omColClass(cols, i)}">${c.label}</th>`).join('') + '</tr></thead><tbody>';
   OM_ROWS.forEach(r => {
     if (r.kind === 'sec' || r.kind === 'grp') {
@@ -9446,13 +9551,17 @@ function drawPriceOilMarket() {
       return;
     }
     const cls = [r.kind === 'tot' ? 'tot' : '', r.lvl ? 'l' + r.lvl : '', r.hl ? 'hl' : '', r.parent && !omIsVisible(r) ? 'hidden' : ''].filter(Boolean).join(' ');
-    const dec = yoy ? (r.fmt === 0 ? 0 : 2) : (r.fmt ?? 2), signed = yoy || r.signed;
+    const dec = chg ? (r.fmt === 0 ? 0 : 2) : (r.fmt ?? 2), signed = chg || r.signed;
     const label = r.tw ? `<span class="tw${omOpen.has(r.tw) ? ' open' : ''}" onclick="omToggle('${r.tw}')">${r.label}</span>` : r.label;
     html += `<tr class="${cls}"><td title="${esc((S.meta?.[r.id]?.name || r.label) + (r.calc ? '' : ` (${r.id})`))}">${label}</td>`;
     cols.forEach((c, i) => {
-      const v = omCell(S, r, c, yoy);
+      const v = omCell(S, r, c, mode, R);
       const tone = (signed && v != null && Math.abs(v) >= (dec ? 0.005 : 0.5)) ? (v > 0 ? 'pos' : 'neg') : '';
-      html += `<td class="${[omColClass(cols, i), (r.hl || yoy) ? tone : ''].filter(Boolean).join(' ')}">${omFmt(v, dec, signed)}</td>`;
+      // Endringsmodus: kolonner som var prognose i den tidligere utgaven, men er historikk nå.
+      const nh = rev && !c.fc && omIsFc(c, R.lastHistMonth) ? 'nh' : '';
+      // Endringsmodus: uendrede tall dempes, så revisjonene trer fram.
+      const z = rev && v != null && Math.abs(v) < 0.5 * 10 ** -dec ? 'z' : '';
+      html += `<td class="${[omColClass(cols, i), (r.hl || chg) ? tone : '', nh, z].filter(Boolean).join(' ')}">${omFmt(v, dec, signed)}</td>`;
     });
     html += '</tr>';
   });
@@ -9460,23 +9569,28 @@ function drawPriceOilMarket() {
 
   const pills = usPills('omf', [['quarterly', 'Quarterly'], ['monthly', 'Monthly'], ['annual', 'Annual']], freq)
     + usPills('omr', [['3', '3y'], ['5', '5y'], ['10', '10y'], ['all', 'All']], prF.omr)
-    + usPills('omm', [['level', 'Level'], ['yoy', 'Δ y/y']], prF.omm)
+    + usPills('omm', [['level', 'Level'], ['yoy', 'Δ y/y'], ['rev', 'Δ vs. earlier STEO']], prF.omm)
+    + (rev ? `<select class="year-select" onchange="usSet('omv', this.value)" aria-label="Compare with STEO release" title="Earlier STEO release to compare with">
+        ${omVintList(S).map((v, i) => `<option value="${v.release}"${v.release === R.release ? ' selected' : ''}>vs. STEO ${omRelLabel(v.release)}${i ? '' : ' (previous)'}</option>`).join('')}</select>`
+      : prF.omm === 'rev' ? '<span style="font-size:0.72rem;color:var(--muted)">Earlier STEO releases could not be loaded; showing levels.</span>' : '')
     + `<div class="pill-group"><button class="pill-btn" onclick="omExpandAll(true)">Expand all</button><button class="pill-btn" onclick="omExpandAll(false)">Collapse</button></div>`;
   const prevSc = document.getElementById('omScroll'), prevLeft = prevSc ? prevSc.scrollLeft : 0;
   document.getElementById('chartArea').innerHTML = `
     <div class="np-bar">${pills}</div>
     ${omChartsHtml()}
-    <div class="pf-facts" style="margin-bottom:12px">${omFacts(S).map(([l, v, sub, cls]) =>
+    <div class="pf-facts" style="margin-bottom:12px">${omFacts(S, rev ? R : null).map(([l, v, sub, cls]) =>
       `<div class="pf-fact"><span>${l}</span><strong class="om-kv ${cls || ''}">${v}</strong><small style="display:block;font-size:0.68rem;color:var(--muted)">${sub}</small></div>`).join('')}</div>
     <div class="om-scroll" id="omScroll">${html}</div>
     <div class="legend-row">
       <div class="legend-item"><div class="legend-dot" style="background:#f6f1f4;border:1px solid var(--border)"></div>Forecast (shaded, italic)</div>
+      ${rev ? `<div class="legend-item"><div class="legend-dot" style="background:#fdf5cf;border:1px solid #e8d48a"></div>Forecast in STEO ${relRef}, history now</div>
+      <div class="legend-item">Change = STEO ${relCur} − STEO ${relRef} for the same period (positive = revised up)</div>` : ''}
       <div class="legend-item">Market balance = production − consumption (positive = implied stock build)</div>
       <div class="legend-item">OPEC country detail is published for historical months only</div></div>`;
-  omPpt(S, omDrawCharts(S, cols));
+  omPpt(S, omDrawCharts(S, cols, rev ? R : null));
   // Ny frekvens eller periode: start rullet helt til høyre, så utsiktsårene
   // vises. Ellers (utfolding, nivå / endring) beholdes rulleposisjonen.
-  const sc = document.getElementById('omScroll'), viewKey = freq + '|' + prF.omr;
+  const sc = document.getElementById('omScroll'), viewKey = freq + '|' + prF.omr + '|' + (rev ? 'rev' : '');
   if (viewKey !== omLastView || !prevSc) { sc.scrollLeft = sc.scrollWidth; omLastView = viewKey; } else sc.scrollLeft = prevLeft;
 
   // Excel: én rad per serie, én kolonne per periode i tabellen.
@@ -9484,14 +9598,16 @@ function drawPriceOilMarket() {
   let sec = '';
   lastLabels = []; OM_ROWS.forEach(r => { if (r.kind === 'sec') sec = r.label; else if (r.kind !== 'grp') lastLabels.push(`${sec} · ${'  '.repeat(r.lvl || 0)}${r.label}`); });
   lastDatasets = cols.map(c => ({label: `${c.ann ? `${c.p} (annual)` : c.freq === 'annual' ? c.p : `${c.year} ${c.label}`}${c.fc ? ' (forecast)' : ''}`,
-    data: dataRows.map(r => { const v = omCell(S, r, c, yoy); return v == null ? '' : +v.toFixed(r.fmt === 0 ? 1 : 3); })}));
-  lastXTitle = yoy ? 'Series (change vs. same period last year)' : 'Series (million b/d; inventories million barrels)';
+    data: dataRows.map(r => { const v = omCell(S, r, c, mode, R); return v == null ? '' : +v.toFixed(r.fmt === 0 ? 1 : 3); })}));
+  lastXTitle = yoy ? 'Series (change vs. same period last year)' : rev ? `Series (STEO ${relCur} minus STEO ${relRef})` : 'Series (million b/d; inventories million barrels)';
 
-  const rel = `${STORAGE_MON[+S.release.slice(5, 7) - 1]} ${S.release.slice(0, 4)}`;
-  setChartTitle('World liquid fuels balance', `EIA Short-Term Energy Outlook ${rel} · Table 3a enriched with Table 3c · history through ${omMonthLabel(S.lastHistMonth)}`);
+  const rel = relCur;
+  setChartTitle(rev ? 'World liquid fuels balance, revisions' : 'World liquid fuels balance',
+    `EIA Short-Term Energy Outlook ${rel}${rev ? ` minus ${relRef}` : ''} · Table 3a enriched with Table 3c · history through ${omMonthLabel(S.lastHistMonth)}`);
   setInfo(`<strong>Source:</strong> U.S. Energy Information Administration (EIA), Short-Term Energy Outlook (STEO), Table 3a (World Petroleum and Other Liquid Fuels Production, Consumption, and Inventories) and Table 3c (OPEC+ and other producers), monthly, quarterly and annual series from the EIA API, collected daily by the eia solution${S.updatedAt ? `, updated ${fmtShort(S.updatedAt.slice(0, 10))}` : ''} &nbsp;|&nbsp; ` +
     `Production and consumption in million barrels per day; inventories in million barrels at the end of the period. Shaded columns are EIA's forecast. Quarterly and monthly views end with annual averages for the outlook years &nbsp;|&nbsp; ` +
     `<strong>Charts:</strong> growth is the change from the same period a year earlier; call on OPEC is global consumption minus non-OPEC production (crude and other liquids), a 12-month moving average of the monthly figures read at the last month of each period. The charts follow the table's frequency and period; lighter bars and the dashed line are forecast &nbsp;|&nbsp; ` +
+    (rev ? `<strong>Δ vs. earlier STEO:</strong> each cell is the current release minus the selected earlier release for the same period, so it shows how EIA has revised its history and forecast. Earlier releases come from EIA's STEO archive (the full STEO workbook per release, Tables 3a and 3c), collected by the eia solution; they cover the release year minus four onwards, so older columns are left out. Quarterly and annual values in the archive are derived from the monthly figures as in the EIA API (day-weighted averages; inventories at the end of the period). Yellow cells were forecast in the earlier release and are history now. The charts show the earlier release in grey &nbsp;|&nbsp; ` : '') +
     `Click a row with ▸ to show its breakdown.`);
 }
 
