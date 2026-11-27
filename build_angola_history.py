@@ -9,7 +9,9 @@ månedsrapporter fikk blokktabeller (september 2024). Tabellene leses fra
   - EITI/ITIE Angola 2021 og 2022: per blokk og år (kilde: ANPG).
 
 For 2023 og januar–august 2024 er det ikke funnet tabeller per blokk som tekst
-(ANPGs rapport for 2023 har tabellen som bilde).
+(ANPGs rapport for 2023 har tabellen som bilde). Siden rekonstruerer blokk 15, 17
+og 31 fra Equinors produksjon per felt (data/angola_fields.json, brutto); her
+legges i tillegg partneres bruttotall for andre blokker inn under «partners».
 
 Rapportene endres ikke, så skriptet kjøres for hånd; PDF-ene mellomlagres i
 --cache. Kontroller (exit 1): kvartalene skal summere til årstallet per blokk,
@@ -43,6 +45,14 @@ DOCS = [
     ('EITI Angola 2021', 'https://eiti.org/sites/default/files/2024-05/1%C2%BA%20Relato%CC%81rio%20ITIE%20Angola_31.12.2021%20(EN).pdf', 2021, [2021, 2020]),
     ('ITIE Angola 2022', 'https://c2a.portais.gov.ao/uploads/53_2024_itie_relatorio_2022_compressed_1879799133671255dca6212_d20695f00b.pdf', 2022, [2022]),
 ]
+# Partneres bruttotall for blokker uten tabell i 2023–2024 (bbl/d, hele blokken).
+# Afentra (3/05 + 3/05A): operasjonelle oppdateringer og årsresultater (RNS).
+# Kontrollert mot ANPG: 2022 18 700 mot 18 625; H1 2025 21 350 mot 21 345.
+PARTNERS = {
+    '3/05': {'source': 'Afentra plc, operational updates and annual results (Block 3/05 and 3/05A, gross)',
+             'url': 'https://www.afentraplc.com/investors/regulatory-news',
+             'a': {2023: 20180, 2024: 21111}},
+}
 NAME = re.compile(r'^\s*(Bloco \d+(?:/\d+)?(?:\s?A|[Kk])?|Block \d+(?:/\d+)?(?:\s?A|K)?|[ÁA]rea [AB]|Associa[çc][ãa]o FST?|FST|FS|Cabinda (?:Sul|South)|Offshore|OFFSHORE|Onshore|ONSHORE|TOTAL|Total)\s{2,}(.*)$')
 
 
@@ -174,7 +184,8 @@ def main():
            'units': 'bbl/day (average)', 'sources': sources, 'quarters': qs, 'years': ys,
            'blocks': {k: {'q': [round(quarters[q][k] / days(int(q[:4]), int(q[-1]))) if k in quarters[q] else None for q in qs],
                           'a': [round(annual[y][k] / days(y)) if k in annual[y] else None for y in ys]} for k in keys},
-           'block0Areas': {a: {'q': [round(quarters[q][a] / days(int(q[:4]), int(q[-1]))) if a in quarters[q] else None for q in qs]} for a in ('AREAA', 'AREAB')}}
+           'block0Areas': {a: {'q': [round(quarters[q][a] / days(int(q[:4]), int(q[-1]))) if a in quarters[q] else None for q in qs]} for a in ('AREAA', 'AREAB')},
+           'partners': {k: {**v, 'a': {str(y): x for y, x in v['a'].items()}} for k, v in PARTNERS.items()}}
     with open(OUT, 'w', encoding='utf-8') as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(',', ':'))
         fh.write('\n')
