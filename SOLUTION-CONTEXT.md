@@ -1389,7 +1389,7 @@ ankeret, og radene nærmest den hører til tabellen. Kolonnene er splittet på t
 eller flere mellomrom, fordi ANPG bruker mellomrom som tusenskille. Landets
 totaler treffer ANPGs årstall innenfor 0,7 % alle år 2016–2022. For 2023 og
 januar–august 2024 finnes ingen blokktabell som tekst. Siden rekonstruerer de
-årene (merket ᵉ, `reconYear` i `angola.html`): Blokk 15, 17 og 31 er summen av
+årene, og 2008–2015 (hele år med Equinor-data, før årsrapportenes tabeller), (merket ᵉ, `reconYear` i `angola.html`): Blokk 15, 17 og 31 er summen av
 Equinors felt (brutto) per blokk, snitt av årets fire kvartaler; Blokk 3/05
 (inkl. 3/05A) er Afentras bruttotall (`partners` i `angola_history.json`,
 lagt inn for hånd i `PARTNERS`); resten av landets total vises som «Other

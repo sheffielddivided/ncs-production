@@ -221,10 +221,10 @@ function viewProduction() {
     <div class="kpi"><span>Angola LNG · last 12 months</span><strong>${fmt(l12('alng'))}</strong><small>boe/day (LNG, LPG, condensate)</small></div>
     <div class="kpi"><span>Facility efficiency</span><strong>${fmt(s.eff[n - 1], 1)} %</strong><small>${ymTxt(last)}${s.effFc[n - 1] ? ` · forecast ${fmt(s.effFc[n - 1], 1)} %` : ''}</small></div>
     ${D.snapshot ? `<div class="kpi"><span>Producing concessions</span><strong>${fmt(D.snapshot.concessions[0])}</strong><small>${fmt(D.snapshot.concessions[1])} offshore, ${fmt(D.snapshot.concessions[2])} onshore</small></div>` : ''}</div>`;
-  const main = chartCard('prodChart', `Angola · oil production by block since ${fy}`, `${oilU()}, annual average · ${fy < 2016 ? 'national total from ANPG before 2016; ' : ''}by block from 2016: Sonangol's and ANPG's annual reports and EITI (2016–2022), reconstructed (ᵉ) for 2023–2024, ANPG's monthly reports from 2025 · * = year to date · click a block`, {cls: 'tall'});
+  const main = chartCard('prodChart', `Angola · oil production by block since ${fy}`, `${oilU()}, annual average · ${fy < 2008 ? 'national total from ANPG before 2008; ' : ''}by block: reconstructed (ᵉ) 2008–2015 and 2023–2024, Sonangol's and ANPG's annual reports and EITI 2016–2022, ANPG's monthly reports from 2025 · * = year to date · click a block`, {cls: 'tall'});
   setView(kpis + main +
-    `<div class="info-box"><strong>By block, 2023–2024 (ᵉ):</strong> no block table has been published as text for these years. Blocks 15, 17 and 31 are Equinor's production by field (quarterly spreadsheet on Equinor's investor pages) divided by Equinor's working interest; for 2016–2022 this matches ANPG's block figures within 1 % every year. Block 3/05 (with 3/05A) is the gross figure reported by partner Afentra. The rest of ANPG's national total is shown as other blocks.</div>` +
-    `<div class="info-box"><strong>Source:</strong> annual production since 1955 from ANPG; production by block from Sonangol's annual reports (2016–2018), ANPG's annual reports (2019–2020), the EITI reports (2021–2022) and ANPG's monthly production summaries (<i>Resumo mensal sobre a produção petrolífera</i>, ${ymTxt(D.months[0])}–${ymTxt(D.months[1])}; block tables from ${ymTxt(D.blockMonths[0])}). Oil is crude oil as ANPG reports it (excluding LNG plant condensate and LPG). The monthly figures sum to ANPG's annual figures within 2 %, and the block tables to the national total within 1 %.</div>` +
+    `<div class="info-box"><strong>Reconstructed years (ᵉ), 2008–2015 and 2023–2024:</strong> no block table has been found as text for these years. Blocks 15, 17 and 31 are Equinor's production by field (quarterly spreadsheet on Equinor's investor pages, from Q4 2007) divided by Equinor's working interest; for 2016–2022 this matches ANPG's block figures within 1 % every year. Block 3/05 (with 3/05A) in 2023–2024 is the gross figure reported by partner Afentra. The rest of ANPG's national total is shown as other blocks.</div>` +
+    `<div class="info-box"><strong>Source:</strong> annual production since 1955 from ANPG; production by block from Equinor's production by field (2008–2015, 2023–2024), Sonangol's annual reports (2016–2018), ANPG's annual reports (2019–2020), the EITI reports (2021–2022) and ANPG's monthly production summaries (<i>Resumo mensal sobre a produção petrolífera</i>, ${ymTxt(D.months[0])}–${ymTxt(D.months[1])}; block tables from ${ymTxt(D.blockMonths[0])}). Oil is crude oil as ANPG reports it (excluding LNG plant condensate and LPG). The monthly figures sum to ANPG's annual figures within 2 %, and the block tables to the national total within 1 %.</div>` +
     `<div class="grid2">${chartCard('gasChart', 'Associated gas: where it goes', `${gasU()}, monthly · reinjected, sent to Angola LNG, used for power; the rest is used in operations or flared`)}
       ${chartCard('alngChart', 'Angola LNG plant (Soyo)', 'boe/day, monthly · LNG, LPG and condensate together')}</div>
     <div class="grid2">${chartCard('effChart', 'Facility efficiency', 'Per cent, monthly · actual and forecast', {cls: 'short'})}${chartCard('rigChart', 'Drilling activity', 'Rigs active and wells worked on, monthly (as stated in the reports)', {cls: 'short'})}</div>` +
@@ -259,7 +259,7 @@ function viewBlocks() {
   const pb = D.prodBlocks.filter(b => b.l12[0] > 0 || b.l12[1] > 0);
   const W = D.snapshot && D.snapshot.wells ? Object.fromEntries(D.snapshot.wells.map(w => [w.block.replace(/\s+/g, '').toUpperCase(), w])) : {};
   const wOf = b => W[b.name.replace(/\s+/g, '').toUpperCase()] || W[(b.reg || '').replace(/\s+/g, '').toUpperCase()];
-  setView(chartCard('histChart', 'Oil production by block since 2016', `${oilU()}, annual average · 2016–2022 from Sonangol's and ANPG's annual reports and the EITI reports; from 2025 from ANPG's monthly reports · 2023–2024 (ᵉ) reconstructed: Blocks 15, 17 and 31 from Equinor's production by field grossed up by its equity share, Block 3/05 from Afentra, the rest of the national total as other blocks · click a block`, {cls: 'tall'}) +
+  setView(chartCard('histChart', 'Oil production by block since 2008', `${oilU()}, annual average · 2016–2022 from Sonangol's and ANPG's annual reports and the EITI reports; from 2025 from ANPG's monthly reports · 2008–2015 and 2023–2024 (ᵉ) reconstructed: Blocks 15, 17 and 31 from Equinor's production by field grossed up by its equity share, Block 3/05 (2023–2024) from Afentra, the rest of the national total as other blocks · click a block`, {cls: 'tall'}) +
     chartCard('blkChart', 'Producing blocks', `Oil, ${oilU()}, average of the last 12 months · colour = operator · click a block`, {h: 460}) +
     `<div class="tbl-sec">Producing blocks<small>Production from ANPG's monthly report tables; operator and partners from ANPG's block register (today's shares); wells from the latest structured month</small></div>
     <div class="table-wrap"><table class="res-table"><thead><tr><th>Block</th><th class="l">Operator</th><th class="l">Basin</th><th class="l">Water depth</th><th>Oil (${oilU()})</th><th>Gas (${oilU()})</th><th>Oil wells open</th><th>Oil wells closed</th><th>Injectors open</th></tr></thead><tbody>
@@ -303,7 +303,8 @@ function reconYear(y, nat) {
   const m = {};
   Object.values(FL.fields).forEach(f => { const k = EQ_BLOCKS[f.block]; if (!k) return;
     m[k] = (m[k] || 0) + qi.reduce((s, i) => s + (f.gross[i] || 0), 0) / qi.length * 1000; });
-  if (Object.keys(m).length < 3) return null;
+  Object.keys(m).forEach(k => { if (m[k] < 1) delete m[k]; });   // Blokk 31 produserer fra 2012
+  if (!m['15'] || !m['17']) return null;
   Object.entries(HB.partners || {}).forEach(([k, p]) => { if (p.a[y] != null) m[k] = p.a[y]; });
   const known = Object.values(m).reduce((s, v) => s + v, 0);
   if (known < nat) m._rest = nat - known;
@@ -312,6 +313,11 @@ function reconYear(y, nat) {
 function histYears() {
   // [år, {blokk: bbl/d} | null, nasjonalt bbl/d, ytd]
   const out = [];
+  // Før årsrapportenes tabeller (2016): rekonstruert fra Equinor for hele år med feltdata (fra 2008)
+  if (FL) for (let y = +FL.quarters[0].slice(0, 4); y < HB.years[0]; y++) {
+    const nv = (D.annual.find(a => a[0] === y) || [])[1], rm = reconYear(String(y), nv);
+    if (rm) out.push([String(y), rm, nv, false, true]);
+  }
   HB.years.forEach((y, i) => { const m = {}; Object.entries(HB.blocks).forEach(([k, b]) => { if (!['TOTAL', 'OFFSHORE', 'ONSHORE'].includes(k) && b.a[i] != null) m[k] = b.a[i]; }); out.push([String(y), m, HB.blocks.TOTAL.a[i], false]); });
   const last = +HB.years[HB.years.length - 1], bm = D.blockMonths;
   const lastY = +D.months[1].slice(0, 4);
@@ -329,7 +335,8 @@ function histYears() {
 function drawHistChart(id = 'histChart', from = null) {
   if (!HB || !document.getElementById(id)) return;
   let Y = histYears();
-  if (from != null) { const first = +Y[0][0]; Y = D.annual.filter(a => a[0] >= from && a[0] < first).map(a => [String(a[0]), null, a[1], false]).concat(Y.filter(a => +a[0] >= from)); }
+  if (from == null) from = +Y[0][0];
+  { const first = +Y[0][0]; Y = D.annual.filter(a => a[0] >= from && a[0] < first).map(a => [String(a[0]), null, a[1], false]).concat(Y.filter(a => +a[0] >= from)); }
   const keys = D.prodBlocks.slice(0, 9).map(b => b.key);
   Object.keys(HB.blocks).filter(k => !['TOTAL', 'OFFSHORE', 'ONSHORE'].includes(k)).forEach(k => { if (!keys.includes(k) && Math.max(...HB.blocks[k].a.filter(v => v != null)) > 80000) keys.push(k); });
   const nameOf = k => { const b = blockByKey(k); return b ? b.name : 'Bloco ' + k; };
@@ -376,7 +383,7 @@ function openBlock(k, quiet) {
     const box = document.getElementById('sheetHist'); if (!box || S.bk !== k || !HB || !HB.blocks[k]) return;
     const Y = histYears().filter(([y, m, , , est]) => m && !(est && m[k] == null)), anyEst = Y.some(a => a[4]);
     const eqSrc = HB.partners && HB.partners[k] ? HB.partners[k].source.split(',')[0] : 'Equinor\'s production by field, grossed up';
-    box.innerHTML = `<div class="pf-card"><h3>Production history <small>· annual average, ${oilU()} · 2016–2022 from annual reports and EITI, from 2025 from monthly reports${anyEst ? ` · 2023–2024 (ᵉ) from ${esc(eqSrc)}` : ''}</small></h3><div class="chart-container short"><canvas id="sheetHistChart"></canvas></div></div>`;
+    box.innerHTML = `<div class="pf-card"><h3>Production history <small>· annual average, ${oilU()} · 2016–2022 from annual reports and EITI, from 2025 from monthly reports${anyEst ? ` · ᵉ = reconstructed from ${esc(eqSrc)}` : ''}</small></h3><div class="chart-container short"><canvas id="sheetHistChart"></canvas></div></div>`;
     barChart('sheetHistChart', Y.map(([y, , , ytd, est]) => (ytd ? y + '*' : y) + (est ? ' ᵉ' : '')), [{label: 'Oil', backgroundColor: '#ce0f69', data: Y.map(([y, m]) => oilF(m[k] || 0))}], oilU(), {legend: false});
   });
   loadFields().then(() => {
