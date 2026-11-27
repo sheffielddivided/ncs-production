@@ -1397,9 +1397,10 @@ blocks». Samme serie (`drawHistChart(id, fra)`) er hovedgrafen i Production,
 forlenget bakover med ANPGs årstall fra 1955 og startår i `fy`; Blocks viser
 den fra 2016. Siden har bare boe/dag (ingen enhetsvelger); gass regnes om med 6 000 scf
 per boe (`gasBoe`) i blokkarket, Blocks-tabellen og Company (egenandel = olje
-+ gass). Måneder der alle blokker har gass 0 i rapporttabellen (juli–august
-2026) behandles som manglende ved innlasting, og gass siste 12 mnd regnes
-derfor på nytt i siden. Kontroll 2016–2022: Equinor brutto mot ANPG per år 99,4–101,0 %
++ gass). I ANPGs strukturerte månedstall (`production-monthly`) mangler gass per
+blokk for juli–august 2026; `fetch_anpg.py` henter da gassen fra tabellen i
+tekstrapporten. Som sikring behandler siden måneder der alle blokker har gass
+0 som manglende (hull i grafene, utenfor snittet for siste 12 mnd). Kontroll 2016–2022: Equinor brutto mot ANPG per år 99,4–101,0 %
 (Blokk 17), 100,0–100,7 % (15), 100,0–100,1 % (31); per kvartal stort sett
 innenfor 1 % (avvik 2017 Q2/Q3 og 2020 Q2 på 2–3,5 %). Afentra mot ANPG:
 2022 100,4 %, H1 2025 og Q1 2026 innenfor 0,1 %. Galp (bare netto for
