@@ -447,10 +447,6 @@
     .nw-why{display:block;color:var(--muted);font-size:0.66rem;margin-top:1px;}
     .nw-txt a{color:#1a2332;text-decoration:underline;text-decoration-color:var(--blue);text-underline-offset:2px;}
     .cn-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-    .cn-gear{background:none;border:1px solid var(--border);border-radius:7px;color:var(--navy);cursor:pointer;padding:3px 7px;
-      display:inline-flex;align-items:center;gap:5px;font-size:0.66rem;font-weight:600;text-transform:none;letter-spacing:0;}
-    .cn-gear svg{width:14px;height:14px;}
-    .cn-gear:hover{border-color:var(--blue);color:var(--blue);}
     .ex-scroll{overflow-x:auto;}
     .ex-gantt{min-width:760px;width:100%;height:auto;display:block;}
     .ex-ax{font-size:10px;fill:#828282;}
@@ -976,7 +972,7 @@
       .mode-btn{min-height:40px;padding:0 14px;font-size:0.84rem;}
       .view-tab{min-height:38px;padding:0 14px;font-size:0.78rem;}
       .pill-btn,.year-select{min-height:38px;}
-      .grp-btn,.np-chip,.cn-gear,.sheet-action-btn{min-height:36px;}
+      .grp-btn,.np-chip,.sheet-action-btn{min-height:36px;}
       .grp-btn{padding-left:12px;padding-right:12px;border-radius:18px;}
       .sheet-close,.wd-close{width:40px;height:40px;}
       .topbar-title{min-height:40px;}
@@ -15464,7 +15460,7 @@ function drawCompanyNews() {
   setProfile(`
     <div class="pf-card pf-wide">
       <h3 class="cn-head"><span>Latest news</span>
-        <button class="cn-gear" onclick="openFeedSettings()" title="Company news feeds">${GEAR_SVG}Feeds${myFeeds.length ? ` (${myFeeds.length})` : ''}</button></h3>
+        <button class="wd-gear" onclick="openFeedSettings()" aria-label="Company news feeds${myFeeds.length ? ` (${myFeeds.length} added)` : ''}" title="Company news feeds${myFeeds.length ? ` (${myFeeds.length} added)` : ''}">${GEAR_SVG}</button></h3>
       <div class="grp-row">${chip('all', 'All', all.length)}${chip('company', 'Company', n('company'))}${chip('sodir', 'Sodir', n('sodir'))}${chip('wells', 'Wells', n('wells'))}${chip('rigs', 'Rigs', n('rigs'))}${chip('deals', 'Deals', n('deals'))}${chip('havtil', 'Havtil', n('havtil'))}</div>
       ${rows || empty}
       ${list.length > cnShown ? `<button class="grp-btn ex-more" onclick="cnShown+=60;drawCompanyNews()">Show more (${list.length - cnShown} older)</button>` : ''}
