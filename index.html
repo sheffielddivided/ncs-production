@@ -2266,7 +2266,7 @@ function renderViewTabs() {
     setSideMap('');   // settes av drawFieldProfile og drawHubProfile
   }
   const curTab = isProdView(cur) ? 'production' : cur;
-  document.getElementById('viewTabs').innerHTML = tabs.map(t =>
+  document.getElementById('viewTabs').innerHTML = tabs.filter(t => dataTabVisible(t.id, cur)).map(t =>
     `<button class="view-tab${curTab===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
@@ -2452,11 +2452,11 @@ function renderPicker(noun, nounP) {
   const prodOf = ids => ids.reduce((t, id) => t + ((lp[id] || {}).v || 0), 0);
   let items, value, pick;
   if (topMode === 'fields') {
-    items = allFields.map(f => ({v: f.name, sub: fmt(prodOf([f.id]))}));
+    items = allFields.filter(f => pickField(f.id)).map(f => ({v: f.name, sub: fmt(prodOf([f.id]))}));
     value = (allFields.find(f => selectedFieldIds.has(f.id)) || {}).name;
     pick = v => { const f = allFields.find(x => x.name === v); if (f) pickOne(() => { selectedFieldIds = new Set([f.id]); }); };
   } else if (topMode === 'hubs') {
-    items = allHubs.map(h => ({v: h.name, sub: fmt(prodOf(h.fieldIds))}));
+    items = allHubs.filter(h => pickHub(h.name)).map(h => ({v: h.name, sub: fmt(prodOf(h.fieldIds))}));
     value = (allHubs.find(h => selectedHubNames.has(h.name)) || {}).name;
     pick = v => pickOne(() => { selectedHubNames = new Set([v]); });
   } else if (topMode === 'discoveries') {
@@ -2566,7 +2566,7 @@ function renderHubList() {
   if (!filteredHubs.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
   const single = hubSingleMode();
-  filteredHubs.forEach(h => {
+  filteredHubs.filter(h => pickHub(h.name)).forEach(h => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedHubNames.has(h.name) ? ' checked' : '');
     const cb = document.createElement('input');
@@ -2610,7 +2610,7 @@ function renderFieldList() {
   if (!filteredFields.length) { el.innerHTML = '<div class="list-empty">No results</div>'; return; }
   el.innerHTML = '';
   const single = fieldSingleMode();
-  filteredFields.forEach(f => {
+  filteredFields.filter(f => pickField(f.id)).forEach(f => {
     const item = document.createElement('div');
     item.className = 'check-item' + (selectedFieldIds.has(f.id) ? ' checked' : '');
     const cb = document.createElement('input');
@@ -3747,6 +3747,8 @@ async function refresh() {
   try { await refreshView(); } finally { releaseHeight(); }
 }
 async function refreshView() {
+  // Shipping- og Gas outage-fanene avhenger av utvalget (felt/huber med data).
+  if ((topMode === 'fields' || topMode === 'hubs') && (SHIP_IDS || GAS_IDS)) renderViewTabs();
   syncUrl();
   syncTitle();
   ioView();
@@ -14340,6 +14342,41 @@ function drawFieldHavtil() {
 // posisjon på sjøen), innenfor sju dager.
 let shippingData = null, shippingLoading = null;
 let shipShown = 50;
+// Hvilke felt som har tankskipdata (data/shipping_fields.json, liten fil som
+// lastes ved oppstart). Shipping-fanen vises bare for felt og huber med data,
+// og i Shipping tilbyr velgeren bare dem.
+let SHIP_IDS = null;
+function loadShipIds() {
+  return fetchBundle('shipping_fields').then(c => {
+    const want = new Set(((c && c.fields) || []).map(x => String(x.name).toUpperCase()));
+    SHIP_IDS = new Set(allFields.filter(f => want.has(String(f.name).toUpperCase())).map(f => f.id));
+  }).catch(() => { SHIP_IDS = new Set(); });
+}
+// Samme for Gas outage: feltene i Gasscos nedetidsdata (data/gassco_downtime.json,
+// 13 KB), lastet ved oppstart.
+let GAS_IDS = null;
+function loadGasIds() {
+  return loadGassco().then(() => { GAS_IDS = new Set(Object.keys((gasscoData && gasscoData.fields) || {}).map(Number)); })
+    .catch(() => { GAS_IDS = new Set(); });
+}
+// Fanene som bare gjelder felt med egne data: fane → mengden av felt-id-er.
+const DATA_TABS = {shipping: () => SHIP_IDS, downtime: () => GAS_IDS};
+const fieldHas = (tab, id) => { const set = DATA_TABS[tab](); return !!(set && set.has(id)); };
+const hubHas = (tab, name) => { const h = allHubs.find(x => x.name === name); return !!(h && h.fieldIds.some(id => fieldHas(tab, id))); };
+// Den åpne fanen som begrenser velgeren til felt og huber med data, ellers null.
+function dataPickTab() {
+  const sv = topMode === 'fields' ? fieldSubView : topMode === 'hubs' ? hubSubView : null;
+  return sv && DATA_TABS[sv] && DATA_TABS[sv]() ? sv : null;
+}
+const pickField = id => { const t = dataPickTab(); return !t || fieldHas(t, id); };
+const pickHub = name => { const t = dataPickTab(); return !t || hubHas(t, name); };
+// Fanen vises når utvalget har data (og alltid når den er åpen).
+function dataTabVisible(tab, cur) {
+  if (!DATA_TABS[tab] || cur === tab) return true;
+  if (topMode === 'fields') return [...selectedFieldIds].some(id => fieldHas(tab, id));
+  if (topMode === 'hubs') return [...selectedHubNames].some(n => hubHas(tab, n));
+  return true;
+}
 function loadShipping() {
   if (shippingData) return Promise.resolve();
   if (!shippingLoading) shippingLoading = fetchBundle('shipping')
@@ -25723,6 +25760,8 @@ async function init() {
   await loadFields();
   buildHubs();
   selectDefaultHub();
+  // Shipping- og Gas outage-fanene og velgeren der avhenger av hvilke felt som har data.
+  Promise.all([loadShipIds(), loadGasIds()]).then(() => { renderViewTabs(); updateFab(); if (sheetOpen) renderList(); });
 
   // ── Phase 2: Render initial chart for Aker BP immediately after licensees
   //    arrive — no need to wait for reserves (only used for sorting the list)
