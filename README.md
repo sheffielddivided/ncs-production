@@ -254,7 +254,7 @@ Månedlige normpris-differensialer per felt ($/fat, relativt til Datert Brent)
 og daglig Datert Brent, hentet fra kvartalsvise xlsx-filer på
 [regjeringen.no](https://www.regjeringen.no/no/tema/energi/olje-og-gass/petroleumsprisradet--og-fastsetting-av-n/id661459/).
 Siden ligger bak Cloudflare og kan ikke hentes automatisk: last ned nye filer
-og last dem opp i appen (Macro → Brent → tannhjulet, samme GitHub-token som
+og last dem opp i appen (Macro → Oil → tannhjulet, samme GitHub-token som
 hub-innstillingene), eller legg dem i `data/normpris-raw/` og push til `main`.
 Appen sjekker filene i nettleseren med de samme reglene som importen, skriver
 dem i én commit og viser resultatet når jobben er ferdig. Workflowen
