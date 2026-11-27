@@ -548,20 +548,24 @@ function viewCompany() {
   const names = [...new Set(EQ_ORDER.concat(OPS_ORDER).concat(D.net12.groups.map(x => x[0])))];
   setControls(pills('b', [['eq', 'Equity (net)'], ['op', 'Operated']], 'Basis') +
     select('c', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company') +
-    pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['boe', 'Oil + gas (boe)']], 'Product') +
-    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') + pills('u', [['bbl', 'Barrels / cf'], ['m3', 'Cubic metres']], 'Unit'));
-  if (S.p === 'water') S.p = 'oil';
-  const ps = periods(S.per, SRC.start.slice(0, 4) > S.from ? SRC.start.slice(0, 4) : S.from), unit = unitOf(S.p);
-  const getIn = (GG, o) => g => i => { const j = i - o; return j < 0 || !GG[g] ? 0 : pick(GG[g], j, S.p); };
+    pills('p', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
+    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period'));
+  // Som Production: alt i boe/dag; olje + gass for ett selskap fordelt på olje og gass.
+  if (!['oil', 'gas', 'boe'].includes(S.p)) S.p = 'boe';
+  const ps = periods(S.per, SRC.start.slice(0, 4) > S.from ? SRC.start.slice(0, 4) : S.from), unit = 'boe/day', fb = factorBoe(S.p);
+  const getIn = (GG, o, p = S.p) => g => i => { const j = i - o; return j < 0 || !GG[g] ? 0 : pick(GG[g], j, p); };
   const get = getIn(G, off), getOp = getIn(OG, ooff), getEq = getIn(EG, eoff);
   const word = eqMode ? 'equity' : 'operated';
   let datasets;
   if (!S.c) {
     const shown = order.filter(g => G[g]).slice(0, TOP_OPS);
-    datasets = shown.map(g => ({label: g, backgroundColor: opColor(g), data: perDay(get(g), ps, S.p)}));
-    datasets.push({label: 'Other companies', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - shown.reduce((t, g) => t + get(g)(i), 0)), ps, S.p)});
+    datasets = shown.map(g => ({label: g, backgroundColor: opColor(g), data: perDay(get(g), ps, S.p, fb)}));
+    datasets.push({label: 'Other companies', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - shown.reduce((t, g) => t + get(g)(i), 0)), ps, S.p, fb)});
+  } else if (S.p === 'boe') {
+    datasets = [['oil', 'Oil (incl. condensate)', '#ce0f69'], ['gas', 'Gas', '#f68d2e']].map(([k, label, col]) => ({label: `${label} (${word})`, backgroundColor: col,
+      data: perDay(getIn(G, off, k)(S.c), ps, k, factorBoe(k))}));
   } else {
-    datasets = [{label: `${S.c} (${word})`, backgroundColor: opColor(S.c) === OTHER_COLOR ? '#7d2248' : opColor(S.c), data: perDay(get(S.c), ps, S.p)}];
+    datasets = [{label: `${S.c} (${word})`, backgroundColor: opColor(S.c) === OTHER_COLOR ? '#7d2248' : opColor(S.c), data: perDay(get(S.c), ps, S.p, fb)}];
   }
   datasets = datasets.filter(d => d.data.some(v => v)).map(d => ({...d, borderWidth: S.per === 'a' ? 1 : 0, borderColor: '#fff', stack: 's'}));
   const t = trimLead(ps.map(p => p.label), datasets);
@@ -593,9 +597,9 @@ function viewCompany() {
       ${ef.map(({f, code, v, share}) => `<tr${f ? ` class="click" onclick="openSheet('${code}')"` : ''}><td>${f ? `<button class="row-link">${esc(fname(f))}</button>${f.name ? ` <span class="tag">${esc(code)}</span>` : ''}` : esc(code)}</td>
         <td class="l">${esc(f && f.op || '–')}</td><td class="l">${f ? `<span class="dot" style="background:${DEPTH[f.dc || 'unknown'].color}"></span>${f.wd ? fmt(f.wd) + ' ft' : '–'}` : '–'}</td>
         <td>${share != null ? fmt(share, 1) + ' %' : '–'}</td><td>${fmt(v)}</td><td>${f ? fmt(l12boe(f)) : '–'}</td></tr>`).join('')}</tbody></table></div>` : ''}
-      ${opFields.length ? `<div class="tbl-sec">Operated fields</div><div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Water depth</th><th>Oil (bbl/d)</th><th>Gas (MMcf/d)</th><th>Remaining (MMboe)</th></tr></thead><tbody>
+      ${opFields.length ? `<div class="tbl-sec">Operated fields</div><div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Water depth</th><th>Oil (boe/d)</th><th>Gas (boe/d)</th><th>Remaining (MMboe)</th></tr></thead><tbody>
       ${opFields.map(f => `<tr class="click" onclick="openSheet('${f.code}')"><td><button class="row-link">${esc(fname(f))}</button>${f.name ? ` <span class="tag">${esc(f.code)}</span>` : ''}</td>
-        <td class="l"><span class="dot" style="background:${DEPTH[f.dc || 'unknown'].color}"></span>${f.wd ? fmt(f.wd) + ' ft' : '–'}</td><td>${fmt(f.l12[0])}</td><td>${fmt(f.l12[1] / 1000, 1)}</td><td>${f.rem ? fmt(f.rem[3]) : '–'}</td></tr>`).join('')}</tbody></table></div>` : ''}
+        <td class="l"><span class="dot" style="background:${DEPTH[f.dc || 'unknown'].color}"></span>${f.wd ? fmt(f.wd) + ' ft' : '–'}</td><td>${fmt(f.l12[0])}</td><td>${fmt(f.l12[1] / MCF_PER_BOE)}</td><td>${f.rem ? fmt(f.rem[3]) : '–'}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${D.operatorsLegal[S.c] ? `<div class="pf-note">Reporting entities as operator: ${esc(D.operatorsLegal[S.c].join('; '))}.</div>` : ''}`;
   }
   const info = eqMode
@@ -604,7 +608,7 @@ function viewCompany() {
   setView(chartCard('cmpChart', S.c ? `${esc(S.c)} · ${word} production` : `${eqMode ? 'Equity' : 'Operated'} production by company`,
       `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit} · ${eqMode ? 'share by lease ownership at the time' : 'production from the completions each company operated at the time'}`, {cls: 'tall'}) +
     `<div class="info-box">${info} Companies are grouped by today's parent where the lineage is clear (e.g. Texaco, Unocal, Noble and Hess under Chevron; Amoco under bp; Anadarko under Oxy; Stone, EnVen and QuarterNorth under Talos); other owners keep their registered name.</div>` + table);
-  barChart('cmpChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: S.p === 'gas' ? 1 : 0, noAnim: t.labels.length > 300});
+  barChart('cmpChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: 0, noAnim: t.labels.length > 300});
 }
 
 // ── DRILLING ──
