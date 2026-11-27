@@ -212,6 +212,10 @@
 // ── KONSTANTER ───────────────────────────────────────────────────────────────
 const BBL_PER_M3 = 6.2898;
 const MMSCF_PER_E3M3 = 0.0353147;
+// Alle volumer i boe: olje og NGL i fat, gass med 6 Mcf per fat (vanlig i
+// Canada). 1000 m³ gass = 35,3147 Mcf = 5,886 boe; 1 bcf = 1/6 mill. boe.
+const MCF_PER_BOE = 6;
+const BOE_PER_E3M3 = 35.3147 / MCF_PER_BOE;
 // Samme farger som index.html (PALETTE der), i samme rekkefølge som UKCS
 const PALETTE = ['#ce0f69', '#f68d2e', '#00b373', '#4993b4', '#d14f4e', '#e8c942', '#7d2248', '#6b7a8f'];
 const OTHER_COLOR = '#b9c0c9';
@@ -251,6 +255,7 @@ function readUrl() {
   S = {...DEFAULTS};
   for (const k of Object.keys(DEFAULTS)) if (q.has(k)) S[k] = q.get(k);
   if (!TABS.some(t => t[0] === S.v)) S.v = 'production';
+  S.u = 'bbl';   // ingen enhetsvalg lenger: alt i boe (gamle lenker med u=m3)
 }
 function writeUrl(push) {
   const q = new URLSearchParams();
@@ -404,13 +409,10 @@ function fieldMonthly(f, prod, res) {
   return out;
 }
 function unitOf(prod) {
-  const bbl = S.u === 'bbl';
-  if (prod === 'gas') return bbl ? 'MMscf/day' : '1000 m³/day';
-  return bbl ? 'bbl/day' : 'm³/day';
+  return prod === 'water' ? 'bbl/day' : 'boe/day';
 }
 function factor(prod) {
-  if (S.u !== 'bbl') return 1;
-  return prod === 'gas' ? MMSCF_PER_E3M3 : BBL_PER_M3;
+  return prod === 'gas' ? BOE_PER_E3M3 : BBL_PER_M3;
 }
 // Siste måned med tall (felles for alle felt).
 const lastYM = () => G.labels[G.n - 1];
@@ -454,10 +456,10 @@ const fieldColor = id => FIELD_COLORS[id] || PALETTE[D.fields.findIndex(f => f.i
 function vol(o, key, i, gas) {
   if (!o) return null;
   const m = i == null ? o[key] : (o[key] || [])[i];
-  if (S.u !== 'bbl') return m ?? null;
+  // Alltid boe: kildens fat (olje, NGL) eller bcf / 6 (gass).
   const imp = i == null ? o[key + 'I'] : (o[key + 'I'] || [])[i];
-  if (imp != null) return imp;
-  return m == null ? null : m * (gas ? 35.3147 : BBL_PER_M3);
+  const v = imp != null ? imp : m == null ? null : m * (gas ? 35.3147 : BBL_PER_M3);
+  return v == null ? null : gas ? v / MCF_PER_BOE : v;
 }
 // Reservoarfarger: faste per formasjon (navnene går igjen på tvers av
 // feltene), ukjente etter første forekomst
@@ -510,8 +512,7 @@ function viewProduction() {
     pills('g', [['field', 'By field'], ['res', 'By reservoir']], 'Show') +
     select('f', [['', 'All fields']].concat(D.fields.map(x => [x.id, x.name])), 'Field') +
     pills('p', [['oil', 'Oil'], ['gas', 'Gas'], ['water', 'Water']], 'Product') +
-    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') +
-    pills('u', [['bbl', 'Barrels'], ['m3', 'Cubic metres']], 'Unit'));
+    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period'));
   const ps = periods(S.per), unit = unitOf(S.p);
   const flds = f ? [f] : D.fields;
   let datasets;
@@ -536,20 +537,20 @@ function viewProduction() {
   const st = flds.map(fieldStats);
   const sumK = k => st.reduce((t, s) => t + s[k], 0);
   const o = v => S.u === 'bbl' ? v * BBL_PER_M3 : v;
-  const ou = S.u === 'bbl' ? 'bbl/day' : 'm³/day';
+  const ou = 'boe/day';
   const rem2P = flds.reduce((t, x) => t + (vol(x.reserves.total, 'rem', 1) || 0), 0);
   const cum = sumK('cum') / 1e6;
   const kpis = `<div class="kpis">
     <div class="kpi"><span>Oil · ${esc(ymTxt(lastYM()))}</span><strong>${fmt(o(sumK('last')))}</strong><small>${ou}</small></div>
     <div class="kpi"><span>Oil · last 12 months</span><strong>${fmt(o(sumK('avg12')))}</strong><small>${ou}, average</small></div>
     <div class="kpi"><span>Oil · ${lastYM().slice(0, 4)} to date</span><strong>${fmt(o(sumK('ytd')))}</strong><small>${ou}, average</small></div>
-    <div class="kpi"><span>Produced to date</span><strong>${fmt(S.u === 'bbl' ? cum * BBL_PER_M3 : cum, S.u === 'bbl' ? 0 : 1)}</strong><small>million ${S.u === 'bbl' ? 'bbl' : 'm³'} oil</small></div>
-    <div class="kpi"><span>Remaining reserves (2P)</span><strong>${fmt(rem2P, S.u === 'bbl' ? 0 : 1)}</strong><small>million ${S.u === 'bbl' ? 'bbl' : 'm³'} oil, ${esc(dateTxt(D.fields[0].reserves.asOf))}</small></div>
+    <div class="kpi"><span>Produced to date</span><strong>${fmt(S.u === 'bbl' ? cum * BBL_PER_M3 : cum, S.u === 'bbl' ? 0 : 1)}</strong><small>million boe oil</small></div>
+    <div class="kpi"><span>Remaining reserves (2P)</span><strong>${fmt(rem2P, S.u === 'bbl' ? 0 : 1)}</strong><small>million boe oil, ${esc(dateTxt(D.fields[0].reserves.asOf))}</small></div>
   </div>`;
 
   const rows = flds.map((x, i) => ({x, s: st[i]})).sort((a, b) => b.s.avg12 - a.s.avg12);
   const tot = {last: sumK('last'), avg12: sumK('avg12'), ytd: sumK('ytd'), cum: sumK('cum')};
-  const table = `<div class="tbl-sec">Oil by field<small>Average ${ou}; produced to date in million ${S.u === 'bbl' ? 'bbl' : 'm³'}. Water cut and gas–oil ratio over the last 12 months</small></div>
+  const table = `<div class="tbl-sec">Oil by field<small>Average ${ou}; produced to date in million boe. Water cut and gas–oil ratio over the last 12 months</small></div>
     <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th>${esc(ymTxt(lastYM()))}</th><th>Last 12 months</th><th>${lastYM().slice(0, 4)} to date</th><th>Produced</th><th>Water cut</th><th>GOR (m³/m³)</th><th>First oil</th></tr></thead><tbody>
     ${rows.map(({x, s}) => `<tr class="click" onclick="openSheet('${x.id}')"><td><span class="dot" style="background:${fieldColor(x.id)}"></span><button class="row-link">${esc(x.name)}</button></td>
       <td>${fmt(o(s.last))}</td><td>${fmt(o(s.avg12))}</td><td>${fmt(o(s.ytd))}</td><td>${fmt(o(s.cum) / 1e6, 1)}</td><td>${fmt(s.wcut * 100)} %</td><td>${fmt(s.gor)}</td><td>${esc(dateTxt(x.firstOil))}</td></tr>`).join('')}
@@ -575,20 +576,19 @@ function viewProduction() {
 
 // ── FIELDS ──
 function viewFields() {
-  setControls(pills('rk', [['12m', 'Last 12 months'], ['cum', 'Produced to date'], ['rem', 'Remaining reserves (2P)'], ['eur', 'Ultimate recovery (2P)']], 'Rank by') +
-    pills('u', [['bbl', 'Barrels'], ['m3', 'Cubic metres']], 'Unit'));
+  setControls(pills('rk', [['12m', 'Last 12 months'], ['cum', 'Produced to date'], ['rem', 'Remaining reserves (2P)'], ['eur', 'Ultimate recovery (2P)']], 'Rank by'));
   const bbl = S.u === 'bbl', cv = v => bbl ? v * BBL_PER_M3 : v;
   const rows = D.fields.map(f => {
     const s = fieldStats(f), r = f.reserves.total;
     return {f, s, r, v: {
       '12m': cv(s.avg12), cum: cv(s.cum / 1e6), rem: vol(r, 'rem', 1) || 0, eur: vol(r, 'eur', 1) || 0}[S.rk]};
   }).sort((a, b) => b.v - a.v);
-  const unit = S.rk === '12m' ? (bbl ? 'bbl/day' : 'm³/day') : `million ${bbl ? 'bbl' : 'm³'}`;
+  const unit = S.rk === '12m' ? ('boe/day') : 'million boe';
   const title = {'12m': 'Oil production, last 12 months', cum: 'Oil produced to date', rem: 'Remaining oil reserves (2P)', eur: 'Estimated ultimate recovery of oil (2P)'}[S.rk];
   setView(chartCard('rankChart', title, `${unit} · click a field for its factsheet`, {cls: 'short'}) +
     `<div class="tbl-sec">Producing fields<small>Five fields on the Grand Banks, all in the Jeanne d'Arc Basin. Reserves per ${esc(dateTxt(D.fields[0].reserves.asOf))}; EUR = estimated ultimate recovery, proved + probable (2P)</small></div>
     <div class="table-wrap"><table class="res-table"><thead><tr><th>Field</th><th class="l">Operator</th><th class="l">Installation</th><th>Discovered</th><th>First oil</th>
-      <th>Last 12 m (${bbl ? 'bbl' : 'm³'}/d)</th><th>Produced (M${bbl ? 'bbl' : 'm³'})</th><th>2P EUR</th><th>2P remaining</th><th>Recovered</th></tr></thead><tbody>
+      <th>Last 12 m (boe/d)</th><th>Produced (MMboe)</th><th>2P EUR</th><th>2P remaining</th><th>Recovered</th></tr></thead><tbody>
     ${rows.map(({f, s, r}) => `<tr class="click" onclick="openSheet('${f.id}')"><td><span class="dot" style="background:${fieldColor(f.id)}"></span><button class="row-link">${esc(f.name)}</button></td>
       <td class="l">${esc(opShort(f.operator))}</td><td class="l">${esc(f.installation || '–')}</td><td>${f.discovered || '–'}</td><td>${esc(dateTxt(f.firstOil))}</td>
       <td>${fmt(cv(s.avg12))}</td><td>${fmt(cv(s.cum / 1e6), bbl ? 0 : 1)}</td><td>${fmt(vol(r, 'eur', 1), bbl ? 0 : 1)}</td><td>${fmt(vol(r, 'rem', 1), bbl ? 0 : 1)}</td><td>${pct2(r) != null ? fmt(pct2(r), 1) + ' %' : '–'}</td></tr>`).join('')}
@@ -601,9 +601,9 @@ function viewFields() {
 
 // ── RESOURCES ──
 function viewResources() {
-  setControls(pills('rp', [['oil', 'Oil'], ['gas', 'Gas']], 'Contingent') + pills('u', [['bbl', 'Barrels / cubic feet'], ['m3', 'Cubic metres']], 'Unit'));
+  setControls(pills('rp', [['oil', 'Oil'], ['gas', 'Gas']], 'Contingent'));
   const bbl = S.u === 'bbl';
-  const ou = bbl ? 'million bbl' : 'million m³', gu = bbl ? 'bcf' : 'billion m³';
+  const ou = 'million boe', gu = 'million boe';
   const R = D.resources;
   const fl = D.fields.slice().sort((a, b) => (b.reserves.total.eur || [])[1] - (a.reserves.total.eur || [])[1]);
   const cont = R.contingent2C.filter(r => r[S.rp] > 0).sort((a, b) => b[S.rp] - a[S.rp]);
@@ -641,7 +641,7 @@ function viewResources() {
 // Prosjekt under utvikling (håndført, med kilder), med C-NLOERs 2C for
 // funnene i prosjektet og lisensene fra registeret.
 function projectCard(pr) {
-  const bbl = S.u === 'bbl', ou = bbl ? 'million bbl' : 'million m³';
+  const bbl = S.u === 'bbl', ou = 'million boe';
   const acc = D.resources.contingent2C.filter(r => pr.accumulations.some(a => a.toLowerCase() === r.name.toLowerCase()));
   const c2 = acc.reduce((t, r) => t + (vol(r, 'oil') || 0), 0);
   const lics = pr.licences.map(id => D.licences.find(l => l.id === id)).filter(Boolean);
@@ -710,7 +710,7 @@ function viewCompany() {
   const cs = companies(), prodC = cs.filter(c => c.net12 > 0);
   const cur = cs.find(c => c.name === S.c);
   setControls(select('c', [['', 'All companies']].concat(cs.map(c => [c.name, c.name])), 'Company') +
-    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') + pills('u', [['bbl', 'Barrels'], ['m3', 'Cubic metres']], 'Unit'));
+    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period'));
   const ps = periods(S.per), unit = unitOf('oil'), bbl = S.u === 'bbl';
   let datasets, title, sub;
   if (!cur) {
@@ -728,7 +728,7 @@ function viewCompany() {
   if (S.per === 'a') datasets.forEach(d => { d.borderWidth = 1; d.borderColor = '#fff'; });
   const t = trimLead(ps.map(p => p.label), datasets);
   const caveat = `<div class="info-box"><strong>Interests are today's only.</strong> C-NLOER publishes the current interest holders of each licence, not their history, so net production uses today's shares for every month. Earlier years are therefore indicative: past sales and swaps (Husky → Cenovus 2021, Terra Nova and Hibernia transactions, Petro-Canada → Suncor 2009 and others) are not reflected. Field shares are those of the main production licence (Hibernia PL 1001, Terra Nova PL 1002–1004, White Rose PL 1006, North Amethyst PL 1008, Hebron PL 1012); unitised extensions such as the Hibernia Southern Extension have slightly different shares. Companies are grouped by name (e.g. ExxonMobil Canada Ltd. and ExxonMobil Canada Resources Company).</div>`;
-  const ou = bbl ? 'bbl/day' : 'm³/day', vu = bbl ? 'million bbl' : 'million m³', cv = v => bbl ? v * BBL_PER_M3 : v;
+  const ou = 'boe/day', vu = 'million boe', cv = v => bbl ? v * BBL_PER_M3 : v;
   let table;
   if (!cur) {
     table = `<div class="tbl-sec">Companies<small>Net oil production (last 12 months, ${ou}) and net remaining 2P reserves (${vu}) at today's interests; licences held offshore Newfoundland and Labrador</small></div>
@@ -932,7 +932,7 @@ function openSheet(id, quiet) {
   ov.classList.add('open'); document.body.classList.add('sheet-open');
   const s = fieldStats(f), r = f.reserves, bbl = S.u === 'bbl', cv = v => v == null ? null : bbl ? v * BBL_PER_M3 : v;
   const tri = (x, k, gas) => x[k] ? [0, 1, 2].map(i => fmt(vol(x, k, i, gas), bbl ? 0 : 1)).join(' / ') : '–';
-  const vu = bbl ? 'million bbl' : 'million m³', ou = bbl ? 'bbl/day' : 'm³/day', d1 = bbl ? 0 : 1;
+  const vu = 'million boe', ou = 'boe/day', d1 = bbl ? 0 : 1;
   const devWells = D.wells.filter(w => w.field === f.id);
   const statusGroup = st => !st ? 'Other' : /^Abandoned/i.test(st) ? 'Abandoned' : /Suspended/i.test(st) ? 'Suspended'
     : /Oil Producer/i.test(st) ? 'Oil producer' : /Water Injector/i.test(st) ? 'Water injector' : /Gas Injector/i.test(st) ? 'Gas injector'
@@ -962,7 +962,7 @@ function openSheet(id, quiet) {
       <td>${fmt(vol(x, 'cum'), d1)}</td><td>${fmt(vol(x, 'rem', 1), d1)}</td><td>${pct2(x) != null ? fmt(pct2(x), 1) + ' %' : '–'}</td></tr>`).join('')}
     ${rrows.some(x => x.name === 'Total') || rrows.filter(x => !x.sub).length < 2 ? '' : `<tr class="total-row"><td>Total</td>${[0, 1, 2].map(i => `<td>${fmt(vol(tot, 'eur', i), d1)}</td>`).join('')}<td>${fmt(vol(tot, 'cum'), d1)}</td><td>${fmt(vol(tot, 'rem', 1), d1)}</td><td>${fmt(pct2(tot), 1)} %</td></tr>`}
     </tbody></table></div>`;
-  const gu = bbl ? 'bcf' : 'billion m³';
+  const gu = 'million boe';
   const contTable = contRows.length ? `<div class="tbl-sec" style="margin-top:10px">Contingent resources<small>Not in the development plan: oil in unapproved pools, and gas and NGL, which have no export route. 1C / 2C / 3C</small></div>
     <div class="table-wrap"><table class="res-table"><thead><tr><th>Reservoir / pool</th><th>Oil (${vu})</th><th>Gas (${gu})</th><th>NGL (${vu})</th></tr></thead><tbody>
     ${contRows.map(x => `<tr class="${x.name === 'Total' ? 'total-row' : x.sub ? 'sub-row' : ''}"><td>${esc(x.name)}</td>
