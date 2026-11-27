@@ -396,6 +396,12 @@ async function loadCmp() {
   if (CMPD) return;
   CMPD = await fetch('data/gom_company.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : {equity: {}, operated: {}}).catch(() => ({equity: {}, operated: {}}));
 }
+// Månedlig per felt for ett selskap (data/gom_company/<selskap>.json), ved valg.
+const CMPM = {};
+async function loadCmpMonthly(g) {
+  if (CMPM[g] || !CMPD.files || !CMPD.files[g]) return;
+  CMPM[g] = await fetch('data/gom_company/' + CMPD.files[g], {cache: 'no-cache'}).then(r => r.ok ? r.json() : null).catch(() => null);
+}
 async function loadWells() {
   if (W) return;
   W = await fetch('data/gom_wells.json', {cache: 'no-cache'}).then(r => r.json());
@@ -560,14 +566,16 @@ function viewCompany() {
   setControls(pills('b', [['eq', 'Equity (net)'], ['op', 'Operated']], 'Basis') +
     select('c', [['', 'All companies']].concat(names.map(g => [g, g])), 'Company') +
     pills('p', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
-    pills('per', [['m', 'Monthly', !!S.c], ['a', 'Annual']], 'Period') +
+    pills('per', [['m', 'Monthly'], ['a', 'Annual']], 'Period') +
     select('cf', Array.from({length: +lastYM().slice(0, 4) - +SRC.start.slice(0, 4) + 1}, (_, k) => {
       const y = String(+SRC.start.slice(0, 4) + k); return [y, y]; }), 'From'));
-  // Som Production: alt i boe/dag. Ett selskap: fordelt per felt, årlig
-  // (feltfordelingen finnes bare per år).
+  // Som Production: alt i boe/dag. Ett selskap: fordelt per felt (årlig fra
+  // gom_company.json, månedlig fra selskapets egen fil).
   if (!['oil', 'gas', 'boe'].includes(S.p)) S.p = 'boe';
   if (S.c && !CMPD) { setView(loading()); loadCmp().then(() => S.v === 'company' && render()); return; }
-  if (S.c && S.per !== 'a') { S.per = 'a'; writeUrl(); return render(); }
+  if (S.c && S.per === 'm' && CMPD.files && CMPD.files[S.c] && !(S.c in CMPM)) {
+    setView(loading()); loadCmpMonthly(S.c).then(() => S.v === 'company' && render()); return;
+  }
   // Startår: standard 2008, kan overstyres (cf); ikke før dataene begynner.
   const ps = periods(S.per, SRC.start.slice(0, 4) > S.cf ? SRC.start.slice(0, 4) : S.cf), unit = 'boe/day', fb = factorBoe(S.p);
   const getIn = (GG, o, p = S.p) => g => i => { const j = i - o; return j < 0 || !GG[g] ? 0 : pick(GG[g], j, p); };
@@ -580,11 +588,15 @@ function viewCompany() {
     datasets.push({label: 'Other companies', backgroundColor: OTHER_COLOR, data: perDay(i => Math.max(0, pick(D.total, i, S.p) - shown.reduce((t, g) => t + get(g)(i), 0)), ps, S.p, fb)});
   } else if ((eqMode ? CMPD.equity : CMPD.operated)[S.c]) {
     // De største feltene for selskapet i perioden hver for seg, resten samlet.
-    const FS = (eqMode ? CMPD.equity : CMPD.operated)[S.c];
+    const MF = S.per === 'm' && CMPM[S.c];
+    const FS = MF ? (eqMode ? MF.equity : MF.operated) : (eqMode ? CMPD.equity : CMPD.operated)[S.c];
+    const moff = MF ? MONTHS.indexOf(MF.from) : 0;
+    const pick1 = (oil, gas, j) => j < 0 || j >= oil.length ? 0
+      : S.p === 'oil' ? oil[j] : S.p === 'gas' ? gas[j] / MCF_PER_BOE : oil[j] + gas[j] / MCF_PER_BOE;
     const val = (code, p) => {
-      const [a, oil, gas] = FS[code], j = +p.key - CMPD.from - a;
-      if (j < 0 || j >= oil.length) return 0;
-      const v = S.p === 'oil' ? oil[j] : S.p === 'gas' ? gas[j] / MCF_PER_BOE : oil[j] + gas[j] / MCF_PER_BOE;
+      if (!FS[code]) return 0;
+      const [a, oil, gas] = FS[code];
+      const v = MF ? p.idx.reduce((t, i) => t + pick1(oil, gas, i - moff - a), 0) : pick1(oil, gas, +p.key - CMPD.from - a);
       return v * 1000 / p.days;
     };
     const top = Object.keys(FS).map(c => [c, ps.reduce((t, p) => t + val(c, p), 0)]).filter(x => x[1] > 0)
@@ -634,8 +646,8 @@ function viewCompany() {
     ? `<strong>Equity production</strong> is each lease's monthly production multiplied by the ownership shares in force that month, from BOEM's lease ownership records (assignments with their effective dates). It covers ${fmt(Math.min(...cov) * 100, 1)}–${fmt(Math.max(...cov) * 100, 1)} % of production each year since ${D.equity.start.slice(0, 4)}. Leases split by depth or area into several owner groups are averaged across the groups, and unitised production is credited to the lease it is reported on, so field shares can differ somewhat from unit agreements.`
     : `<strong>Operated volumes</strong> are historical: each month's production is credited to the operator that reported it, so past operators keep their history.`;
   setView(chartCard('cmpChart', S.c ? `${esc(S.c)} · ${word} production by field` : `${eqMode ? 'Equity' : 'Operated'} production by company`,
-      `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit}${S.c ? ', annual average' : ''} · ${eqMode ? 'share by lease ownership at the time' : 'production from the completions each company operated at the time'}${S.c ? ' · click a field for its factsheet' : ''}`, {cls: 'tall'}) +
-    `<div class="info-box">${info}${S.c ? ` <strong>By field:</strong> annual, from ${CMPD.from}; ${eqMode ? "a lease's equity production is split between the fields in it by each field's share of the lease's oil and gas that year" : 'production from the completions the company operated, by field'}. The ${PALETTE.length} largest fields for the company in the period have their own series; the rest, and fields with less than 1 MMboe for the company since ${CMPD.from}, are in «Other fields».` : ''} Companies are grouped by today's parent where the lineage is clear (e.g. Texaco, Unocal, Noble and Hess under Chevron; Amoco under bp; Anadarko under Oxy; Stone, EnVen and QuarterNorth under Talos); other owners keep their registered name.</div>` + table);
+      `${{oil: 'Oil', gas: 'Gas', boe: 'Oil + gas'}[S.p]} · ${unit}${S.c ? (S.per === 'm' ? ', monthly' : ', annual average') : ''} · ${eqMode ? 'share by lease ownership at the time' : 'production from the completions each company operated at the time'}${S.c ? ' · click a field for its factsheet' : ''}`, {cls: 'tall'}) +
+    `<div class="info-box">${info}${S.c ? ` <strong>By field:</strong> from ${CMPD.from}; ${eqMode ? "a lease's equity production is split between the fields in it by each field's share of the lease's oil and gas that year" : 'production from the completions the company operated, by field'}. The ${PALETTE.length} largest fields for the company in the period have their own series; the rest, and fields with less than 1 MMboe for the company since ${CMPD.from}, are in «Other fields».` : ''} Companies are grouped by today's parent where the lineage is clear (e.g. Texaco, Unocal, Noble and Hess under Chevron; Amoco under bp; Anadarko under Oxy; Stone, EnVen and QuarterNorth under Talos); other owners keep their registered name.</div>` + table);
   barChart('cmpChart', t.labels, t.datasets, unit, {ticks: S.per === 'm' ? 12 : 30, dec: 0, noAnim: t.labels.length > 300});
   if (S.c) charts.cmpChart.options.onClick = (e) => {
     const el = charts.cmpChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0];

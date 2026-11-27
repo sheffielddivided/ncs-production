@@ -46,7 +46,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/gom.json data/gom_prod.json data/gom_wells.json data/gom_company.json
+          git add data/gom.json data/gom_prod.json data/gom_wells.json data/gom_company.json data/gom_company
           if git diff --staged --quiet; then
             echo "Ingen endringer - hopper over commit."
             exit 0

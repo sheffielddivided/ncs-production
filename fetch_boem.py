@@ -51,6 +51,7 @@ OUT = 'data/gom.json'
 OUT_PROD = 'data/gom_prod.json'
 OUT_WELLS = 'data/gom_wells.json'
 OUT_CMP = 'data/gom_company.json'   # selskap × felt per år, til Company med ett selskap valgt
+OUT_CMP_DIR = 'data/gom_company'    # selskap × felt per måned, én fil per selskap (lastes ved valg)
 CMP_FIELD_MIN = 1000        # felt med minst så mye (tusen fat o.e.) for selskapet siden 1985 får egen serie
 
 MCF_PER_BOE = 5.62          # BOEMs omregning: 5 620 kubikkfot gass per fat o.e.
@@ -260,7 +261,7 @@ def read_ogor(store):
             if int(y) >= OPS_FROM:
                 # Per år (ikke måned), til selskap × felt: lease × felt og felt × operatør
                 keys.append(('Z', lease + '\t' + f, y))
-                keys.append(('W', f + '\t' + op, y))
+                keys.append(('W', f + '\t' + op))   # felt × operatør per måned
             for key in keys:
                 a = agg[y][(key[0], key[1], key[2] if len(key) > 2 else ym)]
                 a[0] += o
@@ -853,7 +854,11 @@ def main():
         if f and f != 'WILD' and (v[0] or v[1]):
             lf_frac[(ls, y)][f] = (v[0] / t[0] if t[0] else 0.0, v[1] / t[1] if t[1] else 0.0)
     new = lambda: [[0.0] * ny, [0.0] * ny]
+    m0 = next(i for i, m in enumerate(months) if m >= f'{y0}01')
+    nm = len(months) - m0
+    newm = lambda: [[0.0] * nm, [0.0] * nm]
     cf_eq = collections.defaultdict(lambda: collections.defaultdict(new))
+    cm_eq = collections.defaultdict(lambda: collections.defaultdict(newm))
     for (ls, ym), v in lease.items():
         if ym > last or int(ym[:4]) < y0:
             continue
@@ -865,25 +870,32 @@ def main():
         if not sh:
             continue
         j = int(ym[:4]) - y0
+        jm = idx[ym] - m0
         for comp, frac in sh.items():
             g = gname.get(comp) or gname.setdefault(comp, group_of(names.get(comp, comp)))
             if g not in eq_keep:
                 continue
             for f, (fo, fg) in fr.items():
-                a = cf_eq[g][f]
+                a, b = cf_eq[g][f], cm_eq[g][f]
                 a[0][j] += v[0] * frac * fo
                 a[1][j] += v[1] * frac * fg
+                b[0][jm] += v[0] * frac * fo
+                b[1][jm] += v[1] * frac * fg
     cf_op = collections.defaultdict(lambda: collections.defaultdict(new))
-    for (key, y), v in foy.items():
+    cm_op = collections.defaultdict(lambda: collections.defaultdict(newm))
+    for (key, ym), v in foy.items():
         f, op = key.split('\t')
-        if not f or f == 'WILD' or int(y) > y1:
+        i = idx.get(ym)
+        if not f or f == 'WILD' or i is None or i < m0:
             continue
         g = group_of(names.get(op, op))
         if g not in keep:
             continue
-        a = cf_op[g][f]
-        a[0][int(y) - y0] += v[0]
-        a[1][int(y) - y0] += v[1]
+        a, b = cf_op[g][f], cm_op[g][f]
+        a[0][int(ym[:4]) - y0] += v[0]
+        a[1][int(ym[:4]) - y0] += v[1]
+        b[0][i - m0] += v[0]
+        b[1][i - m0] += v[1]
 
     def cmp_out(cf):
         # [første årindeks, [olje…], [gass…]] uten nuller i endene; små felt utelates
@@ -900,6 +912,24 @@ def main():
         return out
     cmp_payload = {'from': y0, 'last': last, 'units': 'thousand bbl / MMcf per year',
                    'equity': cmp_out(cf_eq), 'operated': cmp_out(cf_op)}
+    # Månedlig per selskap, én fil per selskap: samme felt som i årsfilen.
+    # [første månedsindeks fra y0-01, [olje…], [gass…]] uten nuller i endene.
+    def month_out(cm, keep_fields):
+        out = {}
+        for f in keep_fields:
+            oil, gas = cm[f]
+            nz = [i for i in range(nm) if oil[i] or gas[i]]
+            if nz:
+                a, b = nz[0], nz[-1] + 1
+                out[f] = [a, [r1(x) for x in oil[a:b]], [r1(x) for x in gas[a:b]]]
+        return out
+    cmp_files = {}
+    for g in set(cmp_payload['equity']) | set(cmp_payload['operated']):
+        cmp_files[g] = {'from': months[m0], 'last': last, 'units': 'thousand bbl / MMcf per month',
+                        'equity': month_out(cm_eq.get(g, {}), cmp_payload['equity'].get(g, {})),
+                        'operated': month_out(cm_op.get(g, {}), cmp_payload['operated'].get(g, {}))}
+    slug = lambda g: re.sub(r'[^a-z0-9]+', '-', g.lower()).strip('-')
+    cmp_payload['files'] = {g: slug(g) + '.json' for g in sorted(cmp_files)}
 
     fetched = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
     cmp_payload['fetched'] = fetched
@@ -942,7 +972,14 @@ def main():
                      'status': WELL_STATUS, 'wells': wells['list']}
 
     # Uendret innhold gir ingen commit
-    for path, obj in ((OUT, payload), (OUT_PROD, prod_payload), (OUT_WELLS, wells_payload), (OUT_CMP, cmp_payload)):
+    os.makedirs(OUT_CMP_DIR, exist_ok=True)
+    outs = [(OUT, payload), (OUT_PROD, prod_payload), (OUT_WELLS, wells_payload), (OUT_CMP, cmp_payload)]
+    outs += [(os.path.join(OUT_CMP_DIR, cmp_payload['files'][g]), {**obj, 'fetched': fetched}) for g, obj in cmp_files.items()]
+    # Filer for selskaper som ikke lenger er med, fjernes
+    for fn in os.listdir(OUT_CMP_DIR):
+        if fn.endswith('.json') and fn not in set(cmp_payload['files'].values()):
+            os.remove(os.path.join(OUT_CMP_DIR, fn))
+    for path, obj in outs:
         try:
             old = json.load(open(path, encoding='utf-8'))
             if {**old, 'fetched': None} == {**obj, 'fetched': None}:
@@ -953,7 +990,9 @@ def main():
         with open(path, 'w', encoding='utf-8') as fh:
             json.dump(obj, fh, ensure_ascii=False, separators=(',', ':'))
             fh.write('\n')
-        print(f'Wrote {path} ({os.path.getsize(path) / 1024:.0f} KB)')
+        if not path.startswith(OUT_CMP_DIR):
+            print(f'Wrote {path} ({os.path.getsize(path) / 1024:.0f} KB)')
+    print(f'Wrote {len(cmp_files)} files in {OUT_CMP_DIR}/ ({sum(os.path.getsize(os.path.join(OUT_CMP_DIR, f)) for f in os.listdir(OUT_CMP_DIR)) / 1024:.0f} KB)')
     return 0
 
 
