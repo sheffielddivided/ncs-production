@@ -1388,8 +1388,17 @@ tabellene leses med `pdftotext -layout`; raden «Bloco 17» med store tall er
 ankeret, og radene nærmest den hører til tabellen. Kolonnene er splittet på to
 eller flere mellomrom, fordi ANPG bruker mellomrom som tusenskille. Landets
 totaler treffer ANPGs årstall innenfor 0,7 % alle år 2016–2022. For 2023 og
-januar–august 2024 finnes ingen blokktabell som tekst; siden viser landets
-total for de årene.
+januar–august 2024 finnes ingen blokktabell som tekst. Siden rekonstruerer de
+årene (merket ᵉ, `reconYear` i `angola.html`): Blokk 15, 17 og 31 er summen av
+Equinors felt (brutto) per blokk, snitt av årets fire kvartaler; Blokk 3/05
+(inkl. 3/05A) er Afentras bruttotall (`partners` i `angola_history.json`,
+lagt inn for hånd i `PARTNERS`); resten av landets total vises som «Other
+blocks». Kontroll 2016–2022: Equinor brutto mot ANPG per år 99,4–101,0 %
+(Blokk 17), 100,0–100,7 % (15), 100,0–100,1 % (31); per kvartal stort sett
+innenfor 1 % (avvik 2017 Q2/Q3 og 2020 Q2 på 2–3,5 %). Afentra mot ANPG:
+2022 100,4 %, H1 2025 og Q1 2026 innenfor 0,1 %. Galp (bare netto for
+Angola), TotalEnergies (factbook uten volum per blokk) og Azule (ingen
+blokktabell) gir ikke tall per blokk.
 
 ### `data/update_log.json` — oppdateringsloggen (`updates.html`)
 

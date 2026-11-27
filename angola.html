@@ -299,7 +299,7 @@ function viewBlocks() {
   const pb = D.prodBlocks.filter(b => b.l12[0] > 0 || b.l12[1] > 0);
   const W = D.snapshot && D.snapshot.wells ? Object.fromEntries(D.snapshot.wells.map(w => [w.block.replace(/\s+/g, '').toUpperCase(), w])) : {};
   const wOf = b => W[b.name.replace(/\s+/g, '').toUpperCase()] || W[(b.reg || '').replace(/\s+/g, '').toUpperCase()];
-  setView(chartCard('histChart', 'Oil production by block since 2016', `${oilU()}, annual average · 2016–2022 from Sonangol's and ANPG's annual reports and the EITI reports; from 2025 from ANPG's monthly reports · 2023–2024 only as a national total (no block table published as text) · click a block`, {cls: 'tall'}) +
+  setView(chartCard('histChart', 'Oil production by block since 2016', `${oilU()}, annual average · 2016–2022 from Sonangol's and ANPG's annual reports and the EITI reports; from 2025 from ANPG's monthly reports · 2023–2024 (ᵉ) reconstructed: Blocks 15, 17 and 31 from Equinor's production by field grossed up by its equity share, Block 3/05 from Afentra, the rest of the national total as other blocks · click a block`, {cls: 'tall'}) +
     chartCard('blkChart', 'Producing blocks', `Oil, ${oilU()}, average of the last 12 months · colour = operator · click a block`, {h: 460}) +
     `<div class="tbl-sec">Producing blocks<small>Production from ANPG's monthly report tables; operator and partners from ANPG's block register (today's shares); wells from the latest structured month</small></div>
     <div class="table-wrap"><table class="res-table"><thead><tr><th>Block</th><th class="l">Operator</th><th class="l">Basin</th><th class="l">Water depth</th><th>Oil (${oilU()})</th><th>Gas (${gasU()})</th><th>Oil wells open</th><th>Oil wells closed</th><th>Injectors open</th></tr></thead><tbody>
@@ -333,7 +333,22 @@ function holdersHtml(r) {
 }
 // Produksjon per blokk før blokktabellene i månedsrapportene (årsrapporter, EITI)
 let HB = null;
-async function loadHist() { if (!HB) HB = await fetch('data/angola_history.json', {cache: 'no-cache'}).then(r => r.json()).catch(() => null); }
+async function loadHist() { if (!HB) HB = await fetch('data/angola_history.json', {cache: 'no-cache'}).then(r => r.json()).catch(() => null); await loadFields(); }
+// Blokker rekonstruert fra Equinors produksjon per felt (brutto = Equinors andel / eierandel)
+const EQ_BLOCKS = {'Bloco 15': '15', 'Bloco 17': '17', 'Bloco 31': '31'};
+function reconYear(y, nat) {
+  if (!FL || nat == null) return null;
+  const qi = FL.quarters.map((q, i) => q.startsWith(y) ? i : -1).filter(i => i >= 0);
+  if (qi.length < 4) return null;
+  const m = {};
+  Object.values(FL.fields).forEach(f => { const k = EQ_BLOCKS[f.block]; if (!k) return;
+    m[k] = (m[k] || 0) + qi.reduce((s, i) => s + (f.gross[i] || 0), 0) / qi.length * 1000; });
+  if (Object.keys(m).length < 3) return null;
+  Object.entries(HB.partners || {}).forEach(([k, p]) => { if (p.a[y] != null) m[k] = p.a[y]; });
+  const known = Object.values(m).reduce((s, v) => s + v, 0);
+  if (known < nat) m._rest = nat - known;
+  return m;
+}
 function histYears() {
   // [år, {blokk: bbl/d} | null, nasjonalt bbl/d, ytd]
   const out = [];
@@ -343,7 +358,8 @@ function histYears() {
   for (let y = last + 1; y <= lastY; y++) {
     const ms = MS.filter(m => m.startsWith(y)), full = ms.length && ms.every(m => bm.includes(m));
     const nat = annualOf(D.series.oil).find(a => a[0] === String(y));
-    if (!full) { out.push([String(y), null, nat ? nat[1] : (D.annual.find(a => a[0] === y) || [])[1], ms.length < 12]); continue; }
+    if (!full) { const nv = nat ? nat[1] : (D.annual.find(a => a[0] === y) || [])[1], rm = ms.length === 12 ? reconYear(String(y), nv) : null;
+      out.push([String(y), rm, nv, ms.length < 12, !!rm]); continue; }
     const m = {}, dsum = ms.reduce((s, x) => s + daysIn(x), 0);
     D.prodBlocks.forEach(b => { const v = ms.reduce((s, x) => s + (b.oil[bm.indexOf(x)] || 0) * daysIn(x), 0) / dsum; if (v) m[b.key] = v; });
     out.push([String(y), m, nat ? nat[1] : null, ms.length < 12]);
@@ -355,10 +371,10 @@ function drawHistChart() {
   const Y = histYears(), keys = D.prodBlocks.slice(0, 9).map(b => b.key);
   Object.keys(HB.blocks).filter(k => !['TOTAL', 'OFFSHORE', 'ONSHORE'].includes(k)).forEach(k => { if (!keys.includes(k) && Math.max(...HB.blocks[k].a.filter(v => v != null)) > 80000) keys.push(k); });
   const nameOf = k => { const b = blockByKey(k); return b ? b.name : 'Bloco ' + k; };
-  const ds = keys.map(k => ({label: nameOf(k), backgroundColor: blockColor(k), key: k, stack: 's', borderWidth: 1, borderColor: '#fff', data: Y.map(([y, m]) => m ? oilF(m[k] || 0) : null)}));
+  const ds = keys.map(k => ({label: nameOf(k), backgroundColor: blockColor(k), key: k, stack: 's', borderWidth: 1, borderColor: '#fff', data: Y.map(([y, m, , , est]) => m && !(est && m[k] == null) ? oilF(m[k] || 0) : null)}));
   ds.push({label: 'Other blocks', backgroundColor: OTHER_COLOR, stack: 's', borderWidth: 1, borderColor: '#fff', data: Y.map(([y, m, nat]) => m ? oilF(Object.entries(m).filter(([k]) => !keys.includes(k)).reduce((s, [, v]) => s + v, 0)) : null)});
   ds.push({label: 'National total (no block split)', backgroundColor: '#d9c3cf', stack: 's', data: Y.map(([y, m, nat]) => m ? null : oilF(nat))});
-  barChart('histChart', Y.map(([y, , , ytd]) => ytd ? y + '*' : y), ds, oilU(), {ticks: 20});
+  barChart('histChart', Y.map(([y, , , ytd, est]) => (ytd ? y + '*' : y) + (est ? ' ᵉ' : '')), ds, oilU(), {ticks: 20});
   charts.histChart.options.onClick = e => { const el = charts.histChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false)[0]; const d = el && ds[el.datasetIndex]; if (d && d.key && blockByKey(d.key)) openBlock(d.key); };
 }
 
@@ -396,9 +412,10 @@ function openBlock(k, quiet) {
     <div class="source-note">Source: ANPG — monthly production reports, block register and concession map.</div>`;
   loadHist().then(() => {
     const box = document.getElementById('sheetHist'); if (!box || S.bk !== k || !HB || !HB.blocks[k]) return;
-    const Y = histYears().filter(([y, m]) => m);
-    box.innerHTML = `<div class="pf-card"><h3>Production history <small>· annual average, ${oilU()} · 2016–2022 from annual reports and EITI, from 2025 from monthly reports</small></h3><div class="chart-container short"><canvas id="sheetHistChart"></canvas></div></div>`;
-    barChart('sheetHistChart', Y.map(([y, , , ytd]) => ytd ? y + '*' : y), [{label: 'Oil', backgroundColor: '#ce0f69', data: Y.map(([y, m]) => oilF(m[k] || 0))}], oilU(), {legend: false});
+    const Y = histYears().filter(([y, m, , , est]) => m && !(est && m[k] == null)), anyEst = Y.some(a => a[4]);
+    const eqSrc = HB.partners && HB.partners[k] ? HB.partners[k].source.split(',')[0] : 'Equinor\'s production by field, grossed up';
+    box.innerHTML = `<div class="pf-card"><h3>Production history <small>· annual average, ${oilU()} · 2016–2022 from annual reports and EITI, from 2025 from monthly reports${anyEst ? ` · 2023–2024 (ᵉ) from ${esc(eqSrc)}` : ''}</small></h3><div class="chart-container short"><canvas id="sheetHistChart"></canvas></div></div>`;
+    barChart('sheetHistChart', Y.map(([y, , , ytd, est]) => (ytd ? y + '*' : y) + (est ? ' ᵉ' : '')), [{label: 'Oil', backgroundColor: '#ce0f69', data: Y.map(([y, m]) => oilF(m[k] || 0))}], oilU(), {legend: false});
   });
   loadFields().then(() => {
     const box = document.getElementById('sheetFields'), blk = (r && r.name) || b.reg || b.name;
