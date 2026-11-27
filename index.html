@@ -14350,7 +14350,10 @@ function loadShipping() {
 // Grafen: én blokk per anløp, alle i samme farge med hvit kant, så antallet
 // laster i måneden vises. Hvilket skip som lastet, står i tabellen.
 const SHIP_FILL = '#9aa5b1';   // nøytral grå (samme som «Other» i de andre grafene)
-const SHIP_OIL = '#ce0f69';    // sidens magenta (--blue) for produksjonslinjen
+const SHIP_OIL = '#ce0f69';
+const SHIP_FILL_PART = '#d5dae0';  // inneværende måned (ikke ferdig): lysere grå
+const SHIP_BAR_MAX = 32;           // søylebredde i px; resten av månedsfeltet er luft
+const SHIP_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];    // sidens magenta (--blue) for produksjonslinjen
 const monthKey = t => new Date(t).toISOString().slice(0, 7);
 function fmtStay(h) { return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1)} days`; }
 function shipPlace(p) {
@@ -14496,10 +14499,23 @@ function drawShipping(ids, name, kind) {
   });
   const nMax = Math.max(0, ...byMonth.map(l => l.length));
   const lifted = true, shipDec = 2;
+  // Siste måned er ikke ferdig når dataene slutter før månedsskiftet: lysere
+  // grå og «so far» under månedsnavnet.
+  const untilD = new Date(until), lastEnd = new Date(Date.UTC(untilD.getUTCFullYear(), untilD.getUTCMonth() + 1, 1));
+  const partIdx = lastEnd - untilD > 36e5 ? months.length - 1 : -1;
   const datasets = Array.from({length: nMax}, (_, k) => ({
     label: `Call ${k + 1} in the month`, _calls: byMonth.map(l => l[k] || null),
     data: byMonth.map(l => l[k] ? +(liftOf(l[k]) / 1e6).toFixed(2) : null),
-    backgroundColor: SHIP_FILL, borderColor: '#fff', borderWidth: 1.5, borderSkipped: false, stack: 's', order: 1}));
+    // 2 px hvitt mellomrom over hver blokk (ikke kant rundt), smale søyler.
+    backgroundColor: months.map((_, i) => i === partIdx ? SHIP_FILL_PART : SHIP_FILL),
+    borderColor: '#fff', borderWidth: {top: 2, right: 0, bottom: 0, left: 0}, borderSkipped: false,
+    maxBarThickness: SHIP_BAR_MAX, stack: 's', order: 1}));
+  // Månedsnavn, med året under januar og første måned.
+  const tickLabel = (mo, i) => {
+    const [y, m] = mo.split('-'), name = SHIP_MON[+m - 1];
+    if (i === partIdx) return [name, 'so far'];
+    return i === 0 || m === '01' ? [name, y] : name;
+  };
   const callTip = c => {
     const v = c.dataset._calls && c.dataset._calls[c.dataIndex];
     if (!v) return ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)} million bbl`;
@@ -14517,8 +14533,51 @@ function drawShipping(ids, name, kind) {
     const oil = oilByMonth(oilIds);
     const data = months.map(mo => oil[mo] != null ? +(oil[mo] / 1e6).toFixed(2) : null);
     if (data.some(x => x != null)) oilDs = {type: 'line', label: oilHub ? `Reported oil production, ${tc(oilHub)} hub (Sodir)` : 'Reported oil production (Sodir)', data, stack: 'oil', _noTotal: true,
-      borderColor: SHIP_OIL, backgroundColor: SHIP_OIL, borderWidth: 3.5, pointRadius: 5, pointHoverRadius: 6, pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0, spanGaps: false, order: 0};
+      borderColor: SHIP_OIL, backgroundColor: SHIP_OIL, borderWidth: 3.5, pointRadius: 5, pointHoverRadius: 6, pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0, spanGaps: false, order: 0,
+      _direct: oilHub ? `Reported oil, ${tc(oilHub)} hub` : 'Reported oil (Sodir)'};
   }
+  // Navnet på produksjonslinjen ved siste rapporterte måned, i teksttone (ikke
+  // linjens farge), med en hvit glorie så det leses over søylene. Etter siste
+  // måned: «not yet reported», så det ikke ser ut som produksjonen falt bort.
+  const oilLabel = {id: 'shipOilLabel', afterDatasetsDraw(chart) {
+    const di = chart.data.datasets.findIndex(d => d._direct);
+    if (di < 0) return;
+    const ds = chart.data.datasets[di], pts = chart.getDatasetMeta(di).data;
+    let last = -1;
+    ds.data.forEach((x, i) => { if (x != null) last = i; });
+    if (last < 0 || !pts[last]) return;
+    const {x, y} = pts[last], ctx = chart.ctx, area = chart.chartArea;
+    const lines = [ds._direct].concat(last < ds.data.length - 1 ? [`not yet reported after ${SHIP_MON[+chart.data.labels[last].slice(5, 7) - 1]}`] : []);
+    ctx.save();
+    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    const w = Math.max(...lines.map(t => ctx.measureText(t).width));
+    // Over punktet og over søylene teksten spenner over; får den ikke plass
+    // under toppen av grafen, tegnes den ikke (legenden har linjen).
+    const tx = Math.min(Math.max(area.left, x - 8), area.right - w);
+    let top = y - 10;
+    pts.forEach(p => { if (p && !p.skip && p.x >= tx - 6 && p.x <= tx + w + 6) top = Math.min(top, p.y - 10); });
+    chart.data.datasets.forEach((d, k) => {
+      if (d.type === 'line') return;
+      chart.getDatasetMeta(k).data.forEach(el => {
+        if (el && el.x + (el.width || 0) / 2 >= tx && el.x - (el.width || 0) / 2 <= tx + w) top = Math.min(top, el.y - 8);
+      });
+    });
+    const ty = top - (lines.length - 1) * 14 - 6;
+    if (ty - 8 < area.top) { ctx.restore(); return; }
+    // Tynn ledelinje fra punktet opp til teksten når den står et stykke over.
+    const base = ty + (lines.length - 1) * 14 + 8;
+    if (y - base > 14) {
+      ctx.strokeStyle = '#9aa5b1'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(x, base); ctx.stroke();
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    lines.forEach((t, k) => {
+      ctx.font = (k ? '400 10px' : '600 11px') + ' -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 4; ctx.strokeText(t, tx, ty + k * 14);
+      ctx.fillStyle = k ? '#828282' : '#1a2332'; ctx.fillText(t, tx, ty + k * 14);
+    });
+    ctx.restore();
+  }};
   // Huben: tankskipene lastes ved feltene i shipping_fields.json (lastefeltene);
   // de andre feltene i huben har ikke egen lasting her, men oljen deres er med
   // i produksjonslinjen.
@@ -14551,8 +14610,11 @@ function drawShipping(ids, name, kind) {
     `<strong>Source:</strong> Norwegian Coastal Administration (Kystverket), Kystdatahuset AIS. Positions are derived from AIS tracks; public vessels only`);
   if (!datasets.length) setChartEmpty('No tanker calls in the period.');
   else renderChart(months, datasets.concat(oilDs ? [oilDs] : []),
-    [{label: 'Tanker call, estimated lifted volume (one block per call)', color: SHIP_FILL}].concat(oilDs ? [{label: oilDs.label + ' (line)', color: oilDs.borderColor}] : []),
-    'million bbl', {xTitle: 'Month', dec: shipDec, allTicks: months.length <= 24, tooltipLabel: callTip, skipNull: true, footerDec: 2});
+    [{label: 'Tanker call, estimated lifted volume (one block per call)', color: SHIP_FILL}]
+      .concat(partIdx >= 0 ? [{label: 'Current month, so far', color: SHIP_FILL_PART}] : [])
+      .concat(oilDs ? [{label: oilDs.label + ' (line)', color: SHIP_OIL}] : []),
+    'million bbl', {xTitle: 'Month', dec: shipDec, allTicks: months.length <= 24, tooltipLabel: callTip, skipNull: true, footerDec: 2,
+      xTickLabel: tickLabel, noXGrid: true, plugins: [oilLabel]});
 
   // Oppsummering per skip og tabell over anløpene, nyeste først.
   const d30 = now - 30 * 864e5;
@@ -18549,7 +18611,9 @@ function renderChart(labels, datasets, legend, yTitle, opts = {}) {
         }}
       },
       scales:{
-        x:{stacked:true,ticks:{maxTicksLimit:opts.allTicks?labels.length:period==='annual'?15:period==='quarterly'?12:10,maxRotation:45,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+        x:{stacked:true,ticks:{maxTicksLimit:opts.allTicks?labels.length:period==='annual'?15:period==='quarterly'?12:10,maxRotation:45,font:{size:9},
+            ...(opts.xTickLabel ? {callback: (v, i) => opts.xTickLabel(labels[i], i)} : {})},
+          grid: opts.noXGrid ? {display:false} : {color:'rgba(0,0,0,0.04)'}},
         y:{stacked:true,beginAtZero:true,title:{display:true,text:yTitle,color:'#4a5568',font:{size:10}},ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
       }
     }
