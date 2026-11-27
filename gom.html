@@ -511,11 +511,14 @@ function drawFieldTable() {
 
 // ── RESERVES ──
 function viewReserves() {
-  setControls(pills('rp', [['boe', 'Oil + gas (boe)'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
+  setControls(pills('rp', [['boe', 'Oil + gas'], ['oil', 'Oil'], ['gas', 'Gas']], 'Product') +
     pills('rpd', [['yes', 'Show'], ['no', 'Hide']], 'Produced'));
   const showProd = S.rpd !== 'no';
   const A = D.reserves.area;   // [år, felt, opp. olje, gass, boe, akk. olje, gass, boe, gjenv. olje, gass, boe]
-  const k = {oil: 0, gas: 1, boe: 2}[S.rp], unit = S.rp === 'gas' ? 'Tcf' : S.rp === 'oil' ? 'billion bbl' : 'billion boe';
+  // Alle volumer i boe: olje i fat, gass (Tcf) omregnet med BOEMs Mcf per fat.
+  const k = {oil: 0, gas: 1, boe: 2}[S.rp], unit = 'billion boe';
+  const TCF_BOE = 1000 / MCF_PER_BOE;   // mill. boe per Tcf: 1 Tcf = 1e9 Mcf = 1e9 / 5,62 boe ≈ 178 mill. boe
+  const toBoe = (r, base) => r[base + k] * (S.rp === 'gas' ? TCF_BOE / 1000 : 1);
   const byDc = {};
   F.forEach(f => { if (f.rem) { const c = f.dc || 'unknown'; byDc[c] = (byDc[c] || 0) + f.rem[3]; } });
   const topRem = F.filter(f => f.rem && f.rem[3] > 0).sort((a, b) => b.rem[3] - a.rem[3]).slice(0, 20);
@@ -523,14 +526,14 @@ function viewReserves() {
   setView(`<div class="kpis">
       <div class="kpi"><span>Original reserves</span><strong>${fmt(last[4], 1)}</strong><small>billion boe, ${last[1]} fields</small></div>
       <div class="kpi"><span>Produced</span><strong>${fmt(last[7], 1)}</strong><small>billion boe to 31 Dec ${last[0]}</small></div>
-      <div class="kpi"><span>Remaining reserves</span><strong>${fmt(last[10], 2)}</strong><small>billion boe (${fmt(last[8], 2)} bn bbl oil, ${fmt(last[9], 1)} Tcf gas)</small></div>
+      <div class="kpi"><span>Remaining reserves</span><strong>${fmt(last[10], 2)}</strong><small>billion boe (${fmt(last[8], 2)} oil, ${fmt(last[9] * TCF_BOE / 1000, 2)} gas)</small></div>
       <div class="kpi"><span>Remaining in deep water</span><strong>${fmt(((byDc.deep || 0) + (byDc.ultra || 0)) / Object.values(byDc).reduce((a, b) => a + b, 0) * 100)} %</strong><small>of remaining boe, mean estimate</small></div></div>` +
     chartCard('areaRes', 'Reserves over time', `${{boe: 'Oil + gas', oil: 'Oil', gas: 'Gas'}[S.rp]} · ${unit} · ${showProd ? 'remaining reserves (bottom) and produced (top)' : 'remaining reserves'} as estimated each 31 December (BOEM)`) +
     `<div class="grid2">${chartCard('remTop', 'Largest remaining reserves', 'Mean estimate · MMboe · click a field', {h: 470})}${chartCard('remDepth', 'Remaining reserves by water depth', 'Mean estimate · MMboe', {cls: 'short'})}</div>
     <div class="info-box"><strong>Source:</strong> BOEM, «Estimated Oil and Gas Reserves, Gulf of America OCS Region, December 31, ${D.reserves.year}» (tables 4 and 9). BOEM estimates reserves for each field from reservoir data; P10/P50/P90 are shown in the factsheets, the mean here. Before 2015 the series is every five years, and BOEM published no estimates for 2020–2022.</div>`);
   barChart('areaRes', A.map(r => r[0]), [
-    {label: 'Remaining reserves', data: A.map(r => r[8 + k]), backgroundColor: REMAINING_COLOR, borderWidth: 1, borderColor: '#fff'},
-  ].concat(showProd ? [{label: 'Produced', data: A.map(r => r[5 + k]), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'}] : []),
+    {label: 'Remaining reserves', data: A.map(r => toBoe(r, 8)), backgroundColor: REMAINING_COLOR, borderWidth: 1, borderColor: '#fff'},
+  ].concat(showProd ? [{label: 'Produced', data: A.map(r => toBoe(r, 5)), backgroundColor: PRODUCED_COLOR, borderWidth: 1, borderColor: '#fff'}] : []),
   unit, {dec: 1, ticks: 30});
   barChart('remTop', topRem.map(fname), [{label: 'Remaining (mean)', data: topRem.map(f => f.rem[3]), backgroundColor: topRem.map(f => DEPTH[f.dc || 'unknown'].color), borderWidth: 0}],
     'MMboe', {horizontal: true, noFooter: true, legend: false, onClick: i => openSheet(topRem[i].code)});
