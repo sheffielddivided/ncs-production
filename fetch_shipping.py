@@ -32,6 +32,10 @@ anløp med under SAME_SHIP_HOURS imellom er ett anløp. Det er de også når
 skipet lå og ventet til sjøs under WAIT_NEAR_KM fra feltet mellom dem (under
 WAIT_DAYS). Opphold under MIN_LOAD_HOURS er ikke lasting og tas ikke med,
 unntatt når skipet var nærmere enn LOAD_NEAR_KM fra lasteinnretningen.
+
+Boksen gir ofte bare noen få posisjoner av et opphold, og i perioder ingen.
+Ankomst og avgang tas derfor fra skipets eget spor (arrival_departure), og
+sporene til de kjente tankskipene leses for anløp boksen ikke så (gap_calls).
 """
 
 import json
@@ -92,6 +96,23 @@ TO_VERSION = 3         # øk når regelen for «to» endres, så alle slås opp 
 EXIT_GAP_MIN = 12 * 60 # hull i sporet: stopp (samme sted etterpå) eller utseiling av AIS-dekningen
 GAP_SAME_KM = 5        # så nær er skipet før og etter hullet når det har ligget stille
 STAY_MIN = 60          # et stopp underveis varer minst så lenge
+# Ankomst og avgang fra skipets eget spor. Boksen gir ofte bare noen få
+# posisjoner av et opphold på Haltenbanken, så tidene fra den alene blir for
+# korte. Sporet (for-mmsis-time) har posisjoner mens skipet går, men ikke
+# mens det ligger stille: ankomsten er da når skipet kom inn i radiusen etter
+# siste posisjon utenfor, avgangen når det gikk ut før første posisjon utenfor.
+TIMES_DAYS = 4         # hvor langt før og etter besøket det letes
+TIMES_VERSION = 1      # øk når regelen endres, så alle slås opp på nytt
+MIN_APPROACH_KNOTS = 2 # lavere fart regnes som dette når gangtiden inn eller ut anslås
+# Anløp fra sporene alene. På Haltenbanken gir boksen i perioder nesten ingen
+# posisjoner (februar 2026: Åsgard C, som ligger fast og sender hele tiden,
+# sees bare enkelte dager), så hele lastinger mangler. Sporene til de kjente
+# tankskipene viser dem likevel: sporet slutter nær feltet i lav fart og
+# kommer tilbake mange timer senere (skipet lå stille og laster), eller det
+# kommer tilbake nær feltet etter å ha vært borte. Et slikt hull er et anløp
+# når skipet etter gangtiden inn og ut var ved feltet minst MIN_LOAD_HOURS.
+GAP_NEAR_KM = 6        # så nær lasteinnretningen er skipet på den ene siden av hullet
+GAP_SLOW_KNOTS = 6     # og høyst så fort (et skip som seiler forbi, er ikke på vei inn)
 MAX_SECONDS = int(os.environ.get("SHIPPING_SECONDS", 300))   # tidsbudsjett per kjøring; resten tas neste gang
 TIMEOUT = 150
 T0 = datetime(1970, 1, 1)
@@ -360,6 +381,70 @@ def next_stop_or_exit(rows, away_from, radius, end_min):
     return ('exit', q[1], q[2], heading)
 
 
+def approach_min(q, centres, radius):
+    """Minutter skipet i posisjon q trenger inn til radiusen (0 innenfor)."""
+    d = min(km(q[1], q[2], c[0], c[1]) for c in centres)
+    return max(0.0, (d - radius) / (max(q[3] or 0, MIN_APPROACH_KNOTS) * 1.852) * 60)
+
+
+def gap_calls(m, seq, setups):
+    """Anløp i hull i skipets spor (se GAP_NEAR_KM). seq: [min, lon, lat, sog]
+    sortert, eventuelt med forrige kjørings siste posisjon først. Gir
+    [(feltnøkkel, [mmsi, start, slutt, km, innretning])]."""
+    out = []
+    for a, b in zip(seq, seq[1:]):
+        if b[0] - a[0] < MIN_LOAD_HOURS * 60:
+            continue
+        near = []
+        for st in setups:
+            da = min(km(a[1], a[2], c[0], c[1]) for c in st['centres'])
+            db = min(km(b[1], b[2], c[0], c[1]) for c in st['centres'])
+            ok_a = da <= GAP_NEAR_KM and (a[3] or 0) <= GAP_SLOW_KNOTS
+            ok_b = db <= GAP_NEAR_KM and (b[3] or 0) <= GAP_SLOW_KNOTS
+            near.append((st, da, db, ok_a, ok_b))
+        hits = [x for x in near if x[3] or x[4]]
+        if len(hits) != 1:
+            continue    # ingen felt, eller skipet var ved to felt (lastet trolig begge steder)
+        st, da, db, ok_a, ok_b = hits[0]
+        # Den andre siden av hullet ved et annet felt: skipet kan ha lastet der.
+        if any(x[0] is not st and min(x[1], x[2]) <= GAP_NEAR_KM for x in near):
+            continue
+        s_ = a[0] + approach_min(a, st['centres'], st['radius'])
+        e_ = b[0] - approach_min(b, st['centres'], st['radius'])
+        if e_ - s_ < MIN_LOAD_HOURS * 60:
+            continue
+        q = a if ok_a and (not ok_b or da <= db) else b
+        fac = min(st['load'], key=lambda f: km(q[1], q[2], f['lon'], f['lat']))['name']
+        out.append((st['key'], [m, int(s_), int(e_), round(min(da, db), 2), fac]))
+    return out
+
+
+def arrival_departure(before, after, s, e, centres, radius):
+    """(ankomst, avgang) i minutter fra skipets spor rundt besøket [s, e].
+    before/after: [min, lon, lat, sog] før s og etter e, sortert. Ankomst:
+    siste posisjon utenfor radiusen før s, pluss gangtiden inn til radiusen,
+    eller neste posisjon i sporet om den kommer før; aldri senere enn s.
+    Avgang tilsvarende etter e. None når sporet ikke har posisjoner utenfor
+    radiusen på den siden."""
+    def dist(q):
+        return min(km(q[1], q[2], c[0], c[1]) for c in centres)
+
+    def travel(q):   # minutter mellom q og radiusen
+        return (dist(q) - radius) / (max(q[3] or 0, MIN_APPROACH_KNOTS) * 1.852) * 60
+    arr = dep = None
+    out = [i for i, q in enumerate(before) if q[0] < s and dist(q) > radius]
+    if out:
+        q = before[out[-1]]
+        cand = [s, q[0] + travel(q)] + [r[0] for r in before[out[-1] + 1:out[-1] + 2] if r[0] < s]
+        arr = int(min(cand))
+    out = [i for i, q in enumerate(after) if q[0] > e and dist(q) > radius]
+    if out:
+        q = after[out[0]]
+        cand = [e, q[0] - travel(q)] + [r[0] for r in after[max(0, out[0] - 1):out[0]] if r[0] > e]
+        dep = int(max(cand))
+    return arr, dep
+
+
 def ship_rows(mmsi, start, end):
     """Skipets posisjoner [min, lon, lat, sog]. Databasen tåler bare korte
     vinduer, så lengre perioder hentes i biter på CHUNK_DAYS dager."""
@@ -494,6 +579,8 @@ def main():
     by_name = {v.upper(): k for k, v in fields.items()}
     log = load_json(LOG, {'fields': {}})
     log.setdefault('ships', {})
+    log.setdefault('tracks', {})       # per tankskip: hvor langt sporet er lest, og siste posisjon
+    log.setdefault('trackCalls', {})   # per felt: anløp funnet i hull i sporene [mmsi, start, slutt, km, innretning]
     excluded = {str(k) for k in (cfg.get('excludeShips') or {})}
     out = load_json(OUT, {'fields': {}})
     out_fields = {}
@@ -530,6 +617,8 @@ def main():
         sig = f"{radius}|" + ';'.join(f'{c[0]:.4f},{c[1]:.4f}' for c in sorted(centres))
         if (log['fields'].get(key) or {}).get('sig') != sig:
             log['fields'][key] = {'until': None, 'sig': sig}
+            log['tracks'] = {}   # sporene leses på nytt, så hullene finnes mot de nye innretningene
+            log['trackCalls'] = {}
         flog = log['fields'][key]
         flog.setdefault('open', {})
         flog.setdefault('visits', [])
@@ -561,6 +650,38 @@ def main():
             list(pool.map(fetch_field, setups))
         write_json(LOG, log, indent=0)
 
+    # 1b. Sporene til de kjente tankskipene, for anløp boksen ikke så (gap_calls).
+    # Leses videre fra der forrige kjøring slapp, med høyst halve tiden som er igjen.
+    if not rebuild and setups:
+        tdead = time.time() + (deadline - time.time()) / 2
+        tankers = sorted(m for m, sh in log['ships'].items() if category(sh) == 'tanker' and m not in excluded)
+
+        def read_track(m):
+            cur = log['tracks'].setdefault(m, {'until': None, 'last': None})
+            t = parse_iso(cur['until']) if cur['until'] else DATA_START
+            while t < now and time.time() < tdead:
+                t1 = min(t + timedelta(days=CHUNK_DAYS), now)
+                try:
+                    rows = ship_rows(m, t, t1)
+                except Busy as exc:
+                    print(f'  ! spor {m}: {exc}', file=sys.stderr)
+                    return
+                found = gap_calls(m, ([cur['last']] if cur['last'] else []) + rows, setups)
+                for key, call_ in found:
+                    have = log['trackCalls'].setdefault(key, [])
+                    if not any(c[0] == call_[0] and c[1] == call_[1] for c in have):
+                        have.append(call_)
+                if rows:
+                    cur['last'] = rows[-1]
+                cur['until'] = t1.strftime('%Y-%m-%dT%H:%M:%SZ')
+                t = t1
+        with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+            list(pool.map(read_track, tankers))
+        behind = sum(1 for m in tankers if (log['tracks'][m]['until'] or '') < (now - timedelta(days=1)).strftime('%Y-%m-%dT%H'))
+        print(f"  spor: {len(tankers)} tankskip, {sum(len(v) for v in log['trackCalls'].values())} anløp fra hull i sporene"
+              + (f', {behind} skip ikke lest helt fram ennå' if behind else ''))
+        write_json(LOG, log, indent=0)
+
     # 2. Besøk og 3. skip per felt.
     for st in setups:
         flog = st['flog']
@@ -570,6 +691,10 @@ def main():
         flog['visits'].sort(key=lambda v: v[1])
         visits = [{'m': m, 's': s_, 'e': e, 'd': d} for m, s_, e, d in flog['visits']]
         visits += [{'m': m, 's': g[0], 'e': g[1], 'd': g[2]} for m, g in flog['open'].items() if is_visit(g)]
+        # Anløp fra hull i sporene (bare til og med det boksen er lest, så et
+        # skip som ligger der nå, kommer med fra boksen som pågående).
+        visits += [{'m': c[0], 's': c[1], 'e': c[2], 'd': c[3], 'tfac': c[4]}
+                   for c in log['trackCalls'].get(st['key'], []) if c[2] <= st['until_min']]
         visits.sort(key=lambda v: v['s'])
         # Bare tankskip er med. Skipsregisteret slås opp for skip vi ikke
         # kjenner (felles for alle felt, i loggen); besøk av andre skip fjernes
@@ -681,6 +806,48 @@ def main():
             out_v.append(dict(v))
         st['visits'] = sorted(out_v, key=lambda v: v['s'])
 
+    # 5b. Ankomst og avgang fra skipets eget spor (se arrival_departure).
+    # Gjenbrukes fra forrige kjøring; aldri før forrige anløp av samme skip
+    # sluttet eller etter neste begynte.
+    for st in setups:
+        prev_rows = [] if reroute or (st['prev'].get('timesVersion') or 0) < TIMES_VERSION else st['prev'].get('visits') or []
+        old_a = {f"{r[0]}|{r[1]}": r[11] for r in prev_rows if len(r) > 12}
+        old_d = {f"{r[0]}|{r[2]}": r[12] for r in prev_rows if len(r) > 12 and not r[4]}
+        for v in st['visits']:
+            k_a, k_d = f"{v['m']}|{iso(v['s'])}", f"{v['m']}|{iso(v['e'])}"
+            v['arr'] = old_a.get(k_a) or '?'
+            v['dep'] = (old_d.get(k_d) or '?') if not v['open'] else None
+        mine = sorted(st['visits'], key=lambda v: (v['m'], v['s']))
+        for a, b in zip(mine, mine[1:]):
+            if a['m'] == b['m']:
+                a['next_s'], b['prev_e'] = b['s'], a['e']
+    jobs = [(st, v) for st in setups for v in st['visits'] if v['arr'] == '?' or v['dep'] == '?']
+    if jobs and not rebuild and time.time() < deadline:
+        def times(job):
+            st, v = job
+            if time.time() >= deadline:
+                return
+            try:
+                a, b = from_minutes(v['s']), from_minutes(v['e'])
+                lo = max(a - timedelta(days=TIMES_DAYS), from_minutes(v['prev_e']) if v.get('prev_e') else a - timedelta(days=TIMES_DAYS))
+                hi = min(b + timedelta(days=TIMES_DAYS), from_minutes(v['next_s']) if v.get('next_s') else now, now)
+                before = ship_rows(v['m'], lo, a) if v['arr'] == '?' else []
+                after = ship_rows(v['m'], b, hi) if v['dep'] == '?' and hi > b else []
+            except Busy as exc:
+                print(f'  ! tider {v["m"]}: {exc}', file=sys.stderr)
+                return
+            arr, dep = arrival_departure(before, after, v['s'], v['e'], st['centres'], st['radius'])
+            if v['arr'] == '?':
+                v['arr'] = iso(max(arr, minutes(lo))) if arr is not None else iso(v['s'])
+            if v['dep'] == '?':
+                if dep is not None:
+                    v['dep'] = iso(min(dep, minutes(hi)))
+                elif hi >= b + timedelta(days=TIMES_DAYS) or v.get('next_s'):
+                    v['dep'] = iso(v['e'])   # hele vinduet uten posisjon utenfor: tiden fra boksen
+        with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+            list(pool.map(times, jobs))
+        print(f'  tider: {len(jobs)} anløp manglet ankomst/avgang, {sum(1 for _, v in jobs if "?" in (v["arr"], v["dep"]))} mangler fortsatt')
+
     # 6. Hvilken lasteinnretning skipet lå ved, for felt med flere (Balder:
     # Balder FPU og Jotun FPSO; Åsgard: A og C). Lagrene er ulike store, og et
     # løft kan ikke være større enn lageret det lastes fra. Innretningen er den
@@ -710,6 +877,8 @@ def main():
                     hits[i] += 1
             if any(hits):
                 v['fac'] = st['load'][max(range(len(hits)), key=hits.__getitem__)]['name']
+            else:   # ingen posisjoner ved feltet (anløp fra hull i sporet): nærmeste ved hullet, ellers ukjent
+                v['fac'] = v.get('tfac') or ''
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
             list(pool.map(which, jobs))
         print(f'  innretninger: {len(jobs)} anløp manglet, {sum(1 for _, v in jobs if v["fac"] is None)} mangler fortsatt')
@@ -727,14 +896,15 @@ def main():
             until = iso(min([v['e'] + TO_DAYS * 1440] + nxt))[:16]
             dr, dest = (None, None) if v['open'] else laden_after(obs.get(v['m'], []), iso(v['e'])[:16], until)
             rows_out.append([v['m'], iso(v['s']), iso(v['e']), v['d'], 1 if v['open'] else 0, v['from'], v['to'],
-                             dr, cargo_bbl(sh, tanker_spec(sh, specs), dr), dest, v.get('fac')])
+                             dr, cargo_bbl(sh, tanker_spec(sh, specs), dr), dest, v.get('fac'),
+                             None if v.get('arr') == '?' else v.get('arr'), None if v.get('dep') == '?' else v.get('dep')])
         ship_ids = {r[0] for r in rows_out}
         out_fields[st['key']] = {
             'name': fields[st['fid']], 'centre': [round(st['centre'][0], 5), round(st['centre'][1], 5)], 'radiusKm': st['radius'],
             'facilities': [f['name'] for f in st['load']], 'nFacilities': len(st['load']),
-            'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'], 'routeDays': ROUTE_DAYS, 'toVersion': TO_VERSION,
+            'from': DATA_START.strftime('%Y-%m-%d'), 'until': st['flog']['until'], 'routeDays': ROUTE_DAYS, 'toVersion': TO_VERSION, 'timesVersion': TIMES_VERSION,
             'storage': st['fc'].get('storage') or [],
-            'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest', 'facility'],
+            'columns': ['mmsi', 'start', 'end', 'minKm', 'open', 'from', 'to', 'draught', 'cargoBbl', 'dest', 'facility', 'arrived', 'left'],
             'visits': rows_out,
             'joins': sorted(list(j) for j in st['joins'] if j[0] in ship_ids),
             'ships': {m: {**st['ships'][m], **tanker_spec(st['ships'][m], specs)} for m in sorted(ship_ids)},

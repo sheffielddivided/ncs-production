@@ -14381,6 +14381,7 @@ function drawFieldShipping() {
 // medlemsfelt til et annet med under SHIP_GAP_H timer imellom, regnes som ett
 // anløp til huben, med feltene i rekkefølge.
 const SHIP_GAP_H = 6;
+const GAP_NEAR_KM = 6;   // som GAP_NEAR_KM i fetch_shipping.py
 function drawHubShipping() {
   const names = [...selectedHubNames];
   if (names.length !== 1) {
@@ -14410,8 +14411,10 @@ function drawShipping(ids, name, kind) {
   }
   const hub = kind === 'hub';
   const now = Date.now();
-  let visits = Fs.flatMap(F => F.visits.map(([m, s, e, d, open, from, to, draught, cargo, dest, fac]) => {
-    const t0 = Date.parse(s), t1 = open ? Math.max(Date.parse(e), Date.parse(F.until)) : Date.parse(e);
+  // Ankomst og avgang fra skipets eget AIS-spor der fetch_shipping.py har
+  // funnet dem; ellers første og siste posisjon i radiusen.
+  let visits = Fs.flatMap(F => F.visits.map(([m, s, e, d, open, from, to, draught, cargo, dest, fac, arrived, left]) => {
+    const t0 = Date.parse(arrived || s), t1 = open ? Math.max(Date.parse(e), Date.parse(F.until)) : Date.parse(left || e);
     const sh = (F.ships || {})[m] || {};
     return {m, t0, t1, d, open, from, to, draught, cargo, dest, sh, name: shipName(m, sh), fields: [tc(F.name)],
       stores: [storeBbl(F, fac)], facs: fac ? [fac] : [], fid: fidOf.get(F)};
@@ -14533,7 +14536,8 @@ function drawShipping(ids, name, kind) {
     : `<strong>Field:</strong> ${esc(tc(name))}, around ${Fs[0].facilities.map(x => esc(x)).join(', ')} &nbsp;|&nbsp; `) +
     `<strong>Period:</strong> ${fmtShort(from)} – ${fmtShort(until.slice(0, 10))} &nbsp;|&nbsp; ` +
     `<strong>Tankers:</strong> AIS ship type 80–89, or unknown type over 220 m (shuttle tankers); other vessels and the fields' own storage units are not included &nbsp;|&nbsp; ` +
-    `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours, and that either stayed at least 6 hours or came within 0.7 km (loading position; AIS coverage offshore is patchy, on Haltenbanken especially, so a loading can show as only an hour or two); tankers passing through or waiting nearby are left out. Calls by the same tanker less than 72 hours apart count as one (it moved off and came back to load), so the time at the field can include waiting nearby &nbsp;|&nbsp; ` +
+    `<strong>Call:</strong> a tanker within ${radiusKm} km of ${hub ? 'the fields\'' : 'the field\'s'} loading ${nFac === 1 ? 'installation' : 'installations'} for at least 30 minutes that stopped there or stayed at least 2 hours, and that either stayed at least 6 hours or came within 0.7 km (loading position; AIS coverage offshore is patchy, on Haltenbanken especially, so a loading can show as only an hour or two); tankers passing through or waiting nearby are left out. Where offshore AIS coverage drops out (on Haltenbanken some weeks show hardly any positions), a call is also found from the tanker's own track: it goes dark within ${GAP_NEAR_KM} km of the loading installation at low speed and reappears at least 6 hours later (after the time to sail in and out), or reappears there after being away. Calls by the same tanker less than 72 hours apart count as one (it moved off and came back to load), so the time at the field can include waiting nearby. ` +
+    `<strong>Arrived / Left:</strong> from the tanker's own AIS track up to four days before and after: when it came within ${radiusKm} km after its last position outside, and left before its first position outside (travel time from its speed). The track has no positions while a ship lies still, and offshore coverage often gives only a few positions of a call, so the first and last positions within ${radiusKm} km would make calls far too short &nbsp;|&nbsp; ` +
     (() => {
       const st = Fs.flatMap(f => f.storage || []);
       if (!st.length) return '';
