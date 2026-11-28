@@ -217,6 +217,15 @@
     .lc-two > .pf-card{margin-bottom:10px;min-width:0;}
     @media (max-width:800px){.lc-two{grid-template-columns:1fr;}}
     .np-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;}
+    /* Normpris: månedsgrafen, snittet og kvalitetsplottet side om side. */
+    .np-row3{display:grid;grid-template-columns:1.6fr 1fr 1.3fr;gap:18px;align-items:start;}
+    .np-row3 > div{min-width:0;}
+    .np-row3 h4{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;min-height:30px;margin:0 0 6px;
+      font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+    .np-row3 h4 .pill-group{margin:0 !important;text-transform:none;letter-spacing:0;}
+    .np-row3 .chart-container{height:320px;}
+    @media (max-width: 1199px){ .np-row3{grid-template-columns:1fr 1fr;} .np-row3 > div:first-child{grid-column:1 / -1;} }
+    @media (max-width: 699px){ .np-row3{grid-template-columns:1fr;} }
     /* Macro → Oil market: STEO-balansen som tabell, samme oppsett som i eia-løsningen. */
     .om-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px;}
     table.om{border-collapse:separate;border-spacing:0;width:100%;font-size:0.72rem;font-variant-numeric:tabular-nums;background:var(--card);}
@@ -7848,6 +7857,7 @@ function drawPrices() {
   setProfile(''); setChartTable('');
   if (diffChart) { diffChart.destroy(); diffChart = null; }
   if (qualChart) { qualChart.destroy(); qualChart = null; }
+  if (avgChart) { avgChart.destroy(); avgChart = null; }
   if (usCharts.length) { usCharts.forEach(c => c.destroy()); usCharts = []; }
   if (powerPriceChart) { powerPriceChart.destroy(); powerPriceChart = null; }
   if (powerFlowChart) { powerFlowChart.destroy(); powerFlowChart = null; }
@@ -8169,15 +8179,13 @@ function drawPriceDiff() {
   });
   // Snittet for hver valgt serie i perioden, av månedene som har en verdi.
   const fmtD = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-  const avgTiles = prF.sel.length ? `<div class="pf-facts" style="margin:4px 0 10px">${prF.sel.map(f => {
-      const vals = months.map(m => d.fields[f][m]).filter(v => v != null);
-      const avg = vals.length ? vals.reduce((t, v) => t + v, 0) / vals.length : null;
-      return `<div class="pf-fact" style="border-left:3px solid ${PRICE_COLORS[prF.slot[f]]};padding-left:8px"><span>${esc(f)}</span>
-        <strong>${avg == null ? '—' : `${fmtD(avg)} $/bbl`}</strong>
-        <small class="val-sub">${vals.length ? `average of ${vals.length} of ${months.length} months` : 'no values in the period'}</small></div>`;
-    }).join('')}</div>` : '';
+  const avgs = prF.sel.map(f => {
+    const vals = months.map(m => d.fields[f][m]).filter(v => v != null);
+    return {f, n: vals.length, avg: vals.length ? vals.reduce((t, v) => t + v, 0) / vals.length : null, color: PRICE_COLORS[prF.slot[f]]};
+  });
+  const none = '<div class="status">Pick one or more fields above.</div>';
   setProfile(`<div class="pf-card pf-wide"><h3>Norm price differentials</h3>
-    <div class="pf-map-note" style="margin:0 0 8px">Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1} (the period above)</div>
+    <div class="pf-map-note" style="margin:0 0 8px">$/bbl relative to Dated Brent · ${prF.y0}–${prF.y1} (the period above)</div>
     <div class="np-chips">${chips}</div>
     <div class="np-bar">
       <button class="grp-btn" onclick="priceSelAction('reset')">${favs.length ? 'My favourites' : 'Default selection'}</button>
@@ -8185,20 +8193,56 @@ function drawPriceDiff() {
       <button class="grp-btn" onclick="priceSelAction('save')" ${prF.sel.length ? '' : 'disabled'} title="Save the selected fields as favourites in this browser">★ Save as favourites</button>
       ${favs.length ? `<button class="grp-btn" onclick="priceSelAction('unsave')">Delete favourites</button>` : ''}
       <span class="pf-map-note" style="margin:0">Up to ${PRICE_MAX_SEL} fields.</span></div>
-    ${avgTiles}
-    ${prF.sel.length ? `<div class="chart-container"><canvas id="diffChart"></canvas></div>
-      <div class="legend-row">${datasets.map(x => `<div class="legend-item"><div class="legend-dot" style="background:${x.borderColor}"></div>${esc(x.label)}</div>`).join('')}</div>`
-      : '<div class="status">Pick one or more fields above.</div>'}
+    <div class="np-row3">
+      <div><h4>Monthly</h4>${prF.sel.length ? `<div class="chart-container"><canvas id="diffChart"></canvas></div>
+        <div class="legend-row">${datasets.map(x => `<div class="legend-item"><div class="legend-dot" style="background:${x.borderColor}"></div>${esc(x.label)}</div>`).join('')}</div>`
+        : none}</div>
+      <div><h4>Average ${prF.y0}–${prF.y1}</h4>${avgs.some(x => x.avg != null) ? `<div class="chart-container"><canvas id="avgChart"></canvas></div>
+        <div class="pf-map-note">Average of the months with a value: ${avgs.map(x => `${esc(anTitle(x.f))} ${x.n} of ${months.length}`).join(', ')}.</div>`
+        : prF.sel.length ? '<div class="status">No values in the period.</div>' : none}</div>
+      ${priceQualityHtml(months)}
+    </div>
     <div class="pf-map-note"><strong>Differential:</strong> the field's norm price minus Dated Brent, set monthly by the Petroleum Price Board.
       Gaps mean no monthly value: probably no oil sold, or several differentials in the month (sub-periods in 2018 and 2020, not imported).
-      ${PRICE_SRC}.</div></div>${priceQualityHtml(months)}`);
+      ${PRICE_SRC}.</div></div>`);
   drawPriceQuality(months);
+  drawPriceAvg(avgs, fmtD);
   if (prF.sel.length) {
     diffChart = priceLineChart(months, datasets, 'differential, $/bbl', {zeroLine: true, canvas: 'diffChart'});
     pptExtra = pptExtra.filter(x => x.id !== 'diff').concat([{id: 'diff', spec: pptSpecFromChart(diffChart),
       meta: {title: 'Norm price differentials', subtitle: `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`,
              source: 'Source: Petroleum Price Board / Ministry of Energy'}}]);
   }
+}
+
+// Snittdifferensialen per valgt felt i perioden, som stolper i feltets farge.
+let avgChart = null;
+function drawPriceAvg(avgs, fmtD) {
+  const el = document.getElementById('avgChart');
+  if (!el) return;
+  const rows = avgs.filter(x => x.avg != null);
+  const vals = {id: 'npAvgVals', afterDatasetsDraw(ch) {
+    const c = ch.ctx;
+    c.save(); c.font = '600 10px system-ui, sans-serif'; c.fillStyle = '#334155'; c.textAlign = 'center';
+    ch.getDatasetMeta(0).data.forEach((b, i) => {
+      const v = rows[i].avg;
+      c.textBaseline = v < 0 ? 'top' : 'bottom';
+      c.fillText(fmtD(v), b.x, b.y + (v < 0 ? 3 : -3));
+    });
+    c.restore();
+  }};
+  avgChart = new Chart(el.getContext('2d'), {type: 'bar', plugins: [vals],
+    data: {labels: rows.map(x => anTitle(x.f)), datasets: [{label: `Average ${prF.y0}–${prF.y1}`, data: rows.map(x => +x.avg.toFixed(2)),
+      backgroundColor: rows.map(x => x.color), borderWidth: 0, maxBarThickness: 46}]},
+    options: {responsive: true, maintainAspectRatio: false, animation: false, layout: {padding: {top: 16, bottom: 4}},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: c => ` ${fmtD(rows[c.dataIndex].avg)} $/bbl (${rows[c.dataIndex].n} months)`}}},
+      scales: {x: {grid: {display: false}, ticks: {font: {size: 9}, maxRotation: 50, autoSkip: false}},
+        y: {title: {display: true, text: 'average differential, $/bbl', color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grace: '10%',
+          grid: {color: ctx => ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'}}}}});
+  pptExtra = pptExtra.filter(x => x.id !== 'diffavg').concat([{id: 'diffavg', spec: pptSpecFromChart(avgChart),
+    meta: {title: 'Average norm price differential', subtitle: `${prF.y0}–${prF.y1} · $/bbl relative to Dated Brent`,
+           source: 'Source: Petroleum Price Board / Ministry of Energy'}}]);
 }
 
 // Brent-siden: kvalitet mot differensial. Hvert punkt er ett normprisfelt med
@@ -8230,18 +8274,16 @@ function priceQualityHtml(months) {
   const missing = Object.keys(priceData.diff.fields).filter(f => !A.some(a => qualKey(a.name) === qualKey(f)));
   const sign = v => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(2)}`;
   const fitTxt = fit ? `${sign(fit.b * (sx ? 0.1 : 1))} $/bbl per ${sx ? '0.1 % sulphur' : 'API degree'}, R² = ${fit.r2.toFixed(2)}, ${fit.n} fields` : '';
-  return `<div class="pf-card pf-wide"><h3>Crude quality vs differential</h3>
-    <div class="pf-map-note" style="margin:0 0 8px">Average norm price differential ${prF.y0}–${prF.y1} (the period above) against the assay · $/bbl relative to Dated Brent</div>
-    ${pillRow(QUAL_X, sx ? 's' : 'api', v => `priceQualX('${v}')`)}
-    ${pts.length ? `<div class="chart-container" style="height:380px"><canvas id="qualChart"></canvas></div>
-      <div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:#003057"></div>Field (selected above: its colour)</div>
+  return `<div><h4>Quality vs average ${pillRow(QUAL_X, sx ? 's' : 'api', v => `priceQualX('${v}')`)}</h4>
+    ${pts.length ? `<div class="chart-container"><canvas id="qualChart"></canvas></div>
+      <div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:#003057"></div>All fields; selected in their colour</div>
         ${fit ? `<div class="legend-item"><div class="legend-dot" style="background:rgba(232,110,30,0.8);height:3px;border-radius:0"></div>Linear trend: ${fitTxt}</div>` : ''}</div>`
       : '<div class="status">No fields with both an assay and differentials in the period.</div>'}
     <div class="pf-map-note">Each point is a field with both a norm price and a published assay (Equinor; Balder from Vår Energi; Ekofisk from BP, whose sample is newer); the differential is the average of the months with a value in the period.
       The assay is a single sample (date in the tooltip), so a blend whose quality has changed over the period sits where it is today.
       ${sx ? 'Sulphur is total sulphur, % by weight.' : 'API gravity: higher is lighter.'}
       ${missing.length ? `No assay: ${missing.map(f => esc(anTitle(f))).join(', ')}.` : ''}
-      Sources: Equinor, Vår Energi and BP crude oil assays; ${PRICE_SRC.replace('Source: ', '')}.</div></div>`;
+      Assays: Equinor, Vår Energi and BP.</div></div>`;
 }
 function priceQualX(v) { prF.qx = v; syncUrl(); drawChart(); }
 function drawPriceQuality(months) {
