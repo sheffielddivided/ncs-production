@@ -690,6 +690,13 @@
     .an-in{width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px;}
     .an-opts{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;font-size:0.8rem;}
     .an-opts .pill-group{width:max-content;max-width:100%;}
+    .an-views{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid #eef2f7;font-size:0.8rem;}
+    .an-views h4{margin:0 6px 0 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+    .an-views .an-chip button.an-vo{border:0;background:none;cursor:pointer;font:inherit;color:inherit;padding:2px 0;min-height:24px;}
+    .an-views .an-chip.on{background:var(--blue);color:#fff;}
+    .an-views .an-chip.on .an-x{color:#fff;}
+    .an-vsave{display:inline-flex;gap:6px;align-items:center;flex:1 1 220px;max-width:340px;}
+    .an-vsave input{flex:1;min-width:0;padding:5px 8px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px;}
     .an-deal{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eef2f7;font-size:0.82rem;}
     .an-deal small{color:var(--muted);}
     .an-dt{min-width:34px;}
@@ -4436,6 +4443,59 @@ function anPick(side, val) {
 }
 function anCopyFrom() { anSet('to', anF.from); }
 
+// ── Analytics: lagrede visninger ──
+// Et navngitt øyeblikksbilde av alle valgene på siden (anF: selskaper, handler,
+// manuelle eiendeler, år og grupperinger). Lagres bare i denne nettleseren
+// (localStorage); for å dele en visning brukes lenken, som har de samme valgene.
+const AN_VIEWS_KEY = 'ncs.analytics.views.v1', AN_VIEWS_MAX = 50;
+function anViews() {
+  try {
+    const v = JSON.parse(lsGet(AN_VIEWS_KEY) || '[]');
+    return Array.isArray(v) ? v.filter(x => x && typeof x.name === 'string' && x.name && x.f && typeof x.f === 'object') : [];
+  } catch (e) { return []; }
+}
+function anViewsWrite(list) {
+  try { localStorage.setItem(AN_VIEWS_KEY, JSON.stringify(list)); return true; }
+  catch (e) { pptToast('This browser does not allow saving views'); return false; }
+}
+// Bare kjente valg, som tekst, så en gammel eller endret lagring ikke ødelegger siden.
+const anViewF = f => Object.fromEntries(Object.keys(anDefaults()).map(k => [k, f[k] == null ? anDefaults()[k] : String(f[k])]));
+const anViewSame = f => Object.keys(anDefaults()).every(k => anViewF(f)[k] === anViewF(anF)[k]);
+function anViewSave(name) {
+  name = String(name || '').trim().slice(0, 60);
+  if (!name) { pptToast('Give the view a name'); return; }
+  const list = anViews(), had = list.some(v => v.name.toLowerCase() === name.toLowerCase());
+  const next = [{name, f: anViewF(anF), t: Date.now()}, ...list.filter(v => v.name.toLowerCase() !== name.toLowerCase())].slice(0, AN_VIEWS_MAX);
+  if (!anViewsWrite(next)) return;
+  pptToast(had ? `Updated view «${name}»` : `Saved view «${name}»`);
+  drawChart();
+}
+function anViewOpen(name) {
+  const v = anViews().find(x => x.name === name);
+  if (!v) return;
+  anF = anViewF(v.f);
+  syncUrl(); drawChart();
+}
+function anViewDelete(name) {
+  if (!confirm(`Delete the saved view «${name}»?`)) return;
+  if (anViewsWrite(anViews().filter(v => v.name !== name))) { pptToast(`Deleted view «${name}»`); drawChart(); }
+}
+function anViewsHtml() {
+  const list = anViews();
+  const chips = list.map(v => {
+    const on = anViewSame(v.f);
+    return `<span class="an-chip${on ? ' on' : ''}"><button type="button" class="an-vo" aria-pressed="${on}"
+        title="Open the view${v.t ? ` (saved ${esc(new Date(v.t).toLocaleDateString('en-GB'))})` : ''}"
+        onclick="anViewOpen(${esc(jsStr(v.name))})">${esc(v.name)}</button>
+      <button type="button" class="an-x" aria-label="Delete view ${esc(v.name)}" onclick="anViewDelete(${esc(jsStr(v.name))})">×</button></span>`;
+  }).join('');
+  const cur = list.find(v => anViewSame(v.f));
+  return `<div class="an-views"><h4>Saved views</h4>${chips || '<span class="an-none">None yet</span>'}
+    <form class="an-vsave" onsubmit="event.preventDefault(); anViewSave(this.elements.n.value)">
+      <input name="n" maxlength="60" placeholder="Name this view…" aria-label="Name of the view to save" value="${cur ? esc(cur.name) : ''}">
+      <button type="submit" class="grp-btn">Save view</button></form></div>`;
+}
+
 function anDestroy() { anCharts.forEach(c => c.destroy()); anCharts = []; }
 
 // Fra–til-søylene som i en investorpresentasjon: hver søyle er delt per selskap,
@@ -5110,7 +5170,10 @@ function drawCompanyAnalytics() {
       </div>
       <div class="pf-map-note">Companies are matched by name across the three shelves (e.g. Vår Energi on the NCS; BlueNord on the DCS and UKCS).
         Each company's portfolio is everything it holds on the shelves switched on in its tag; click a shelf to leave it out,
-        or pick e.g. «Shell (NCS)» from the list.</div></div>`;
+        or pick e.g. «Shell (NCS)» from the list.</div>
+      ${anViewsHtml()}
+      <div class="pf-map-note">Saved views keep every choice on this page (companies, deals, manual assets, year and groupings)
+        and are stored in this browser only; share the link to pass a view on.</div></div>`;
   const dealsCard = anManCard(from, to) + anDealsCard(to);
   // Manuelle eiendeler i bruk (eid av et valgt selskap eller med i en handel), til notene.
   const manUsed = anMan().filter(m => [...from, ...to].some(k => anManHeld(k).some(x => x.m.k === m.k)) || deals.some(d => d.a === `x:${m.k}`));
