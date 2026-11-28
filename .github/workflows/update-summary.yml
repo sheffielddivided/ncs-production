@@ -1,0 +1,71 @@
+name: Daglig AI-oppsummering
+
+# data/daily_summary.json til toppen av updates.html: en kort AI-skrevet
+# oppsummering av endringene i dataene dagen før, fra
+# data/update_details/<dato>.json (build_update_log.py). Kjører like etter
+# midnatt UTC, når kveldskjøringen av loggen (23:52) er ferdig. Krever
+# repo-secret ANTHROPIC_API_KEY. Manuelt: velg dag og eventuelt «force» for å
+# lage en oppsummering på nytt.
+on:
+  schedule:
+    - cron: '23 0 * * *'
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'Dag (ÅÅÅÅ-MM-DD); tom = i går'
+        required: false
+        default: ''
+      force:
+        description: 'Lag på nytt om den finnes'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-summary
+  cancel-in-progress: false
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: pip install anthropic
+
+      - name: Lag oppsummeringen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DAY: ${{ inputs.day }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          args=()
+          if [ -n "$DAY" ]; then args+=(--day "$DAY"); fi
+          if [ "$FORCE" = "true" ]; then args+=(--force); fi
+          python build_daily_summary.py "${args[@]}"
+
+      - name: Commit hvis oppsummeringen er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/daily_summary.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Daglig AI-oppsummering ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1

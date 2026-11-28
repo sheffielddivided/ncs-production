@@ -705,7 +705,15 @@ def d_descriptions(o, n, ctx):
     for r in rows(n):
         if old.get((r[0], r[1])) != r[2]:
             ch[r[0]].append(r[1] + ('' if (r[0], r[1]) in old else ' (new)'))
-    return [f'{ctx["names"].get(str(k), k)}: {", ".join(v)} text changed' for k, v in ch.items()]
+    # Overskriftene kan ha lange forklaringer i parentes («Status (No longer
+    # maintained by Sodir …)»); de kuttes. Mange felt samtidig er nesten alltid
+    # en omlegging hos Sodir, så de slås sammen til én linje.
+    short = lambda h: h.split(' (')[0]
+    if len(ch) > 8:
+        heads = sorted({short(h) for v in ch.values() for h in v})
+        nm = sorted(ctx['names'].get(str(k), str(k)) for k in ch)
+        return [f'Description texts revised for {len(ch)} fields ({", ".join(nm[:6])} and others); sections: {", ".join(heads)}']
+    return [f'{ctx["names"].get(str(k), k)}: {", ".join(sorted({short(h) for h in v}))} text changed' for k, v in ch.items()]
 
 
 DETAILS = {
