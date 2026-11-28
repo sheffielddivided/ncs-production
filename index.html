@@ -3188,6 +3188,7 @@ function stateToHash() {
     if (prF.gu && prF.gu !== 'eurmwh') q.set('pu', prF.gu);
     if (prF.gr === 'q' || prF.gr === 'y') q.set('pq', prF.gr);
     if (prF.sk && prF.sk !== 'eu') q.set('ps', prF.sk);
+    if (prF.qx === 's') q.set('qx', 's');
     if (prF.pw && prF.pw !== 'NO') q.set('pw', prF.pw);
     if (prF.pz && prF.pz !== '3y') q.set('pz', prF.pz);
     if (prF.pe === 'ore') q.set('pe', 'ore');
@@ -3498,6 +3499,7 @@ function applyHash() {
     prF.bq = q.get('pm') === 'q';
     if (['usdmmbtu', 'usdboe', 'noksm3'].includes(q.get('pu'))) prF.gu = q.get('pu');
     prF.gr = ['q', 'y'].includes(q.get('pq')) ? q.get('pq') : 'm';
+    prF.qx = q.get('qx') === 's' ? 's' : 'api';
     prF.sk = ['de', 'it', 'nl', 'fr'].includes(q.get('ps')) ? q.get('ps') : 'eu';
     prF.pw = POWER_AREAS.some(a => a.key === q.get('pw')) ? q.get('pw') : 'NO';
     prF.pz = POWER_PERIODS.some(x => x[0] === q.get('pz')) ? q.get('pz') : '3y';
@@ -7679,8 +7681,8 @@ let prF = {y0: 0, y1: 0, sel: [], slot: {}, bm: true};
 function loadPrices() {
   if (priceData) return Promise.resolve();
   if (priceLoading) return priceLoading;
-  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily'), fetchBundle('us_supply'), fetchBundle('refining'), fetchBundle('steo')]).then(([b, d, e, g, c, , t, us, ref, steo]) => {
-    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t, us, ref, steo} : {};
+  priceLoading = Promise.all([fetchBundle('normpris_brent'), fetchBundle('normpris_diff'), fetchBundle('brent_eia'), fetchBundle('gas_prices'), fetchBundle('cpi'), loadPriceHistory(), fetchBundle('ttf_daily'), fetchBundle('us_supply'), fetchBundle('refining'), fetchBundle('steo'), fetchBundle('crude_assays')]).then(([b, d, e, g, c, , t, us, ref, steo, assays]) => {
+    priceData = b && d ? {brent: b, diff: d, eia: e, gas: g, cpi: c, ttfd: t, us, ref, steo, assays} : {};
     if (!priceData.diff) return;
     const years = priceYears();
     const clamp = y => Math.min(years[years.length - 1], Math.max(years[0], y));
@@ -7845,6 +7847,7 @@ function drawPrices() {
   document.getElementById('downloadBtn').disabled = true;
   setProfile(''); setChartTable('');
   if (diffChart) { diffChart.destroy(); diffChart = null; }
+  if (qualChart) { qualChart.destroy(); qualChart = null; }
   if (usCharts.length) { usCharts.forEach(c => c.destroy()); usCharts = []; }
   if (powerPriceChart) { powerPriceChart.destroy(); powerPriceChart = null; }
   if (powerFlowChart) { powerFlowChart.destroy(); powerFlowChart = null; }
@@ -8188,13 +8191,100 @@ function drawPriceDiff() {
       : '<div class="status">Pick one or more fields above.</div>'}
     <div class="pf-map-note"><strong>Differential:</strong> the field's norm price minus Dated Brent, set monthly by the Petroleum Price Board.
       Gaps mean no monthly value: probably no oil sold, or several differentials in the month (sub-periods in 2018 and 2020, not imported).
-      ${PRICE_SRC}.</div></div>`);
+      ${PRICE_SRC}.</div></div>${priceQualityHtml(months)}`);
+  drawPriceQuality(months);
   if (prF.sel.length) {
     diffChart = priceLineChart(months, datasets, 'differential, $/bbl', {zeroLine: true, canvas: 'diffChart'});
     pptExtra = pptExtra.filter(x => x.id !== 'diff').concat([{id: 'diff', spec: pptSpecFromChart(diffChart),
       meta: {title: 'Norm price differentials', subtitle: `Monthly · $/bbl relative to Dated Brent · ${prF.y0}–${prF.y1}`,
              source: 'Source: Petroleum Price Board / Ministry of Energy'}}]);
   }
+}
+
+// Brent-siden: kvalitet mot differensial. Hvert punkt er ett normprisfelt med
+// en Equinor-assay (Balder: Vår Energi; Ekofisk: BP) (data/crude_assays.json, fetch_assays.py): API-grad eller
+// svovel fra assayen mot feltets snittdifferensial i perioden over. Assayen er
+// ett øyeblikksbilde (dato i verktøytipset), mens differensialen er et snitt
+// over perioden, så kvaliteten kan ha endret seg underveis.
+let qualChart = null;
+const QUAL_X = [['api', 'API gravity'], ['s', 'Sulphur']];
+// Normprisfeltets navn -> assaynavnet: Å -> Aa og uten «Blend».
+const qualKey = n => String(n).toUpperCase().replace(/Å/g, 'AA').replace(/Ø/g, 'O').replace(/\bBLEND\b|\bCRUDE\b/g, '').replace(/\s+/g, ' ').trim();
+function priceQualityPoints(months) {
+  const A = priceData.assays && priceData.assays.assays;
+  if (!A) return [];
+  const byKey = Object.fromEntries(A.map(a => [qualKey(a.name), a]));
+  return Object.keys(priceData.diff.fields).map(f => {
+    const a = byKey[qualKey(f)];
+    const vals = months.map(m => priceData.diff.fields[f][m]).filter(v => v != null);
+    if (!a || !vals.length) return null;
+    const x = prF.qx === 's' ? a.sulphur : a.api;
+    return x == null ? null : {x, y: vals.reduce((t, v) => t + v, 0) / vals.length, f, a, n: vals.length};
+  }).filter(Boolean);
+}
+function priceQualityHtml(months) {
+  const A = priceData.assays && priceData.assays.assays;
+  if (!A) return '';
+  const pts = priceQualityPoints(months), sx = prF.qx === 's';
+  const fit = pts.length > 2 ? olsFit(pts) : null;
+  const missing = Object.keys(priceData.diff.fields).filter(f => !A.some(a => qualKey(a.name) === qualKey(f)));
+  const sign = v => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(2)}`;
+  const fitTxt = fit ? `${sign(fit.b * (sx ? 0.1 : 1))} $/bbl per ${sx ? '0.1 % sulphur' : 'API degree'}, R² = ${fit.r2.toFixed(2)}, ${fit.n} fields` : '';
+  return `<div class="pf-card pf-wide"><h3>Crude quality vs differential</h3>
+    <div class="pf-map-note" style="margin:0 0 8px">Average norm price differential ${prF.y0}–${prF.y1} (the period above) against the assay · $/bbl relative to Dated Brent</div>
+    ${pillRow(QUAL_X, sx ? 's' : 'api', v => `priceQualX('${v}')`)}
+    ${pts.length ? `<div class="chart-container" style="height:380px"><canvas id="qualChart"></canvas></div>
+      <div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:#003057"></div>Field (selected above: its colour)</div>
+        ${fit ? `<div class="legend-item"><div class="legend-dot" style="background:rgba(232,110,30,0.8);height:3px;border-radius:0"></div>Linear trend: ${fitTxt}</div>` : ''}</div>`
+      : '<div class="status">No fields with both an assay and differentials in the period.</div>'}
+    <div class="pf-map-note">Each point is a field with both a norm price and a published assay (Equinor; Balder from Vår Energi; Ekofisk from BP, whose sample is newer); the differential is the average of the months with a value in the period.
+      The assay is a single sample (date in the tooltip), so a blend whose quality has changed over the period sits where it is today.
+      ${sx ? 'Sulphur is total sulphur, % by weight.' : 'API gravity: higher is lighter.'}
+      ${missing.length ? `No assay: ${missing.map(f => esc(anTitle(f))).join(', ')}.` : ''}
+      Sources: Equinor, Vår Energi and BP crude oil assays; ${PRICE_SRC.replace('Source: ', '')}.</div></div>`;
+}
+function priceQualX(v) { prF.qx = v; syncUrl(); drawChart(); }
+function drawPriceQuality(months) {
+  const el = document.getElementById('qualChart');
+  if (!el) return;
+  const pts = priceQualityPoints(months), sx = prF.qx === 's';
+  const fit = pts.length > 2 ? olsFit(pts) : null;
+  const col = p => prF.sel.includes(p.f) ? PRICE_COLORS[prF.slot[p.f]] : 'rgba(0,48,87,0.75)';
+  const xs = pts.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const f2 = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const xTxt = v => sx ? `${v.toFixed(2)} % S` : `${v.toFixed(1)}° API`;
+  const ds = [{label: 'Fields', data: pts, pointRadius: 5, pointHoverRadius: 7,
+    backgroundColor: pts.map(col), borderColor: '#fff', borderWidth: 1}];
+  if (fit) ds.push({label: 'Linear trend', type: 'line', data: [{x: x0, y: fit.a + fit.b * x0}, {x: x1, y: fit.a + fit.b * x1}],
+    borderColor: 'rgba(232,110,30,0.8)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0});
+  const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
+    grid: {color: ctx => t.startsWith('Average') && ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'}});
+  // Feltnavnet ved hvert punkt.
+  const names = {id: 'qualNames', afterDatasetsDraw(ch) {
+    const c = ch.ctx, meta = ch.getDatasetMeta(0);
+    c.save(); c.font = '600 10px system-ui, sans-serif'; c.fillStyle = '#334155'; c.textBaseline = 'middle';
+    meta.data.forEach((pt, i) => {
+      const right = pt.x < ch.chartArea.right - 80;
+      c.textAlign = right ? 'left' : 'right';
+      c.fillText(anTitle(pts[i].f), pt.x + (right ? 8 : -8), pt.y);
+    });
+    c.restore();
+  }};
+  qualChart = new Chart(el.getContext('2d'), {type: 'scatter', data: {datasets: ds}, plugins: [names],
+    options: {responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
+        label: c => { const p = c.raw; return [` ${anTitle(p.f)}: ${p.y < 0 ? '−' : '+'}${f2(Math.abs(p.y))} $/bbl (${p.n} months)`,
+          ` ${p.a.name}: ${p.a.api.toFixed(1)}° API, ${p.a.sulphur != null ? p.a.sulphur.toFixed(2) + ' % S' : 'S n/a'}`,
+          ` ${p.a.src || 'Equinor'} assay, ${p.a.sample ? 'sampled ' + p.a.sample : 'published ' + p.a.updated.slice(0, 7)}`]; }}}},
+      scales: {x: axis(sx ? 'Sulphur, % wt' : 'API gravity, °'), y: axis(`Average differential ${prF.y0}–${prF.y1}, $/bbl`)}}});
+  pptExtra = pptExtra.filter(x => x.id !== 'qual').concat([{id: 'qual', spec: {kind: 'scatter', markers: true,
+    xTitle: sx ? 'Sulphur, % wt' : 'API gravity', yTitle: `Average differential ${prF.y0}–${prF.y1}, $/bbl`,
+    xMin: qualChart.scales.x.min, xMax: qualChart.scales.x.max, yMin: qualChart.scales.y.min, yMax: qualChart.scales.y.max,
+    series: [{name: 'Fields', points: pts.map(p => ({x: p.x, y: +p.y.toFixed(2), m: anTitle(p.f)})), color: '003057'}],
+    ...(fit ? {trend: {from: {x: x0, y: fit.a + fit.b * x0}, to: {x: x1, y: fit.a + fit.b * x1}, color: 'E86E1E',
+      label: `${fit.b < 0 ? '−' : '+'}${Math.abs(fit.b * (sx ? 0.1 : 1)).toFixed(2)} $/bbl per ${sx ? '0.1 % S' : '° API'}, R² = ${fit.r2.toFixed(2)}`}} : {})},
+    meta: {title: 'Crude quality vs differential', subtitle: `Average norm price differential ${prF.y0}–${prF.y1} vs Equinor assay · $/bbl`,
+      source: 'Source: Equinor, Vår Energi and BP crude oil assays; Petroleum Price Board / Ministry of Energy'}}]);
 }
 
 // ── PRICES: GAS ──
