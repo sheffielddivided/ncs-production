@@ -3911,8 +3911,9 @@ norske delen.
 
 - **Balansedato:** 31.12. året før, samme dato som NPV-en (1.1. i år)
   (`valBalancePeriod`). Mangler den, brukes siste balanse før, med merknad.
-- **Netto gjeld** (`valNetDebt`) = rentebærende gjeld + leasing + betalbar skatt −
-  kontanter − finansielle plasseringer − justeringer. Betalbar skatt er fjorårets
+- **Netto gjeld** (`valNetDebt`) = rentebærende gjeld + betalbar skatt −
+  kontanter − finansielle plasseringer − justeringer. Leasingforpliktelser tas
+  ikke med: de har en motpost (bruksrett) i balansen. Betalbar skatt er fjorårets
   skatt som betales i år; modellen skattlegger bare kontantstrømmen fra 1.1.
   Fjerningsforpliktelser og utsatt skatt trekkes ikke fra: fjerning er i
   kontantstrømmen, og skatten regnes direkte på den.

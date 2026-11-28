@@ -13059,7 +13059,8 @@ function mountTvScript(box, kind, cfg) {
 // mill. USD, hentet fra selskapenes kvartalsrapporter via Quartr og kontrollert
 // mot rapporten (lenke per post). Quartrs standardiserte tall brukes ikke
 // direkte: de mangler poster og blander enheter.
-// · gjeld: rentebærende lån og obligasjoner; leasing for seg
+// · gjeld: rentebærende lån og obligasjoner. Leasing tas ikke med: forpliktelsen
+//   har en motpost (bruksrett) i balansen
 // · betalbar skatt: skatt for fjoråret som betales i år, og som modellen ikke
 //   har med (den skattlegger kontantstrømmen fra 1.1.)
 // · fjerningsforpliktelser trekkes ikke fra: fjerning er med i kontantstrømmen
@@ -13080,7 +13081,7 @@ function valBalancePeriod(c, y0) {
 }
 function valNetDebt(p) {
   const adj = (p.adjustments || []).reduce((s, a) => s + a.value * (a.taxed ? 1 - CF_TAX : 1), 0);
-  return p.debt + p.leases + p.taxPayable - p.cash - (p.investments || 0) - adj;
+  return p.debt + p.taxPayable - p.cash - (p.investments || 0) - adj;
 }
 function valEquityCard(cmp, all, total) {
   if (valBalance === undefined) {
@@ -13114,7 +13115,6 @@ function valEquityCard(cmp, all, total) {
       <tbody>
         ${row('Indicative value of the Norwegian portfolio, after tax', m(T * 1000), 'Fields and discoveries, from the card above')}
         ${row('− Interest-bearing debt', `−${m(p.debt)}`, `${esc(p.debtNote || '')} · ${src(p.url, 'source')}`)}
-        ${row('− Lease liabilities', `−${m(p.leases)}`, esc(p.leasesNote || ''))}
         ${row('− Tax payable', `−${m(p.taxPayable)}`, `Tax for ${y0 - 1} paid in ${y0}; the model only taxes cash flows from 1 January ${y0}`)}
         ${row('+ Cash and cash equivalents', m(p.cash))}
         ${p.investments ? row('+ Financial investments', m(p.investments), p.investmentsUrl ? src(p.investmentsUrl, 'source') : '') : ''}
@@ -13132,7 +13132,7 @@ function valEquityCard(cmp, all, total) {
         `<td>${nok(total(a.v, k) - nd / 1000)}</td>`).join('')}</tr>`).join('')}</tbody></table>
     <table class="res-table" style="margin-top:12px">
       <caption>Net debt, USD million</caption>
-      <tbody>${row('Net debt incl. leases, tax payable and adjustments', m(nd))}
+      <tbody>${row('Net debt incl. tax payable and adjustments', m(nd))}
         ${row('Per share, NOK', Math.round(nd * 1e6 / p.shares * fx).toLocaleString('en'))}</tbody></table>`;
   return `<div class="pf-row2">
       <div class="pf-card"><h3>From portfolio value to value per share</h3>
@@ -13144,7 +13144,7 @@ function valEquityCard(cmp, all, total) {
         <div class="pf-map-note">Balance sheet of ${esc(c.name)} as at ${fmtShort(p.date)} from its ${esc(p.report)}
           (${src(c.quartr, 'Quartr')}). NOK at Norges Bank's rate on ${fmtShort(p.date)}, ${fx.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 4})} NOK/USD.
           Abandonment provisions are not deducted: abandonment is already in the cash flow. Deferred tax is not deducted either: the model
-          taxes the cash flows directly. The share price below is for comparison.${dated}</div></div>
+          taxes the cash flows directly. Lease liabilities are left out, as they are matched by right-of-use assets. The share price below is for comparison.${dated}</div></div>
     </div>`;
 }
 
