@@ -8314,7 +8314,10 @@ function priceQualityPoints(months) {
     const vals = months.map(m => priceData.diff.fields[f][m]).filter(v => v != null);
     if (!a || !vals.length) return null;
     const x = prF.qx === 's' ? a.sulphur : a.api;
-    return x == null ? null : {x, y: vals.reduce((t, v) => t + v, 0) / vals.length, f, a, n: vals.length};
+    // Blendvolumet i de samme månedene, til markørstørrelsen (når produksjonsdataene er lastet).
+    const ms = months.filter(m => priceData.diff.fields[f][m] != null);
+    const vol = priceData.blends && priceData.blends.blends[f] && bundle.production ? ms.reduce((t, m) => t + blendVolume(f, m), 0) / ms.length : null;
+    return x == null ? null : {x, y: vals.reduce((t, v) => t + v, 0) / vals.length, f, a, n: vals.length, vol};
   }).filter(Boolean);
 }
 function priceQualityHtml(months) {
@@ -8327,10 +8330,11 @@ function priceQualityHtml(months) {
   const fitTxt = !fit ? '' : fit.kind === 'quad'
     ? `Quadratic fit${fit.peak != null ? `, peaking at ${fit.peak.toFixed(0)}° API` : ''}: R² ${fit.r2.toFixed(2)}, cross-validated ${fit.q2.toFixed(2)}, ${fit.n} fields`
     : `No trend line: neither a straight line nor a curve fits (straight line R² ${fit.r2.toFixed(2)}, ${fit.n} ${vm ? 'blends' : 'fields'})`;
-  if (vm && !coreDone) coreReady.then(() => { if (topMode === 'prices' && qualVolMode()) drawChart(); });
+  // Volumet (x-aksen, eller markørstørrelsen) krever produksjonsdataene; tegn på nytt når de er lastet.
+  if (!coreDone) coreReady.then(() => { if (topMode === 'prices' && priceSubView === 'brent') drawChart(); });
   return `<div><h4>${vm ? 'Volume' : 'Quality'} vs average ${pillRow(QUAL_X, prF.qx || 'api', v => `priceQualX('${v}')`)}</h4>
     ${vm && !coreDone ? '<div class="status">Loading production data…</div>' : pts.length ? `<div class="chart-container"><canvas id="qualChart"></canvas></div>
-      <div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:#003057"></div>All fields; selected in their colour</div>
+      <div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:#003057"></div>All fields; selected in their colour${vm ? '' : '; size = blend volume'}</div>
         ${fit ? `<div class="legend-item">${fit.kind === 'quad' ? '<div class="legend-dot" style="background:rgba(232,110,30,0.8);height:3px;border-radius:0"></div>' : ''}${fitTxt}</div>` : ''}</div>`
       : '<div class="status">No fields with both an assay and differentials in the period.</div>'}
     ${vm ? qualVolNote(months) : `<div class="pf-map-note">Each point is a field with both a norm price and a published assay (Equinor; Balder from Vår Energi; Ekofisk from BP, whose sample is newer); the differential is the average of the months with a value in the period.
@@ -8518,17 +8522,19 @@ function qualBlendTable(months) {
   // brukes plassen med minst overlapp.
 function scatterNamesPlugin(labels) {
   return {id: 'scatterNames', afterDatasetsDraw(ch) {
-    const c = ch.ctx, A = ch.chartArea, H = 12, R = 6;
-    const P = ch.getDatasetMeta(0).data.map((pt, i) => ({x: pt.x, y: pt.y, t: labels[i]}));
+    const c = ch.ctx, A = ch.chartArea, H = 12;
+    // Punktets radius (kan variere, f.eks. med volumet) styrer avstanden til navnet.
+    const P = ch.getDatasetMeta(0).data.map((pt, i) => ({x: pt.x, y: pt.y, t: labels[i], R: ((pt.options && pt.options.radius) || 5) + 1}));
     c.save(); c.font = '600 10px system-ui, sans-serif';
     P.forEach(p => { p.w = c.measureText(p.t).width; p.near = P.filter(q => Math.hypot(q.x - p.x, q.y - p.y) < 60).length; });
     const ov = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
-    const dots = P.map(p => ({x1: p.x - R, x2: p.x + R, y1: p.y - R, y2: p.y + R}));
+    const dots = P.map(p => ({x1: p.x - p.R, x2: p.x + p.R, y1: p.y - p.R, y2: p.y + p.R}));
     const placed = [];
     const cands = p => {
-      const w = p.w, out = [[8, -H / 2], [-8 - w, -H / 2], [-w / 2, -H - 7], [-w / 2, 7], [6, -H - 4], [6, 4], [-6 - w, -H - 4], [-6 - w, 4]]
+      const w = p.w, r = p.R - 6, k = r * 0.7;   // r: hvor mye større punktet er enn standard
+      const out = [[8 + r, -H / 2], [-8 - r - w, -H / 2], [-w / 2, -H - 7 - r], [-w / 2, 7 + r], [6 + k, -H - 4 - k], [6 + k, 4 + k], [-6 - k - w, -H - 4 - k], [-6 - k - w, 4 + k]]
         .map(([dx, dy]) => ({dx, dy, far: false}));
-      [14, 26, 38].forEach(d => [[10, -H / 2 - d], [10, -H / 2 + d], [-10 - w, -H / 2 - d], [-10 - w, -H / 2 + d], [-w / 2, -H - 7 - d], [-w / 2, 7 + d]]
+      [14, 26, 38].forEach(d => [[10 + r, -H / 2 - d], [10 + r, -H / 2 + d], [-10 - r - w, -H / 2 - d], [-10 - r - w, -H / 2 + d], [-w / 2, -H - 7 - r - d], [-w / 2, 7 + r + d]]
         .forEach(([dx, dy]) => out.push({dx, dy, far: true})));
       return out;
     };
@@ -8551,7 +8557,7 @@ function scatterNamesPlugin(labels) {
         // Streken går fra punktkanten til nærmeste punkt på navnets ramme.
         const tx = Math.max(r.x1, Math.min(p.x, r.x2)), ty = Math.max(r.y1, Math.min(p.y, r.y2)), d = Math.hypot(tx - p.x, ty - p.y) || 1;
         c.strokeStyle = 'rgba(100,116,139,0.6)'; c.lineWidth = 0.8;
-        c.beginPath(); c.moveTo(p.x + (tx - p.x) / d * R, p.y + (ty - p.y) / d * R); c.lineTo(tx, ty); c.stroke();
+        c.beginPath(); c.moveTo(p.x + (tx - p.x) / d * p.R, p.y + (ty - p.y) / d * p.R); c.lineTo(tx, ty); c.stroke();
       }
       c.fillStyle = '#334155';
       c.fillText(p.t, r.x1 + 1, r.y1 + 1);
@@ -8569,7 +8575,11 @@ function drawPriceQuality(months) {
   const xs = pts.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs);
   const f2 = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const xTxt = v => sx ? `${v.toFixed(2)} % S` : `${v.toFixed(1)}° API`;
-  const ds = [{label: 'Fields', data: pts, pointRadius: 5, pointHoverRadius: 7,
+  // Markørens areal følger blendvolumet i API- og svovelvisningen (radius ∝ √volum, 4–16 px);
+  // i volumvisningen står volumet på x-aksen, og alle får samme størrelse.
+  const vMax = Math.max(0, ...pts.map(p => p.vol || 0));
+  const rad = pts.map(p => vm || !vMax ? 5 : p.vol > 0 ? 4 + 12 * Math.sqrt(p.vol / vMax) : 4);
+  const ds = [{label: 'Fields', data: pts, pointRadius: rad, pointHoverRadius: rad.map(r => r + 2),
     backgroundColor: pts.map(col), borderColor: '#fff', borderWidth: 1}];
   const curve = fit && fit.kind === 'quad' ? Array.from({length: 41}, (_, i) => { const x = x0 + (x1 - x0) * i / 40; return {x, y: fit.f(x)}; }) : null;
   if (curve) ds.push({label: 'Quadratic fit', type: 'line', data: curve,
@@ -8583,7 +8593,8 @@ function drawPriceQuality(months) {
         label: c => { const p = c.raw; return vm ? [` ${p.b.name}: ${p.y < 0 ? '−' : '+'}${f2(Math.abs(p.y))} $/bbl (${p.n} months)`,
           ` ~${Math.round(p.x).toLocaleString('en')} kbbl/d crude`] : [` ${anTitle(p.f)}: ${p.y < 0 ? '−' : '+'}${f2(Math.abs(p.y))} $/bbl (${p.n} months)`,
           ` ${p.a.name}: ${p.a.api.toFixed(1)}° API, ${p.a.sulphur != null ? p.a.sulphur.toFixed(2) + ' % S' : 'S n/a'}`,
-          ` ${p.a.src || 'Equinor'} assay, ${p.a.sample ? 'sampled ' + p.a.sample : 'published ' + p.a.updated.slice(0, 7)}`]; }}}},
+          ` ${p.a.src || 'Equinor'} assay, ${p.a.sample ? 'sampled ' + p.a.sample : 'published ' + p.a.updated.slice(0, 7)}`,
+          ...(p.vol > 0 ? [` Blend volume ~${Math.round(p.vol).toLocaleString('en')} kbbl/d`] : [])]; }}}},
       scales: {x: vm ? {...axis('Blend crude volume, kbbl/d (log scale)'), type: 'logarithmic',
           ticks: {font: {size: 9}, callback: v => [1, 2, 5].includes(+String(v)[0]) && /^[125]0*$/.test(String(v)) ? v.toLocaleString('en') : ''}}
           : axis(sx ? 'Sulphur, % wt' : 'API gravity, °'), y: axis(`Average differential ${prF.y0}–${prF.y1}, $/bbl`)}}});
