@@ -20,6 +20,13 @@ første kolonne, eventuelt en enhet, og så verdien for hel råolje. Regnearket
 har ingen prøvedato, så opplastingsmåneden i adressen brukes som «updated».
 Goliat ligger der som PDF og er identisk med Equinors (samme prøve fra 2022).
 
+BP (https://www.bp.com/.../crudes-assays.html) avviser skript (403), så BP kan
+ikke hentes automatisk. Der Equinors prøve er vesentlig eldre enn BPs, legges
+BPs tall inn for hånd i BP_OVERRIDES (API, svovel og TAN fra BPs tabell, med
+prøvedato); tetthet og hellepunkt fra den gamle prøven utelates da. Krysssjekket
+2026-11-28: Alvheim, Grane, Johan Sverdrup og Skarv stemmer med Equinor
+(±0,2 API); Ekofisk avvek med 1,5 API (Equinor 2015, BP 2026).
+
 Kjøres månedlig av .github/workflows/update-assays.yml.
 
   crude_assays.json  {"source": url,
@@ -152,6 +159,15 @@ def ve_assays(known):
     return out
 
 
+BP_PAGE = ('https://www.bp.com/en/global/bp-supply-trading-and-shipping/documents-and-downloads/'
+           'technical-downloads/crudes-assays.html')
+BP_OVERRIDES = {
+    'Ekofisk Blend': {'api': 40.4, 'sulphur': 0.18, 'tan': 0.12, 'sample': '2026-01-16', 'src': 'BP',
+                      'url': 'https://www.bp.com/content/dam/bp/business-sites/en/global/bp-supply-trading-and-shipping/'
+                             'documents/technical-documents-and-downloads/crudes/ekofisk.xls', 'file': 'ekofisk.xls'},
+}
+
+
 def main():
     r = requests.get(PAGE, headers=HEADERS, timeout=60)
     r.raise_for_status()
@@ -171,12 +187,19 @@ def main():
                 print(f'  {name}: kunne ikke lese regnearket ({e})', file=sys.stderr)
         assays.append(a)
         print(f"{name:30s} API {a['api']:6.2f}  S {a.get('sulphur', '–')}")
+    for a in assays:
+        o = BP_OVERRIDES.get(a['name'])
+        if o and o['sample'] > a.get('sample', a['updated']):
+            for k in ('density', 'pour'):
+                a.pop(k, None)
+            a.update(o)
+            print(f"{a['name']:30s} -> BP {o['sample']}: API {o['api']}, S {o['sulphur']}")
     for a in ve_assays({a['name'].lower() for a in assays}):
         assays.append(a)
         print(f"{a['name']:30s} API {a['api']:6.2f}  S {a.get('sulphur', '–')}  (Vår Energi)")
     assays.sort(key=lambda a: a['name'].lower())
     with open(OUT, 'w', encoding='utf-8') as f:
-        json.dump({'source': PAGE, 'sources': [PAGE, VE_PAGE], 'assays': assays},
+        json.dump({'source': PAGE, 'sources': [PAGE, VE_PAGE, BP_PAGE], 'assays': assays},
                   f, ensure_ascii=False, indent=1, sort_keys=True)
         f.write('\n')
     print(f'{len(assays)} assays -> {OUT}')

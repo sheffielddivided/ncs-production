@@ -173,19 +173,17 @@
    "url": "https://cdn.sanity.io/files/h61q9gi9/global/347ebfb058dd8a3d8c44389f65f8d99789d77932.xlsx"
   },
   {
-   "api": 38.8889,
-   "density": 0.8301,
+   "api": 40.4,
    "desc": "Light, low sulphur crude oil",
-   "file": "EKOFISK-2015-06.xlsx",
+   "file": "ekofisk.xls",
    "name": "Ekofisk Blend",
    "origin": "Norway",
-   "pour": -3.0,
-   "sample": "2015-07-17",
-   "src": "Equinor",
-   "sulphur": 0.2072,
-   "tan": 0.1,
+   "sample": "2026-01-16",
+   "src": "BP",
+   "sulphur": 0.18,
+   "tan": 0.12,
    "updated": "2015-10-07",
-   "url": "https://cdn.sanity.io/files/h61q9gi9/global/07b6027461e86cf5a2794a4290b06363b0480489.xlsx"
+   "url": "https://www.bp.com/content/dam/bp/business-sites/en/global/bp-supply-trading-and-shipping/documents/technical-documents-and-downloads/crudes/ekofisk.xls"
   },
   {
    "api": 42.0703,
@@ -683,6 +681,7 @@
  "source": "https://www.equinor.com/energy/crude-oil-assays",
  "sources": [
   "https://www.equinor.com/energy/crude-oil-assays",
-  "https://varenergi.no/en/operations/crude-oil-assays/"
+  "https://varenergi.no/en/operations/crude-oil-assays/",
+  "https://www.bp.com/en/global/bp-supply-trading-and-shipping/documents-and-downloads/technical-downloads/crudes-assays.html"
  ]
 }

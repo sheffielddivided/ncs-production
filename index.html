@@ -8202,7 +8202,7 @@ function drawPriceDiff() {
 }
 
 // Brent-siden: kvalitet mot differensial. Hvert punkt er ett normprisfelt med
-// en Equinor-assay (Balder: Vår Energi) (data/crude_assays.json, fetch_assays.py): API-grad eller
+// en Equinor-assay (Balder: Vår Energi; Ekofisk: BP) (data/crude_assays.json, fetch_assays.py): API-grad eller
 // svovel fra assayen mot feltets snittdifferensial i perioden over. Assayen er
 // ett øyeblikksbilde (dato i verktøytipset), mens differensialen er et snitt
 // over perioden, så kvaliteten kan ha endret seg underveis.
@@ -8237,11 +8237,11 @@ function priceQualityHtml(months) {
       <div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:#003057"></div>Field (selected above: its colour)</div>
         ${fit ? `<div class="legend-item"><div class="legend-dot" style="background:rgba(232,110,30,0.8);height:3px;border-radius:0"></div>Linear trend: ${fitTxt}</div>` : ''}</div>`
       : '<div class="status">No fields with both an assay and differentials in the period.</div>'}
-    <div class="pf-map-note">Each point is a field with both a norm price and a published assay (Equinor; Balder from Vår Energi); the differential is the average of the months with a value in the period.
+    <div class="pf-map-note">Each point is a field with both a norm price and a published assay (Equinor; Balder from Vår Energi; Ekofisk from BP, whose sample is newer); the differential is the average of the months with a value in the period.
       The assay is a single sample (date in the tooltip), so a blend whose quality has changed over the period sits where it is today.
       ${sx ? 'Sulphur is total sulphur, % by weight.' : 'API gravity: higher is lighter.'}
       ${missing.length ? `No assay: ${missing.map(f => esc(anTitle(f))).join(', ')}.` : ''}
-      Sources: Equinor and Vår Energi crude oil assays; ${PRICE_SRC.replace('Source: ', '')}.</div></div>`;
+      Sources: Equinor, Vår Energi and BP crude oil assays; ${PRICE_SRC.replace('Source: ', '')}.</div></div>`;
 }
 function priceQualX(v) { prF.qx = v; syncUrl(); drawChart(); }
 function drawPriceQuality(months) {
@@ -8284,7 +8284,7 @@ function drawPriceQuality(months) {
     ...(fit ? {trend: {from: {x: x0, y: fit.a + fit.b * x0}, to: {x: x1, y: fit.a + fit.b * x1}, color: 'E86E1E',
       label: `${fit.b < 0 ? '−' : '+'}${Math.abs(fit.b * (sx ? 0.1 : 1)).toFixed(2)} $/bbl per ${sx ? '0.1 % S' : '° API'}, R² = ${fit.r2.toFixed(2)}`}} : {})},
     meta: {title: 'Crude quality vs differential', subtitle: `Average norm price differential ${prF.y0}–${prF.y1} vs Equinor assay · $/bbl`,
-      source: 'Source: Equinor and Vår Energi crude oil assays; Petroleum Price Board / Ministry of Energy'}}]);
+      source: 'Source: Equinor, Vår Energi and BP crude oil assays; Petroleum Price Board / Ministry of Energy'}}]);
 }
 
 // ── PRICES: GAS ──
