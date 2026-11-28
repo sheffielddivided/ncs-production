@@ -10703,7 +10703,7 @@ function drawNcsForecasts() {
   const vint = ncsFc.vintages, on = new Set(ncsF.fv ? ncsF.fv.split(',') : []);
   const fcAt = (v, y) => { const i = y - v.from; return i >= 0 && i < v.values.length ? v.values[i] : null; };
   const datasets = [{label: 'Actual production', data: years.map(y => y <= lastAct && act[y] ? conv(act[y], y) : null),
-    borderColor: NCS_FC_ACTUAL, backgroundColor: NCS_FC_ACTUAL, borderWidth: 3, pointRadius: 0, pointHoverRadius: 3, tension: 0.25, order: -1}];
+    borderColor: NCS_FC_ACTUAL, backgroundColor: NCS_FC_ACTUAL, borderWidth: 5, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, order: -1}];
   const legend = [];
   vint.forEach((v, i) => {
     const color = ncsFcColor(i, vint.length);
