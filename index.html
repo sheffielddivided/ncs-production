@@ -751,6 +751,10 @@
     .val-big span{display:block;font-size:0.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;}
     .val-big strong{display:block;font-size:1.7rem;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1.15;}
     .val-big small{font-size:0.72rem;color:var(--muted);}
+    .cf-ctl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:10px;}
+    .cf-ctl label{display:flex;flex-direction:column;gap:3px;font-size:0.72rem;color:var(--muted);min-width:200px;flex:1 1 200px;max-width:320px;}
+    .cf-ctl strong{color:var(--navy);font-variant-numeric:tabular-nums;margin-left:4px;}
+    .cf-ctl input[type=range]{width:100%;accent-color:var(--navy);margin:0;}
     .val-sub{display:block;font-size:0.66rem;color:var(--muted);margin-top:1px;}
     /* TradingViews selskapsprofil i Valuation BETA; to eiere side om side på brede skjermer. */
     .val-tvp{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:12px;}
@@ -5098,7 +5102,7 @@ function anValCard(fromParts, toParts, sells, fromName) {
   const sens = `<table class="res-table">
       <caption>Total value after tax, USD bn · ${esc(fromName)} → pro forma</caption>
       <thead><tr><th>Oil price</th>${CF_RATES.map(r => `<th>${pct(r)}</th>`).join('')}</tr></thead>
-      <tbody>${CF_PRICES.map(pr => {
+      <tbody>${cfPrices().map(pr => {
         const a = sumVal(fromParts, pr, false), b = sumVal(toParts, pr);
         return `<tr${pr === price ? ' class="total-row"' : ''}><td>USD ${pr}</td>${CF_RATES.map((_, k) =>
           `<td>${n1(a.tot[k])} → <strong>${n1(b.tot[k])}</strong></td>`).join('')}</tr>`;
@@ -5106,8 +5110,7 @@ function anValCard(fromParts, toParts, sells, fromName) {
   return `${valWarnCard(true)}
     <div class="pf-card pf-wide" data-ppt-spec="anVal"><h3>Back-of-the-envelope valuation</h3>
       <div class="val-head">
-        <div><div class="pill-group" style="width:max-content;max-width:100%">${CF_PRICES.map(p =>
-          `<button class="pill-btn${p === price ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div></div>
+        <div>${cfControls()}</div>
         <div class="val-big"><span>Pro forma at ${pct(CF_RATES[0])}</span><strong>USD ${n1(vTo.tot[0])} bn</strong>
           <small>${esc(fromName)}: USD ${n1(vFrom.tot[0])} bn${chg == null ? '' : ` · ${chg >= 0 ? '+' : '−'}${Math.abs(chg).toFixed(0)} %`}</small></div>
       </div>
@@ -6298,7 +6301,7 @@ function drawDcsValuation() {
   const byVal = cmps.map(c => ({c, v: dcsValCompute(c, hubCfPrice, fields).npv[0]})).sort((a, b) => b.v - a.v);
   const cmp = cmps.includes(dcsF.cmp) ? dcsF.cmp : (byVal[0] || {}).c;
   if (!cmp) { setChartEmpty('No Danish ownership data available.'); setInfo(''); return; }
-  const all = CF_PRICES.map(p => ({p, v: dcsValCompute(cmp, p, fields)}));
+  const all = cfPrices().map(p => ({p, v: dcsValCompute(cmp, p, fields)}));
   const v = (all.find(a => a.p === hubCfPrice) || all[0]).v;
   const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -6320,8 +6323,7 @@ function drawDcsValuation() {
   const head = `<div class="pf-card pf-wide">
       <div class="val-head">
         <div><h3>Indicative value, after tax</h3>
-          <div class="pill-group" style="width:max-content">${CF_PRICES.map(p =>
-            `<button class="pill-btn${p === hubCfPrice ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div></div>
+          ${cfControls()}</div>
         <div class="val-big"><span>NPV at ${pct(CF_RATES[0])}</span><strong>USD ${n1(v.npv[0] * tax)} bn</strong>
           <small>at ${pct(CF_RATES[1])}: USD ${n1(v.npv[1] * tax)} bn</small></div>
       </div>
@@ -6365,12 +6367,12 @@ function drawDcsValuation() {
     ['Reserves', `ENS remaining reserves per 1 January ${ry}`, 'Fields in production and approved developments; ENS rounds each field to whole million m³ oil / bn Nm³ gas, so small fields count as zero'],
     ['Production', `Decline from ${y0 - 1} production`, `Per field, ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year until the reserves R are produced; a field with reserves but no production last year starts next year with ramp-up and plateau. A field that started ${y0 - CF_YOUNG_YEARS} or later stays on a plateau (the highest of ${Math.round(CF_PLATEAU_RATE * 100)} % of original reserves, last year's production and this year's rate so far) until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced, as in the Norwegian valuation. Tyra Southeast is counted with Tyra`],
     ['End of production', `${DCS_LAST_YEAR} at the latest`, `Denmark has decided that oil and gas production ends in ${DCS_LAST_YEAR}, so all reserves are produced by then. A field whose decline would run past ${DCS_LAST_YEAR} is front-loaded: it starts from last year's production with a slower decline, so the reserves are produced out exactly in ${DCS_LAST_YEAR}; if not even flat production at last year's level would be enough, the original decline is kept and the whole profile raised. New fields get a higher plateau. Marked * in the field table`],
-    ['Oil price', `USD ${CF_PRICES.join(' / ')} per boe in ${OPEX_BASE} money`, 'All boe, including gas, at the oil price; escalated with inflation'],
+    ['Oil price', `USD ${hubCfPrice} per boe in ${OPEX_BASE} money`, `All boe, including gas, at the oil price; escalated with inflation; chosen with the slider, sensitivity at USD ${CF_PRICES.join(' / ')}`],
     ['Inflation', `${(CF_INFL * 100).toFixed(1)} % a year`, 'On prices and operating cost'],
     ['Operating cost', `USD ${DCS_OPEX_USD} per boe in ${OPEX_BASE} money`, 'Flat for all fields'],
     ['Capex and abandonment', 'Not included', 'ENS has no investment figures per field'],
     ['Tax', `${pct(DCS_TAX)} flat`, 'On all cash flows'],
-    ['Discounting', CF_RATES.map(pct).join(' and '), `Mid-year, as at 1 January ${y0}`],
+    ['Discounting', CF_RATES.map(pct).join(' and '), `Mid-year, as at 1 January ${y0}; the first rate is chosen with the slider (WACC)`],
     ['Horizon', `To ${DCS_LAST_YEAR}`, 'The end of Danish production'],
     ['Ownership', 'Today\'s licence shares (ENS)', 'Forecast only; the production history uses the ownership history'],
   ];
@@ -13154,7 +13156,7 @@ function drawCompanyValuation() {
   if (valChartProd) { valChartProd.destroy(); valChartProd = null; }
   setChartNone();
   if (!cmp) { setChartEmpty('Select a company.'); setInfo(''); return; }
-  const all = CF_PRICES.map(p => ({p, v: valCompute(cmp, p)}));
+  const all = cfPrices().map(p => ({p, v: valCompute(cmp, p)}));
   const v = (all.find(a => a.p === hubCfPrice) || all[0]).v;
   if (!v) { setChartEmpty('Price data could not be loaded.'); setInfo(''); return; }
   const tax = 1 - CF_TAX, y0 = v.y0;
@@ -13173,8 +13175,7 @@ function drawCompanyValuation() {
     <div class="pf-card pf-wide">
       <div class="val-head">
         <div><h3>Indicative value, after tax</h3>
-          <div class="pill-group" style="width:max-content">${CF_PRICES.map(p =>
-            `<button class="pill-btn${p === hubCfPrice ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div></div>
+          ${cfControls()}</div>
         <div class="val-big"><span>Total at ${pct(CF_RATES[0])}</span><strong>USD ${n1(total(v, 0))} bn</strong>
           <small>at ${pct(CF_RATES[1])}: USD ${n1(total(v, 1))} bn</small></div>
       </div>
@@ -13252,7 +13253,7 @@ function drawCompanyValuation() {
 
   // Antakelser.
   const A = [
-    ['Oil price', `USD ${CF_PRICES.join(' / ')} per boe in ${OPEX_BASE} money`, 'All boe, including gas and NGL, at the oil price; escalated with inflation'],
+    ['Oil price', `USD ${hubCfPrice} per boe in ${OPEX_BASE} money`, `All boe, including gas and NGL, at the oil price; escalated with inflation; chosen with the slider, sensitivity at USD ${CF_PRICES.join(' / ')}`],
     ['Inflation', `${(CF_INFL * 100).toFixed(1)} % a year`, `From ${OPEX_BASE}, on prices, opex, capex and abandonment`],
     ['Operating cost', `USD ${OPEX_USD} per boe in ${OPEX_BASE} money`, 'History deflated with the US CPI'],
     ['Production, producing fields', `Decline ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year`, `Per hub, from last year's production P until the reserves R are produced; ends at ${Math.round(CF_CUTOFF * 100)} % of the first forecast year`],
@@ -13261,7 +13262,7 @@ function drawCompanyValuation() {
     ['Remaining capex', `Sodir's expected future investments, ${CF_CAPEX_SPLIT.map(w => Math.round(w * 100)).join('/')} %`, `Over ${invLastYear() + 1}–${invLastYear() + CF_CAPEX_SPLIT.length}; amounts before ${y0} are sunk`],
     ['Abandonment', `${Math.round(CF_ABEX * 100)} % of historical capex`, 'The year after the hub\'s last production year'],
     ['Tax', `${Math.round(CF_TAX * 100)} % flat`, 'On all cash flows, including losses'],
-    ['Discounting', CF_RATES.map(pct).join(' and '), `Mid-year, as at 1 January ${y0}`],
+    ['Discounting', CF_RATES.map(pct).join(' and '), `Mid-year, as at 1 January ${y0}; the first rate is chosen with the slider (WACC)`],
     ['Horizon', `${CF_HORIZON} years`, `Production after ${y0 + CF_HORIZON - 1} is not included`],
     ['Discoveries', `USD ${VAL_DISC_USD} per boe`, 'Equity share of contingent resources in discoveries; added after tax, not discounted'],
     ['Ownership', 'Today\'s licence shares', 'Forecast only; history uses the share in each year'],
@@ -16230,8 +16231,37 @@ const CF_PLATEAU_RATE = 0.12, CF_PLATEAU_SHARE = 1 / 3;
 // Prognosehorisont i år. Et felt med svært store reserver i forhold til
 // produksjonen ville ellers fått en hale på et århundre.
 const CF_HORIZON = 40;
-const CF_ABEX = 0.05, CF_TAX = 0.78, CF_RATES = [0.07, 0.10], CF_PRICES = [60, 80, 100];
-let hubCfPrice = 80, hubCfChart = null;
+const CF_ABEX = 0.05, CF_TAX = 0.78, CF_PRICES = [60, 80, 100];
+// Oljepris (USD 0–200) og diskonteringsrente (WACC 0–20 %) velges fritt med
+// glideskalaene i cfControls. CF_RATES har alltid to satser: den valgte først
+// (hovedtallet), så 10 % til sammenligning (7 % når 10 % er valgt). Mange
+// funksjoner regner med nøyaktig to satser, så lengden må ikke endres.
+// Sensitivitetstabellene viser CF_PRICES pluss den valgte prisen (cfPrices).
+const CF_RATE_ALT = 0.10, CF_RATE_ALT2 = 0.07;
+let hubCfPrice = 80, hubCfRate = 0.07, hubCfChart = null;
+let CF_RATES = [hubCfRate, CF_RATE_ALT];
+const cfPrices = () => [...new Set([...CF_PRICES, hubCfPrice])].sort((a, b) => a - b);
+function hubCfSetRate(r) {
+  hubCfRate = r;
+  CF_RATES = [r, Math.abs(r - CF_RATE_ALT) < 1e-9 ? CF_RATE_ALT2 : CF_RATE_ALT];
+  // Analytics husker NPV per felt og pris, regnet med CF_RATES.
+  Object.keys(anValCache).forEach(k => delete anValCache[k]);
+  drawChart();
+}
+// Glideskalaene. Tallet ved siden av oppdateres mens man drar; verdsettelsen
+// tegnes på nytt først når skalaen slippes (change), ellers ville
+// omtegningen fjerne skalaen midt i dra-bevegelsen.
+function cfControls() {
+  const r = Math.round(hubCfRate * 100);
+  return `<div class="cf-ctl">
+      <label><span>Oil price <strong id="cfPriceOut">USD ${hubCfPrice}</strong></span>
+        <input type="range" min="0" max="200" step="1" value="${hubCfPrice}" aria-label="Oil price, USD per boe"
+          oninput="document.getElementById('cfPriceOut').textContent='USD '+this.value" onchange="hubCfSet(+this.value)"></label>
+      <label><span>Discount rate (WACC) <strong id="cfRateOut">${r} %</strong></span>
+        <input type="range" min="0" max="20" step="1" value="${r}" aria-label="Discount rate (WACC), per cent"
+          oninput="document.getElementById('cfRateOut').textContent=this.value+' %'" onchange="hubCfSetRate(+this.value/100)"></label>
+    </div>`;
+}
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
 function hubCfSet(v) { hubCfPrice = v; drawChart(); }
 
@@ -16434,7 +16464,7 @@ function hubCashFlowCard(ids, noun = 'hub') {
   const fact = (k, v) => `<div class="pf-fact"><span>${k}</span><strong>${v}</strong></div>`;
   // NPV etter skatt for alle scenariene, én rad per oljepris; grafen viser
   // det valgte scenariet, som er uthevet i tabellen.
-  const all = CF_PRICES.map(p => ({p, cf: p === hubCfPrice ? cf : hubCashFlow(ids, p)}));
+  const all = cfPrices().map(p => ({p, cf: p === hubCfPrice ? cf : hubCashFlow(ids, p)}));
   const resBoe = cf.reserves, tax = 1 - CF_TAX;
   const perBoe = v => resBoe > 1e6 ? (v * 1e9 / resBoe).toFixed(2) : '—';
   const pct = r => `${Math.round(r * 100)} %`;
@@ -16447,8 +16477,7 @@ function hubCashFlowCard(ids, noun = 'hub') {
     </table>
     <div class="pf-map-note">Per barrel of remaining reserves at end-${y0 - 1}: ${n1(resBoe / 1e6)} million boe.</div></div>` : '';
   return `<div class="pf-card pf-wide" data-ppt-spec="hubCf"><h3>Simulated cash flow</h3>
-    ${cf.hasForecast ? `<div class="pill-group" style="margin-bottom:10px;width:max-content">${CF_PRICES.map(p =>
-      `<button class="pill-btn${p === hubCfPrice ? ' active' : ''}" onclick="hubCfSet(${p})">Oil price USD ${p}</button>`).join('')}</div>` : ''}
+    ${cf.hasForecast ? `${cfControls()}` : ''}
     <div class="pf-facts">
       ${histEnd ? fact(`Cumulative to ${histEnd.y}`, `USD ${n1(histEnd.acc)} bn`) : ''}
       ${fact('Maximum exposure', low.acc < 0 ? `USD ${n1(-low.acc)} bn (${low.y})` : '—')}

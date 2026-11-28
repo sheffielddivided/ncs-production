@@ -3899,6 +3899,22 @@ opprinnelige fallet og kurven løftes. Nye felt får høyere platånivå
 (`cfNewField` tar nå platåraten som valgfritt argument). Feltene merkes * i
 felttabellen, og horisonten er 2050.
 
+## Valuation BETA: glideskala for oljepris og WACC
+
+Prisknappene (USD 60/80/100) er erstattet av to glideskalaer (`cfControls`) i
+alle verdsettelsene: Company, Hub, Field, DCS og Analytics. Oljepris USD 0–200
+(`hubCfPrice`, `hubCfSet`) og diskonteringsrente (WACC) 0–20 % i hele prosent
+(`hubCfRate`, `hubCfSetRate`). Tallet ved skalaen følger med mens man drar,
+men siden tegnes på nytt først når skalaen slippes. Ellers ville omtegningen
+fjerne skalaen midt i bevegelsen.
+
+`CF_RATES` er nå `let` og har alltid to satser: den valgte først (hovedtallet),
+så 10 % til sammenligning (7 % når 10 % er valgt). Mye kode regner med nøyaktig to
+satser (blant annet `anValZero`/`anValPlus` i Analytics), så lengden må ikke
+endres. `hubCfSetRate` tømmer `anValCache`, som husker NPV per felt og pris.
+Sensitivitetstabellene viser `CF_PRICES` pluss den valgte prisen (`cfPrices()`).
+Valgene lagres ikke i lenken.
+
 ## Company → Valuation BETA: verdi per aksje
 
 Kortet «From portfolio value to value per share» (`valEquityCard`, rett under
