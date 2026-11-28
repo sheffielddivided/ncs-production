@@ -8324,12 +8324,14 @@ function priceQualityHtml(months) {
   const fit = qualFit(pts);
   const missing = Object.keys(priceData.diff.fields).filter(f => !A.some(a => qualKey(a.name) === qualKey(f)));
   const sign = v => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(2)}`;
-  const fitTxt = fit ? `${sign(fit.b * (vm ? 1 : sx ? 0.1 : 1))} $/bbl per ${vm ? '10× volume' : sx ? '0.1 % sulphur' : 'API degree'}, R² = ${fit.r2.toFixed(2)}, ${fit.n} ${vm ? 'blends' : 'fields'}` : '';
+  const fitTxt = !fit ? '' : fit.kind === 'quad'
+    ? `Quadratic fit${fit.peak != null ? `, peaking at ${fit.peak.toFixed(0)}° API` : ''}: R² ${fit.r2.toFixed(2)}, cross-validated ${fit.q2.toFixed(2)}, ${fit.n} fields`
+    : `No trend line: neither a straight line nor a curve fits (straight line R² ${fit.r2.toFixed(2)}, ${fit.n} ${vm ? 'blends' : 'fields'})`;
   if (vm && !coreDone) coreReady.then(() => { if (topMode === 'prices' && qualVolMode()) drawChart(); });
   return `<div><h4>${vm ? 'Volume' : 'Quality'} vs average ${pillRow(QUAL_X, prF.qx || 'api', v => `priceQualX('${v}')`)}</h4>
     ${vm && !coreDone ? '<div class="status">Loading production data…</div>' : pts.length ? `<div class="chart-container"><canvas id="qualChart"></canvas></div>
       <div class="legend-row"><div class="legend-item"><div class="legend-dot" style="background:#003057"></div>All fields; selected in their colour</div>
-        ${fit ? `<div class="legend-item"><div class="legend-dot" style="background:rgba(232,110,30,0.8);height:3px;border-radius:0"></div>Linear trend: ${fitTxt}</div>` : ''}</div>`
+        ${fit ? `<div class="legend-item">${fit.kind === 'quad' ? '<div class="legend-dot" style="background:rgba(232,110,30,0.8);height:3px;border-radius:0"></div>' : ''}${fitTxt}</div>` : ''}</div>`
       : '<div class="status">No fields with both an assay and differentials in the period.</div>'}
     ${vm ? qualVolNote(months) : `<div class="pf-map-note">Each point is a field with both a norm price and a published assay (Equinor; Balder from Vår Energi; Ekofisk from BP, whose sample is newer); the differential is the average of the months with a value in the period.
       The assay is a single sample (date in the tooltip), so a blend whose quality has changed over the period sits where it is today.
@@ -8339,9 +8341,21 @@ function priceQualityHtml(months) {
     <button type="button" class="grp-btn" style="margin-top:6px" onclick="npRegOpen()">Regression: volume and quality ›</button></div>`;
 }
 // Lineær trend; for volum mot log10 av volumet (stigningen er per tidobling).
+// Trendkurven. Bare API har en sammenheng som holder utenfor utvalget: en
+// parabel (medium-lett olje prises best), R² om lag 0,8 og utelat-én-Q² om lag
+// 0,6–0,7 for 2015–2026 og 2021–2026. For svovel og volum gir verken rett linje,
+// parabel, tredjegradskurve eller lokal glatting positiv Q², så der tegnes
+// ingen kurve; R² for en rett linje oppgis i forklaringen.
 function qualFit(pts) {
-  if (pts.length < 3) return null;
-  return qualVolMode() ? olsFit(pts.map(p => ({x: Math.log10(p.x), y: p.y}))) : olsFit(pts);
+  if (pts.length < 4) return null;
+  if (!qualVolMode() && prF.qx !== 's') {
+    const m = regOls(pts.map(p => ({y: p.y, x: {a: p.x, b: p.x * p.x}})), ['a', 'b']);
+    if (!m) return null;
+    const [c0, c1, c2] = m.b;
+    return {kind: 'quad', f: x => c0 + c1 * x + c2 * x * x, peak: c2 < 0 ? -c1 / (2 * c2) : null, r2: m.r2, q2: m.q2, n: m.n};
+  }
+  const l = olsFit(qualVolMode() ? pts.map(p => ({x: Math.log10(p.x), y: p.y})) : pts);
+  return {kind: 'none', r2: l.r2, n: l.n};
 }
 // Popupen med feltene i hver blend; klikk utenfor eller Esc lukker den.
 function npBlendsOpen() {
@@ -8550,16 +8564,16 @@ function drawPriceQuality(months) {
   const el = document.getElementById('qualChart');
   if (!el) return;
   const pts = priceQualityPoints(months), sx = prF.qx === 's', vm = qualVolMode();
-  const fit = qualFit(pts), fx = x => vm ? Math.log10(x) : x;
+  const fit = qualFit(pts);
   const col = p => prF.sel.includes(p.f) ? PRICE_COLORS[prF.slot[p.f]] : 'rgba(0,48,87,0.75)';
   const xs = pts.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs);
   const f2 = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const xTxt = v => sx ? `${v.toFixed(2)} % S` : `${v.toFixed(1)}° API`;
   const ds = [{label: 'Fields', data: pts, pointRadius: 5, pointHoverRadius: 7,
     backgroundColor: pts.map(col), borderColor: '#fff', borderWidth: 1}];
-  const trend = fit ? [{x: x0, y: fit.a + fit.b * fx(x0)}, {x: x1, y: fit.a + fit.b * fx(x1)}] : null;
-  if (fit) ds.push({label: 'Linear trend', type: 'line', data: trend,
-    borderColor: 'rgba(232,110,30,0.8)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0});
+  const curve = fit && fit.kind === 'quad' ? Array.from({length: 41}, (_, i) => { const x = x0 + (x1 - x0) * i / 40; return {x, y: fit.f(x)}; }) : null;
+  if (curve) ds.push({label: 'Quadratic fit', type: 'line', data: curve,
+    borderColor: 'rgba(232,110,30,0.8)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0});
   const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
     grid: {color: ctx => t.startsWith('Average') && ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'}});
   const names = scatterNamesPlugin(pts.map(p => anTitle(p.f)));
@@ -8577,9 +8591,8 @@ function drawPriceQuality(months) {
     xTitle: vm ? 'Blend crude volume, kbbl/d' : sx ? 'Sulphur, % wt' : 'API gravity', yTitle: `Average differential ${prF.y0}–${prF.y1}, $/bbl`,
     xMin: qualChart.scales.x.min, xMax: qualChart.scales.x.max, yMin: qualChart.scales.y.min, yMax: qualChart.scales.y.max,
     series: [{name: 'Fields', points: pts.map(p => ({x: p.x, y: +p.y.toFixed(2), m: anTitle(p.f)})), color: '003057'}],
-    // PowerPoint har ikke logaritmisk akse; trendlinjen i volumplottet er krum der, så den utelates.
-    ...(fit && !vm ? {trend: {from: trend[0], to: trend[1], color: 'E86E1E',
-      label: `${fit.b < 0 ? '−' : '+'}${Math.abs(fit.b * (sx ? 0.1 : 1)).toFixed(2)} $/bbl per ${sx ? '0.1 % S' : '° API'}, R² = ${fit.r2.toFixed(2)}`}} : {})},
+    // PPT-spesifikasjonen har bare rette trendlinjer, så parabelen er ikke med i PowerPoint.
+    },
     meta: vm ? {title: 'Blend volume vs differential', subtitle: `Average norm price differential ${prF.y0}–${prF.y1} vs estimated blend crude volume · $/bbl, kbbl/d`,
       source: 'Source: Sodir FactPages (production); Petroleum Price Board / Ministry of Energy; NCS Insight blend mapping'}
       : {title: 'Crude quality vs differential', subtitle: `Average norm price differential ${prF.y0}–${prF.y1} vs Equinor assay · $/bbl`,
