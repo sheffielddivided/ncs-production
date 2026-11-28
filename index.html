@@ -752,9 +752,12 @@
     .val-big strong{display:block;font-size:1.7rem;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1.15;}
     .val-big small{font-size:0.72rem;color:var(--muted);}
     .cf-ctl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:10px;}
-    .cf-ctl label{display:flex;flex-direction:column;gap:3px;font-size:0.72rem;color:var(--muted);min-width:200px;flex:1 1 200px;max-width:320px;}
-    .cf-ctl strong{color:var(--navy);font-variant-numeric:tabular-nums;margin-left:4px;}
-    .cf-ctl input[type=range]{width:100%;accent-color:var(--navy);margin:0;}
+    .cf-one{display:flex;flex-direction:column;gap:3px;font-size:0.72rem;color:var(--muted);min-width:220px;flex:1 1 220px;max-width:340px;}
+    .cf-row{display:flex;align-items:center;gap:8px;}
+    .cf-row input[type=range]{flex:1;min-width:0;accent-color:var(--navy);margin:0;}
+    .cf-num{display:inline-flex;align-items:center;gap:3px;color:var(--navy);font-weight:600;}
+    .cf-num input{width:4.2em;padding:3px 4px;border:1.5px solid var(--border);border-radius:5px;font:inherit;font-size:0.8rem;color:var(--navy);text-align:right;font-variant-numeric:tabular-nums;background:#fff;}
+    .cf-num input:focus{outline:2px solid var(--navy);outline-offset:0;}
     .val-sub{display:block;font-size:0.66rem;color:var(--muted);margin-top:1px;}
     /* TradingViews selskapsprofil i Valuation BETA; to eiere side om side på brede skjermer. */
     .val-tvp{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:12px;}
@@ -16290,19 +16293,34 @@ function hubCfSetRate(r) {
   Object.keys(anValCache).forEach(k => delete anValCache[k]);
   drawChart();
 }
-// Glideskalaene. Tallet ved siden av oppdateres mens man drar; verdsettelsen
-// tegnes på nytt først når skalaen slippes (change), ellers ville
-// omtegningen fjerne skalaen midt i dra-bevegelsen.
+// Glideskalaene, hver med et tallfelt der verdien kan skrives inn eksakt (eller
+// justeres med pilene). Under draing oppdateres bare tallfeltet; verdsettelsen
+// tegnes på nytt når skalaen slippes eller tallfeltet endres (change), ellers
+// ville omtegningen fjerne skalaen midt i dra-bevegelsen. Etter omtegning får
+// elementet man brukte fokus igjen, så piltastene virker videre.
+const CF_CTL = {price: {min: 0, max: 200, label: 'Oil price', unit: 'USD', pre: true},
+                rate: {min: 0, max: 20, label: 'Discount rate (WACC)', unit: '%', pre: false}};
 function cfControls() {
-  const r = Math.round(hubCfRate * 100);
-  return `<div class="cf-ctl">
-      <label><span>Oil price <strong id="cfPriceOut">USD ${hubCfPrice}</strong></span>
-        <input type="range" min="0" max="200" step="1" value="${hubCfPrice}" aria-label="Oil price, USD per boe"
-          oninput="document.getElementById('cfPriceOut').textContent='USD '+this.value" onchange="hubCfSet(+this.value)"></label>
-      <label><span>Discount rate (WACC) <strong id="cfRateOut">${r} %</strong></span>
-        <input type="range" min="0" max="20" step="1" value="${r}" aria-label="Discount rate (WACC), per cent"
-          oninput="document.getElementById('cfRateOut').textContent=this.value+' %'" onchange="hubCfSetRate(+this.value/100)"></label>
+  const val = {price: hubCfPrice, rate: Math.round(hubCfRate * 100)};
+  return `<div class="cf-ctl">${Object.entries(CF_CTL).map(([k, c]) => `
+      <div class="cf-one"><span class="cf-lbl">${c.label}</span>
+        <div class="cf-row">
+          <input type="range" id="cf-${k}-r" min="${c.min}" max="${c.max}" step="1" value="${val[k]}" aria-label="${c.label}"
+            oninput="document.getElementById('cf-${k}-n').value=this.value" onchange="cfApply('${k}',this.value,this.id)">
+          <span class="cf-num">${c.pre ? `<span>${c.unit}</span>` : ''}<input type="number" id="cf-${k}-n" min="${c.min}" max="${c.max}" step="1"
+            value="${val[k]}" inputmode="numeric" aria-label="${c.label}, exact value" onchange="cfApply('${k}',this.value,this.id)"
+            onkeydown="if(event.key==='Enter')this.blur()">${c.pre ? '' : `<span>${c.unit}</span>`}</span>
+        </div></div>`).join('')}
     </div>`;
+}
+function cfApply(kind, raw, from) {
+  const c = CF_CTL[kind];
+  let v = Math.round(+raw);
+  if (!isFinite(v)) v = kind === 'price' ? hubCfPrice : Math.round(hubCfRate * 100);
+  v = Math.min(c.max, Math.max(c.min, v));
+  if (kind === 'price') hubCfSet(v); else hubCfSetRate(v / 100);
+  const el = from && document.getElementById(from);
+  if (el && from.endsWith('-r')) el.focus({preventScroll: true});
 }
 const cfInfl = y => Math.pow(1 + CF_INFL, y - OPEX_BASE);
 function hubCfSet(v) { hubCfPrice = v; drawChart(); }
