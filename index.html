@@ -8602,11 +8602,10 @@ function drawPriceQuality(months) {
     xTitle: vm ? 'Blend crude volume, kbbl/d' : sx ? 'Sulphur, % wt' : 'API gravity', yTitle: `Average differential ${prF.y0}–${prF.y1}, $/bbl`,
     xMin: qualChart.scales.x.min, xMax: qualChart.scales.x.max, yMin: qualChart.scales.y.min, yMax: qualChart.scales.y.max,
     series: [{name: 'Fields', points: pts.map(p => ({x: p.x, y: +p.y.toFixed(2), m: anTitle(p.f)})), color: '003057'}],
-    // PPT-spesifikasjonen har bare rette trendlinjer, så parabelen er ikke med i PowerPoint.
-    },
+    ...(curve ? {curve: {points: curve, color: 'E86E1E', label: `Quadratic fit${fit.peak != null ? `, peaking at ${fit.peak.toFixed(0)}° API` : ''}: R² ${fit.r2.toFixed(2)}, cross-validated ${fit.q2.toFixed(2)}`}} : {})},
     meta: vm ? {title: 'Blend volume vs differential', subtitle: `Average norm price differential ${prF.y0}–${prF.y1} vs estimated blend crude volume · $/bbl, kbbl/d`,
       source: 'Source: Sodir FactPages (production); Petroleum Price Board / Ministry of Energy; NCS Insight blend mapping'}
-      : {title: 'Crude quality vs differential', subtitle: `Average norm price differential ${prF.y0}–${prF.y1} vs Equinor assay · $/bbl`,
+      : {title: 'Crude quality vs differential', subtitle: `Average norm price differential ${prF.y0}–${prF.y1} vs crude assay${sx ? ' (sulphur)' : ' (API gravity)'} · $/bbl`,
       source: 'Source: Equinor, Vår Energi and BP crude oil assays; Petroleum Price Board / Ministry of Energy'}}]);
 }
 
@@ -19425,6 +19424,23 @@ function pptAddChart(pptx, slide, spec, box) {
         flipV: yb < ya, line: {color: spec.trend.color, width: 2, dashType: 'dash'}});
       slide.addText('Linear trend: ' + spec.trend.label, {x: box.x + box.w * L.x + 0.1, y: box.y + 0.05, w: 8, h: 0.3,
         fontFace: 'Arial', fontSize: 10, color: spec.trend.color});
+    }
+    // Krum trend (spec.curve: {points, color, label}): én stiplet frihåndsfigur
+    // (custGeom) gjennom punktene, avgrenset til plottområdet.
+    if (spec.curve) {
+      const px = x => box.x + box.w * (L.x + L.w * (x - spec.xMin) / (spec.xMax - spec.xMin));
+      const py = y => box.y + box.h * (L.y + L.h * (1 - (y - spec.yMin) / (spec.yMax - spec.yMin)));
+      const pts = spec.curve.points.filter(p => p.y >= spec.yMin && p.y <= spec.yMax && p.x >= spec.xMin && p.x <= spec.xMax)
+        .map(p => ({x: px(p.x), y: py(p.y)}));
+      if (pts.length > 1) {
+        const x0 = Math.min(...pts.map(p => p.x)), y0 = Math.min(...pts.map(p => p.y));
+        const w = Math.max(0.01, Math.max(...pts.map(p => p.x)) - x0), h = Math.max(0.01, Math.max(...pts.map(p => p.y)) - y0);
+        slide.addShape(pptx.shapes.CUSTOM_GEOMETRY, {x: x0, y: y0, w, h,
+          points: pts.map((p, i) => ({x: p.x - x0, y: p.y - y0, ...(i ? {} : {moveTo: true})})),
+          line: {color: spec.curve.color, width: 2, dashType: 'dash'}});
+      }
+      slide.addText(spec.curve.label, {x: box.x + box.w * L.x + 0.1, y: box.y + 0.05, w: 8, h: 0.3,
+        fontFace: 'Arial', fontSize: 10, color: spec.curve.color});
     }
     return;
   }
