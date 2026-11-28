@@ -224,7 +224,19 @@
       font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
     .np-row3 h4 .pill-group{margin:0 !important;text-transform:none;letter-spacing:0;}
     .np-row3 .chart-container{height:320px;}
-    .np-dlg{height:auto;margin:auto;}
+    .val-dlg.np-dlg{height:auto;margin:auto;}
+    .np-reg-vars{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font-size:0.85rem;}
+    .np-reg-vars label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;min-height:28px;}
+    .np-reg-stats{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 8px;font-size:0.85rem;}
+    .np-reg .np-blends table.np-reg-tbl{table-layout:auto;}
+    .np-reg-tbl td:nth-child(n+2):nth-child(-n+4), .np-reg-tbl th:nth-child(n+2):nth-child(-n+4){text-align:right !important;width:auto;white-space:nowrap !important;}
+    .np-reg-tbl tr.np-sig td{font-weight:700;}
+    .np-reg-row{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:10px;}
+    .np-reg-row > div{min-width:0;} .np-reg-row h4{margin:0 0 6px;font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+    .np-reg .np-blends table.np-reg-res{table-layout:auto;} .np-reg-res td{padding:3px 6px !important;}
+    .np-reg-res td:nth-child(2){text-align:right !important;white-space:nowrap !important;width:60px;} .np-reg-res td:nth-child(3){width:45%;}
+    .np-reg-bar{display:block;height:9px;border-radius:2px;}
+    @media (max-width: 699px){ .np-reg-row{grid-template-columns:1fr;} .np-reg-tbl th:nth-child(5), .np-reg-tbl td:nth-child(5){display:none;} }
     .np-dlg .np-blends{flex:1 1 auto;min-height:0;overflow:auto;}
     .np-blends{font-size:0.78rem;}
     .np-blends table{width:100%;table-layout:fixed;}
@@ -8322,7 +8334,8 @@ function priceQualityHtml(months) {
       The assay is a single sample (date in the tooltip), so a blend whose quality has changed over the period sits where it is today.
       ${sx ? 'Sulphur is total sulphur, % by weight.' : 'API gravity: higher is lighter.'}
       ${missing.length ? `No assay: ${missing.map(f => esc(anTitle(f))).join(', ')}.` : ''}
-      Assays: Equinor, Vår Energi and BP.</div>`}</div>`;
+      Assays: Equinor, Vår Energi and BP.</div>`}
+    <button type="button" class="grp-btn" style="margin-top:6px" onclick="npRegOpen()">Regression: volume and quality ›</button></div>`;
 }
 // Lineær trend; for volum mot log10 av volumet (stigningen er per tidobling).
 function qualFit(pts) {
@@ -8335,6 +8348,122 @@ function npBlendsOpen() {
   if (!d) return;
   if (!d.dataset.wired) { d.dataset.wired = '1'; d.addEventListener('click', e => { if (e.target === d) d.close(); }); }
   d.showModal();
+}
+// ── Regresjon: snittdifferensial mot volum og kvalitet ──
+// Én observasjon per normprisblend med både assay og volum, over perioden som
+// er valgt (samme snitt som i plottene). Minste kvadraters metode med
+// konstantledd; variablene velges i popupen. API inngår også som (API − 35)²,
+// fordi prisen er best for medium-lett olje og faller for både tung og svært
+// lett olje (kondensatlignende blends). Med 15–20 observasjoner er dette
+// indikativt: t-verdier over om lag 2 i absoluttverdi er merket.
+const REG_VARS = [['lv', 'log₁₀ volume', 'log₁₀ of blend crude volume, kbbl/d: the effect of a tenfold volume'],
+  ['api', 'API', 'API gravity, °'], ['api2', '(API − 35)²', 'curvature in API: negative means medium crudes price best'],
+  ['s', 'Sulphur', 'total sulphur, % wt'], ['tan', 'TAN', 'total acid number, mgKOH/g']];
+let regSel = new Set(['lv', 'api', 'api2', 's']), regChart = null;
+function regRows(months) {
+  const A = priceData.assays && priceData.assays.assays, B = priceData.blends;
+  if (!A || !B || !bundle.production) return [];
+  const byKey = Object.fromEntries(A.map(a => [qualKey(a.name), a]));
+  return Object.keys(priceData.diff.fields).map(f => {
+    const a = byKey[qualKey(f)], ms = months.filter(m => priceData.diff.fields[f][m] != null);
+    if (!a || !B.blends[f] || !ms.length || a.sulphur == null || a.tan == null) return null;
+    const vol = ms.reduce((t, m) => t + blendVolume(f, m), 0) / ms.length;
+    if (!(vol > 0)) return null;
+    return {f, y: ms.reduce((t, m) => t + priceData.diff.fields[f][m], 0) / ms.length, n: ms.length, vol,
+      x: {lv: Math.log10(vol), api: a.api, api2: (a.api - 35) ** 2, s: a.sulphur, tan: a.tan}};
+  }).filter(Boolean);
+}
+// OLS med konstantledd: koeffisienter, standardfeil, t, R², justert R² og residualer.
+function regOls(rows, vars) {
+  const n = rows.length, k = vars.length + 1;
+  if (n <= k) return null;
+  const X = rows.map(r => [1, ...vars.map(v => r.x[v])]), y = rows.map(r => r.y);
+  const XtX = Array.from({length: k}, (_, i) => Array.from({length: k}, (_, j) => X.reduce((t, r) => t + r[i] * r[j], 0)));
+  const Xty = Array.from({length: k}, (_, i) => X.reduce((t, r, q) => t + r[i] * y[q], 0));
+  // Gauss–Jordan-invers av X'X.
+  const M = XtX.map((r, i) => [...r, ...Array.from({length: k}, (_, j) => +(i === j))]);
+  for (let c = 0; c < k; c++) {
+    let piv = c; for (let r = c + 1; r < k; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-12) return null;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    const d = M[c][c]; M[c] = M[c].map(v => v / d);
+    for (let r = 0; r < k; r++) if (r !== c) { const f = M[r][c]; M[r] = M[r].map((v, j) => v - f * M[c][j]); }
+  }
+  const inv = M.map(r => r.slice(k));
+  const b = inv.map(r => r.reduce((t, v, j) => t + v * Xty[j], 0));
+  const fit = X.map(r => r.reduce((t, v, j) => t + v * b[j], 0)), e = y.map((v, i) => v - fit[i]);
+  const my = y.reduce((t, v) => t + v, 0) / n, sst = y.reduce((t, v) => t + (v - my) ** 2, 0), sse = e.reduce((t, v) => t + v * v, 0);
+  const s2 = sse / (n - k), se = inv.map((r, i) => Math.sqrt(s2 * r[i]));
+  const r2 = sst ? 1 - sse / sst : 0;
+  // Utelat-én-kryssvalidering: hvor godt modellen treffer en blend den ikke er estimert på (Q²).
+  const press = e.reduce((t, v, i) => { const h = X[i].reduce((a, xi, p) => a + xi * X[i].reduce((c, xj, q) => c + inv[p][q] * xj, 0), 0); return t + (v / (1 - h)) ** 2; }, 0);
+  return {b, se, n, k, r2, ar2: 1 - (1 - r2) * (n - 1) / (n - k), q2: sst ? 1 - press / sst : 0, fit, e, s: Math.sqrt(s2)};
+}
+function npRegToggle(v) {
+  if (regSel.has(v)) regSel.delete(v); else regSel.add(v);
+  npRegDraw();
+}
+function npRegOpen() {
+  let d = document.getElementById('npRegDlg');
+  if (!d) {
+    d = document.createElement('dialog');
+    d.id = 'npRegDlg'; d.className = 'val-dlg np-dlg np-reg'; d.setAttribute('aria-labelledby', 'npRegTitle');
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+    d.addEventListener('close', () => { if (regChart) { regChart.destroy(); regChart = null; } });
+    document.body.appendChild(d);
+  }
+  d.showModal();
+  npRegDraw();
+  if (!coreDone) coreReady.then(() => { if (d.open) npRegDraw(); });
+}
+function npRegDraw() {
+  const d = document.getElementById('npRegDlg');
+  if (!d) return;
+  if (regChart) { regChart.destroy(); regChart = null; }
+  const months = priceMonths(), vars = REG_VARS.map(v => v[0]).filter(v => regSel.has(v));
+  const rows = coreDone ? regRows(months) : [], m = rows.length ? regOls(rows, vars) : null;
+  const f2 = v => `${v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: v !== 0 && Math.abs(v) < 0.1 ? 3 : 2})}`;
+  const head = `<div class="val-dlg-head"><h3 id="npRegTitle">Regression: differential vs volume and quality</h3>
+    <button type="button" class="val-dlg-x" aria-label="Close" onclick="this.closest('dialog').close()">×</button></div>`;
+  const pills = `<div class="np-reg-vars">${REG_VARS.map(([v, l, t]) => `<label title="${esc(t)}"><input type="checkbox" ${regSel.has(v) ? 'checked' : ''}
+    onchange="npRegToggle('${v}')"> ${l}</label>`).join('')}</div>`;
+  let body;
+  if (!coreDone) body = '<div class="status">Loading production data…</div>';
+  else if (!m) body = `<div class="status">Too few blends (${rows.length}) for ${vars.length} variable${vars.length === 1 ? '' : 's'}, or the variables are collinear.</div>`;
+  else {
+    const names = ['Constant', ...vars.map(v => REG_VARS.find(x => x[0] === v)[1])];
+    const tbl = `<table class="res-table np-reg-tbl"><thead><tr><th>Variable</th><th>Coefficient</th><th>Std. error</th><th>t</th><th>Meaning</th></tr></thead><tbody>${
+      m.b.map((b, i) => { const t = b / m.se[i], v = i ? vars[i - 1] : null; return `<tr${i && Math.abs(t) >= 2 ? ' class="np-sig"' : ''}><td>${names[i]}</td>
+        <td>${f2(b)}</td><td>${f2(m.se[i])}</td><td>${t.toFixed(1)}</td><td>${v ? esc(REG_VARS.find(x => x[0] === v)[2]) : ''}</td></tr>`; }).join('')}</tbody></table>`;
+    const peak = vars.includes('api') && vars.includes('api2') && m.b[vars.indexOf('api2') + 1] < 0
+      ? 35 - m.b[vars.indexOf('api') + 1] / (2 * m.b[vars.indexOf('api2') + 1]) : null;
+    const lvB = vars.includes('lv') ? m.b[vars.indexOf('lv') + 1] : null, lvT = vars.includes('lv') ? lvB / m.se[vars.indexOf('lv') + 1] : null;
+    const res = rows.map((r, i) => ({r, e: m.e[i]})).sort((a, b) => a.e - b.e);
+    body = `<div class="np-reg-stats"><span><b>${m.n}</b> blends</span><span>R² <b>${m.r2.toFixed(2)}</b></span><span>adjusted R² <b>${m.ar2.toFixed(2)}</b></span>
+        <span title="Leave-one-out: how well the model predicts a blend it was not fitted on">cross-validated Q² <b>${m.q2.toFixed(2)}</b></span><span>residual s.d. <b>${m.s.toFixed(2)}</b> $/bbl</span></div>
+      ${tbl}
+      <div class="pf-map-note">${lvB != null ? `<strong>Volume:</strong> ${f2(lvB)} $/bbl for a tenfold larger blend, holding the other variables fixed (t = ${lvT.toFixed(1)}${Math.abs(lvT) < 2 ? ', not significant at about 5 %' : ''}). ` : ''}
+        ${peak != null ? `<strong>API:</strong> with the curvature term, the differential peaks at about ${peak.toFixed(0)}° API. ` : ''}
+        Bold rows: |t| ≥ 2. With ${m.n} blends the estimates are indicative; Q² below R² shows how much of the fit is lost on a blend left out.</div>
+      <div class="np-reg-row"><div><h4>Fitted vs actual</h4><div class="chart-container" style="height:300px"><canvas id="npRegChart"></canvas></div></div>
+        <div><h4>Residuals, $/bbl</h4><table class="res-table np-reg-res"><tbody>${res.map(({r, e}) => `<tr><td>${esc(anTitle(r.f))}</td><td>${e < 0 ? '−' : '+'}${Math.abs(e).toFixed(2)}</td>
+          <td><span class="np-reg-bar" style="width:${Math.min(100, Math.abs(e) / Math.max(...res.map(x => Math.abs(x.e))) * 100).toFixed(0)}%;background:${e < 0 ? '#c0392b' : '#00b373'}"></span></td></tr>`).join('')}</tbody></table></div></div>`;
+  }
+  d.innerHTML = `${head}<div class="pf-map-note" style="margin:0 0 6px">Average norm price differential ${prF.y0}–${prF.y1} ($/bbl relative to Dated Brent),
+      one observation per blend with an assay and a volume estimate. Choose the variables:</div>${pills}<div class="np-blends">${body}</div>`;
+  const el = document.getElementById('npRegChart');
+  if (el && m) {
+    const pts = rows.map((r, i) => ({x: m.fit[i], y: r.y}));
+    const lo = Math.floor(Math.min(...pts.flatMap(p => [p.x, p.y])) - 0.3), hi = Math.ceil(Math.max(...pts.flatMap(p => [p.x, p.y])) + 0.3);
+    const ax = t => ({min: lo, max: hi, title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}}, grid: {color: 'rgba(0,0,0,0.05)'}});
+    regChart = new Chart(el.getContext('2d'), {type: 'scatter', plugins: [scatterNamesPlugin(rows.map(r => anTitle(r.f)))],
+      data: {datasets: [{label: 'Blends', data: pts, pointRadius: 5, backgroundColor: 'rgba(0,48,87,0.8)', borderColor: '#fff', borderWidth: 1},
+        {label: 'Perfect fit', type: 'line', data: [{x: lo, y: lo}, {x: hi, y: hi}], borderColor: 'rgba(232,110,30,0.8)', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0}]},
+      options: {responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
+          label: c => ` ${anTitle(rows[c.dataIndex].f)}: actual ${f2(c.raw.y)}, fitted ${f2(c.raw.x)} $/bbl`}}},
+        scales: {x: ax('Fitted, $/bbl'), y: ax('Actual, $/bbl')}}});
+  }
 }
 // Merknaden og sammensetningen av blendene under volumplottet.
 function qualVolNote(months) {
@@ -8367,31 +8496,15 @@ function qualBlendTable(months) {
         <td>${r.pt ? fmt(r.pt.x) : '—'}</td>
         <td>${r.names.join(', ')}${r.note ? `<br><small class="an-sh">${esc(r.note)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div></div></dialog>`;
 }
-function priceQualX(v) { prF.qx = v; syncUrl(); drawChart(); }
-function drawPriceQuality(months) {
-  const el = document.getElementById('qualChart');
-  if (!el) return;
-  const pts = priceQualityPoints(months), sx = prF.qx === 's', vm = qualVolMode();
-  const fit = qualFit(pts), fx = x => vm ? Math.log10(x) : x;
-  const col = p => prF.sel.includes(p.f) ? PRICE_COLORS[prF.slot[p.f]] : 'rgba(0,48,87,0.75)';
-  const xs = pts.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs);
-  const f2 = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  const xTxt = v => sx ? `${v.toFixed(2)} % S` : `${v.toFixed(1)}° API`;
-  const ds = [{label: 'Fields', data: pts, pointRadius: 5, pointHoverRadius: 7,
-    backgroundColor: pts.map(col), borderColor: '#fff', borderWidth: 1}];
-  const trend = fit ? [{x: x0, y: fit.a + fit.b * fx(x0)}, {x: x1, y: fit.a + fit.b * fx(x1)}] : null;
-  if (fit) ds.push({label: 'Linear trend', type: 'line', data: trend,
-    borderColor: 'rgba(232,110,30,0.8)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0});
-  const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
-    grid: {color: ctx => t.startsWith('Average') && ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'}});
   // Feltnavnet ved hvert punkt, uten at navnene overlapper hverandre eller
-  // punktene: tette punkter plasseres først, og hvert navn får den første
+// punktene: tette punkter plasseres først, og hvert navn får den første
   // ledige plassen av kandidatene rundt punktet (høyre, venstre, over, under,
   // på skrå, så lenger ut med en tynn strek til punktet). Er ingen ledig,
   // brukes plassen med minst overlapp.
-  const names = {id: 'qualNames', afterDatasetsDraw(ch) {
+function scatterNamesPlugin(labels) {
+  return {id: 'scatterNames', afterDatasetsDraw(ch) {
     const c = ch.ctx, A = ch.chartArea, H = 12, R = 6;
-    const P = ch.getDatasetMeta(0).data.map((pt, i) => ({x: pt.x, y: pt.y, t: anTitle(pts[i].f)}));
+    const P = ch.getDatasetMeta(0).data.map((pt, i) => ({x: pt.x, y: pt.y, t: labels[i]}));
     c.save(); c.font = '600 10px system-ui, sans-serif';
     P.forEach(p => { p.w = c.measureText(p.t).width; p.near = P.filter(q => Math.hypot(q.x - p.x, q.y - p.y) < 60).length; });
     const ov = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
@@ -8430,6 +8543,25 @@ function drawPriceQuality(months) {
     });
     c.restore();
   }};
+}
+function priceQualX(v) { prF.qx = v; syncUrl(); drawChart(); }
+function drawPriceQuality(months) {
+  const el = document.getElementById('qualChart');
+  if (!el) return;
+  const pts = priceQualityPoints(months), sx = prF.qx === 's', vm = qualVolMode();
+  const fit = qualFit(pts), fx = x => vm ? Math.log10(x) : x;
+  const col = p => prF.sel.includes(p.f) ? PRICE_COLORS[prF.slot[p.f]] : 'rgba(0,48,87,0.75)';
+  const xs = pts.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const f2 = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const xTxt = v => sx ? `${v.toFixed(2)} % S` : `${v.toFixed(1)}° API`;
+  const ds = [{label: 'Fields', data: pts, pointRadius: 5, pointHoverRadius: 7,
+    backgroundColor: pts.map(col), borderColor: '#fff', borderWidth: 1}];
+  const trend = fit ? [{x: x0, y: fit.a + fit.b * fx(x0)}, {x: x1, y: fit.a + fit.b * fx(x1)}] : null;
+  if (fit) ds.push({label: 'Linear trend', type: 'line', data: trend,
+    borderColor: 'rgba(232,110,30,0.8)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0});
+  const axis = t => ({title: {display: true, text: t, color: '#4a5568', font: {size: 10}}, ticks: {font: {size: 9}},
+    grid: {color: ctx => t.startsWith('Average') && ctx.tick.value === 0 ? '#9aa5b1' : 'rgba(0,0,0,0.05)'}});
+  const names = scatterNamesPlugin(pts.map(p => anTitle(p.f)));
   qualChart = new Chart(el.getContext('2d'), {type: 'scatter', data: {datasets: ds}, plugins: [names],
     options: {responsive: true, maintainAspectRatio: false, animation: false,
       plugins: {legend: {display: false}, tooltip: {filter: c => c.datasetIndex === 0, callbacks: {
