@@ -224,7 +224,8 @@
       font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
     .np-row3 h4 .pill-group{margin:0 !important;text-transform:none;letter-spacing:0;}
     .np-row3 .chart-container{height:320px;}
-    .val-dlg.np-dlg{height:auto;margin:auto;}
+    /* En modal dialog har inset: 0, så height: auto strekker den til max-height; fit-content følger innholdet. */
+    .val-dlg.np-dlg{height:fit-content;margin:auto;}
     .np-reg-vars{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font-size:0.85rem;}
     .np-reg-vars label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;min-height:28px;}
     .np-reg-stats{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 8px;font-size:0.85rem;}
