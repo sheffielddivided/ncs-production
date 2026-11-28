@@ -1,0 +1,219 @@
+{
+ "date": "2026-11-27",
+ "note": "Changes to the NCS Insight data on this day (UTC), per source. t is the short summary shown on the updates page; facts are the details.",
+ "sources": [
+  {
+   "section": "NCS · Sodir",
+   "source": "Exploration wells",
+   "key": "exploration_wells",
+   "summary": "2 wells changed",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": [
+    "6608/10-R-2 H: formationAtTd updated",
+    "2/6-7 A: formationAtTd, hcFormation updated"
+   ]
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Field descriptions",
+   "key": "field_descriptions",
+   "summary": "updated",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": [
+    "Description texts revised for 13 fields (Aasta Hansteen, Alve Nord, Duva, Eirin, Gudrun, Halten Øst and others); sections: Development, Recovery strategy, Status"
+   ]
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Sodir forecasts",
+   "key": "sodir_forecasts",
+   "summary": "added",
+   "times_utc": [
+    "02:11"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Gassco events",
+   "key": "gassco_events",
+   "summary": "3 new events, 7 revised events",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": [
+    "Revised planned event at Dvalin (Inactive): 2026-11-25 06:00 – 2026-11-27 06:00, 9.0 of 9.0 mcm/d unavailable",
+    "New unplanned event at Dvalin (Active): 2026-11-27 06:00 – 2026-11-28 06:00, 2.0 of 9.0 mcm/d unavailable",
+    "Revised unplanned event at Sleipner (Inactive): 2026-11-24 06:00 – 2026-11-27 05:59, 6.1 of 13.2 mcm/d unavailable",
+    "Revised unplanned event at Troll (Inactive): 2026-11-26 06:00 – 2026-11-27 05:59, 21.0 of 137.3 mcm/d unavailable",
+    "Revised unplanned event at Dvalin (Inactive): 2026-11-26 06:00 – 2026-11-27 05:59, 9.0 of 9.0 mcm/d unavailable",
+    "New unplanned event at Kårstø (Active): 2026-11-27 09:45 – 2026-11-28 06:00, 7.6 of 97.6 mcm/d unavailable",
+    "New planned event at Oseberg (Active): 2027-04-02 06:00 – 2027-04-09 06:00, 5.8 of 26.8 mcm/d unavailable",
+    "Revised planned event at St.Fergus (Active): 2027-04-12 06:00 – 2027-04-17 06:00, 19.7 of 33.7 mcm/d unavailable",
+    "Revised planned event at Oseberg (Active): 2027-06-05 06:00 – 2027-06-20 06:00, 11.9 of 25.9 mcm/d unavailable",
+    "Revised planned event at St.Fergus (Active): 2027-05-04 06:00 – 2027-05-13 06:00, 33.7 of 33.7 mcm/d unavailable"
+   ]
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Rig positions",
+   "key": "rig_now",
+   "summary": "updated",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Shuttle tanker calls",
+   "key": "shipping",
+   "summary": "12 new calls",
+   "times_utc": [
+    "13:38",
+    "14:03",
+    "14:08",
+    "14:12"
+   ],
+   "facts": [
+    "SKARV: 1 new tanker call",
+    "ALVHEIM: 1 new tanker call; heading to Skagerrak",
+    "ÅSGARD: 12 new tanker calls; heading to North Sea, Norwegian Sea, Skagerrak",
+    "JOHAN CASTBERG: 2 new tanker calls",
+    "NJORD: 1 new tanker call",
+    "HEIDRUN: 5 new tanker calls; heading to North Sea"
+   ]
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Tanker draught readings",
+   "key": "tanker_obs",
+   "summary": "updated",
+   "times_utc": [
+    "12:46",
+    "23:33"
+   ],
+   "facts": []
+  },
+  {
+   "section": "News",
+   "source": "Company news",
+   "key": "company_news",
+   "summary": "3 new items",
+   "times_utc": [
+    "14:26"
+   ],
+   "facts": [
+    "3 older items (dated more than two weeks back) newly picked up, not listed"
+   ]
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Brent (EIA)",
+   "key": "brent_eia",
+   "summary": "through 2026-11-17",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EIA STEO archive",
+   "key": "steo_vintages",
+   "summary": "added",
+   "times_utc": [
+    "01:02"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU LNG",
+   "key": "eu_lng",
+   "summary": "updated",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU gas flows",
+   "key": "eu_gas_flows",
+   "summary": "updated",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU gas storage",
+   "key": "eu_storage",
+   "summary": "updated",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Interest rates and inflation",
+   "key": "rates",
+   "summary": "updated",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Power prices and reservoirs",
+   "key": "power",
+   "summary": "updated",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "TTF",
+   "key": "ttf_daily",
+   "summary": "through 2026-11-26",
+   "times_utc": [
+    "14:03"
+   ],
+   "facts": [
+    "2026-11-26: 88.62 EUR/MWh",
+    "Change from 2026-11-25 (91.62) to 2026-11-26: -3.00 EUR/MWh"
+   ]
+  },
+  {
+   "section": "Edited in the app",
+   "source": "Angola block history",
+   "key": "angola_history",
+   "summary": "updated",
+   "times_utc": [
+    "00:12"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Other",
+   "source": "gom_company",
+   "key": "gom_company",
+   "summary": "added",
+   "times_utc": [
+    "15:50",
+    "15:56"
+   ],
+   "facts": []
+  }
+ ]
+}

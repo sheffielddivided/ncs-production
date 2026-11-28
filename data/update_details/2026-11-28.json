@@ -1,0 +1,193 @@
+{
+ "date": "2026-11-28",
+ "note": "Changes to the NCS Insight data on this day (UTC), per source. t is the short summary shown on the updates page; facts are the details.",
+ "sources": [
+  {
+   "section": "NCS · Sodir",
+   "source": "Field descriptions",
+   "key": "field_descriptions",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Gassco events",
+   "key": "gassco_events",
+   "summary": "2 revised events",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": [
+    "Revised unplanned event at Dvalin (Inactive): 2026-11-27 06:00 – 2026-11-28 06:00, 3.0 of 9.0 mcm/d unavailable",
+    "Revised unplanned event at Kårstø (Inactive): 2026-11-27 09:45 – 2026-11-28 06:00, 7.6 of 97.6 mcm/d unavailable"
+   ]
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Rig positions",
+   "key": "rig_now",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Tanker draught readings",
+   "key": "tanker_obs",
+   "summary": "updated",
+   "times_utc": [
+    "08:04"
+   ],
+   "facts": []
+  },
+  {
+   "section": "News",
+   "source": "Company news",
+   "key": "company_news",
+   "summary": "1 new item",
+   "times_utc": [
+    "13:41"
+   ],
+   "facts": [
+    "1 older item (dated more than two weeks back) newly picked up, not listed"
+   ]
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Brent (EIA)",
+   "key": "brent_eia",
+   "summary": "through 2026-11-24",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": [
+    "2026-11-18: 92.88 USD/bbl",
+    "2026-11-19: 95.17 USD/bbl",
+    "2026-11-20: 92.76 USD/bbl",
+    "2026-11-23: 91.20 USD/bbl",
+    "2026-11-24: 91.80 USD/bbl",
+    "Change from 2026-11-17 (92.94) to 2026-11-24: -1.14 USD/bbl"
+   ]
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Crude oil assays",
+   "key": "crude_assays",
+   "summary": "added",
+   "times_utc": [
+    "12:55"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU LNG",
+   "key": "eu_lng",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU gas flows",
+   "key": "eu_gas_flows",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU gas storage",
+   "key": "eu_storage",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Exchange rates",
+   "key": "fx",
+   "summary": "through 2026-11-27",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": [
+    "NOK per unit on 2026-11-27: USD 9.7518, EUR 10.6850, GBP 12.7958, SEK 0.9533, DKK 1.4297, CHF 11.6687, CAD 6.8458"
+   ]
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Interest rates and inflation",
+   "key": "rates",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Power prices and reservoirs",
+   "key": "power",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Refining",
+   "key": "refining",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "TTF",
+   "key": "ttf_daily",
+   "summary": "through 2026-11-27",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": [
+    "2026-11-27: 88.70 EUR/MWh",
+    "Change from 2026-11-26 (88.62) to 2026-11-27: 0.08 EUR/MWh"
+   ]
+  },
+  {
+   "section": "Markets and macro",
+   "source": "US supply",
+   "key": "us_supply",
+   "summary": "updated",
+   "times_utc": [
+    "13:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Edited in the app",
+   "source": "Blend mapping",
+   "key": "blends",
+   "summary": "added",
+   "times_utc": [
+    "13:14"
+   ],
+   "facts": []
+  }
+ ]
+}

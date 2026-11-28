@@ -1,0 +1,371 @@
+{
+ "date": "2026-11-26",
+ "note": "Changes to the NCS Insight data on this day (UTC), per source. t is the short summary shown on the updates page; facts are the details.",
+ "sources": [
+  {
+   "section": "NCS · Sodir",
+   "source": "Business arrangement areas (register)",
+   "key": "baa",
+   "summary": "added",
+   "times_utc": [
+    "15:09"
+   ],
+   "facts": []
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Company reserves",
+   "key": "reserves",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": []
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Exploration wells",
+   "key": "exploration_wells",
+   "summary": "2 wells changed",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": [
+    "35/7-2: status DRILLING → P&A; content – → GAS/CONDENSATE; completion – → 2026-11-24; discovery – → 34/12-1 (Afrodite); td – → 4694.0",
+    "36/7-6 S: content – → DRY"
+   ]
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Field descriptions",
+   "key": "field_descriptions",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": [
+    "Description texts revised for 142 fields (Aasta Hansteen, Albuskjell, Alve, Alve Nord, Alvheim, Atla and others); sections: Development, Status"
+   ]
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Licence areas",
+   "key": "licence_areas",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": []
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Licence history",
+   "key": "licence_history",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": []
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Licence outlines",
+   "key": "licence_outlines",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": []
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Licence ownership",
+   "key": "licence_licensees",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": []
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Licence register",
+   "key": "licence_all",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": []
+  },
+  {
+   "section": "NCS · Sodir",
+   "source": "Licensee shares over time",
+   "key": "licensees",
+   "summary": "updated",
+   "times_utc": [
+    "16:49"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Gassco events",
+   "key": "gassco_events",
+   "summary": "2 new events, 1 revised event",
+   "times_utc": [
+    "16:38",
+    "16:49",
+    "17:33",
+    "18:02",
+    "18:36"
+   ],
+   "facts": [
+    "New unplanned event at Troll (Active): 2026-11-26 06:00 – 2026-11-27 05:59, 21.0 of 137.3 mcm/d unavailable",
+    "New unplanned event at Dvalin (Active): 2026-11-26 06:00 – 2026-11-27 05:59, 9.0 of 9.0 mcm/d unavailable",
+    "Revised planned event at Nyhamna (Inactive): 2026-09-28 06:00 – 2026-11-26 06:00, 19.8 of 79.8 mcm/d unavailable"
+   ]
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Havtil cases",
+   "key": "havtil",
+   "summary": "1 new case (1 inspection)",
+   "times_utc": [
+    "16:38"
+   ],
+   "facts": [
+    "2026-11-26 inspection: Vår Energi – Goliat - arbeidsmiljø (Vår Energi; GOLIAT FPSO) – 7 nonconformities. Havindustritilsynet (Havtil) har ført tilsyn med Vår Energi og deres styring av arbeidsmiljø på Goliat FPSO."
+   ]
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "News events",
+   "key": "changes",
+   "summary": "2 rig moves, 1 Havtil case, 1 well completed",
+   "times_utc": [
+    "16:38",
+    "16:49"
+   ],
+   "facts": [
+    "Rig DEEPSEA YANTAI moved to 35/7-2 (well)",
+    "Havtil inspection: Vår Energi – Goliat - arbeidsmiljø, 7 nonconformities",
+    "Rig COSLPromoter moved to FRAM (field)",
+    "Well 35/7-2 completed: GAS/CONDENSATE"
+   ]
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Rig positions",
+   "key": "rig_now",
+   "summary": "updated",
+   "times_utc": [
+    "16:38",
+    "16:49",
+    "17:33",
+    "18:02",
+    "18:36"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Shuttle tanker calls",
+   "key": "shipping",
+   "summary": "16 new calls",
+   "times_utc": [
+    "16:38",
+    "16:49",
+    "17:33",
+    "18:02",
+    "18:36"
+   ],
+   "facts": [
+    "ALVHEIM: 1 new tanker call",
+    "ÅSGARD: 9 new tanker calls; heading to North Sea, Norwegian Sea, Skagerrak",
+    "BALDER: 1 new tanker call",
+    "NJORD: 1 new tanker call; heading to North Sea",
+    "HEIDRUN: 4 new tanker calls; heading to North Sea, Norwegian Sea"
+   ]
+  },
+  {
+   "section": "Activity · rigs, shipping, safety, gas transport",
+   "source": "Tanker draught readings",
+   "key": "tanker_obs",
+   "summary": "updated",
+   "times_utc": [
+    "03:39"
+   ],
+   "facts": []
+  },
+  {
+   "section": "News",
+   "source": "Company news",
+   "key": "company_news",
+   "summary": "4 new items",
+   "times_utc": [
+    "14:31"
+   ],
+   "facts": [
+    "2026-11-25 [Equinor Energy AS] Equinor updates 2026 production guidance following temporary shut-ins <https://newsweb.oslobors.no/message/687435>",
+    "2026-11-25 [Equinor Energy AS] Equinor oppdaterer forventet produksjonsvekst for 2026 etter midlertidig produksjonsstans <https://newsweb.oslobors.no/message/687434>",
+    "2 older items (dated more than two weeks back) newly picked up, not listed"
+   ]
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU LNG",
+   "key": "eu_lng",
+   "summary": "updated",
+   "times_utc": [
+    "16:38"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU gas flows",
+   "key": "eu_gas_flows",
+   "summary": "updated",
+   "times_utc": [
+    "16:38"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "EU gas storage",
+   "key": "eu_storage",
+   "summary": "updated",
+   "times_utc": [
+    "16:38"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Exchange rates",
+   "key": "fx",
+   "summary": "through 2026-11-26",
+   "times_utc": [
+    "16:38",
+    "16:49",
+    "17:33",
+    "18:02",
+    "18:36"
+   ],
+   "facts": [
+    "NOK per unit on 2026-11-26: USD 9.7658, EUR 10.7180, GBP 12.7968, SEK 0.9568, DKK 1.4341, CHF 11.7098, CAD 6.8630"
+   ]
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Interest rates and inflation",
+   "key": "rates",
+   "summary": "updated",
+   "times_utc": [
+    "16:38",
+    "16:49",
+    "17:33",
+    "18:02",
+    "18:36"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "Power prices and reservoirs",
+   "key": "power",
+   "summary": "updated",
+   "times_utc": [
+    "16:38"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Markets and macro",
+   "source": "TTF",
+   "key": "ttf_daily",
+   "summary": "through 2026-11-25",
+   "times_utc": [
+    "16:38"
+   ],
+   "facts": [
+    "2026-11-25: 91.62 EUR/MWh",
+    "Change from 2026-11-24 (91.39) to 2026-11-25: 0.23 EUR/MWh"
+   ]
+  },
+  {
+   "section": "Other shelves",
+   "source": "Angola (ANPG)",
+   "key": "angola",
+   "summary": "added",
+   "times_utc": [
+    "23:22",
+    "23:50"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Other shelves",
+   "source": "Brazil (ANP)",
+   "key": "brazil",
+   "summary": "added",
+   "times_utc": [
+    "21:10"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Other shelves",
+   "source": "UK companies",
+   "key": "ukcs_companies",
+   "summary": "added",
+   "times_utc": [
+    "09:29",
+    "10:06"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Edited in the app",
+   "source": "Angola block history",
+   "key": "angola_history",
+   "summary": "added",
+   "times_utc": [
+    "23:50"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Edited in the app",
+   "source": "Angola fields (Equinor)",
+   "key": "angola_fields",
+   "summary": "added",
+   "times_utc": [
+    "23:50"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Edited in the app",
+   "source": "Hub settings",
+   "key": "hubs",
+   "summary": "updated",
+   "times_utc": [
+    "13:48",
+    "18:24"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Edited in the app",
+   "source": "Shipping fields",
+   "key": "shipping_fields",
+   "summary": "updated",
+   "times_utc": [
+    "18:29"
+   ],
+   "facts": []
+  }
+ ]
+}
