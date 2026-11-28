@@ -1,5 +1,5 @@
 {
-  "source": "Quartr (company quarterly reports, statement of financial position); USD/NOK from Norges Bank",
+  "source": "Quartr (company quarterly and annual reports); USD/NOK from Norges Bank",
   "updated": "2026-11-28",
   "unit": "USD million",
   "companies": {
@@ -22,7 +22,37 @@
           "usdnok": 10.0791,
           "adjustments": []
         }
-      ]
+      ],
+      "opex": {
+        "definition": "Production expenses based on produced volumes (cost of operations, shipping and handling, environmental taxes) per boe produced",
+        "years": {
+          "2020": {
+            "v": 8.3,
+            "url": "https://web.quartr.com/m/sources/s46538041175"
+          },
+          "2021": {
+            "v": 9.2,
+            "url": "https://web.quartr.com/m/sources/s46538041175"
+          },
+          "2022": {
+            "v": 8.7,
+            "url": "https://web.quartr.com/m/sources/s68438366195",
+            "note": "Lundin Energy's Norwegian business included from July 2022"
+          },
+          "2023": {
+            "v": 6.2,
+            "url": "https://web.quartr.com/m/sources/s68438366195"
+          },
+          "2024": {
+            "v": 6.2,
+            "url": "https://web.quartr.com/m/sources/s47150670124"
+          },
+          "2025": {
+            "v": 7.3,
+            "url": "https://web.quartr.com/m/sources/s47150670124"
+          }
+        }
+      }
     },
     "VÅR": {
       "name": "Vår Energi ASA",
@@ -51,7 +81,28 @@
             }
           ]
         }
-      ]
+      ],
+      "opex": {
+        "definition": "Production cost based on produced volumes (cost of operations, transportation and processing, environmental taxes, insurance) per boe produced",
+        "years": {
+          "2022": {
+            "v": 13.5,
+            "url": "https://web.quartr.com/m/sources/s65220031122"
+          },
+          "2023": {
+            "v": 14.1,
+            "url": "https://web.quartr.com/m/sources/s65220031122"
+          },
+          "2024": {
+            "v": 12.8,
+            "url": "https://web.quartr.com/m/sources/s70550902646"
+          },
+          "2025": {
+            "v": 11.1,
+            "url": "https://web.quartr.com/m/sources/s70550902646"
+          }
+        }
+      }
     },
     "OKEA": {
       "name": "OKEA ASA",
@@ -81,7 +132,40 @@
             }
           ]
         }
-      ]
+      ],
+      "opex": {
+        "definition": "Production expense less processing tariff income and joint utilisation of resources, per boe produced",
+        "years": {
+          "2020": {
+            "v": 11.15,
+            "url": "https://web.quartr.com/m/sources/s50687489938",
+            "note": "Reported NOK 104.8 per boe, at Norges Bank's 2020 average of 9.4004 NOK/USD"
+          },
+          "2021": {
+            "v": 15.52,
+            "url": "https://web.quartr.com/m/sources/s50687489938",
+            "note": "Reported NOK 133.5 per boe, at Norges Bank's 2021 average of 8.5991 NOK/USD"
+          },
+          "2022": {
+            "v": 24.6,
+            "url": "https://web.quartr.com/m/sources/s64323572918",
+            "note": "Reported NOK 236.8 per boe, at Norges Bank's 2022 average of 9.6245 NOK/USD"
+          },
+          "2023": {
+            "v": 20.37,
+            "url": "https://web.quartr.com/m/sources/s64323572918",
+            "note": "Reported NOK 215.2 per boe, at Norges Bank's 2023 average of 10.5647 NOK/USD"
+          },
+          "2024": {
+            "v": 20.4,
+            "url": "https://web.quartr.com/m/sources/s68697784344"
+          },
+          "2025": {
+            "v": 23.7,
+            "url": "https://web.quartr.com/m/sources/s68697784344"
+          }
+        }
+      }
     }
   }
 }

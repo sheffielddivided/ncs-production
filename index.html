@@ -5160,6 +5160,7 @@ function anPlus(a, b, sign = 1) {
 const anSumAll = list => list.reduce((t, x) => anPlus(t, x), anZero());
 
 function drawCompanyAnalytics() {
+  if (valBalance === undefined) valFinLoad();
   anDestroy();
   setChartNone();
   setChartTitle('Analytics', 'Merger simulation across NCS, DCS and UKCS · net production and reserves');
@@ -12780,6 +12781,7 @@ function valCompute(cmp, price) {
   const fxNow = usdnokOf(Math.max(...phYears.filter(y => ph[y].usdnok)));
   const inv = bundle.field_investments;
   const y0 = currentYear, lastInv = invLastYear();
+  const opx = valOpex(cmp, y0), opexFc = opx ? opx.fc : OPEX_USD;
   const per = {};
   const get = y => per[y] = per[y] || {liq: 0, gas: 0, capex: 0, opex: 0, abex: 0, fc: {}};
   const prodByHub = {};   // hub -> år -> fat (netto), til produksjonsgrafen
@@ -12806,7 +12808,7 @@ function valCompute(cmp, price) {
       const r = get(y);
       r.liq += liq * p.brent / 1e9 * w;
       r.gas += gas * 1e9 * GAS_MMBTU_PER_SM3 * p.gas / 1e9 * w;
-      r.opex -= boe * OPEX_USD * p.uscpi / base / 1e9 * w;
+      r.opex -= boe * (opx && opx.hist[y] != null ? opx.hist[y] : OPEX_USD * p.uscpi / base) / 1e9 * w;
       addProd(hubNameOf(id) === 'Other' ? fieldNameOf(id) : hubNameOf(id), y, boe * w);
     });
   });
@@ -12840,7 +12842,7 @@ function valCompute(cmp, price) {
       f.rows.forEach(([y, q]) => {
         const r = get(y), k = cfInfl(y);
         r.fc.liq = r.fc.gas = r.fc.opex = true;
-        const rev = q * price * k / 1e9 * s, opex = q * OPEX_USD * k / 1e9 * s;
+        const rev = q * price * k / 1e9 * s, opex = q * opexFc * k / 1e9 * s;
         r.liq += rev * f.liqShare; r.gas += rev * (1 - f.liqShare); r.opex -= opex;
         net[y] = (net[y] || 0) + rev - opex;
         addProd(name, y, q * s);
@@ -13057,7 +13059,7 @@ function mountTvScript(box, kind, cfg) {
 // For de rene NCS-selskapene (Aker BP, Vår Energi, OKEA) trekkes netto gjeld
 // fra den indikative verdien, så den kan leses per aksje og sammenlignes med
 // kursen. Balansen per 31.12. året før (samme dato som NPV-en, 1.1. i år) ligger
-// i data/company_balance.json, nøkkel = Sodirs selskapsgruppe som VAL_TICKERS,
+// i data/company_financials.json, nøkkel = Sodirs selskapsgruppe som VAL_TICKERS,
 // mill. USD, hentet fra selskapenes kvartalsrapporter via Quartr og kontrollert
 // mot rapporten (lenke per post). Quartrs standardiserte tall brukes ikke
 // direkte: de mangler poster og blander enheter.
@@ -13072,6 +13074,32 @@ function mountTvScript(box, kind, cfg) {
 // Konsern med virksomhet utenfor sokkelen (Equinor, DNO, Harbour …) er ikke
 // med: konsernbalansen passer ikke til en verdi av bare den norske delen.
 let valBalance, valBalanceLoading = null;
+// Laster data/company_financials.json (balanse og produksjonskostnad). Analytics
+// husker verdiene fra valCompute (anValCache), så de tømmes når filen er lastet.
+function valFinLoad() {
+  return valBalanceLoading = valBalanceLoading || fetchBundle('company_financials').then(d => {
+    valBalance = d && d.companies ? d : null;
+    Object.keys(anValCache).forEach(k => delete anValCache[k]);
+    if (topMode === 'companies' && ['valuation', 'analytics'].includes(companySubView)) drawChart();
+  });
+}
+// Produksjonskostnad per fat for selskapet: rapporterte år (nominelle USD/boe)
+// til historikken, og snittet av de VAL_OPEX_YEARS siste hele årene før y0,
+// regnet om til OPEX_BASE-dollar med US KPI, som prognosens kostnad. Uten tall
+// (andre selskaper, eller filen ikke lastet) gjelder OPEX_USD.
+const VAL_OPEX_YEARS = 2;
+function valOpex(cmp, y0) {
+  const c = valBalanceFor(cmp), o = c && c.opex;
+  if (!o) return null;
+  const ph = (priceHist && priceHist.byYear) || {};
+  const base = (ph[OPEX_BASE] || {}).uscpi;
+  const hist = Object.fromEntries(Object.entries(o.years).map(([y, r]) => [+y, r.v]));
+  const used = Array.from({length: VAL_OPEX_YEARS}, (_, i) => y0 - 1 - i).filter(y => hist[y] != null);
+  if (!used.length) return null;
+  const real = y => base && ph[y] && ph[y].uscpi ? hist[y] * base / ph[y].uscpi : hist[y];
+  return {hist, used: used.sort(), fc: used.reduce((t, y) => t + real(y), 0) / used.length,
+          def: o.definition, years: o.years, name: c.name};
+}
 function valBalanceFor(cmp) {
   const g = (companyRow(cmp) || {}).group;
   return (valBalance && g && valBalance.companies[g]) || null;
@@ -13086,13 +13114,7 @@ function valNetDebt(p) {
   return p.debt + p.taxPayable - p.cash - (p.investments || 0) - adj;
 }
 function valEquityCard(cmp, all, total) {
-  if (valBalance === undefined) {
-    valBalanceLoading = valBalanceLoading || fetchBundle('company_balance').then(d => {
-      valBalance = d && d.companies ? d : null;
-      if (topMode === 'companies' && companySubView === 'valuation') drawChart();
-    });
-    return '';
-  }
+  if (valBalance === undefined) { valFinLoad(); return ''; }
   const c = valBalanceFor(cmp), y0 = all[0].v.y0, p = c && valBalancePeriod(c, y0);
   if (!p) return '';
   const nd = valNetDebt(p), fx = p.usdnok;
@@ -13156,6 +13178,7 @@ function drawCompanyValuation() {
   if (valChartProd) { valChartProd.destroy(); valChartProd = null; }
   setChartNone();
   if (!cmp) { setChartEmpty('Select a company.'); setInfo(''); return; }
+  if (valBalance === undefined) { valFinLoad(); setChartEmpty('Loading…'); setInfo(''); return; }
   const all = cfPrices().map(p => ({p, v: valCompute(cmp, p)}));
   const v = (all.find(a => a.p === hubCfPrice) || all[0]).v;
   if (!v) { setChartEmpty('Price data could not be loaded.'); setInfo(''); return; }
@@ -13251,11 +13274,30 @@ function drawCompanyValuation() {
       <div class="pf-map-note">${esc(cmp)}'s share of production, boe/day. Hatched from ${y0}: the simulated profile (producing fields
         decline together per hub; fields under development and fields that started in the last ${CF_YOUNG_YEARS} years come on top with plateau and decline; nothing outlives its hub).</div></div>`;
 
+  // Rapportert produksjonskostnad per fat (valOpex), når selskapet har tall.
+  const opx = valOpex(cmp, y0);
+  const opexCard = opx ? `<div class="pf-card pf-wide"><h3>Production cost per boe</h3><div class="pf-scroll"><table class="res-table">
+      <caption>${esc(opx.name)} · as reported, USD per boe produced (nominal)</caption>
+      <thead><tr><th>Year</th><th>USD/boe</th><th>In ${OPEX_BASE} money</th><th>Note</th></tr></thead>
+      <tbody>${Object.entries(opx.years).map(([yy, r]) => {
+        const p = priceHist.byYear[yy], b = priceHist.byYear[OPEX_BASE];
+        const real = p && b && p.uscpi && b.uscpi ? r.v * b.uscpi / p.uscpi : null;
+        return `<tr${opx.used.includes(+yy) ? ' class="total-row"' : ''}><td>${yy}</td><td>${n2(r.v)}</td><td>${real == null ? '—' : n2(real)}</td>
+          <td>${r.note ? esc(r.note) + ' · ' : ''}<a href="${esc(r.url)}" rel="noopener" target="_blank">source</a></td></tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr class="total-row"><td>Forecast</td><td></td><td>${n2(opx.fc)}</td><td>Average of ${opx.used.join(' and ')} (highlighted), escalated with ${(CF_INFL * 100).toFixed(1)} % a year from ${OPEX_BASE}</td></tr></tfoot>
+    </table></div>
+    <div class="pf-map-note">${esc(opx.def)}. Reported by the company for its whole portfolio (from its quarterly and annual reports, via Quartr);
+      the model applies it to every field the company holds. The generic assumption for other companies is USD ${OPEX_USD} per boe. Definitions differ
+      between companies, for example whether transport and tariff income are included.</div></div>` : '';
+
   // Antakelser.
   const A = [
     ['Oil price', `USD ${hubCfPrice} per boe in ${OPEX_BASE} money`, `All boe, including gas and NGL, at the oil price; escalated with inflation; chosen with the slider, sensitivity at USD ${CF_PRICES.join(' / ')}`],
     ['Inflation', `${(CF_INFL * 100).toFixed(1)} % a year`, `From ${OPEX_BASE}, on prices, opex, capex and abandonment`],
-    ['Operating cost', `USD ${OPEX_USD} per boe in ${OPEX_BASE} money`, 'History deflated with the US CPI'],
+    opx ? ['Operating cost', `USD ${n2(opx.fc)} per boe in ${OPEX_BASE} money`,
+        `${esc(opx.name)}'s reported production cost per boe, average of ${opx.used.join(' and ')} in ${OPEX_BASE} money (US CPI); history uses the reported cost for ${Object.keys(opx.hist).join(', ')} and USD ${OPEX_USD} in ${OPEX_BASE} money before. See the card above`]
+      : ['Operating cost', `USD ${OPEX_USD} per boe in ${OPEX_BASE} money`, 'History deflated with the US CPI'],
     ['Production, producing fields', `Decline ${1 - CF_CUTOFF}·P / (R + ${1 - CF_CUTOFF}·P) a year`, `Per hub, from last year's production P until the reserves R are produced; ends at ${Math.round(CF_CUTOFF * 100)} % of the first forecast year`],
     ['Production, fields under development', `Plateau ${Math.round(CF_PLATEAU_RATE * 100)} % of reserves a year`, `Half a plateau year first, plateau until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced, then the decline above; start-up from Sodir`],
     ['Production, new fields', `Started ${y0 - CF_YOUNG_YEARS} or later`, `Plateau at the highest of ${Math.round(CF_PLATEAU_RATE * 100)} % of original reserves, last year's production and this year's rate so far, until ${Math.round(CF_PLATEAU_SHARE * 100)} % is produced, then the decline above`],
@@ -13284,7 +13326,7 @@ function drawCompanyValuation() {
       <tfoot><tr class="total-row"><td>Total${v.disc.length > 20 ? ` (${v.disc.length})` : ''}</td><td></td><td>${n1(v.discBoe / 1e6)}</td>
         <td>${Math.round(v.discValue * 1000).toLocaleString('en')}</td></tr></tfoot></table></div></div>` : '';
 
-  setProfile(head + valEquityCard(cmp, all, total) + valShareCard(cmp) + cfCard + row + hubTable + prodCard + assumptions + discCard);
+  setProfile(head + valEquityCard(cmp, all, total) + valShareCard(cmp) + cfCard + row + hubTable + prodCard + opexCard + assumptions + discCard);
   valMountShares(cmp);
 
   // Kontantstrømgrafen.
