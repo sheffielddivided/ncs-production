@@ -17435,8 +17435,8 @@ function drawDiscoveryProfile() {
       </div>
       <div class="lc-links">${factPageBtn('discovery', d.id)}</div>
       ${vols ? `<div class="pf-sec"><h3>Resources</h3>${vols}</div>` : ''}
-      ${descs.length ? `<div class="pf-sec pf-desc"><h3>Sodir description</h3>${
-        descs.map(x => `<h4>${esc(x.heading)}</h4><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
+      ${descs.length ? `<div class="pf-sec pf-desc">${
+        descs.map(x => `<h3>${esc(x.heading)}</h3><p>${esc(x.text)}</p>`).join('')}</div>` : ''}
     </div>
     ${own && !map ? `<div class="pf-card"><h3>Ownership</h3>${own}</div>` : ''}
     <div id="explLinkSlot"></div>
