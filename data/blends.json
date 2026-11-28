@@ -1,0 +1,839 @@
+{
+ "version": 1,
+ "updated": "2026-11-28",
+ "note": "Vedlikeholdes for hånd. Hvilke felt som inngår i hver normprisblend, til volumestimatet på Prices → Oil. Nøklene under blends er feltnavnene i normprisdataene (normpris_diff.json). basis: sodir = ruten står i Sodirs transportbeskrivelse for feltet (oljen går til samme terminal, rørledning eller lastesystem som blenden); inferred = antatt, bør kvalitetssikres. share: andel av feltets olje (standard 1). from/to: ÅÅÅÅ-MM, inklusive. other: felt med olje siden 2011 som ikke inngår i noen normprisblend.",
+ "blends": {
+  "ALVHEIM": {
+   "name": "Alvheim Blend",
+   "export": "FPSO, shuttle tankers"
+  },
+  "BALDER": {
+   "name": "Balder Blend",
+   "export": "Balder FPSO and Jotun FPSO, shuttle tankers"
+  },
+  "DRAUGEN": {
+   "name": "Draugen",
+   "export": "Loading buoy, shuttle tankers"
+  },
+  "EKOFISK": {
+   "name": "Ekofisk Blend",
+   "export": "Norpipe oil pipeline to Teesside"
+  },
+  "GINA KROG": {
+   "name": "Gina Krog",
+   "export": "Randgrid FSO, shuttle tankers (to mid-2024)"
+  },
+  "GOLIAT": {
+   "name": "Goliat Blend",
+   "export": "FPSO, shuttle tankers"
+  },
+  "GRANE": {
+   "name": "Grane Blend",
+   "export": "Grane Oil Pipeline to Sture"
+  },
+  "GUDRUN": {
+   "name": "Gudrun Blend",
+   "export": "Kårstø terminal"
+  },
+  "GULLFAKS": {
+   "name": "Gullfaks Blend",
+   "export": "Gullfaks A and C, shuttle tankers"
+  },
+  "HEIDRUN": {
+   "name": "Heidrun",
+   "export": "Heidrun B FSU, shuttle tankers"
+  },
+  "JOHAN SVERDRUP": {
+   "name": "Johan Sverdrup",
+   "export": "Pipeline to Mongstad"
+  },
+  "JOTUN": {
+   "name": "Jotun",
+   "export": "Jotun FPSO, shuttle tankers"
+  },
+  "KNARR": {
+   "name": "Knarr",
+   "export": "FPSO, shuttle tankers"
+  },
+  "MARTIN LINGE": {
+   "name": "Martin Linge",
+   "export": "FSO, shuttle tankers"
+  },
+  "NJORD": {
+   "name": "Njord Blend",
+   "export": "Njord B FSU, shuttle tankers"
+  },
+  "NORNE": {
+   "name": "Norne Blend",
+   "export": "FPSO, shuttle tankers"
+  },
+  "OSEBERG": {
+   "name": "Oseberg Blend",
+   "export": "Oseberg Transport System to Sture"
+  },
+  "SKARV": {
+   "name": "Skarv",
+   "export": "FPSO, shuttle tankers"
+  },
+  "STATFJORD": {
+   "name": "Statfjord",
+   "export": "Statfjord A, B and C, shuttle tankers"
+  },
+  "TROLL": {
+   "name": "Troll Blend",
+   "export": "Troll Oil Pipelines I and II to Mongstad"
+  },
+  "VOLVE": {
+   "name": "Volve",
+   "export": "Navion Saga FSO, shuttle tankers"
+  },
+  "YME": {
+   "name": "Yme",
+   "export": "Shuttle tankers"
+  },
+  "ÅSGARD": {
+   "name": "Aasgard Blend",
+   "export": "Åsgard A and C, shuttle tankers"
+  }
+ },
+ "fields": [
+  {
+   "id": 2845712,
+   "name": "ALVHEIM",
+   "blend": "ALVHEIM",
+   "basis": "sodir"
+  },
+  {
+   "id": 22492497,
+   "name": "BØYLA",
+   "blend": "ALVHEIM",
+   "basis": "sodir"
+  },
+  {
+   "id": 3392471,
+   "name": "VILJE",
+   "blend": "ALVHEIM",
+   "basis": "sodir"
+  },
+  {
+   "id": 4380167,
+   "name": "VOLUND",
+   "blend": "ALVHEIM",
+   "basis": "sodir"
+  },
+  {
+   "id": 31164600,
+   "name": "SKOGUL",
+   "blend": "ALVHEIM",
+   "basis": "sodir"
+  },
+  {
+   "id": 42002471,
+   "name": "TYRVING",
+   "blend": "ALVHEIM",
+   "basis": "sodir"
+  },
+  {
+   "id": 43562,
+   "name": "BALDER",
+   "blend": "BALDER",
+   "basis": "sodir"
+  },
+  {
+   "id": 3505505,
+   "name": "RINGHORNE ØST",
+   "blend": "BALDER",
+   "basis": "sodir"
+  },
+  {
+   "id": 43604,
+   "name": "JOTUN",
+   "blend": "JOTUN",
+   "basis": "sodir",
+   "note": "Jotun oil is loaded at the Jotun FPSO; normpris for Jotun ends in 2020, after which it is assumed to go with Balder.",
+   "to": "2020-03"
+  },
+  {
+   "id": 21613906,
+   "name": "JETTE",
+   "blend": "JOTUN",
+   "basis": "sodir",
+   "note": "Jotun oil is loaded at the Jotun FPSO; normpris for Jotun ends in 2020, after which it is assumed to go with Balder.",
+   "to": "2020-03"
+  },
+  {
+   "id": 43604,
+   "name": "JOTUN",
+   "blend": "BALDER",
+   "basis": "inferred",
+   "note": "Assumed part of Balder Blend after the Jotun norm price ended.",
+   "from": "2020-04"
+  },
+  {
+   "id": 21613906,
+   "name": "JETTE",
+   "blend": "BALDER",
+   "basis": "inferred",
+   "note": "Assumed part of Balder Blend after the Jotun norm price ended.",
+   "from": "2020-04"
+  },
+  {
+   "id": 43758,
+   "name": "DRAUGEN",
+   "blend": "DRAUGEN",
+   "basis": "sodir"
+  },
+  {
+   "id": 43506,
+   "name": "EKOFISK",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 43527,
+   "name": "ELDFISK",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 43534,
+   "name": "EMBLA",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 43520,
+   "name": "TOR",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 40867462,
+   "name": "TOMMELITEN A",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 43548,
+   "name": "VALHALL",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 43485,
+   "name": "HOD",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 43800,
+   "name": "ULA",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 1028599,
+   "name": "TAMBAR",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 3437650,
+   "name": "BLANE",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 29412516,
+   "name": "ODA",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 43492,
+   "name": "GYDA",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 5506919,
+   "name": "OSELVAR",
+   "blend": "EKOFISK",
+   "basis": "sodir"
+  },
+  {
+   "id": 23384544,
+   "name": "GINA KROG",
+   "blend": "GINA KROG",
+   "basis": "sodir",
+   "to": "2024-07"
+  },
+  {
+   "id": 23384544,
+   "name": "GINA KROG",
+   "blend": "GUDRUN",
+   "basis": "inferred",
+   "note": "Oil to Kårstø via Sleipner A since the 2024 oil pipeline.",
+   "from": "2024-08"
+  },
+  {
+   "id": 5774394,
+   "name": "GOLIAT",
+   "blend": "GOLIAT",
+   "basis": "sodir"
+  },
+  {
+   "id": 1035937,
+   "name": "GRANE",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 22507971,
+   "name": "SVALIN",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 38702206,
+   "name": "BREIDABLIKK",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 21675433,
+   "name": "EDVARD GRIEG",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 23384520,
+   "name": "IVAR AASEN",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 25307278,
+   "name": "HANZ",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 34833011,
+   "name": "SOLVEIG",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 42002480,
+   "name": "SYMRA",
+   "blend": "GRANE",
+   "basis": "sodir"
+  },
+  {
+   "id": 18116481,
+   "name": "GUDRUN",
+   "blend": "GUDRUN",
+   "basis": "sodir"
+  },
+  {
+   "id": 43457,
+   "name": "SLEIPNER VEST",
+   "blend": "GUDRUN",
+   "basis": "inferred",
+   "note": "Unstable condensate to Kårstø; assumed to be blended into Gudrun Blend."
+  },
+  {
+   "id": 43478,
+   "name": "SLEIPNER ØST",
+   "blend": "GUDRUN",
+   "basis": "inferred",
+   "note": "Unstable condensate to Kårstø; assumed to be blended into Gudrun Blend."
+  },
+  {
+   "id": 43464,
+   "name": "GUNGNE",
+   "blend": "GUDRUN",
+   "basis": "inferred",
+   "note": "Unstable condensate to Kårstø; assumed to be blended into Gudrun Blend."
+  },
+  {
+   "id": 1630100,
+   "name": "SIGYN",
+   "blend": "GUDRUN",
+   "basis": "inferred",
+   "note": "Unstable condensate to Kårstø; assumed to be blended into Gudrun Blend."
+  },
+  {
+   "id": 28975098,
+   "name": "UTGARD",
+   "blend": "GUDRUN",
+   "basis": "inferred",
+   "note": "Unstable condensate to Kårstø; assumed to be blended into Gudrun Blend."
+  },
+  {
+   "id": 43686,
+   "name": "GULLFAKS",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 43699,
+   "name": "GULLFAKS SØR",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 4005142,
+   "name": "GIMLE",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 29401178,
+   "name": "SINDRE",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 43725,
+   "name": "TORDIS",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 43745,
+   "name": "VISUND",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 20461008,
+   "name": "VISUND SØR",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 43732,
+   "name": "VIGDIS",
+   "blend": "GULLFAKS",
+   "basis": "sodir"
+  },
+  {
+   "id": 43718,
+   "name": "SNORRE",
+   "blend": "GULLFAKS",
+   "basis": "inferred",
+   "share": 0.5,
+   "note": "Snorre A oil is loaded at Gullfaks A, Snorre B oil at Statfjord B; split 50/50 as the split is not published."
+  },
+  {
+   "id": 43718,
+   "name": "SNORRE",
+   "blend": "STATFJORD",
+   "basis": "inferred",
+   "share": 0.5,
+   "note": "See Gullfaks."
+  },
+  {
+   "id": 43771,
+   "name": "HEIDRUN",
+   "blend": "HEIDRUN",
+   "basis": "sodir"
+  },
+  {
+   "id": 26376286,
+   "name": "JOHAN SVERDRUP",
+   "blend": "JOHAN SVERDRUP",
+   "basis": "sodir"
+  },
+  {
+   "id": 20460988,
+   "name": "KNARR",
+   "blend": "KNARR",
+   "basis": "sodir"
+  },
+  {
+   "id": 21675447,
+   "name": "MARTIN LINGE",
+   "blend": "MARTIN LINGE",
+   "basis": "sodir"
+  },
+  {
+   "id": 43751,
+   "name": "NJORD",
+   "blend": "NJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 20474183,
+   "name": "HYME",
+   "blend": "NJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 29446221,
+   "name": "BAUGE",
+   "blend": "NJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 31164879,
+   "name": "FENJA",
+   "blend": "NJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 43778,
+   "name": "NORNE",
+   "blend": "NORNE",
+   "basis": "sodir"
+  },
+  {
+   "id": 4444332,
+   "name": "ALVE",
+   "blend": "NORNE",
+   "basis": "sodir"
+  },
+  {
+   "id": 2834734,
+   "name": "URD",
+   "blend": "NORNE",
+   "basis": "sodir"
+  },
+  {
+   "id": 21350124,
+   "name": "SKULD",
+   "blend": "NORNE",
+   "basis": "sodir"
+  },
+  {
+   "id": 18212090,
+   "name": "MARULK",
+   "blend": "NORNE",
+   "basis": "sodir"
+  },
+  {
+   "id": 42002481,
+   "name": "VERDANDE",
+   "blend": "NORNE",
+   "basis": "sodir"
+  },
+  {
+   "id": 43625,
+   "name": "OSEBERG",
+   "blend": "OSEBERG",
+   "basis": "sodir"
+  },
+  {
+   "id": 43645,
+   "name": "OSEBERG SØR",
+   "blend": "OSEBERG",
+   "basis": "sodir"
+  },
+  {
+   "id": 43639,
+   "name": "OSEBERG ØST",
+   "blend": "OSEBERG",
+   "basis": "sodir"
+  },
+  {
+   "id": 853376,
+   "name": "TUNE",
+   "blend": "OSEBERG",
+   "basis": "sodir"
+  },
+  {
+   "id": 43651,
+   "name": "BRAGE",
+   "blend": "OSEBERG",
+   "basis": "sodir"
+  },
+  {
+   "id": 43618,
+   "name": "VESLEFRIKK",
+   "blend": "OSEBERG",
+   "basis": "sodir"
+  },
+  {
+   "id": 97002,
+   "name": "HULDRA",
+   "blend": "OSEBERG",
+   "basis": "sodir"
+  },
+  {
+   "id": 4704482,
+   "name": "SKARV",
+   "blend": "SKARV",
+   "basis": "sodir"
+  },
+  {
+   "id": 38542241,
+   "name": "ÆRFUGL NORD",
+   "blend": "SKARV",
+   "basis": "sodir"
+  },
+  {
+   "id": 42002483,
+   "name": "ALVE NORD",
+   "blend": "SKARV",
+   "basis": "sodir"
+  },
+  {
+   "id": 42002477,
+   "name": "IDUN NORD",
+   "blend": "SKARV",
+   "basis": "sodir"
+  },
+  {
+   "id": 42002484,
+   "name": "ØRN",
+   "blend": "SKARV",
+   "basis": "sodir"
+  },
+  {
+   "id": 43658,
+   "name": "STATFJORD",
+   "blend": "STATFJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 43679,
+   "name": "STATFJORD NORD",
+   "blend": "STATFJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 43672,
+   "name": "STATFJORD ØST",
+   "blend": "STATFJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 104718,
+   "name": "SYGNA",
+   "blend": "STATFJORD",
+   "basis": "sodir"
+  },
+  {
+   "id": 46437,
+   "name": "TROLL",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 1578840,
+   "name": "FRAM",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 23410947,
+   "name": "FRAM H-NORD",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 28975067,
+   "name": "BYRDING",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 4467574,
+   "name": "GJØA",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 4467595,
+   "name": "VEGA",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 34833026,
+   "name": "DUVA",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 33197696,
+   "name": "NOVA",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 1036101,
+   "name": "KVITEBJØRN",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 20460969,
+   "name": "VALEMON",
+   "blend": "TROLL",
+   "basis": "sodir"
+  },
+  {
+   "id": 3420717,
+   "name": "VOLVE",
+   "blend": "VOLVE",
+   "basis": "sodir"
+  },
+  {
+   "id": 43807,
+   "name": "YME",
+   "blend": "YME",
+   "basis": "sodir"
+  },
+  {
+   "id": 43765,
+   "name": "ÅSGARD",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 1630514,
+   "name": "MIKKEL",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 4966234,
+   "name": "MORVIN",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 1854729,
+   "name": "KRISTIN",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 3960848,
+   "name": "TYRIHANS",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 26465170,
+   "name": "MARIA",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 29396445,
+   "name": "TRESTAKK",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 42148955,
+   "name": "HALTEN ØST",
+   "blend": "ÅSGARD",
+   "basis": "sodir"
+  },
+  {
+   "id": 42002492,
+   "name": "EIRIN",
+   "blend": "GINA KROG",
+   "basis": "sodir",
+   "to": "2024-07"
+  },
+  {
+   "id": 42002492,
+   "name": "EIRIN",
+   "blend": "GUDRUN",
+   "basis": "inferred",
+   "from": "2024-08",
+   "note": "Via Gina Krog to Sleipner A and Kårstø since 2024."
+  },
+  {
+   "id": 17196400,
+   "name": "16/1-12 TROLDHAUGEN",
+   "blend": "GRANE",
+   "basis": "inferred",
+   "note": "Trial production tied back to Ivar Aasen; assumed to follow Edvard Grieg oil into the Grane Oil Pipeline."
+  }
+ ],
+ "other": {
+  "32017325": {
+   "name": "JOHAN CASTBERG",
+   "note": "Own blend (shuttle tankers); no norm price in the data yet"
+  },
+  "1272071": {
+   "name": "GLITNE",
+   "note": "Own production vessel; no norm price in the data"
+  },
+  "43451": {
+   "name": "VARG",
+   "note": "Own production vessel; no norm price in the data"
+  },
+  "21123063": {
+   "name": "BRYNHILD",
+   "note": "Haewene Brim FPSO (UK)"
+  },
+  "18161341": {
+   "name": "GAUPE",
+   "note": "Armada (UK), Forties pipeline"
+  },
+  "4467554": {
+   "name": "REV",
+   "note": "Armada (UK), Teesside"
+  },
+  "3437659": {
+   "name": "ENOCH",
+   "note": "Brae A (UK), Forties pipeline"
+  },
+  "21105675": {
+   "name": "ISLAY",
+   "note": "Alwyn (UK), Sullom Voe"
+  },
+  "43665": {
+   "name": "MURCHISON",
+   "note": "Brent pipeline, Sullom Voe"
+  },
+  "18081500": {
+   "name": "TRYM",
+   "note": "Harald (DK), Danish system"
+  },
+  "21106284": {
+   "name": "ATLA",
+   "note": "Heimdal; condensate to Brae (UK)"
+  },
+  "43590": {
+   "name": "HEIMDAL",
+   "note": "Condensate to Brae (UK)"
+  },
+  "2138816": {
+   "name": "SKIRNE",
+   "note": "Heimdal; condensate to Brae (UK)"
+  },
+  "1578893": {
+   "name": "VALE",
+   "note": "Heimdal; condensate to Brae (UK)"
+  },
+  "29393934": {
+   "name": "DVALIN",
+   "note": "Gas field (Heidrun gas module)"
+  },
+  "4973114": {
+   "name": "YTTERGRYTA",
+   "note": "Gas field (Åsgard B)"
+  },
+  "24635035": {
+   "name": "FLYNDRE",
+   "note": "Clyde/Fulmar (UK), Norpipe to Teesside"
+  },
+  "25288497": {
+   "name": "(id 25288497)",
+   "note": "Short production in 2018; field name not in fields.json"
+  },
+  "44576": {
+   "name": "(id 44576)",
+   "note": "Production 2009–2014; field name not in fields.json"
+  }
+ }
+}
