@@ -3903,7 +3903,7 @@ felttabellen, og horisonten er 2050.
 
 Prisknappene (USD 60/80/100) er erstattet av to glideskalaer (`cfControls`) i
 alle verdsettelsene: Company, Hub, Field, DCS og Analytics. Oljepris USD 0–200
-(`hubCfPrice`, `hubCfSet`) og diskonteringsrente (WACC) 0–20 % i hele prosent
+(`hubCfPrice`, `hubCfSet`) og diskonteringsrente (WACC) 0–20 % med én desimal (step 0,1; komma godtas i tallfeltet). Prosentene i verdsettelsene skrives med `cfPct` (7 %, 7.5 %)
 (`hubCfRate`, `hubCfSetRate`). Hver skala har et tallfelt der verdien kan
 skrives inn eksakt (Enter eller klikk utenfor) eller justeres med pilene. Verdier
 utenfor området kuttes (`cfApply`). Tallfeltet følger skalaen mens man drar, men

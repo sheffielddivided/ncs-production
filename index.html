@@ -5072,7 +5072,7 @@ function anValCard(fromParts, toParts, sells, fromName) {
   anValRows = null;
   if (!priceHist || !priceHist.byYear || !Object.keys(priceHist.byYear).length)
     return '<div class="pf-card pf-wide"><h3>Back-of-the-envelope valuation</h3><div class="status">Price data could not be loaded.</div></div>';
-  const pct = r => `${Math.round(r * 100)} %`;
+  const pct = cfPct;
   const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   // Salgene gjelder bare pro forma-søylen; fra-søylen er selskapene før handlene.
@@ -6309,7 +6309,7 @@ function drawDcsValuation() {
   const v = (all.find(a => a.p === hubCfPrice) || all[0]).v;
   const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  const pct = r => `${Math.round(r * 100)} %`;
+  const pct = cfPct;
   const perBoe = (x, boe) => boe > 1e5 ? n2(x * 1e9 / boe) : '—';
   const fact = (k, val, sub = '') => `<div class="pf-fact"><span>${k}</span><strong>${val}</strong>${sub ? `<small class="val-sub">${sub}</small>` : ''}</div>`;
   const boed = x => Math.round(x / daysInYear(y0 - 1)).toLocaleString('en');
@@ -13125,7 +13125,7 @@ function valEquityCard(cmp, all, total) {
   const sh = x => (x * 1e9 / p.shares);
   const usd = x => sh(x).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const nok = x => Math.round(sh(x) * fx).toLocaleString('en');
-  const pct = r => `${Math.round(r * 100)} %`;
+  const pct = cfPct;
   const src = (u, t) => u ? `<a href="${esc(u)}" rel="noopener" target="_blank">${t}</a>` : t;
   const cur = all.find(a => a.p === hubCfPrice) || all[0];
   const T = total(cur.v, 0), E = T - nd / 1000;
@@ -13188,7 +13188,7 @@ function drawCompanyValuation() {
   const tax = 1 - CF_TAX, y0 = v.y0;
   const n1 = x => x.toLocaleString('en', {minimumFractionDigits: 1, maximumFractionDigits: 1});
   const n2 = x => x.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  const pct = r => `${Math.round(r * 100)} %`;
+  const pct = cfPct;
   const total = (vv, k) => vv.hubNpv[k] * tax + vv.discValue;
   const perBoe = (x, boe) => boe > 1e6 ? n2(x * 1e9 / boe) : '—';
   const fact = (k, val, sub = '') => `<div class="pf-fact"><span>${k}</span><strong>${val}</strong>${sub ? `<small class="val-sub">${sub}</small>` : ''}</div>`;
@@ -16298,27 +16298,32 @@ function hubCfSetRate(r) {
 // tegnes på nytt når skalaen slippes eller tallfeltet endres (change), ellers
 // ville omtegningen fjerne skalaen midt i dra-bevegelsen. Etter omtegning får
 // elementet man brukte fokus igjen, så piltastene virker videre.
-const CF_CTL = {price: {min: 0, max: 200, label: 'Oil price', unit: 'USD', pre: true},
-                rate: {min: 0, max: 20, label: 'Discount rate (WACC)', unit: '%', pre: false}};
+// WACC med én desimal (step 0.1); prosentene i verdsettelsene skrives med
+// cfPct, som viser desimalen bare når den ikke er null (7 %, 7.5 %).
+const CF_CTL = {price: {min: 0, max: 200, step: 1, label: 'Oil price', unit: 'USD', pre: true},
+                rate: {min: 0, max: 20, step: 0.1, label: 'Discount rate (WACC)', unit: '%', pre: false}};
+function cfPct(r) { return `${+(r * 100).toFixed(1)} %`; }
+const cfRatePct = () => +(hubCfRate * 100).toFixed(1);
 function cfControls() {
-  const val = {price: hubCfPrice, rate: Math.round(hubCfRate * 100)};
+  const val = {price: hubCfPrice, rate: cfRatePct()};
   return `<div class="cf-ctl">${Object.entries(CF_CTL).map(([k, c]) => `
       <div class="cf-one"><span class="cf-lbl">${c.label}</span>
         <div class="cf-row">
-          <input type="range" id="cf-${k}-r" min="${c.min}" max="${c.max}" step="1" value="${val[k]}" aria-label="${c.label}"
+          <input type="range" id="cf-${k}-r" min="${c.min}" max="${c.max}" step="${c.step}" value="${val[k]}" aria-label="${c.label}"
             oninput="document.getElementById('cf-${k}-n').value=this.value" onchange="cfApply('${k}',this.value,this.id)">
-          <span class="cf-num">${c.pre ? `<span>${c.unit}</span>` : ''}<input type="number" id="cf-${k}-n" min="${c.min}" max="${c.max}" step="1"
-            value="${val[k]}" inputmode="numeric" aria-label="${c.label}, exact value" onchange="cfApply('${k}',this.value,this.id)"
+          <span class="cf-num">${c.pre ? `<span>${c.unit}</span>` : ''}<input type="number" id="cf-${k}-n" min="${c.min}" max="${c.max}" step="${c.step}"
+            value="${val[k]}" inputmode="decimal" aria-label="${c.label}, exact value" onchange="cfApply('${k}',this.value,this.id)"
             onkeydown="if(event.key==='Enter')this.blur()">${c.pre ? '' : `<span>${c.unit}</span>`}</span>
         </div></div>`).join('')}
     </div>`;
 }
 function cfApply(kind, raw, from) {
   const c = CF_CTL[kind];
-  let v = Math.round(+raw);
-  if (!isFinite(v)) v = kind === 'price' ? hubCfPrice : Math.round(hubCfRate * 100);
-  v = Math.min(c.max, Math.max(c.min, v));
-  if (kind === 'price') hubCfSet(v); else hubCfSetRate(v / 100);
+  // Komma godtas som desimaltegn; avrundes til skalaens steg.
+  let v = +String(raw).replace(',', '.');
+  if (raw === '' || !isFinite(v)) v = kind === 'price' ? hubCfPrice : cfRatePct();
+  v = +(Math.round(Math.min(c.max, Math.max(c.min, v)) / c.step) * c.step).toFixed(1);
+  if (kind === 'price') hubCfSet(v); else hubCfSetRate(+(v / 100).toFixed(4));
   const el = from && document.getElementById(from);
   if (el && from.endsWith('-r')) el.focus({preventScroll: true});
 }
@@ -16527,7 +16532,7 @@ function hubCashFlowCard(ids, noun = 'hub') {
   const all = cfPrices().map(p => ({p, cf: p === hubCfPrice ? cf : hubCashFlow(ids, p)}));
   const resBoe = cf.reserves, tax = 1 - CF_TAX;
   const perBoe = v => resBoe > 1e6 ? (v * 1e9 / resBoe).toFixed(2) : '—';
-  const pct = r => `${Math.round(r * 100)} %`;
+  const pct = cfPct;
   const npvTable = cf.hasForecast ? `
     <div class="cf-npv"><table class="res-table">
       <caption>NPV after tax (${pct(CF_TAX)}) as at 1 January ${y0}, USD/boe</caption>
