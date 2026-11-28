@@ -1,0 +1,49 @@
+name: Oppdater crude oil assays
+
+# Equinors crude oil assays (fetch_assays.py): API, svovel m.m. per blend,
+# brukt i kvalitet-mot-differensial-plottet på Prices → Oil. Equinor oppdaterer
+# enkeltassays noen ganger i året, så én gang i måneden holder.
+on:
+  schedule:
+    - cron: '41 5 3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crude-assays
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer avhengigheter
+        run: pip install requests openpyxl
+
+      - name: Hent assays
+        run: python fetch_assays.py
+
+      - name: Commit hvis dataene er endret
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/crude_assays.json
+          if git diff --staged --quiet; then
+            echo "Ingen endringer - hopper over commit."
+            exit 0
+          fi
+          git commit -m "Oppdater crude oil assays ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((2 ** i))
+          done
+          exit 1
