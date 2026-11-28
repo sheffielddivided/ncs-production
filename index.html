@@ -21982,22 +21982,33 @@ function planRigBars(list, today, rigName) {
   }
   // Planlagte brønner der datoen er passert står fortsatt som planlagte hos Sodir,
   // men uten en brukbar dato. De tegnes fra det tidligste riggen kan være ledig
-  // (etter siste aktivitet, aldri før i dag), i rekkefølge etter Sodirs gamle dato,
-  // og kortes inn mot en senere planlagt brønn med gyldig dato så de ikke overlapper.
-  const late = planned.filter(w => w.overdue).sort((a, b) => (a.planned < b.planned ? -1 : 1));
+  // (etter siste aktivitet, aldri før i dag), i rekkefølge etter Sodirs gamle dato.
+  // Rekkefølgen etter Sodirs planlagte dato holdes for alle planlagte brønner på
+  // riggen: en passert brønn hopper aldri forbi en brønn som er planlagt senere.
+  // Er det minst en uke ledig før neste planlagte brønn, kortes den passerte
+  // brønnen inn mot den; ellers får den sine 60 dager, og de senere planlagte
+  // brønnene skyves bak den med samme lengde.
+  const byPlan = (a, b) => (a.planned < b.planned ? -1 : a.planned > b.planned ? 1 : a.id - b.id);
+  const late = planned.filter(w => w.overdue).sort(byPlan);
   if (late.length) {
-    const fixed = planned.filter(w => !w.overdue).sort((a, b) => (a.start < b.start ? -1 : 1));
+    const fixed = planned.filter(w => !w.overdue).sort(byPlan);
     let cur = out.concat(extra).reduce((m, b) => isoMax(m, b.end), today);
     if (out.some(b => rigOngoing(b, today))) cur = isoMax(cur, addDays(today, RIG_ONGOING_DAYS));
     late.forEach(w => {
-      for (let f; (f = fixed.find(x => x.end > cur && x.start < addDays(cur, 7)));) cur = f.end;
-      const nextFixed = fixed.filter(x => x.start > cur).map(x => x.start).sort()[0];
+      const nextFixed = fixed.length ? fixed[0].start : '';
       let end = addDays(cur, 60);
-      if (nextFixed && end > nextFixed) end = nextFixed;
+      if (nextFixed && nextFixed >= addDays(cur, 7) && end > nextFixed) end = nextFixed;
       w.sodirPlanned = w.planned;
       w.start = cur; w.end = end;
       cur = end;
     });
+    for (const w of fixed) {
+      if (w.start >= cur) break;
+      const len = Math.max(1, Math.round((dayMs(w.end) - dayMs(w.start)) / 864e5));
+      w.afterLate = {from: w.start};
+      w.start = cur; w.end = addDays(cur, len);
+      cur = w.end;
+    }
   }
   // Planlagte brønner der riggen på det tidspunktet har en fast kontrakt med
   // et annet selskap enn brønnens operatør: brønnen kan ikke bores før den
@@ -22352,6 +22363,7 @@ function explRenderRigs() {
         + (isDev && w.shifted ? ' (start adjusted to avoid overlap)' : '')
         + (ongoing ? ` · ongoing; the dashed part runs ${ONGOING_DAYS} days past today to mark that, not as a completion estimate` : '')
         + (w.overdue ? ` · Sodir still lists this as planned, but its planned start (${fmtShort(w.sodirPlanned)}) has passed; drawn from the earliest the rig is free` : '')
+        + (w.afterLate ? ` · moved from ${fmtShort(w.afterLate.from)} so it comes after the earlier-planned wells on this rig whose dates have passed` : '')
         + (w.afterContract ? ` · the rig has a firm contract with ${w.afterContract.client} until ${fmtShort(w.afterContract.end)}, so the well is assumed to be drilled after that (moved from ${fmtShort(w.afterContract.from)})` : '')
         + (w.ais && w.aisStay ? ` · AIS: on ${w.aisStay.label} ${fmtShort(w.aisStay.from)} – ${fmtShort(w.aisStay.to)}` : '');
       const to = isAisOnly ? ' – ' + fmtShort(w.end) : w.ais ? ' – ' + fmtShort(w.end)
