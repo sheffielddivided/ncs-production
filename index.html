@@ -224,7 +224,13 @@
       font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
     .np-row3 h4 .pill-group{margin:0 !important;text-transform:none;letter-spacing:0;}
     .np-row3 .chart-container{height:320px;}
-    .np-blends{margin-top:8px;font-size:0.78rem;} .np-blends summary{cursor:pointer;font-weight:600;color:var(--blue);}
+    .np-dlg{height:auto;margin:auto;}
+    .np-dlg .np-blends{flex:1 1 auto;min-height:0;overflow:auto;}
+    .np-blends{font-size:0.78rem;}
+    .np-blends table{width:100%;table-layout:fixed;}
+    .np-blends th:first-child{width:190px;} .np-blends th:nth-child(2){width:64px;}
+    .np-blends td{white-space:normal !important;overflow-wrap:anywhere;}
+    @media (max-width: 599px){ .np-blends th:first-child{width:110px;} .np-blends th:nth-child(2){width:48px;} }
     .np-blends th, .np-blends td{vertical-align:top;text-align:left !important;}
     .np-blends th:nth-child(2), .np-blends td:nth-child(2){text-align:right !important;white-space:nowrap;padding-right:14px;}
     @media (max-width: 1199px){ .np-row3{grid-template-columns:1fr 1fr;} .np-row3 > div:first-child{grid-column:1 / -1;} }
@@ -8323,12 +8329,20 @@ function qualFit(pts) {
   if (pts.length < 3) return null;
   return qualVolMode() ? olsFit(pts.map(p => ({x: Math.log10(p.x), y: p.y}))) : olsFit(pts);
 }
+// Popupen med feltene i hver blend; klikk utenfor eller Esc lukker den.
+function npBlendsOpen() {
+  const d = document.getElementById('npBlendsDlg');
+  if (!d) return;
+  if (!d.dataset.wired) { d.dataset.wired = '1'; d.addEventListener('click', e => { if (e.target === d) d.close(); }); }
+  d.showModal();
+}
 // Merknaden og sammensetningen av blendene under volumplottet.
 function qualVolNote(months) {
   return `<div class="pf-map-note">Each point is a norm price blend: x is its estimated crude volume, the sum of Sodir's monthly oil production
       (incl. condensate) for the fields in the blend, averaged over the same months as the differential; log scale.
       The field-to-blend mapping follows Sodir's transport description for each field (same terminal, pipeline or loading system);
-      * = assumed, see the notes. UK fields in Ekofisk Blend (via Norpipe) are not included. The fields in each blend are listed below the charts.</div>`;
+      * = assumed. UK fields in Ekofisk Blend (via Norpipe) are not included.</div>
+    <button type="button" class="grp-btn" style="margin-top:6px" onclick="npBlendsOpen()">Fields in each blend ›</button>`;
 }
 function qualBlendTable(months) {
   if (!qualVolMode() || !priceData.blends || !coreDone) return '';
@@ -8342,11 +8356,16 @@ function qualBlendTable(months) {
     return {k, b, pt: pts[k], names, note};
   }).sort((a, b) => (b.pt ? b.pt.x : -1) - (a.pt ? a.pt.x : -1));
   const fmt = v => v.toLocaleString('en', {maximumFractionDigits: v < 10 ? 1 : 0});
-  return `<details class="np-blends"><summary>Fields in each blend (${prF.y0}–${prF.y1})</summary><div class="pf-scroll"><table class="res-table">
+  return `<dialog id="npBlendsDlg" class="val-dlg np-dlg" aria-labelledby="npBlendsTitle">
+    <div class="val-dlg-head"><h3 id="npBlendsTitle">Fields in each blend</h3>
+      <button type="button" class="val-dlg-x" aria-label="Close" onclick="this.closest('dialog').close()">×</button></div>
+    <div class="pf-map-note" style="margin:0 0 6px">Volume: average crude production ${prF.y0}–${prF.y1} in the months the blend has a norm price, kbbl/d.
+      * = assumed, not stated in Sodir's transport description; see the notes under each blend.</div>
+    <div class="np-blends"><div class="pf-scroll"><table class="res-table">
       <thead><tr><th>Blend</th><th>kbbl/d</th><th>Fields</th></tr></thead><tbody>${rows.map(r => `<tr>
         <td>${esc(r.b.name)}<br><small class="an-sh">${esc(r.b.export)}</small></td>
         <td>${r.pt ? fmt(r.pt.x) : '—'}</td>
-        <td>${r.names.join(', ')}${r.note ? `<br><small class="an-sh">${esc(r.note)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div></details>`;
+        <td>${r.names.join(', ')}${r.note ? `<br><small class="an-sh">${esc(r.note)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div></div></dialog>`;
 }
 function priceQualX(v) { prF.qx = v; syncUrl(); drawChart(); }
 function drawPriceQuality(months) {
