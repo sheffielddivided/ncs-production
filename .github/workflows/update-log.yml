@@ -1,7 +1,8 @@
 name: Oppdater oppdateringsloggen
 
 # data/update_log.json til updates.html: hva som er endret i dataene, dag
-# for dag. Bygges fra git-historikken (build_update_log.py regner de siste
+# for dag. I tillegg data/update_details/<dato>.json med hva endringene er
+# (faktasetninger per kilde), som grunnlag for en daglig oppsummering. Bygges fra git-historikken (build_update_log.py regner de siste
 # tre dagene på nytt) når en av oppdateringsworkflowene er ferdig, og én gang
 # før midnatt UTC, så endringer gjort i appen også kommer med. Egen jobb, så
 # datajobbene aldri skriver samme fil og kommer i konflikt.
@@ -20,6 +21,11 @@ on:
   schedule:
     - cron: '52 23 * * *'
   workflow_dispatch:
+    inputs:
+      backfill:
+        description: 'Bygg hele loggen og detaljfilene på nytt for så mange dager (0 = vanlig kjøring)'
+        required: false
+        default: '0'
 
 permissions:
   contents: write
@@ -36,20 +42,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 300
+          # Full historikk ved backfill, ellers holder 300 commits (tre dager).
+          fetch-depth: ${{ fromJSON(inputs.backfill || '0') > 0 && '0' || '300' }}
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Bygg loggen
-        run: python build_update_log.py
+        env:
+          BACKFILL: ${{ inputs.backfill || '0' }}
+        run: |
+          if [ "$BACKFILL" -gt 0 ] 2>/dev/null; then
+            python build_update_log.py --backfill "$BACKFILL"
+          else
+            python build_update_log.py
+          fi
 
       - name: Commit hvis loggen er endret
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/update_log.json
+          git add data/update_log.json data/update_details
           if git diff --staged --quiet; then
             echo "Ingen endringer - hopper over commit."
             exit 0
