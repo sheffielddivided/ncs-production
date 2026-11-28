@@ -78,6 +78,7 @@
 
     .view-tabs{display:flex;gap:6px;flex-wrap:wrap;}
     .view-tab{padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:0.72rem;font-weight:600;color:var(--muted);background:#fff;cursor:pointer;white-space:nowrap;}
+    .view-tab .key-ico{width:0.95em;height:0.95em;margin-left:4px;vertical-align:-0.15em;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;}
     .view-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
 
     .water-row{display:flex;align-items:center;gap:8px;}
@@ -2185,7 +2186,7 @@ const FIELD_TABS   = [
   {id:'havtil',         label:'Havtil'},
   {id:'downtime',       label:'Gas outage'},
   {id:'shipping',       label:'Shipping'},
-  {id:'valuation',      label:'Valuation BETA'},
+  {id:'valuation',      label:'Valuation', lock: true},
 ];
 const HUB_TABS     = [
   {id:'production',     label:'Production'},
@@ -2195,7 +2196,7 @@ const HUB_TABS     = [
   {id:'havtil',         label:'Havtil'},
   {id:'downtime',       label:'Gas outage'},
   {id:'shipping',       label:'Shipping'},
-  {id:'valuation',      label:'Valuation BETA'},
+  {id:'valuation',      label:'Valuation', lock: true},
 ];
 const DISCOVERY_TABS = [
   {id:'per_discovery', label:'Resources'},
@@ -2239,10 +2240,12 @@ const COMPANY_TABS = [
   {id:'downtime',      label:'Gas outage'},
   {id:'profile',       label:'Factsheet'},
   {id:'news',          label:'News'},
-  {id:'valuation',     label:'Valuation BETA'},
-  {id:'analytics',     label:'Analytics BETA'},
+  {id:'valuation',     label:'Valuation', lock: true},
+  {id:'analytics',     label:'Analytics', lock: true},
 ];
 
+// Passordbeskyttede sider (betaGate) merkes med en liten nøkkel i fanen.
+const KEY_ICON = '<svg class="key-ico" viewBox="0 0 24 24" aria-label="password protected" role="img"><circle cx="8" cy="8" r="4.5"/><path d="M11.2 11.2 20 20M16.5 16.5l2.5-2.5M14 14l2-2"/></svg>';
 function renderViewTabs() {
   const tabs = topMode === 'home' ? [] : topMode === 'fields' ? FIELD_TABS : topMode === 'hubs' ? HUB_TABS
              : topMode === 'discoveries' ? DISCOVERY_TABS
@@ -2270,7 +2273,7 @@ function renderViewTabs() {
   }
   const curTab = isProdView(cur) ? 'production' : cur;
   document.getElementById('viewTabs').innerHTML = tabs.filter(t => dataTabVisible(t.id, cur)).map(t =>
-    `<button class="view-tab${curTab===t.id?' active':''}" onclick="setSubView('${t.id}')">${t.label}</button>`
+    `<button class="view-tab${curTab===t.id?' active':''}" onclick="setSubView('${t.id}')"${t.lock ? ' title="Password protected"' : ''}>${t.label}${t.lock ? KEY_ICON : ''}</button>`
   ).join('');
   // Produsert vann finnes kun i brutto feltdata, altså ikke i selskapsvisningen.
   const showWaterRow = topMode === 'fields' || topMode === 'hubs' ? cur === 'oilgas'
@@ -4054,7 +4057,7 @@ function drawChartView() {
     else if (sv === 'news')          drawCompanyNews();
     else if (sv === 'licences')      drawCompanyLicences();
     else if (sv === 'valuation')     betaGate(drawCompanyValuation);
-    else if (sv === 'analytics')     betaGate(drawCompanyAnalytics, 'Analytics BETA');
+    else if (sv === 'analytics')     betaGate(drawCompanyAnalytics, 'Analytics');
     else if (sv === 'downtime')      drawCompanyOutage();
   }
 }
@@ -4083,7 +4086,7 @@ async function betaLoad() {
   betaState.ok = !!betaState.file && lsGet(BETA_KEY) === betaState.file.hash;
 }
 
-function betaGate(draw, name = 'Valuation BETA') {
+function betaGate(draw, name = 'Valuation') {
   if (betaState.ok) return draw();
   if (typeof anDestroy === 'function') anDestroy();
   setChartTitle(name, 'Password protected');
@@ -5088,7 +5091,7 @@ function anValCard(fromParts, toParts, sells, fromName) {
           ${toParts.length ? row('Pro forma', vTo, 'total-row') : ''}</tfoot>
       </table></div>
       <div style="margin-top:12px">${sens}</div>
-      <div class="pf-map-note">Method as in Valuation BETA. NCS fields: the hub cash-flow model on today's shares (USD ${OPEX_USD}/boe opex,
+      <div class="pf-map-note">Method as in Valuation. NCS fields: the hub cash-flow model on today's shares (USD ${OPEX_USD}/boe opex,
         Sodir's expected investments, ${pct(CF_ABEX)} of historical capex for abandonment, ${pct(CF_TAX)} tax); discoveries at USD ${VAL_DISC_USD}
         per boe of net contingent resources, after tax; DCS fields: ENS reserves declining from last year's production, USD ${DCS_OPEX_USD}/boe
         opex, ${pct(DCS_TAX)} tax, no capex. All boe at the oil price, ${(CF_INFL * 100).toFixed(1)} % inflation, mid-year discounting.
@@ -5123,7 +5126,7 @@ const anSumAll = list => list.reduce((t, x) => anPlus(t, x), anZero());
 function drawCompanyAnalytics() {
   anDestroy();
   setChartNone();
-  setChartTitle('Analytics BETA', 'Merger simulation across NCS, DCS and UKCS · net production and reserves');
+  setChartTitle('Analytics', 'Merger simulation across NCS, DCS and UKCS · net production and reserves');
   if (!allLicLoaded || !bundle.production) { setChartEmpty('Data could not be loaded.'); setInfo(''); return; }
   const last = currentYear, ry = anResYear();
   const est = currentYear, LM = anLastMonths(), estTxt = y => y === est ? `${y}e` : String(y);
@@ -5342,7 +5345,7 @@ function drawCompanyAnalytics() {
   setInfo(`<strong>Method:</strong> net production = field production × equity share (NCS and UKCS monthly, DCS yearly from ENS' ownership history);
     reserves and contingent resources × today's shares; companies matched by name across shelves; deals as pro forma shares;
     manual assets (2P, 2C) as entered on the page;
-    valuation as in Valuation BETA &nbsp;|&nbsp;
+    valuation as in Valuation &nbsp;|&nbsp;
     <strong>Sources:</strong> Sodir FactPages; ENS; NSTA; World Bank Pink Sheet; FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
 
   const tick = {callback: v => v.toLocaleString('en')};
@@ -5437,7 +5440,7 @@ function drawCompanyAnalytics() {
   // produksjonsgrafen, trappetrinnene og verdsettelsen, alle som ekte
   // PowerPoint-grafer (tabell for verdsettelsen). Trappetrinnene er en
   // stablet søylegraf med en usynlig sokkel under hvert trinn.
-  const src = 'Source: Sodir FactPages; Danish Energy Agency (ENS); NSTA · NCS Insight Analytics (beta), indicative';
+  const src = 'Source: Sodir FactPages; Danish Energy Agency (ENS); NSTA · NCS Insight Analytics, indicative';
   const meta = (title, subtitle) => ({title, subtitle, source: src});
   const toNames = toParts.map(p => p.label).join(' + ');
   const bridgeSpec = (f, dec, unit) => {
@@ -5545,7 +5548,7 @@ const DCS_TABS = [
   {id: 'reserves',   label: 'Reserves'},
   {id: 'drilling',   label: 'Drilling'},
   {id: 'map',        label: 'Map'},
-  {id: 'valuation',  label: 'Valuation BETA'},
+  {id: 'valuation',  label: 'Valuation', lock: true},
 ];
 let dcsSubView = 'production';
 // prod: 'product' | 'field' · field: ett felt (slug) i Oil & Gas, '' = alle · cmp: ett selskap i Companies
@@ -6270,7 +6273,7 @@ function drawDcsValuation() {
   const perBoe = (x, boe) => boe > 1e5 ? n2(x * 1e9 / boe) : '—';
   const fact = (k, val, sub = '') => `<div class="pf-fact"><span>${k}</span><strong>${val}</strong>${sub ? `<small class="val-sub">${sub}</small>` : ''}</div>`;
   const boed = x => Math.round(x / daysInYear(y0 - 1)).toLocaleString('en');
-  setChartTitle(`${cmp} · Valuation (beta), Denmark`, `Indicative after-tax value of the Danish portfolio · oil price USD ${hubCfPrice} · as at 1 January ${y0}`);
+  setChartTitle(`${cmp} · Valuation, Denmark`, `Indicative after-tax value of the Danish portfolio · oil price USD ${hubCfPrice} · as at 1 January ${y0}`);
   setInfo(`<strong>Method:</strong> ${esc(cmp)}'s share today of each Danish field's forecast, ENS reserves per 1 January ${ry} declining from ${y0 - 1} production and all produced by ${DCS_LAST_YEAR}, when Danish production ends, USD ${DCS_OPEX_USD}/boe operating cost, ${pct(DCS_TAX)} tax, no capex &nbsp;|&nbsp; <strong>Sources:</strong> Danish Energy Agency (ENS) production, reserves and licences &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
   ncsToggleAbove(dcsBar(`<span class="ctrl-label">Company</span><select class="year-select" onchange="dcsSet('cmp', this.value)" aria-label="Company">${
     byVal.map(({c}) => `<option value="${esc(c)}"${c === cmp ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`));
@@ -10310,7 +10313,7 @@ const NCS_TABS = [
   {id:'investments', label:'Investments'},
   {id:'outage',      label:'Gas exports'},
   {id:'economy',     label:'Economy'},
-  {id:'forecasts',   label:'Forecasts BETA'},
+  {id:'forecasts',   label:'Forecasts', lock: true},
 ];
 let ncsSubView = 'production';
 // prod: 'product' | 'area' | 'operator' · gx: Gas exports → 'outages' | 'infra' · grp: lisenshavere telles per konsern · tot: Total-knappen, kakediagram over summen i perioden · sc: produksjonsgrafen viser Sodirs tre scenarioer · res: 'oe' | 'liq' | 'gas' · cum: reservegrafen viser også akkumulert produsert · vol: påvist volum i letegrafen · from: startår i volumgrafen · rf: startår i reservegrafen
@@ -10393,7 +10396,7 @@ function drawNcs() {
   else if (v === 'fields' || v === 'hubs') drawNcsFields();
   else if (v === 'economy') drawNcsEconomy();
   else if (v === 'outage') drawNcsOutage();
-  else if (v === 'forecasts') betaGate(drawNcsForecasts, 'Forecasts BETA');
+  else if (v === 'forecasts') betaGate(drawNcsForecasts, 'Forecasts');
   else drawNcsProduction();
 }
 
@@ -10684,7 +10687,7 @@ function ncsFcAll(all) {
 }
 
 function drawNcsForecasts() {
-  if (!ncsFc || !Array.isArray(ncsFc.vintages)) { setChartTitle('NCS · Forecasts BETA', ''); setChartEmpty('Could not load the forecast data.'); return; }
+  if (!ncsFc || !Array.isArray(ncsFc.vintages)) { setChartTitle('NCS · Forecasts', ''); setChartEmpty('Could not load the forecast data.'); return; }
   const sm3 = ncsF.fu === 'sm3', end = +ncsF.fh, start = 2000;
   const unit = sm3 ? 'million Sm³ o.e./year' : 'million boe/day';
   const conv = (v, y) => v == null ? null : sm3 ? +v.toFixed(1) : +(oeBoed(v, daysInYear(y)) / 1e6).toFixed(3);
@@ -12652,7 +12655,7 @@ function drawCompanyValuation() {
   const total = (vv, k) => vv.hubNpv[k] * tax + vv.discValue;
   const perBoe = (x, boe) => boe > 1e6 ? n2(x * 1e9 / boe) : '—';
   const fact = (k, val, sub = '') => `<div class="pf-fact"><span>${k}</span><strong>${val}</strong>${sub ? `<small class="val-sub">${sub}</small>` : ''}</div>`;
-  setChartTitle(`${cmp} · Valuation (beta)`, `Indicative after-tax value of the Norwegian portfolio · oil price USD ${hubCfPrice} · as at 1 January ${y0}`);
+  setChartTitle(`${cmp} · Valuation`, `Indicative after-tax value of the Norwegian portfolio · oil price USD ${hubCfPrice} · as at 1 January ${y0}`);
   setInfo(`<strong>Method:</strong> the hub cash flow model applied to ${esc(cmp)}'s equity share of every field it holds today, plus USD ${VAL_DISC_USD} per boe for its share of resources in discoveries &nbsp;|&nbsp; <strong>Sources:</strong> Sodir FactPages; World Bank Pink Sheet; FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
 
   // Verdikort.
@@ -16789,7 +16792,7 @@ function drawHubValuation() {
   const hubName = names[0];
   const ids = hubFieldIds(names);
   const {partialSrc, lastYear, hasFc, y0} = drawHubProdChart(ids, true);
-  setChartTitle(hubName, 'Valuation BETA · simulated cash flow and production forecast');
+  setChartTitle(hubName, 'Valuation · simulated cash flow and production forecast');
   setInfo(`<strong>Hub:</strong> ${esc(hubName)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production per member field, with forecast &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages, price paths from the World Bank and FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
   setProfile(`
     ${valWarnCard(false)}
@@ -16817,14 +16820,14 @@ function drawFieldValuation() {
   const name = allFields.find(f => f.id === ids[0])?.name || String(ids[0]);
   const hub = hubOfField[ids[0]];
   const {partialSrc, lastYear, hasFc, y0} = drawHubProdChart(ids, true, 'field');
-  setChartTitle(name, 'Valuation BETA · simulated cash flow and production forecast');
+  setChartTitle(name, 'Valuation · simulated cash flow and production forecast');
   setInfo(`<strong>Field:</strong> ${esc(name)} &nbsp;|&nbsp; <strong>Chart:</strong> Annual gross production, with forecast &nbsp;|&nbsp; <strong>Unit:</strong> boe/day &nbsp;|&nbsp; <strong>Source:</strong> Sodir FactPages, price paths from the World Bank and FRED &nbsp;|&nbsp; <strong>Status:</strong> beta, indicative only`);
   setProfile(`
     ${valWarnCard(false)}
     ${hubCashFlowCard(ids, 'field')}
     <div class="pf-card pf-wide"><h3>Production</h3><div id="hubProdSlot"></div>
       <div class="pf-map-note">Annual gross production, boe/day${partialSrc ? `; ${lastYear} covers ${partialSrc.partialNote} only` : ''}.${hasFc ? ` Hatched from ${y0}: the simulated production profile used in the cash flow above.` : ''}
-        ${hub && hub !== name ? `The field is valued on its own here; ${hubLink(hub)} → Valuation BETA values it together with the rest of the hub, where the fields share one decline.` : ''}
+        ${hub && hub !== name ? `The field is valued on its own here; ${hubLink(hub)} → Valuation values it together with the rest of the hub, where the fields share one decline.` : ''}
         Source: Sodir FactPages.</div></div>
   `);
   const slot = document.getElementById('hubProdSlot'), top = document.getElementById('chartArea');
