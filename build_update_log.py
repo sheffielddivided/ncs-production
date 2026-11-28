@@ -17,6 +17,14 @@ oppdateringsworkflow er ferdig:
 
 Krever git-historikk tilbake til starten av dagen før; en grunn klone utdypes
 automatisk.
+
+Detaljer: i tillegg skrives data/update_details/ÅÅÅÅ-MM-DD.json med hva
+endringene er, ikke bare at noe er endret: nye produksjonstall per felt,
+reviderte måneder (gammel → ny), nye og endrede brønner, funn, lisenser og
+innretninger, nyhetstitler med lenke, Havtil-saker, Gassco-meldinger,
+lisensoverdragelser og nye priser. Hver kilde får en liste med korte
+faktasetninger på engelsk («facts»), egnet som grunnlag for en AI-generert
+daglig oppsummering. data/update_details/index.json lister dagene.
 """
 
 import argparse
@@ -29,6 +37,10 @@ import sys
 
 OUT = 'data/update_log.json'
 KEEP_DAYS = 180
+DETAIL_DIR = 'data/update_details'
+KEEP_DETAIL_DAYS = 90
+MAX_FACTS = 40              # per kilde og dag; resten telles («… and 12 more»)
+BBL_PER_SM3 = 6.2898
 MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
           'September', 'October', 'November', 'December']
 
@@ -151,6 +163,11 @@ FILES = {
     'angola_coast': (None, None),
     'brazil_aliases': ('edits', 'Brazil field links'),
     'update_log': (None, None),
+    'crude_assays': ('markets', 'Crude oil assays'),
+    'blends': ('edits', 'Blend mapping'),
+    'sodir_forecasts': ('ncs', 'Sodir forecasts'),
+    'baa': ('ncs', 'Business arrangement areas (register)'),
+    'ukcs_companies': ('shelves', 'UK companies'),
 }
 # Rutinekilder: telles som antall kjøringer i stedet for egne linjer
 ROUTINE = {'tanker_obs', 'rig_now'}
@@ -397,6 +414,342 @@ def s_steo_vintages(o, n, names):
     return f'release {", ".join(new)} archived' if new else None
 
 
+# ---------------------------------------------------------------- detaljer per fil
+# Hver funksjon får (gammel, ny, ctx) og returnerer en liste med korte
+# faktasetninger. ctx: names (felt-id → navn), licences (id → navn).
+
+def fnum(v, nd=1):
+    if v is None:
+        return 'n/a'
+    return f'{v:,.{nd}f}'
+
+
+def days_in(y, m):
+    import calendar
+    return calendar.monthrange(y, m)[1]
+
+
+def kboed(msm3, y, m):
+    """Millioner Sm³ i måneden → tusen fat per dag."""
+    return msm3 * 1e6 * BBL_PER_SM3 / days_in(y, m) / 1000
+
+
+def d_production(o, n, ctx):
+    names = ctx['names']
+    nf, of = n.get('fields') or {}, o.get('fields') or {}
+    a, b = latest_month(of), latest_month(nf)
+    out = []
+    if b and (not a or b > a):
+        y, m = b
+        tot = [0.0, 0.0, 0.0]
+        per = []
+        for k, series in nf.items():
+            for r in series:
+                if r[0] == y and r[1] == m:
+                    tot = [tot[0] + (r[2] or 0), tot[1] + (r[3] or 0), tot[2] + (r[4] or 0)]
+                    if r[4]:
+                        per.append((r[4], names.get(k, k), r[2] or 0, r[3] or 0))
+        out.append(f'NCS total {ym_txt(y, m)}: {fnum(kboed(tot[0], y, m), 0)} kbbl/d oil and condensate, '
+                   f'{fnum(tot[1] * 1000 / days_in(y, m), 1)} MSm3/d gas, {fnum(kboed(tot[2], y, m), 0)} kboe/d in total '
+                   f'({len(per)} producing fields)')
+        # Forrige måned til sammenligning
+        py, pm = (y, m - 1) if m > 1 else (y - 1, 12)
+        prev = sum((r[4] or 0) for s_ in nf.values() for r in s_ if r[0] == py and r[1] == pm)
+        if prev:
+            out.append(f'Total change from {ym_txt(py, pm)}: {fnum(kboed(tot[2], y, m) - kboed(prev, py, pm), 0)} kboe/d')
+        for oe, nm, oil, gas in sorted(per, reverse=True)[:12]:
+            out.append(f'{nm} {ym_txt(y, m)}: {fnum(kboed(oe, y, m), 0)} kboe/d ({fnum(kboed(oil, y, m), 0)} kbbl/d liquids)')
+    lim = a or (9999, 12)
+    for k in nf:
+        if k not in of:
+            continue
+        old = {(r[0], r[1]): r for r in of[k] if r[1]}
+        for r in nf[k]:
+            if not r[1] or (r[0], r[1]) > lim:
+                continue
+            q = old.get((r[0], r[1]))
+            if q and q[4] != r[4] and abs((r[4] or 0) - (q[4] or 0)) > 1e-6:
+                out.append(f'{names.get(k, k)} {ym_txt(r[0], r[1])} revised: {fnum(kboed(q[4] or 0, r[0], r[1]), 1)} → '
+                           f'{fnum(kboed(r[4] or 0, r[0], r[1]), 1)} kboe/d')
+    return out
+
+
+def d_reserves_field(o, n, ctx):
+    cols = n.get('columns') or []
+    i = {c: k for k, c in enumerate(cols)}
+    out = []
+    for k, rws in (n.get('fields') or {}).items():
+        old = (o.get('fields') or {}).get(k)
+        if rws == old or not rws:
+            continue
+        r = rws[-1]
+        q = old[-1] if old else None
+        nm = ctx['names'].get(k, k)
+        rem = r[i['fldRemainingOE']] if 'fldRemainingOE' in i else None
+        if q and q[0] == r[0]:
+            out.append(f'{nm}: remaining reserves (end-{r[0]}) revised {fnum(q[i["fldRemainingOE"]], 2)} → {fnum(rem, 2)} MSm3 o.e.')
+        else:
+            out.append(f'{nm}: new estimate for end-{r[0]}, remaining {fnum(rem, 2)} MSm3 o.e.'
+                       + (f' (end-{q[0]}: {fnum(q[i["fldRemainingOE"]], 2)})' if q else ''))
+    return out
+
+
+def d_rows(name_col, show, watch=None, key=0):
+    """Nye rader med utvalgte kolonner, og endrede rader med hvilke kolonner som er endret."""
+    def f(o, n, ctx):
+        cols = n.get('columns') or []
+        ci = {c: k for k, c in enumerate(cols)}
+        old = {r[key]: r for r in rows(o)}
+        out = []
+        for r in rows(n):
+            q = old.get(r[key])
+            nm = r[ci[name_col]] if name_col in ci else r[key]
+            if q is None:
+                det = ', '.join(f'{c}: {r[ci[c]]}' for c in show if c in ci and r[ci[c]] not in (None, '', 0))
+                out.append(f'New: {nm}' + (f' ({det})' if det else ''))
+            elif q != r:
+                ch = [f'{c} {q[ci[c]] if q[ci[c]] not in (None, "") else "–"} → {r[ci[c]] if r[ci[c]] not in (None, "") else "–"}'
+                      for c in (watch or cols) if c in ci and ci[c] < len(q) and q[ci[c]] != r[ci[c]]]
+                if ch:
+                    out.append(f'{nm}: ' + '; '.join(ch))
+                else:
+                    other = [c for c in cols if ci[c] < len(q) and q[ci[c]] != r[ci[c]]]
+                    if other:
+                        out.append(f'{nm}: {", ".join(other)} updated')
+        return out
+    return f
+
+
+def d_changes(o, n, ctx):
+    ok = {e.get('id') for e in o.get('events') or []}
+    out = []
+    for e in n.get('events') or []:
+        if e.get('id') in ok:
+            continue
+        t = e.get('t')
+        if t == 'rig':
+            out.append(f'Rig {e.get("r")} moved to {e.get("pp") or e.get("p")}' + (f' ({e.get("pk")})' if e.get('pk') else ''))
+        elif t == 'havtil':
+            out.append(f'Havtil {e.get("k")}: {e.get("n")}' + (f', {e.get("nc")} nonconformities' if e.get('nc') else ''))
+        elif t == 'plan':
+            out.append(f'Planned well {e.get("n")} ({e.get("op")}), rig {e.get("rig") or "n/a"}, planned start {e.get("planned") or "n/a"}')
+        elif t == 'spud':
+            out.append(f'Well {e.get("n")} spudded' + (f' ({e.get("op")})' if e.get('op') else '') + (f', rig {e.get("rig")}' if e.get('rig') else ''))
+        elif t in ('done', 'discovery'):
+            out.append(f'Well {e.get("n")} completed' + (f': {e.get("c")}' if e.get('c') else '') + (' – discovery' if t == 'discovery' else ''))
+        elif t == 'postponed':
+            out.append(f'Well {e.get("n")} postponed to {e.get("planned")}')
+        elif t == 'cancelled':
+            out.append(f'Planned well {e.get("n")} removed from Sodir data')
+        else:
+            out.append(f'{t}: {e.get("n") or e.get("id")}')
+    return out
+
+
+def d_havtil(o, n, ctx):
+    ok = {i.get('id') for i in o.get('items') or []}
+    out = []
+    for i in n.get('items') or []:
+        if i.get('id') in ok:
+            continue
+        extra = [x for x in (f'{i["nonconf"]} nonconformities' if i.get('nonconf') else '',
+                             f'{i["improve"]} improvement points' if i.get('improve') else '') if x]
+        out.append(f'{i.get("date")} {i.get("kind") or "case"}: {i.get("title")}'
+                   + (f' ({", ".join(i.get("companies") or [])}; {", ".join(i.get("facilities") or [])})' if i.get('companies') else '')
+                   + (f' – {"; ".join(extra)}' if extra else '') + (f'. {i.get("desc")}' if i.get('desc') else ''))
+    return out
+
+
+def d_gassco(o, n, ctx):
+    oe, ne = o.get('events') or {}, n.get('events') or {}
+    out = []
+    for k, e in ne.items():
+        if oe.get(k) == e:
+            continue
+        what = 'New' if k not in oe else 'Revised'
+        out.append(f'{what} {(e.get("type") or "").lower()} event at {e.get("asset")} ({e.get("status")}): '
+                   f'{e.get("start", "")[:16].replace("T", " ")} – {e.get("stop", "")[:16].replace("T", " ")}, '
+                   f'{fnum(e.get("unavail"))} of {fnum(e.get("tech"))} {e.get("unit") or ""} unavailable')
+    return out
+
+
+def d_items(key, title, summary=None, link=None, date=None, extra=None):
+    def f(o, n, ctx):
+        ok = {i.get(key) for i in o.get('items') or []}
+        out, stale = [], 0
+        # Saker datert mer enn to uker før dagen er gamle saker som er indeksert
+        # på nytt (typisk Google News), ikke nyheter; de telles bare.
+        cutoff = (dt.date.fromisoformat(ctx['day']) - dt.timedelta(days=14)).isoformat() if ctx.get('day') else ''
+        for i in n.get('items') or []:
+            if i.get(key) in ok:
+                continue
+            if date and cutoff and (i.get(date) or '9') < cutoff:
+                stale += 1
+                continue
+            src = extra(i, n) if extra else ''
+            out.append(f'{(i.get(date) + " ") if date and i.get(date) else ""}{src}{i.get(title)}'
+                       + (f' – {i.get(summary)}' if summary and i.get(summary) else '')
+                       + (f' <{i.get(link)}>' if link and i.get(link) else ''))
+        if stale:
+            out.append(f'{plural(stale, "older item")} (dated more than two weeks back) newly picked up, not listed')
+        return out
+    return f
+
+
+def news_source(i, n):
+    f = (n.get('feeds') or {}).get(i.get('f')) or {}
+    c = f.get('company')
+    return f'[{c}] ' if c else ''
+
+
+def d_transfers(o, n, ctx):
+    old = {tuple(r) for r in rows(o)}
+    cmp_, kinds = n.get('companies') or [], n.get('kinds') or []
+    out = []
+    for r in rows(n):
+        if tuple(r) in old:
+            continue
+        day, lic, sel, buy, share, kind = r
+        d = (dt.date(1970, 1, 1) + dt.timedelta(days=day)).isoformat()
+        nm = lambda k: cmp_[k] if isinstance(k, int) and 0 <= k < len(cmp_) else str(k)
+        out.append(f'{d} PL {ctx["licences"].get(lic, lic)}: {fnum(share, 3).rstrip("0").rstrip(".")} % from {nm(sel)} to {nm(buy)}'
+                   f' ({(kinds[kind] if isinstance(kind, int) and kind < len(kinds) else kind).lower()})')
+    return out
+
+
+def d_series(unit, col=1):
+    def f(o, n, ctx):
+        old = {r[0] for r in rows(o)}
+        new = [r for r in rows(n) if r[0] not in old]
+        if not new:
+            return []
+        vals = [r[col] for r in new if r[col] is not None]
+        out = [f'{r[0]}: {fnum(r[col], 2)} {unit}' for r in new[-10:]]
+        if len(new) > 10:
+            out.insert(0, f'{len(new)} new values {new[0][0]} – {new[-1][0]}, range {fnum(min(vals), 2)}–{fnum(max(vals), 2)} {unit}')
+        prev = [r for r in rows(n) if r[0] < new[0][0]]
+        if prev and vals:
+            out.append(f'Change from {prev[-1][0]} ({fnum(prev[-1][col], 2)}) to {new[-1][0]}: {fnum(new[-1][col] - prev[-1][col], 2)} {unit}')
+        return out
+    return f
+
+
+def d_fx(o, n, ctx):
+    od, nd = set(o.get('dates') or []), n.get('dates') or []
+    if not nd or nd[-1] in od:
+        return []
+    i = len(nd) - 1
+    return [f'NOK per unit on {nd[-1]}: ' + ', '.join(f'{c} {fnum((n.get("rates") or {}).get(c, [None])[i], 4)}'
+                                                  for c in n.get('currencies') or [])]
+
+
+def d_gas_prices(o, n, ctx):
+    cols = n.get('columns') or []
+    ci = {c: k for k, c in enumerate(cols)}
+    old = {r[0]: r for r in rows(o)}
+    out = []
+    for r in rows(n):
+        if old.get(r[0]) == r:
+            continue
+        nok = r[ci['export_nok']] / r[ci['export_sm3']] if r[ci['export_nok']] and r[ci['export_sm3']] else None
+        out.append(f'{r[0]}: Norwegian export {fnum(nok, 2)} NOK/Sm3, Europe (IMF) {fnum(r[ci["eu_usd_mmbtu"]], 2)} USD/MMBtu, '
+                   f'Henry Hub {fnum(r[ci["hh_usd_mmbtu"]], 2)} USD/MMBtu' + (' (revised)' if r[0] in old else ''))
+    return out
+
+
+def d_rig_contracts(o, n, ctx):
+    key = lambda c: (c.get('rig'), c.get('client'), c.get('start'))
+    old = {key(c): c for c in o.get('contracts') or []}
+    out = []
+    for c in n.get('contracts') or []:
+        q = old.get(key(c))
+        if q == c:
+            continue
+        what = 'New contract' if q is None else 'Contract changed'
+        out.append(f'{what}: {c.get("rig")} for {c.get("client")} ({c.get("kind")}), {c.get("start")} – {c.get("end")}'
+                   + (f', day rate {c.get("dayrateText") or c.get("dayrate")}' if c.get('dayrate') or c.get('dayrateText') else ''))
+    return out
+
+
+def d_shipping(o, n, ctx):
+    out = []
+    for k, f in (n.get('fields') or {}).items():
+        of = (o.get('fields') or {}).get(k) or {}
+        cols = f.get('columns') or []
+        ci = {c: j for j, c in enumerate(cols)}
+        # Et anløp kan få justert starttid når AIS-sporet oppdateres; samme skip
+        # med start innen ett døgn regnes som samme anløp.
+        def ts(x):
+            try:
+                return dt.datetime.fromisoformat(x.replace('Z', '+00:00')).timestamp()
+            except (AttributeError, ValueError):
+                return None
+        old = collections.defaultdict(list)
+        for v in of.get('visits') or []:
+            old[v[0]].append(ts(v[1]))
+        new = [v for v in f.get('visits') or []
+               if not any(t is not None and ts(v[1]) is not None and abs(t - ts(v[1])) < 86400 for t in old.get(v[0], []))]
+        if not new:
+            continue
+        cargo = sum(v[ci['cargoBbl']] or 0 for v in new) if 'cargoBbl' in ci else 0
+        dest = sorted({v[ci['to']][3] for v in new if 'to' in ci and isinstance(v[ci['to']], list) and len(v[ci['to']]) > 3 and v[ci['to']][3]})
+        out.append(f'{f.get("name") or ctx["names"].get(k, k)}: {plural(len(new), "new tanker call")}'
+                   + (f', about {fnum(cargo / 1e6, 2)} million bbl loaded (draught-based estimate)' if cargo else '')
+                   + (f'; heading to {", ".join(dest)}' if dest else ''))
+    return out
+
+
+def d_descriptions(o, n, ctx):
+    old = {(r[0], r[1]): r[2] for r in rows(o)}
+    ch = collections.defaultdict(list)
+    for r in rows(n):
+        if old.get((r[0], r[1])) != r[2]:
+            ch[r[0]].append(r[1] + ('' if (r[0], r[1]) in old else ' (new)'))
+    return [f'{ctx["names"].get(str(k), k)}: {", ".join(v)} text changed' for k, v in ch.items()]
+
+
+DETAILS = {
+    'shipping': d_shipping,
+    'field_descriptions': d_descriptions,
+    'production': d_production,
+    'reserves_field': d_reserves_field,
+    'exploration_wells': d_rows('name', ['purpose', 'status', 'content', 'operator', 'rig', 'planned', 'entry', 'licence'],
+                                ['purpose', 'status', 'content', 'operator', 'rig', 'entry', 'completion', 'planned', 'discovery', 'td']),
+    'rig_wells': d_rows('name', ['field', 'purpose', 'operator', 'rig', 'entry'], ['purpose', 'rig', 'entry', 'completion']),
+    'discoveries': d_rows('name', ['status', 'hc', 'year', 'operator', 'area'], ['status', 'hc', 'field', 'operator', 'inclIn']),
+    'licences': d_rows('name', ['area', 'phase', 'operator', 'round'], ['phase', 'validTo', 'operator', 'areaKm2']),
+    'fields': d_rows('name', []),
+    'facilities': d_rows('name', ['kind', 'phase', 'operator'], ['kind', 'phase', 'operator', 'startup']),
+    'changes': d_changes,
+    'havtil': d_havtil,
+    'gassco_events': d_gassco,
+    'sodir_press': d_items('u', 't', 's', 'u', 'd'),
+    'sodir_news': d_items('link', 'title', 'description', 'link', 'date'),
+    'company_news': d_items('u', 't', None, 'u', 'd', news_source),
+    'licence_transfers': d_transfers,
+    'brent_eia': d_series('USD/bbl'),
+    'normpris_brent': d_series('USD/bbl'),
+    'ttf_daily': d_series('EUR/MWh'),
+    'fx': d_fx,
+    'gas_prices': d_gas_prices,
+    'rig_contracts': d_rig_contracts,
+}
+
+
+def details(name, old, new, ctx):
+    fn = DETAILS.get(name)
+    if not fn or old is None:
+        return []
+    try:
+        facts = fn(old, new, ctx) or []
+    except Exception as e:                       # detaljene skal aldri stoppe loggen
+        print(f'  {name}: details failed ({e})', file=sys.stderr)
+        return []
+    if len(facts) > MAX_FACTS:
+        facts = facts[:MAX_FACTS] + [f'… and {len(facts) - MAX_FACTS} more']
+    return facts
+
+
 SUMMARY = {
     'production': s_production,
     'reserves_field': s_by_field('Field reserves'),
@@ -485,12 +838,18 @@ def load_at(rev, path):
         return None
 
 
-def entries_between(old_rev, new_rev, files):
+def entries_between(old_rev, new_rev, files, day=None):
     """Logglinjer for filene som er endret mellom to versjoner (new_rev None =
     arbeidskopien)."""
     names = field_names(load_at(new_rev, 'data/fields.json') or load_at(old_rev, 'data/fields.json'))
+    lic = load_at(new_rev, 'data/licences.json') or {}
+    ctx = {'names': names, 'licences': {r[0]: r[1] for r in rows(lic)}, 'day': day}
     out = []
     for path in sorted(files):
+        # Bare filene rett under data/; undermapper (gom_company/, equinor-raw/ …)
+        # er kildemateriale eller deler av en annen kilde.
+        if os.path.dirname(path) != 'data':
+            continue
         name = os.path.basename(path)[:-5]
         new = load_at(new_rev, path)
         if new is None:
@@ -500,6 +859,9 @@ def entries_between(old_rev, new_rev, files):
             continue
         e = summarise(name, old, new, names)
         if e:
+            f = details(name, old, new, ctx)
+            if f:
+                e['f'] = f
             out.append(e)
     return out
 
@@ -554,7 +916,7 @@ def day_entries(day, end_rev, worktree=False):
         files |= {p for p in git('diff', '--name-only', base, end, '--', 'data/').splitlines() if p.endswith('.json')}
     if worktree:
         files |= set(changed_files_worktree())
-    entries = entries_between(base, None if worktree else end_rev, files)
+    entries = entries_between(base, None if worktree else end_rev, files, day)
     times = collections.defaultdict(list)
     nxt = (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
     t = None
@@ -572,9 +934,57 @@ def day_entries(day, end_rev, worktree=False):
     return entries
 
 
+def write_details(day, entries):
+    """data/update_details/<dag>.json: linjene med faktasetningene, og index.json."""
+    os.makedirs(DETAIL_DIR, exist_ok=True)
+    sec = dict(SECTIONS)
+    doc = {'date': day, 'note': 'Changes to the NCS Insight data on this day (UTC), per source. '
+                                't is the short summary shown on the updates page; facts are the details.',
+           'sources': [{'section': sec.get(e['s'], e['s']), 'source': e['l'], 'key': e['k'], 'summary': e['t'],
+                        'times_utc': e.get('at', []), 'facts': e.get('f', [])} for e in entries]}
+    path = os.path.join(DETAIL_DIR, f'{day}.json')
+    txt = json.dumps(doc, ensure_ascii=False, indent=1) + '\n'
+    try:
+        with open(path, encoding='utf-8') as fh:
+            if fh.read() == txt:
+                return
+    except OSError:
+        pass
+    with open(path, 'w', encoding='utf-8') as fh:
+        fh.write(txt)
+
+
+def prune_details(today):
+    cutoff = (dt.date.fromisoformat(today) - dt.timedelta(days=KEEP_DETAIL_DAYS)).isoformat()
+    if not os.path.isdir(DETAIL_DIR):
+        return
+    days = []
+    for fn in sorted(os.listdir(DETAIL_DIR)):
+        if len(fn) == 15 and fn.endswith('.json') and fn[:4].isdigit():
+            if fn[:10] < cutoff:
+                os.remove(os.path.join(DETAIL_DIR, fn))
+            else:
+                days.append(fn[:10])
+    idx = {'days': sorted(days, reverse=True), 'path': 'data/update_details/<date>.json'}
+    path = os.path.join(DETAIL_DIR, 'index.json')
+    txt = json.dumps(idx, indent=1) + '\n'
+    try:
+        with open(path, encoding='utf-8') as fh:
+            if fh.read() == txt:
+                return
+    except OSError:
+        pass
+    with open(path, 'w', encoding='utf-8') as fh:
+        fh.write(txt)
+
+
 def put_day(log, day, entries):
     order = {s: i for i, (s, _) in enumerate(SECTIONS)}
     entries.sort(key=lambda i: (order.get(i['s'], 99), i['l']))
+    if entries:
+        write_details(day, entries)
+    # Detaljene står i egne filer; update_log.json (som siden leser) holdes liten.
+    entries = [{k: v for k, v in e.items() if k != 'f'} for e in entries]
     days = {d['d']: d for d in log['days']}
     if entries:
         days[day] = {'d': day, 'items': entries}
@@ -608,6 +1018,7 @@ def main():
             end = rev_before(f'{nxt}T00:00:00Z')
             log = put_day(log, day, day_entries(day, end))
         print(f'Backfilled {len(log["days"])} days')
+        prune_details(today)
     else:
         # Standard: regn de siste dagene på nytt fra git-historikken (og
         # arbeidskopien, hvis noe er endret der). Da blir loggen riktig også om
@@ -623,6 +1034,7 @@ def main():
                 entries = day_entries(day, rev_before(f'{nxt}T00:00:00Z'))
             log = put_day(log, day, entries)
             print(f'{day}: {len(entries)} source(s)')
+        prune_details(today)
         if json.dumps(log.get('days'), sort_keys=True) == before and os.path.exists(OUT):
             print('No changes to the log')
             return 0                     # filen røres ikke, ingen commit
