@@ -1,0 +1,93 @@
+{
+  "source": "Quartr (company quarterly reports, statement of financial position); USD/NOK from Norges Bank",
+  "updated": "2026-11-28",
+  "unit": "USD million",
+  "companies": {
+    "AKER BP": {
+      "name": "Aker BP ASA",
+      "quartr": "https://web.quartr.com/m/companies/4361",
+      "periods": [
+        {
+          "date": "2025-12-31",
+          "report": "Q4 2025 quarterly report",
+          "url": "https://web.quartr.com/m/sources/s65765540191",
+          "cash": 2344.1,
+          "investments": 300.0,
+          "debt": 8665.8,
+          "debtNote": "Long-term bonds 8,358.6 + short-term bonds 307.2",
+          "leases": 1072.1,
+          "leasesNote": "Long-term 712.7 + short-term 359.4",
+          "taxPayable": 1052.8,
+          "shares": 631446417,
+          "sharesNote": "Weighted average shares outstanding, Q4 2025 (excluding treasury shares)",
+          "sharesUrl": "https://web.quartr.com/m/sources/s50611183725",
+          "usdnok": 10.0791,
+          "adjustments": []
+        }
+      ]
+    },
+    "VÅR": {
+      "name": "Vår Energi ASA",
+      "quartr": "https://web.quartr.com/m/companies/12174",
+      "periods": [
+        {
+          "date": "2025-12-31",
+          "report": "Q4 2025 quarterly report",
+          "url": "https://web.quartr.com/m/sources/s54748702070",
+          "cash": 699.9,
+          "investments": 0,
+          "debt": 5942.0,
+          "debtNote": "Interest-bearing loans and borrowings, non-current 5,842.3 + current 99.6 (bonds, accrued interest; the hybrid's debt part 11.0 included)",
+          "leases": 247.9,
+          "leasesNote": "Non-current 114.6 + current 133.3",
+          "taxPayable": 1317.0,
+          "shares": 2496406250,
+          "sharesNote": "2,496,406,246 ordinary shares and 4 Class B shares (note 17)",
+          "sharesUrl": "https://web.quartr.com/m/sources/s60722930430",
+          "usdnok": 10.0791,
+          "adjustments": [
+            {
+              "label": "Hybrid capital (EUR 750 million, booked as equity)",
+              "value": -799.5,
+              "taxed": false,
+              "note": "Subordinated securities due 2083, first call 2028; a claim ahead of the shareholders, so treated as debt",
+              "url": "https://web.quartr.com/m/sources/s60722930430"
+            }
+          ]
+        }
+      ]
+    },
+    "OKEA": {
+      "name": "OKEA ASA",
+      "quartr": "https://web.quartr.com/m/companies/13969",
+      "periods": [
+        {
+          "date": "2025-12-31",
+          "report": "Q4 2025 quarterly report",
+          "url": "https://web.quartr.com/m/sources/s62894079804",
+          "cash": 251.509,
+          "investments": 56.881,
+          "investmentsUrl": "https://web.quartr.com/m/sources/s74184641990",
+          "debt": 295.224,
+          "debtNote": "Interest-bearing bond loans",
+          "leases": 16.208,
+          "leasesNote": "Non-current 12.541 + current 3.667",
+          "taxPayable": 25.548,
+          "shares": 103910350,
+          "sharesNote": "Shares outstanding, Q4 2025",
+          "sharesUrl": "https://web.quartr.com/m/sources/s83457152417",
+          "usdnok": 10.0791,
+          "adjustments": [
+            {
+              "label": "Asset retirement reimbursement right",
+              "value": 464.673,
+              "taxed": true,
+              "note": "Book value 435.690 non-current + 28.983 current: the sellers of assets OKEA bought pay part of its abandonment cost. The model deducts that cost after tax, so the right counts after tax as well",
+              "url": "https://web.quartr.com/m/sources/s74184641990"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

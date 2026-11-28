@@ -3899,6 +3899,38 @@ opprinnelige fallet og kurven løftes. Nye felt får høyere platånivå
 (`cfNewField` tar nå platåraten som valgfritt argument). Feltene merkes * i
 felttabellen, og horisonten er 2050.
 
+## Company → Valuation BETA: verdi per aksje
+
+Kortet «From portfolio value to value per share» (`valEquityCard`, rett under
+verdikortet) trekker netto gjeld fra den indikative verdien etter skatt (felt +
+funn) og deler på antall aksjer, i USD og NOK. Bare for de rene NCS-selskapene i
+`data/company_balance.json` (nøkkel = Sodirs selskapsgruppe som `VAL_TICKERS`:
+`AKER BP`, `VÅR`, `OKEA`). Konsern med virksomhet utenfor sokkelen (Equinor, DNO,
+Harbour …) får ikke kortet: konsernbalansen passer ikke til en verdi av bare den
+norske delen.
+
+- **Balansedato:** 31.12. året før, samme dato som NPV-en (1.1. i år)
+  (`valBalancePeriod`). Mangler den, brukes siste balanse før, med merknad.
+- **Netto gjeld** (`valNetDebt`) = rentebærende gjeld + leasing + betalbar skatt −
+  kontanter − finansielle plasseringer − justeringer. Betalbar skatt er fjorårets
+  skatt som betales i år; modellen skattlegger bare kontantstrømmen fra 1.1.
+  Fjerningsforpliktelser og utsatt skatt trekkes ikke fra: fjerning er i
+  kontantstrømmen, og skatten regnes direkte på den.
+- **Justeringer** (`adjustments`): Vår Energis hybridkapital (EUR 750 mill.,
+  bokført som egenkapital) trekkes fra som gjeld. OKEAs refusjonsrett for
+  fjerning (selgerne av eiendeler OKEA kjøpte betaler deler av fjerningen) legges
+  til × (1 − `CF_TAX`), fordi modellen trekker fjerningen etter skatt (`taxed: true`).
+- **Kurs:** Norges Banks USDNOK på balansedagen, lagret i filen (`usdnok`), så
+  `fx.json` ikke må lastes.
+- **Kilde:** kvartalsrapportene via Quartr, kontrollert post for post mot
+  balansen i rapporten (lenke per post). Quartrs standardiserte tall
+  (`get_financials`) er ikke pålitelige nok til å brukes direkte: for Aker BP
+  manglet langsiktig gjeld i kvartalstallene og betalbar skatt var 1 i årstallene,
+  Vår Energi hadde egenkapital 1 i Q2 2026, og OKEA ble oppgitt i tusen i
+  årstallene. Quartrs offentlige REST-API (`QUARTR_API_KEY`) har ikke regnskapstall,
+  bare selskaper, hendelser og dokumenter, så filen oppdateres for hånd én gang i
+  året, etter Q4-rapportene i februar.
+
 ## Field → Valuation BETA
 
 Samme sjablongmodell og kort som Hubs → Valuation BETA (`hubCashFlowCard`,
