@@ -3899,20 +3899,62 @@ opprinnelige fallet og kurven løftes. Nye felt får høyere platånivå
 (`cfNewField` tar nå platåraten som valgfritt argument). Feltene merkes * i
 felttabellen, og horisonten er 2050.
 
+## Valuation BETA: glideskala for oljepris og WACC
+
+Prisknappene (USD 60/80/100) er erstattet av to glideskalaer (`cfControls`) i
+alle verdsettelsene: Company, Hub, Field, DCS og Analytics. Oljepris USD 0–200
+(`hubCfPrice`, `hubCfSet`) og diskonteringsrente (WACC) 0–20 % i hele prosent
+(`hubCfRate`, `hubCfSetRate`). Tallet ved skalaen følger med mens man drar,
+men siden tegnes på nytt først når skalaen slippes. Ellers ville omtegningen
+fjerne skalaen midt i bevegelsen.
+
+`CF_RATES` er nå `let` og har alltid to satser: den valgte først (hovedtallet),
+så 10 % til sammenligning (7 % når 10 % er valgt). Mye kode regner med nøyaktig to
+satser (blant annet `anValZero`/`anValPlus` i Analytics), så lengden må ikke
+endres. `hubCfSetRate` tømmer `anValCache`, som husker NPV per felt og pris.
+Sensitivitetstabellene viser `CF_PRICES` pluss den valgte prisen (`cfPrices()`).
+Valgene lagres ikke i lenken.
+
+## Company → Valuation BETA: selskapets egen produksjonskostnad
+
+For Aker BP, Vår Energi og OKEA erstatter selskapets rapporterte
+produksjonskostnad per fat den generelle `OPEX_USD` (10 USD/boe) i `valCompute`
+(`valOpex`). Tallene ligger under `opex` i `data/company_financials.json`:
+nominelle USD per produsert fat per år, med lenke til kilden. Aker BP har tall fra
+2020, Vår Energi fra 2022 (børsnotert 2022) og OKEA fra 2020. OKEA rapporterte i
+NOK til og med 2023; de årene er regnet om med Norges Banks årssnitt.
+
+- **Historikk:** rapportert kostnad for årene som finnes, ellers `OPEX_USD`
+  deflatert som før.
+- **Prognose:** snittet av de `VAL_OPEX_YEARS` (2) siste hele årene før
+  verdsettelsesåret, regnet om til `OPEX_BASE`-dollar med US KPI og inflatert
+  med `CF_INFL` videre. Per 2026: Aker BP 7,05, Vår Energi 12,51, OKEA 23,04.
+- **Definisjonene er ulike:** Aker BP har med drift, frakt og miljøavgifter. Vår
+  Energi har i tillegg transport/prosessering og forsikring. OKEA trekker fra
+  tariffinntekter. Tallet gjelder hele porteføljen og brukes på alle feltene.
+- **Kort og antakelser:** kortet «Production cost per boe» viser tallene per år,
+  og antakelsestabellen viser grunnlaget.
+- **Analytics** bruker `valCompute` per selskap og får samme kostnad. Kjøpte og
+  solgte andeler (`anValNcsField`) bruker fortsatt `OPEX_USD`. `valFinLoad`
+  tømmer `anValCache` når filen er lastet. Company → Valuation venter på filen
+  før den regner.
+- **Hub- og feltverdsettelsene** bruker fortsatt `OPEX_USD`.
+
 ## Company → Valuation BETA: verdi per aksje
 
 Kortet «From portfolio value to value per share» (`valEquityCard`, rett under
 verdikortet) trekker netto gjeld fra den indikative verdien etter skatt (felt +
 funn) og deler på antall aksjer, i USD og NOK. Bare for de rene NCS-selskapene i
-`data/company_balance.json` (nøkkel = Sodirs selskapsgruppe som `VAL_TICKERS`:
+`data/company_financials.json` (nøkkel = Sodirs selskapsgruppe som `VAL_TICKERS`:
 `AKER BP`, `VÅR`, `OKEA`). Konsern med virksomhet utenfor sokkelen (Equinor, DNO,
 Harbour …) får ikke kortet: konsernbalansen passer ikke til en verdi av bare den
 norske delen.
 
 - **Balansedato:** 31.12. året før, samme dato som NPV-en (1.1. i år)
   (`valBalancePeriod`). Mangler den, brukes siste balanse før, med merknad.
-- **Netto gjeld** (`valNetDebt`) = rentebærende gjeld + leasing + betalbar skatt −
-  kontanter − finansielle plasseringer − justeringer. Betalbar skatt er fjorårets
+- **Netto gjeld** (`valNetDebt`) = rentebærende gjeld + betalbar skatt −
+  kontanter − finansielle plasseringer − justeringer. Leasingforpliktelser tas
+  ikke med: de har en motpost (bruksrett) i balansen. Betalbar skatt er fjorårets
   skatt som betales i år; modellen skattlegger bare kontantstrømmen fra 1.1.
   Fjerningsforpliktelser og utsatt skatt trekkes ikke fra: fjerning er i
   kontantstrømmen, og skatten regnes direkte på den.
