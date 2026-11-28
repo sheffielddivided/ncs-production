@@ -13051,6 +13051,103 @@ function mountTvScript(box, kind, cfg) {
   box.appendChild(sc);
 }
 
+// ── Fra porteføljeverdi til verdi per aksje ──
+// For de rene NCS-selskapene (Aker BP, Vår Energi, OKEA) trekkes netto gjeld
+// fra den indikative verdien, så den kan leses per aksje og sammenlignes med
+// kursen. Balansen per 31.12. året før (samme dato som NPV-en, 1.1. i år) ligger
+// i data/company_balance.json, nøkkel = Sodirs selskapsgruppe som VAL_TICKERS,
+// mill. USD, hentet fra selskapenes kvartalsrapporter via Quartr og kontrollert
+// mot rapporten (lenke per post). Quartrs standardiserte tall brukes ikke
+// direkte: de mangler poster og blander enheter.
+// · gjeld: rentebærende lån og obligasjoner; leasing for seg
+// · betalbar skatt: skatt for fjoråret som betales i år, og som modellen ikke
+//   har med (den skattlegger kontantstrømmen fra 1.1.)
+// · fjerningsforpliktelser trekkes ikke fra: fjerning er med i kontantstrømmen
+// · adjustments: selskapsspesifikke poster (hybridkapital, refusjonsrett for
+//   fjerning); taxed = posten motsvarer noe modellen regner etter skatt og
+//   tas med × (1 − CF_TAX)
+// Konsern med virksomhet utenfor sokkelen (Equinor, DNO, Harbour …) er ikke
+// med: konsernbalansen passer ikke til en verdi av bare den norske delen.
+let valBalance, valBalanceLoading = null;
+function valBalanceFor(cmp) {
+  const g = (companyRow(cmp) || {}).group;
+  return (valBalance && g && valBalance.companies[g]) || null;
+}
+// Balansen per 31.12. året før verdsettelsesdatoen, ellers den siste før den.
+function valBalancePeriod(c, y0) {
+  const ps = (c.periods || []).filter(p => p.date < `${y0}-01-01`).sort((a, b) => a.date < b.date ? 1 : -1);
+  return ps[0] || null;
+}
+function valNetDebt(p) {
+  const adj = (p.adjustments || []).reduce((s, a) => s + a.value * (a.taxed ? 1 - CF_TAX : 1), 0);
+  return p.debt + p.leases + p.taxPayable - p.cash - (p.investments || 0) - adj;
+}
+function valEquityCard(cmp, all, total) {
+  if (valBalance === undefined) {
+    valBalanceLoading = valBalanceLoading || fetchBundle('company_balance').then(d => {
+      valBalance = d && d.companies ? d : null;
+      if (topMode === 'companies' && companySubView === 'valuation') drawChart();
+    });
+    return '';
+  }
+  const c = valBalanceFor(cmp), y0 = all[0].v.y0, p = c && valBalancePeriod(c, y0);
+  if (!p) return '';
+  const nd = valNetDebt(p), fx = p.usdnok;
+  const m = x => Math.round(x).toLocaleString('en');
+  const sh = x => (x * 1e9 / p.shares);
+  const usd = x => sh(x).toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const nok = x => Math.round(sh(x) * fx).toLocaleString('en');
+  const pct = r => `${Math.round(r * 100)} %`;
+  const src = (u, t) => u ? `<a href="${esc(u)}" rel="noopener" target="_blank">${t}</a>` : t;
+  const cur = all.find(a => a.p === hubCfPrice) || all[0];
+  const T = total(cur.v, 0), E = T - nd / 1000;
+  const dated = p.date === `${y0 - 1}-12-31` ? '' :
+    ` <strong>Note:</strong> the latest balance sheet here is from ${fmtShort(p.date)}, while the valuation is as at 1 January ${y0}.`;
+  const row = (k, v, note = '', cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${k}${note ? `<small class="val-sub">${note}</small>` : ''}</td><td>${v}</td></tr>`;
+  const adjRows = (p.adjustments || []).map(a => {
+    const x = a.value * (a.taxed ? 1 - CF_TAX : 1);
+    return row(`${a.value >= 0 ? '+' : '−'} ${esc(a.label)}`, `${x >= 0 ? '' : '−'}${m(Math.abs(x))}`,
+      `${a.taxed ? `Book value ${m(Math.abs(a.value))} × (1 − ${pct(CF_TAX)}). ` : ''}${esc(a.note || '')} · ${src(a.url, 'source')}`);
+  }).join('');
+  const bridge = `<table class="res-table">
+      <caption>USD million · oil price USD ${hubCfPrice} · ${pct(CF_RATES[0])} · balance sheet ${fmtShort(p.date)}</caption>
+      <tbody>
+        ${row('Indicative value of the Norwegian portfolio, after tax', m(T * 1000), 'Fields and discoveries, from the card above')}
+        ${row('− Interest-bearing debt', `−${m(p.debt)}`, `${esc(p.debtNote || '')} · ${src(p.url, 'source')}`)}
+        ${row('− Lease liabilities', `−${m(p.leases)}`, esc(p.leasesNote || ''))}
+        ${row('− Tax payable', `−${m(p.taxPayable)}`, `Tax for ${y0 - 1} paid in ${y0}; the model only taxes cash flows from 1 January ${y0}`)}
+        ${row('+ Cash and cash equivalents', m(p.cash))}
+        ${p.investments ? row('+ Financial investments', m(p.investments), p.investmentsUrl ? src(p.investmentsUrl, 'source') : '') : ''}
+        ${adjRows}
+      </tbody>
+      <tfoot>
+        <tr class="total-row"><td>Indicative equity value</td><td>${m(E * 1000)}</td></tr>
+        <tr><td>Shares, million<small class="val-sub">${esc(p.sharesNote || '')} · ${src(p.sharesUrl, 'source')}</small></td><td>${(p.shares / 1e6).toLocaleString('en', {maximumFractionDigits: 1})}</td></tr>
+        <tr class="total-row"><td>Per share</td><td>USD ${usd(E)}<small class="val-sub">NOK ${nok(E)}</small></td></tr>
+      </tfoot></table>`;
+  const sens = `<table class="res-table">
+      <caption>Indicative equity value per share, NOK</caption>
+      <thead><tr><th>Oil price</th>${CF_RATES.map(r => `<th>${pct(r)}</th>`).join('')}</tr></thead>
+      <tbody>${all.map(a => `<tr${a.p === hubCfPrice ? ' class="total-row"' : ''}><td>USD ${a.p}</td>${CF_RATES.map((r, k) =>
+        `<td>${nok(total(a.v, k) - nd / 1000)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    <table class="res-table" style="margin-top:12px">
+      <caption>Net debt, USD million</caption>
+      <tbody>${row('Net debt incl. leases, tax payable and adjustments', m(nd))}
+        ${row('Per share, NOK', Math.round(nd * 1e6 / p.shares * fx).toLocaleString('en'))}</tbody></table>`;
+  return `<div class="pf-row2">
+      <div class="pf-card"><h3>From portfolio value to value per share</h3>
+        <div class="val-head" style="margin-bottom:10px"><div></div>
+          <div class="val-big"><span>Per share at ${pct(CF_RATES[0])}, USD ${hubCfPrice}</span><strong>NOK ${nok(E)}</strong>
+            <small>at ${pct(CF_RATES[1])}: NOK ${nok(total(cur.v, 1) - nd / 1000)}</small></div></div>
+        ${bridge}</div>
+      <div class="pf-card"><h3>Per share: sensitivity</h3>${sens}
+        <div class="pf-map-note">Balance sheet of ${esc(c.name)} as at ${fmtShort(p.date)} from its ${esc(p.report)}
+          (${src(c.quartr, 'Quartr')}). NOK at Norges Bank's rate on ${fmtShort(p.date)}, ${fx.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 4})} NOK/USD.
+          Abandonment provisions are not deducted: abandonment is already in the cash flow. Deferred tax is not deducted either: the model
+          taxes the cash flows directly. The share price below is for comparison.${dated}</div></div>
+    </div>`;
+}
+
 function drawCompanyValuation() {
   const cmp = [...selectedCompanyNames][0];
   if (valChartCf) { valChartCf.destroy(); valChartCf = null; }
@@ -13186,7 +13283,7 @@ function drawCompanyValuation() {
       <tfoot><tr class="total-row"><td>Total${v.disc.length > 20 ? ` (${v.disc.length})` : ''}</td><td></td><td>${n1(v.discBoe / 1e6)}</td>
         <td>${Math.round(v.discValue * 1000).toLocaleString('en')}</td></tr></tfoot></table></div></div>` : '';
 
-  setProfile(head + valShareCard(cmp) + cfCard + row + hubTable + prodCard + assumptions + discCard);
+  setProfile(head + valEquityCard(cmp, all, total) + valShareCard(cmp) + cfCard + row + hubTable + prodCard + assumptions + discCard);
   valMountShares(cmp);
 
   // Kontantstrømgrafen.
