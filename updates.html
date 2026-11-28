@@ -10,6 +10,9 @@
     Oppdateringslogg: hva som er endret i dataene, dag for dag. Lenket nederst
     på forsiden i index.html. Leser data/update_log.json, som
     build_update_log.py bygger fra git-historikken (workflow update-log.yml).
+    Øverst: den siste AI-skrevne dagsoppsummeringen fra data/daily_summary.json
+    (build_daily_summary.py, workflow update-summary.yml); mangler fila, vises
+    ingenting.
     Valgene (seksjon, høydepunkter) står i adressen.
   -->
   <style>
@@ -43,6 +46,16 @@
     .empty,.status{color:var(--muted);font-size:0.85rem;text-align:center;padding:40px 10px;}
     .more{display:block;margin:6px auto 0;padding:7px 16px;border:1.5px solid var(--border);border-radius:20px;background:#fff;font:inherit;font-size:0.78rem;color:var(--navy);cursor:pointer;}
     .more:hover{border-color:var(--blue);color:var(--blue);}
+    .brief{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,0.06);padding:12px 16px 10px;margin-bottom:14px;border-left:4px solid var(--blue);}
+    .brief h2{font-size:0.95rem;color:var(--navy);display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+    .brief h2 small{font-size:0.7rem;font-weight:500;color:var(--muted);}
+    .brief ul{margin:0 0 6px 18px;font-size:0.84rem;line-height:1.5;color:#1a2332;}
+    .brief li{margin:3px 0;}
+    .brief .ai{font-size:0.66rem;color:var(--muted);line-height:1.4;}
+    .brief details{margin-top:8px;font-size:0.78rem;}
+    .brief summary{cursor:pointer;color:var(--navy);font-weight:600;font-size:0.74rem;}
+    .brief details h3{font-size:0.78rem;color:#4a5568;margin:10px 0 2px;}
+    .brief details ul{font-size:0.78rem;}
     .source-note{padding:6px 2px 30px;font-size:0.68rem;color:#a0aab8;text-align:right;line-height:1.5;}
   </style>
 </head>
@@ -54,6 +67,7 @@
 <div class="controls-bar" id="controls"></div>
 <main>
   <p class="intro">What changed in the data behind NCS Insight, day by day. Each line compares a source with how it stood at the end of the previous day. Times are when the update was saved (UTC).</p>
+  <div id="brief"></div>
   <div id="log"><div class="status">Loading…</div></div>
   <div class="source-note" id="note"></div>
 </main>
@@ -102,6 +116,18 @@ function render() {
         <span class="at" title="${esc((i.at || []).join(', '))} UTC">${(i.at || []).length > 2 ? `${i.at.length}× · ${esc(i.at[0])}–${esc(i.at[i.at.length - 1])}` : esc((i.at || []).join(', '))}</span></div>`).join('')}`).join('')}</div>`;
   }).join('') + (days.length > shown ? `<button class="more" onclick="shown+=30;render()">Show earlier days (${days.length - shown})</button>` : '');
 }
+// Dagsoppsummeringen (AI). Dager uten punkter (ingenting verdt å nevne) hoppes over.
+fetch('data/daily_summary.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : null).then(d => {
+  const days = ((d && d.days) || []).filter(x => (x.bullets || []).length);
+  if (!days.length) return;
+  const list = x => `<ul>${x.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>`;
+  const [cur, ...rest] = days;
+  document.getElementById('brief').innerHTML = `<section class="brief" aria-label="Daily briefing">
+    <h2>Daily briefing<small>${esc(dayTxt(cur.d))}</small></h2>${list(cur)}
+    <div class="ai">Written by AI (Claude) from the changes logged that day, listed below. It uses only those facts, but may still contain mistakes; check the sources.</div>
+    ${rest.length ? `<details><summary>Earlier briefings</summary>${rest.slice(0, 13).map(x => `<h3>${esc(dayTxt(x.d))}</h3>${list(x)}`).join('')}</details>` : ''}
+  </section>`;
+}).catch(() => {});
 fetch('data/update_log.json', {cache: 'no-cache'}).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
   L = d; readUrl(); render();
   document.getElementById('note').textContent = `Log updated ${d.updated.replace('T', ' ').replace('Z', ' UTC')} · ${d.days.length} days`;
