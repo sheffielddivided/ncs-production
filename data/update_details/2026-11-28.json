@@ -188,6 +188,26 @@
     "13:14"
    ],
    "facts": []
+  },
+  {
+   "section": "Other",
+   "source": "company_financials",
+   "key": "company_financials",
+   "summary": "added",
+   "times_utc": [
+    "15:15"
+   ],
+   "facts": []
+  },
+  {
+   "section": "Other",
+   "source": "daily_summary",
+   "key": "daily_summary",
+   "summary": "added",
+   "times_utc": [
+    "14:21"
+   ],
+   "facts": []
   }
  ]
 }
